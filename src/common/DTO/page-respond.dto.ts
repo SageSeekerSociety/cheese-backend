@@ -1,4 +1,12 @@
-import { IsNumber } from "class-validator";
+/*
+ *  Description: This file defines the DTO for paged respond.
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
+import { IsNumber } from 'class-validator';
 
 export class PageRespondDto {
   @IsNumber()

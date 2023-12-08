@@ -1,6 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+/*
+ *  Description: This file implements the auth service, which is used for
+ *               authentication and authorization.
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InvalidTokenError, PermissionDeniedError, TokenFormatError } from './auth.error';
+import {
+  AuthenticationRequiredError,
+  InvalidTokenError,
+  PermissionDeniedError,
+  TokenFormatError,
+} from './auth.error';
 
 export enum AuthorizedAction {
   create = 1,
@@ -67,7 +81,7 @@ export class Authorization {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) { }
+  constructor(private readonly jwtService: JwtService) {}
 
   // Sign a token for an authorization.
   sign(authorization: Authorization): string {
@@ -81,7 +95,14 @@ export class AuthService {
   //
   // If the token is valid but the payload is not an Authorization object,
   // TokenFormatError will be thrown.
+  //
+  // Parameters:
+  //    token: both the pure jwt token and the one with "Bearer " or "bearer " are supported.
   verify(token: string): Authorization {
+    if (token == null || token == undefined || token == '')
+      throw new AuthenticationRequiredError();
+    if (token.indexOf('Bearer ') == 0) token = token.slice(7);
+    else if (token.indexOf('bearer ') == 0) token = token.slice(7);
     try {
       const result = this.jwtService.verify(token);
       try {

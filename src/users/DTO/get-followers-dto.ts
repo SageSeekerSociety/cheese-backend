@@ -1,10 +1,10 @@
-import { BaseRespondDto } from "../../common/DTO/base-respond.dto";
-import { PageRespondDto } from "../../common/DTO/page-respond.dto";
-import { UserDto } from "./user.dto";
+import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { PageRespondDto } from '../../common/DTO/page-respond.dto';
+import { UserDto } from './user.dto';
 
 export class GetFollowersRespondDto extends BaseRespondDto {
   data: {
-    users: UserDto[],
-    page: PageRespondDto,
-  }
+    users: UserDto[];
+    page: PageRespondDto;
+  };
 }

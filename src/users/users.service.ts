@@ -21,11 +21,13 @@ import {
   UserResetPasswordLogType,
 } from './users.entity';
 import {
+  AlreadyFollowedError,
   BadRequestError,
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
   EmailNotFoundError,
   EmailSendFailedError,
+  FollowYourselfError,
   InvalidEmailAddressError,
   InvalidEmailSuffixError,
   InvalidNicknameError,
@@ -60,7 +62,7 @@ export class UsersService {
     private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
-  ) { }
+  ) {}
 
   private generateVerifyCode(): string {
     var code: string = '';
@@ -92,7 +94,10 @@ export class UsersService {
         userAgent: userAgent,
       });
       await this.userRegisterLogRepository.save(log);
-      throw new InvalidEmailAddressError(email, "Email should look like someone@example.com");
+      throw new InvalidEmailAddressError(
+        email,
+        'Email should look like someone@example.com',
+      );
     }
     if (this.isEmailSuffixSupported(email) == false) {
       const log = this.userRegisterLogRepository.create({
@@ -213,7 +218,10 @@ export class UsersService {
       throw new InvalidPasswordError(this.passwordRule);
     }
     if (isEmail(email) == false) {
-      throw new InvalidEmailAddressError(email, "Email should look like someone@example.com");
+      throw new InvalidEmailAddressError(
+        email,
+        'Email should look like someone@example.com',
+      );
     }
     if (this.isEmailSuffixSupported(email) == false) {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
@@ -438,7 +446,10 @@ export class UsersService {
   ): Promise<void> {
     // Check email.
     if (isEmail(email) == false) {
-      throw new InvalidEmailAddressError(email, "Email should look like someone@example.com");
+      throw new InvalidEmailAddressError(
+        email,
+        'Email should look like someone@example.com',
+      );
     }
     if (this.isEmailSuffixSupported(email) == false) {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
@@ -475,7 +486,11 @@ export class UsersService {
         },
       ],
     });
-    await this.emailService.sendPasswordResetEmail(email, token);
+    try {
+      await this.emailService.sendPasswordResetEmail(email, token);
+    } catch {
+      throw new EmailSendFailedError(email);
+    }
     const log = this.userResetPasswordLogRepository.create({
       type: UserResetPasswordLogType.RequestSuccess,
       ip: ip,
@@ -507,7 +522,7 @@ export class UsersService {
           ip: ip,
           userAgent: userAgent,
         });
-        this.userResetPasswordLogRepository.save(log);
+        await this.userResetPasswordLogRepository.save(log);
       }
       throw e;
     }
@@ -536,7 +551,7 @@ export class UsersService {
         ip: ip,
         userAgent: userAgent,
       });
-      this.userResetPasswordLogRepository.save(log);
+      await this.userResetPasswordLogRepository.save(log);
       throw new PasswordResetTokenExpiredError();
     }
 
@@ -555,7 +570,7 @@ export class UsersService {
         ip: ip,
         userAgent: userAgent,
       });
-      this.userResetPasswordLogRepository.save(log);
+      await this.userResetPasswordLogRepository.save(log);
       throw new UserIdNotFoundError(userId);
     }
     const salt = bcrypt.genSaltSync(10);
@@ -567,7 +582,7 @@ export class UsersService {
       ip: ip,
       userAgent: userAgent,
     });
-    this.userResetPasswordLogRepository.save(log);
+    await this.userResetPasswordLogRepository.save(log);
   }
 
   async updateUserProfile(
@@ -596,7 +611,10 @@ export class UsersService {
     return await this.userFollowingRepository.countBy({ followerId: userId });
   }
 
-  async addFollowRelationship(followerId: number, followeeId: number): Promise<void> {
+  async addFollowRelationship(
+    followerId: number,
+    followeeId: number,
+  ): Promise<void> {
     const follower = await this.userRepository.findOneBy({ id: followerId });
     if (follower == null) {
       throw new UserIdNotFoundError(followerId);
@@ -605,6 +623,17 @@ export class UsersService {
     if (followee == null) {
       throw new UserIdNotFoundError(followeeId);
     }
+    if (followerId == followeeId) {
+      throw new FollowYourselfError();
+    }
+    if (
+      (await this.userFollowingRepository.findOneBy({
+        followerId: followerId,
+        followeeId: followeeId,
+      })) != null
+    ) {
+      throw new AlreadyFollowedError(followeeId);
+    }
     const relationship = this.userFollowingRepository.create({
       follower: follower,
       followee: followee,
@@ -612,7 +641,10 @@ export class UsersService {
     await this.userFollowingRepository.save(relationship);
   }
 
-  async deleteFollowRelationship(followerId: number, followeeId: number): Promise<void> {
+  async deleteFollowRelationship(
+    followerId: number,
+    followeeId: number,
+  ): Promise<void> {
     const relationship = await this.userFollowingRepository.findOneBy({
       followerId: followerId,
       followeeId: followeeId,
@@ -620,7 +652,7 @@ export class UsersService {
     if (relationship == null) {
       throw new NotFollowedYetError(followeeId);
     }
-    await this.userFollowingRepository.softDelete(relationship);
+    await this.userFollowingRepository.softRemove(relationship);
   }
 
   async getFollowers(
@@ -632,7 +664,7 @@ export class UsersService {
     userAgent: string,
   ): Promise<[UserDto[], PageRespondDto]> {
     if (pageSize <= 0) {
-      throw new BadRequestError("pageSize should be positive number")
+      throw new BadRequestError('pageSize should be positive number');
     }
     if (firstFollowerId == null) {
       const relations = await this.userFollowingRepository.find({
@@ -640,44 +672,53 @@ export class UsersService {
         take: pageSize + 1,
         order: { followerId: 'ASC' },
       });
-      const DTOs = await Promise.all(relations.map(r => {
-        return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
-      }));
+      const DTOs = await Promise.all(
+        relations.map((r) => {
+          return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
+        }),
+      );
       if (DTOs.length == 0) {
-        return [[], {
-          page_start: 0,
-          page_size: 0,
-          has_prev: false,
-          prev_start: 0,
-          has_more: false,
-          next_start: 0,
-        }];
-      }
-      else if (DTOs.length > pageSize) {
-        return [DTOs.slice(0, pageSize), {
-          page_start: DTOs[0].id,
-          page_size: pageSize,
-          has_prev: false,
-          prev_start: 0,
-          has_more: true,
-          next_start: DTOs.at(-1).id,
-        }];
-      }
-      else {
-        return [DTOs, {
-          page_start: DTOs[0].id,
-          page_size: DTOs.length,
-          has_prev: false,
-          prev_start: 0,
-          has_more: false,
-          next_start: 0,
-        }];
+        return [
+          [],
+          {
+            page_start: 0,
+            page_size: 0,
+            has_prev: false,
+            prev_start: 0,
+            has_more: false,
+            next_start: 0,
+          },
+        ];
+      } else if (DTOs.length > pageSize) {
+        return [
+          DTOs.slice(0, pageSize),
+          {
+            page_start: DTOs[0].id,
+            page_size: pageSize,
+            has_prev: false,
+            prev_start: 0,
+            has_more: true,
+            next_start: DTOs.at(-1).id,
+          },
+        ];
+      } else {
+        return [
+          DTOs,
+          {
+            page_start: DTOs[0].id,
+            page_size: DTOs.length,
+            has_prev: false,
+            prev_start: 0,
+            has_more: false,
+            next_start: 0,
+          },
+        ];
       }
     } else {
       const prevRelationshipsPromise = this.userFollowingRepository.find({
         where: {
           followeeId: followeeId,
-          followerId: LessThan(firstFollowerId)
+          followerId: LessThan(firstFollowerId),
         },
         take: pageSize,
         order: { followerId: 'ASC' },
@@ -685,49 +726,59 @@ export class UsersService {
       const queriedRelationsPromise = this.userFollowingRepository.find({
         where: {
           followeeId: followeeId,
-          followerId: MoreThanOrEqual(firstFollowerId)
+          followerId: MoreThanOrEqual(firstFollowerId),
         },
         take: pageSize + 1,
         order: { followerId: 'ASC' },
       });
-      const DTOs = await Promise.all((await queriedRelationsPromise).map(r => {
-        return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
-      }));
-      var has_prev = false, prev_start = 0;
+      const DTOs = await Promise.all(
+        (await queriedRelationsPromise).map((r) => {
+          return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
+        }),
+      );
+      var has_prev = false,
+        prev_start = 0;
       const prevRelationships = await prevRelationshipsPromise;
       if (prevRelationships.length > 0) {
         has_prev = true;
         prev_start = prevRelationships[0].followerId;
       }
       if (DTOs.length == 0) {
-        return [[], {
-          page_start: 0,
-          page_size: 0,
-          has_prev: has_prev,
-          prev_start: prev_start,
-          has_more: false,
-          next_start: 0,
-        }]
-      }
-      else if (DTOs.length > pageSize) {
-        return [DTOs.slice(0, pageSize), {
-          page_start: DTOs[0].id,
-          page_size: pageSize,
-          has_prev: has_prev,
-          prev_start: prev_start,
-          has_more: true,
-          next_start: DTOs.at(-1).id,
-        }];
-      }
-      else {
-        return [DTOs, {
-          page_start: DTOs[0].id,
-          page_size: pageSize,
-          has_prev: has_prev,
-          prev_start: prev_start,
-          has_more: false,
-          next_start: 0,
-        }];
+        return [
+          [],
+          {
+            page_start: 0,
+            page_size: 0,
+            has_prev: has_prev,
+            prev_start: prev_start,
+            has_more: false,
+            next_start: 0,
+          },
+        ];
+      } else if (DTOs.length > pageSize) {
+        return [
+          DTOs.slice(0, pageSize),
+          {
+            page_start: DTOs[0].id,
+            page_size: pageSize,
+            has_prev: has_prev,
+            prev_start: prev_start,
+            has_more: true,
+            next_start: DTOs.at(-1).id,
+          },
+        ];
+      } else {
+        return [
+          DTOs,
+          {
+            page_start: DTOs[0].id,
+            page_size: pageSize,
+            has_prev: has_prev,
+            prev_start: prev_start,
+            has_more: false,
+            next_start: 0,
+          },
+        ];
       }
     }
   }
@@ -741,7 +792,7 @@ export class UsersService {
     userAgent: string,
   ): Promise<[UserDto[], PageRespondDto]> {
     if (pageSize <= 0) {
-      throw new BadRequestError("pageSize should be positive number")
+      throw new BadRequestError('pageSize should be positive number');
     }
     if (firstFolloweeId == null) {
       const relations = await this.userFollowingRepository.find({
@@ -749,44 +800,53 @@ export class UsersService {
         take: pageSize + 1,
         order: { followeeId: 'ASC' },
       });
-      const DTOs = await Promise.all(relations.map(r => {
-        return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
-      }));
+      const DTOs = await Promise.all(
+        relations.map((r) => {
+          return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
+        }),
+      );
       if (DTOs.length == 0) {
-        return [[], {
-          page_start: 0,
-          page_size: 0,
-          has_prev: false,
-          prev_start: 0,
-          has_more: false,
-          next_start: 0,
-        }];
-      }
-      else if (DTOs.length > pageSize) {
-        return [DTOs.slice(0, pageSize), {
-          page_start: DTOs[0].id,
-          page_size: pageSize,
-          has_prev: false,
-          prev_start: 0,
-          has_more: true,
-          next_start: DTOs.at(-1).id,
-        }];
-      }
-      else {
-        return [DTOs, {
-          page_start: DTOs[0].id,
-          page_size: DTOs.length,
-          has_prev: false,
-          prev_start: 0,
-          has_more: false,
-          next_start: 0,
-        }];
+        return [
+          [],
+          {
+            page_start: 0,
+            page_size: 0,
+            has_prev: false,
+            prev_start: 0,
+            has_more: false,
+            next_start: 0,
+          },
+        ];
+      } else if (DTOs.length > pageSize) {
+        return [
+          DTOs.slice(0, pageSize),
+          {
+            page_start: DTOs[0].id,
+            page_size: pageSize,
+            has_prev: false,
+            prev_start: 0,
+            has_more: true,
+            next_start: DTOs.at(-1).id,
+          },
+        ];
+      } else {
+        return [
+          DTOs,
+          {
+            page_start: DTOs[0].id,
+            page_size: DTOs.length,
+            has_prev: false,
+            prev_start: 0,
+            has_more: false,
+            next_start: 0,
+          },
+        ];
       }
     } else {
       const prevRelationshipsPromise = this.userFollowingRepository.find({
         where: {
           followerId: followerId,
-          followeeId: LessThan(firstFolloweeId)
+          followeeId: LessThan(firstFolloweeId),
         },
         take: pageSize,
         order: { followeeId: 'ASC' },
@@ -794,50 +854,59 @@ export class UsersService {
       const queriedRelationsPromise = this.userFollowingRepository.find({
         where: {
           followerId: followerId,
-          followeeId: MoreThanOrEqual(firstFolloweeId)
+          followeeId: MoreThanOrEqual(firstFolloweeId),
         },
         take: pageSize + 1,
         order: { followeeId: 'ASC' },
       });
-      const DTOs = await Promise.all((await queriedRelationsPromise).map(r => {
-        return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
-      }
-      ));
-      var has_prev = false, prev_start = 0;
+      const DTOs = await Promise.all(
+        (await queriedRelationsPromise).map((r) => {
+          return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
+        }),
+      );
+      var has_prev = false,
+        prev_start = 0;
       const prevRelationships = await prevRelationshipsPromise;
       if (prevRelationships.length > 0) {
         has_prev = true;
         prev_start = prevRelationships[0].followeeId;
       }
       if (DTOs.length == 0) {
-        return [[], {
-          page_start: 0,
-          page_size: 0,
-          has_prev: has_prev,
-          prev_start: prev_start,
-          has_more: false,
-          next_start: 0,
-        }]
-      }
-      else if (DTOs.length > pageSize) {
-        return [DTOs.slice(0, pageSize), {
-          page_start: DTOs[0].id,
-          page_size: pageSize,
-          has_prev: has_prev,
-          prev_start: prev_start,
-          has_more: true,
-          next_start: DTOs.at(-1).id,
-        }];
-      }
-      else {
-        return [DTOs, {
-          page_start: DTOs[0].id,
-          page_size: pageSize,
-          has_prev: has_prev,
-          prev_start: prev_start,
-          has_more: false,
-          next_start: 0,
-        }];
+        return [
+          [],
+          {
+            page_start: 0,
+            page_size: 0,
+            has_prev: has_prev,
+            prev_start: prev_start,
+            has_more: false,
+            next_start: 0,
+          },
+        ];
+      } else if (DTOs.length > pageSize) {
+        return [
+          DTOs.slice(0, pageSize),
+          {
+            page_start: DTOs[0].id,
+            page_size: pageSize,
+            has_prev: has_prev,
+            prev_start: prev_start,
+            has_more: true,
+            next_start: DTOs.at(-1).id,
+          },
+        ];
+      } else {
+        return [
+          DTOs,
+          {
+            page_start: DTOs[0].id,
+            page_size: pageSize,
+            has_prev: has_prev,
+            prev_start: prev_start,
+            has_more: false,
+            next_start: 0,
+          },
+        ];
       }
     }
   }

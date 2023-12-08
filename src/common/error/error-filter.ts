@@ -1,6 +1,29 @@
+/*
+ *  Description: This file defines the error filter.
+ *               It handles the errors unhandled by the controllers
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
 import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
 import { Response } from 'express';
 import { BaseError } from './base-error';
+
+/*
+
+Usage:
+
+@Controller('/...')
+@UseFilters(new BaseErrorExceptionFilter())
+export class YourControllerClass() {
+  ...
+}
+
+See users.controller.ts as an example.
+
+*/
 
 @Catch()
 export class BaseErrorExceptionFilter implements ExceptionFilter {
@@ -12,13 +35,13 @@ export class BaseErrorExceptionFilter implements ExceptionFilter {
       const status = exception.statusCode || 500;
       response.status(status).json({
         code: status,
-        message: `${exception.name}: ${exception.message}`
+        message: `${exception.name}: ${exception.message}`,
       });
     } else {
       Logger.error(exception);
       response.status(500).json({
         code: 500,
-        message: "Internal Server Error"
+        message: 'Internal Server Error',
       });
     }
   }

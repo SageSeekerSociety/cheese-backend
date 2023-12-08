@@ -1,8 +1,16 @@
+/*
+ *  Description: This file implements the email service.
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
 import { Logger } from '@nestjs/common';
 import { isEmail } from 'class-validator';
 
 export class EmailService {
-  constructor() { }
+  constructor() {}
 
   sendPasswordResetEmail(email: string, token: string): Promise<void> {
     if (isEmail(email) === false)

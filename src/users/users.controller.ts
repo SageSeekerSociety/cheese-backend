@@ -1,12 +1,19 @@
+/*
+ *  Description: This file implements the users controller.
+ *               It is responsible for handling the requests to /users/...
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
 import {
   Body,
-  ConsoleLogger,
   Controller,
   Delete,
   Get,
   Headers,
   Ip,
-  Logger,
   Param,
   ParseIntPipe,
   Post,
@@ -15,13 +22,14 @@ import {
   Request,
   UseFilters,
   UsePipes,
-  ValidationPipe
+  ValidationPipe,
 } from '@nestjs/common';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
-import { AddFollowerRespondDto, DeleteFollowerRespondDto } from './DTO/add-follower.dto';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { AddFollowerRespondDto } from './DTO/add-follower.dto';
 import { GetFollowersRespondDto } from './DTO/get-followers-dto';
 import { GetUserRespondDto } from './DTO/get-user.dto';
-import { LoginRequestDto, LoginRespondDto } from './DTO/login.dto';
+import { LoginRequestDto } from './DTO/login.dto';
 import { RegisterRequestDto, RegisterResponseDto } from './DTO/register.dto';
 import {
   ResetPasswordRequestRequestDto,
@@ -38,16 +46,15 @@ import {
   UpdateUserRespondDto,
 } from './DTO/update-user.dto';
 import { UsersService } from './users.service';
-import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 
-@Controller("/users")
+@Controller('/users')
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
-  ) { }
+  ) {}
 
   @Post('/verify/email')
   async sendRegisterEmailCode(
@@ -55,15 +62,11 @@ export class UsersController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SendEmailVerifyCodeResponseDto> {
-    await this.usersService.sendRegisterEmailCode(
-      request.email,
-      ip,
-      userAgent,
-    );
+    await this.usersService.sendRegisterEmailCode(request.email, ip, userAgent);
     return {
       code: 201,
       message: 'Send email successfully.',
-    }
+    };
   }
 
   @Post('/')
@@ -88,7 +91,7 @@ export class UsersController {
         user: userDto,
         token: await this.usersService.userLoginToken(userDto.id),
       },
-    }
+    };
   }
 
   @Post('/auth/login')
@@ -110,7 +113,7 @@ export class UsersController {
         user: userDto,
         token: await this.usersService.userLoginToken(userDto.id),
       },
-    }
+    };
   }
 
   @Post('/recover/password/request')
@@ -127,7 +130,7 @@ export class UsersController {
     return {
       code: 201,
       message: 'Send email successfully.',
-    }
+    };
   }
 
   @Post('/recover/password/verify')
@@ -145,7 +148,7 @@ export class UsersController {
     return {
       code: 201,
       message: 'Reset password successfully.',
-    }
+    };
   }
 
   @Get('/:id')
@@ -159,9 +162,9 @@ export class UsersController {
     var viewerId: number = null;
     try {
       const auth = req.headers['Authorization'];
-      const decoded = this.authService.verify(auth.split(' ')[1]);
+      const decoded = this.authService.verify(auth);
       viewerId = decoded.userId;
-    } catch { }
+    } catch {}
     const user = await this.usersService.getUserDtoById(
       id,
       viewerId,
@@ -182,7 +185,7 @@ export class UsersController {
     @Headers('Authorization') auth: string,
   ): Promise<UpdateUserRespondDto> {
     this.authService.audit(
-      auth.split(' ')[1],
+      auth,
       AuthorizedAction.modify,
       id,
       'users/profile',
@@ -197,7 +200,7 @@ export class UsersController {
     return {
       code: 200,
       message: 'Update user successfully.',
-    }
+    };
   }
 
   @Post('/:id/followers')
@@ -205,9 +208,9 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
   ): Promise<AddFollowerRespondDto> {
-    const userId = this.authService.verify(auth.split(' ')[1]).userId;
+    const userId = this.authService.verify(auth).userId;
     this.authService.audit(
-      auth.split(' ')[1],
+      auth,
       AuthorizedAction.create,
       userId,
       'users/following',
@@ -216,11 +219,11 @@ export class UsersController {
     await this.usersService.addFollowRelationship(userId, id);
     return {
       code: 201,
-      message: 'Add follower successfully.',
+      message: 'Follow user successfully.',
       data: {
         follow_count: await this.usersService.getFolloweeCount(userId),
       },
-    }
+    };
   }
 
   @Delete('/:id/followers')
@@ -228,9 +231,9 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
   ) {
-    const userId = this.authService.verify(auth.split(' ')[1]).userId;
+    const userId = this.authService.verify(auth).userId;
     this.authService.audit(
-      auth.split(' ')[1],
+      auth,
       AuthorizedAction.delete,
       userId,
       'users/following',
@@ -239,31 +242,31 @@ export class UsersController {
     await this.usersService.deleteFollowRelationship(userId, id);
     return {
       code: 200,
-      message: 'Delete follower successfully.',
+      message: 'Unfollow user successfully.',
       data: {
         follow_count: await this.usersService.getFolloweeCount(userId),
       },
-    }
+    };
   }
 
   @Get('/:id/followers')
   async getFollowers(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start') pageStart: number,
-    @Query('page_size') pageSize: number,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    pageStart: number,
+    @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
     @Request() req: Request,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetFollowersRespondDto> {
-    if (pageSize == null || pageSize == 0)
-      pageSize = 20
+    if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
     var viewerId: number = null;
     try {
       const auth = req.headers['Authorization'];
       const decoded = this.authService.verify(auth.split(' ')[1]);
       viewerId = decoded.userId;
-    } catch { }
+    } catch {}
     const [followers, page] = await this.usersService.getFollowers(
       id,
       pageStart,
@@ -279,27 +282,27 @@ export class UsersController {
         users: followers,
         page: page,
       },
-    }
+    };
   }
 
   @Get('/:id/follow/users')
   async getFollowees(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start') pageStart: number,
-    @Query('page_size') pageSize: number,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    pageStart: number,
+    @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
     @Request() req: Request,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetFollowersRespondDto> {
-    if (pageSize == null || pageSize == 0)
-      pageSize = 20
+    if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
     var viewerId: number = null;
     try {
       const auth = req.headers['Authorization'];
       const decoded = this.authService.verify(auth.split(' ')[1]);
       viewerId = decoded.userId;
-    } catch { }
+    } catch {}
     const [followees, page] = await this.usersService.getFollowees(
       id,
       pageStart,
@@ -315,6 +318,6 @@ export class UsersController {
         users: followees,
         page: page,
       },
-    }
+    };
   }
 }

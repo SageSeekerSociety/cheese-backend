@@ -29,4 +29,4 @@ import { UsersModule } from './users/users.module';
   controllers: [],
   providers: [],
 })
-export class AppModule { }
+export class AppModule {}

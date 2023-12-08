@@ -1,3 +1,12 @@
+/*
+ *  Description: This file defines the entities used in users service.
+ *               It defines the SQL tables stored in the database.
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
 import {
   Column,
   CreateDateColumn,
@@ -201,7 +210,7 @@ export class UserLoginLog {
   ip: string;
 
   @Column()
-  userAgent: string;
+  userAgent: string = '';
 
   @CreateDateColumn()
   createdAt: Date; // Login time
@@ -238,7 +247,7 @@ export class UserProfileQueryLog {
   ip: string;
 
   @Column()
-  userAgent: string;
+  userAgent: string = '';
 
   @CreateDateColumn()
   createdAt: Date;
@@ -277,7 +286,7 @@ export class UserRegisterLog {
   ip: string;
 
   @Column()
-  userAgent: string;
+  userAgent: string = '';
 
   @CreateDateColumn()
   createdAt: Date;
@@ -308,7 +317,7 @@ export class UserResetPasswordLog {
   ip: string;
 
   @Column()
-  userAgent: string;
+  userAgent: string = '';
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,3 +1,11 @@
+/*
+ *  Description: This file defines the users module.
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
@@ -30,9 +38,6 @@ import { UsersService } from './users.service';
     AuthModule,
   ],
   controllers: [UsersController],
-  providers: [
-    UsersService,
-    EmailService,
-  ],
+  providers: [UsersService, EmailService],
 })
-export class UsersModule { }
+export class UsersModule {}
