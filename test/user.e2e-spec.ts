@@ -639,7 +639,7 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(404);
     });
 
-    it('FollowYourselfError', async () => {
+    it('should return FollowYourselfError', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/users/${TestUserId}/followers`)
         //.set('User-Agent', 'PostmanRuntime/7.26.8')
