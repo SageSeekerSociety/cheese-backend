@@ -8,6 +8,7 @@ import {
   Ip,
   Logger,
   Param,
+  ParseIntPipe,
   Post,
   Put,
   Query,
@@ -54,14 +55,13 @@ export class UsersController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SendEmailVerifyCodeResponseDto> {
-    console.log("Debug1")
     await this.usersService.sendRegisterEmailCode(
       request.email,
       ip,
       userAgent,
     );
     return {
-      code: 200,
+      code: 201,
       message: 'Send email successfully.',
     }
   }
@@ -82,7 +82,7 @@ export class UsersController {
       userAgent,
     );
     return {
-      code: 200,
+      code: 201,
       message: 'Register successfully.',
       data: {
         user: userDto,
@@ -104,7 +104,7 @@ export class UsersController {
       userAgent,
     );
     return {
-      code: 200,
+      code: 201,
       message: 'Login successfully.',
       data: {
         user: userDto,
@@ -125,7 +125,7 @@ export class UsersController {
       userAgent,
     );
     return {
-      code: 200,
+      code: 201,
       message: 'Send email successfully.',
     }
   }
@@ -143,14 +143,14 @@ export class UsersController {
       userAgent,
     );
     return {
-      code: 200,
+      code: 201,
       message: 'Reset password successfully.',
     }
   }
 
   @Get('/:id')
   async getUser(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     // @Headers('Authorization') auth: string,
     @Request() req: Request,
     @Ip() ip: string,
@@ -169,7 +169,7 @@ export class UsersController {
       userAgent,
     );
     return {
-      code: 0,
+      code: 200,
       message: 'Query user successfully.',
       data: user,
     };
@@ -177,11 +177,9 @@ export class UsersController {
 
   @Put('/:id')
   async updateUser(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() request: UpdateUserRequestDto,
     @Headers('Authorization') auth: string,
-    @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
   ): Promise<UpdateUserRespondDto> {
     this.authService.audit(
       auth.split(' ')[1],
@@ -197,14 +195,14 @@ export class UsersController {
       request.intro,
     );
     return {
-      code: 0,
+      code: 200,
       message: 'Update user successfully.',
     }
   }
 
   @Post('/:id/followers')
   async addFollower(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
   ): Promise<AddFollowerRespondDto> {
     const userId = this.authService.verify(auth.split(' ')[1]).userId;
@@ -217,7 +215,7 @@ export class UsersController {
     );
     await this.usersService.addFollowRelationship(userId, id);
     return {
-      code: 0,
+      code: 201,
       message: 'Add follower successfully.',
       data: {
         follow_count: await this.usersService.getFolloweeCount(userId),
@@ -227,7 +225,7 @@ export class UsersController {
 
   @Delete('/:id/followers')
   async deleteFollower(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
   ) {
     const userId = this.authService.verify(auth.split(' ')[1]).userId;
@@ -240,7 +238,7 @@ export class UsersController {
     );
     await this.usersService.deleteFollowRelationship(userId, id);
     return {
-      code: 0,
+      code: 200,
       message: 'Delete follower successfully.',
       data: {
         follow_count: await this.usersService.getFolloweeCount(userId),
@@ -250,7 +248,7 @@ export class UsersController {
 
   @Get('/:id/followers')
   async getFollowers(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Query('page_start') pageStart: number,
     @Query('page_size') pageSize: number,
     @Request() req: Request,
@@ -275,7 +273,7 @@ export class UsersController {
       userAgent,
     );
     return {
-      code: 0,
+      code: 200,
       message: 'Query followers successfully.',
       data: {
         users: followers,
@@ -286,7 +284,7 @@ export class UsersController {
 
   @Get('/:id/follow/users')
   async getFollowees(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Query('page_start') pageStart: number,
     @Query('page_size') pageSize: number,
     @Request() req: Request,
@@ -311,7 +309,7 @@ export class UsersController {
       userAgent,
     );
     return {
-      code: 0,
+      code: 200,
       message: 'Query followees successfully.',
       data: {
         users: followees,

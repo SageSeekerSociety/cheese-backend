@@ -1,11 +1,13 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { bcrypt } from 'bcrypt';
+import * as bcrypt from 'bcrypt';
 import { isEmail } from 'class-validator';
-import { In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PermissionDeniedError } from '../auth/auth.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { UserDto } from './DTO/user.dto';
+import { EmailService } from './email.service';
 import {
   User,
   UserFollowingRelationship,
@@ -36,8 +38,6 @@ import {
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
 } from './users.error';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
-import { EmailService } from './email.service';
 
 @Injectable()
 export class UsersService {
@@ -123,7 +123,6 @@ export class UsersService {
     // We can send the verify code.
     const code = this.generateVerifyCode();
     try {
-      console.log("Debug2")
       await this.emailService.sendRegisterCode(email, code);
       const requestRecord = this.userRegisterRequestRepository.create({
         email: email,
@@ -139,7 +138,6 @@ export class UsersService {
       });
       await this.userRegisterLogRepository.save(log);
     } catch (e) {
-      Logger.error(e);
       const log = this.userRegisterLogRepository.create({
         type: UserRegisterLogType.RequestFailDueToSendEmailFailure,
         email: email,
@@ -152,11 +150,11 @@ export class UsersService {
   }
 
   private isValidUsername(username: string): boolean {
-    return /^[a-zA-Z0-9_-]{4,16}$/.test(username);
+    return /^[a-zA-Z0-9_-]{4,32}$/.test(username);
   }
 
   get usernameRule(): string {
-    return 'Username must be 4-16 characters long and can only contain letters, numbers, underscores and hyphens.';
+    return 'Username must be 4-32 characters long and can only contain letters, numbers, underscores and hyphens.';
   }
 
   private isValidNickname(nickname: string): boolean {
@@ -333,7 +331,7 @@ export class UsersService {
     }
 
     const profile = await this.userProfileRepository.findOne({
-      where: { user: user },
+      where: { userId: user.id },
     });
     if (profile == null) {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
@@ -378,7 +376,7 @@ export class UsersService {
     }
     // Login successfully.
     const profile = await this.userProfileRepository.findOne({
-      where: { user: user },
+      where: { userId: user.id },
     });
     if (profile == null) {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
@@ -587,7 +585,7 @@ export class UsersService {
     profile.nickname = nickname;
     profile.avatar = avatar;
     profile.intro = intro;
-    this.userProfileRepository.save(profile);
+    await this.userProfileRepository.save(profile);
   }
 
   async getFollowerCount(userId: number): Promise<number> {
@@ -622,7 +620,7 @@ export class UsersService {
     if (relationship == null) {
       throw new NotFollowedYetError(followeeId);
     }
-    this.userFollowingRepository.softDelete(relationship);
+    await this.userFollowingRepository.softDelete(relationship);
   }
 
   async getFollowers(

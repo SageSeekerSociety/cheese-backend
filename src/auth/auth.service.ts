@@ -1,13 +1,25 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PermissionDeniedError, TokenFormatError } from './auth.error';
+import { InvalidTokenError, PermissionDeniedError, TokenFormatError } from './auth.error';
 
 export enum AuthorizedAction {
-  fullControl = 0,
   create = 1,
   delete = 2,
   modify = 3,
   query = 4,
+}
+
+export function authorizedActionToString(action: AuthorizedAction): string {
+  switch (action) {
+    case AuthorizedAction.create:
+      return 'create';
+    case AuthorizedAction.delete:
+      return 'delete';
+    case AuthorizedAction.modify:
+      return 'modify';
+    case AuthorizedAction.query:
+      return 'query';
+  }
 }
 
 // This class is used as a filter.
@@ -55,7 +67,7 @@ export class Authorization {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly jwtService: JwtService) { }
 
   // Sign a token for an authorization.
   sign(authorization: Authorization): string {
@@ -70,11 +82,15 @@ export class AuthService {
   // If the token is valid but the payload is not an Authorization object,
   // TokenFormatError will be thrown.
   verify(token: string): Authorization {
-    const result = this.jwtService.verify(token);
-    if (result instanceof Authorization) {
-      return result;
-    } else {
-      throw new TokenFormatError(token);
+    try {
+      const result = this.jwtService.verify(token);
+      try {
+        return result as Authorization;
+      } catch {
+        throw new TokenFormatError(token);
+      }
+    } catch {
+      throw new InvalidTokenError();
     }
   }
 
@@ -92,6 +108,21 @@ export class AuthService {
     resourceId?: number,
   ): void {
     const authorization = this.verify(token);
+    // In many situations, the coders may forget to convert the string to number.
+    // So we do it here.
+    // Addition: We think this hides problems; so we remove it.
+    //if (typeof resourceOwnerId == "string")
+    //  resourceOwnerId = Number.parseInt(resourceOwnerId as any as string);
+    //if (typeof resourceId == "string")
+    //  resourceId = Number.parseInt(resourceId as any as string);
+    if (resourceId !== null && typeof resourceOwnerId != 'number') {
+      //Logger.error(typeof resourceOwnerId);
+      throw new Error('resourceOwnerId must be a number.');
+    }
+    if (resourceId !== null && typeof resourceId != 'number') {
+      //Logger.error(typeof resourceId);
+      throw new Error('resourceId must be a number.');
+    }
     for (const permission of authorization.permissions) {
       var actionMatches = false;
       for (const authorizedAction of permission.authorizedActions) {

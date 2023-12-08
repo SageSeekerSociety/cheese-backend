@@ -38,7 +38,7 @@ export class InvalidNicknameError extends BaseError {
 
 export class InvalidPasswordError extends BaseError {
   constructor(public readonly rule: string) {
-    super("InvalidPasswordError", "Invalid password. ${rule}", 422);
+    super("InvalidPasswordError", `Invalid password. ${rule}`, 422);
   }
 }
 
