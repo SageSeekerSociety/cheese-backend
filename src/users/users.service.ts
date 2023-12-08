@@ -1,3 +1,12 @@
+/*
+ *  Description: This file implements the UsersService class.
+ *               It is responsible for the business logic of users.
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
@@ -62,7 +71,7 @@ export class UsersService {
     private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
-  ) {}
+  ) { }
 
   private generateVerifyCode(): string {
     var code: string = '';
