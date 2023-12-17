@@ -32,6 +32,12 @@ export class TokenFormatError extends BaseError {
   }
 }
 
+export class TokenExpiredError extends BaseError {
+  constructor() {
+    super('TokenExpiredError', 'Token expired', 401);
+  }
+}
+
 export class PermissionDeniedError extends BaseError {
   constructor(
     public readonly action: AuthorizedAction,
@@ -52,5 +58,17 @@ export class PermissionDeniedError extends BaseError {
       }) is not permitted by the given token.`,
       403,
     );
+  }
+}
+
+export class SessionExpiredError extends BaseError {
+  constructor() {
+    super('SessionExpiredError', 'Session expired', 401);
+  }
+}
+
+export class SessionRevokedError extends BaseError {
+  constructor() {
+    super('SessionRevokedError', 'Session revoked', 401);
   }
 }

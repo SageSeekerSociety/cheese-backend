@@ -59,7 +59,6 @@ export const DB_DATABASE = 'Your database name';
 
 ```typescript
 export const JWT_SECRET = 'Your JWT secret';
-export const JWT_EXPIRES_IN = '1d';
 ```
 
 ## Running the app

@@ -21,6 +21,7 @@ describe('User Module', () => {
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
   var TestUserId: number;
+  var TestRefreshToken: string;
   var TestToken: string;
 
   beforeAll(async () => {
@@ -356,13 +357,25 @@ describe('User Module', () => {
           username: TestUsername,
           password: 'abc123456!!!',
         });
+      expect(respond.body.message).toBe('Login successfully.');
       expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(201);
-      expect(respond.body.message).toBe('Login successfully.');
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
       TestUserId = respond.body.data.user.id;
-      TestToken = respond.body.data.token;
+      TestRefreshToken = respond.body.data.refreshToken;
+      const respond2 = await request(app.getHttpServer())
+        .get('/users/auth/access-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond2.body.message).toBe('Refresh token successfully.');
+      expect(respond2.status).toBe(200);
+      expect(respond2.body.code).toBe(200);
+      expect(respond2.body.accessToken).toBeDefined();
+      TestToken = respond2.body.accessToken;
     });
     it('should return UsernameNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
@@ -387,6 +400,30 @@ describe('User Module', () => {
       expect(respond.status).toBe(401);
       expect(respond.body.code).toBe(401);
       expect(respond.body.message).toMatch(/^PasswordNotMatchError: /);
+    });
+    it('should logout successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/users/auth/logout')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond.body.message).toBe('Logout successfully.');
+      expect(respond.status).toBe(201);
+      expect(respond.body.code).toBe(201);
+    });
+    it('should return SessionRevokedError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/users/auth/access-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond.body.message).toMatch(/^SessionRevokedError: /);
+      expect(respond.status).toBe(401);
+      expect(respond.body.code).toBe(401);
     });
   });
 

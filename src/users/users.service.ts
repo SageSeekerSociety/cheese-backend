@@ -8,12 +8,18 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
+import { TokenExpiredError } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PermissionDeniedError } from '../auth/auth.error';
-import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import {
+  AuthService,
+  Authorization,
+  AuthorizedAction,
+} from '../auth/auth.service';
+import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
@@ -44,7 +50,6 @@ import {
   InvalidUsernameError,
   NotFollowedYetError,
   PasswordNotMatchError,
-  PasswordResetTokenExpiredError,
   UserIdNotFoundError,
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
@@ -55,6 +60,7 @@ export class UsersService {
   constructor(
     private readonly emailService: EmailService,
     private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)
@@ -71,7 +77,7 @@ export class UsersService {
     private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
-  ) { }
+  ) {}
 
   private generateVerifyCode(): string {
     var code: string = '';
@@ -376,12 +382,14 @@ export class UsersService {
     };
   }
 
+  // Returns:
+  //     [userDto, refreshToken]
   async login(
     username: string,
     password: string,
     ip: string,
     userAgent: string,
-  ): Promise<UserDto> {
+  ): Promise<[UserDto, string]> {
     const user = await this.userRepository.findOne({
       where: { username: username },
     });
@@ -397,13 +405,16 @@ export class UsersService {
     });
     if (profile == null) {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
-      return {
-        id: user.id,
-        username: user.username,
-        nickname: '',
-        avatar: '',
-        intro: '',
-      };
+      return [
+        {
+          id: user.id,
+          username: user.username,
+          nickname: '',
+          avatar: '',
+          intro: '',
+        },
+        await this.createSession(user.id),
+      ];
     }
     const log = this.userLoginLogRepository.create({
       user: user,
@@ -411,22 +422,29 @@ export class UsersService {
       userAgent: userAgent,
     });
     await this.userLoginLogRepository.save(log);
-    return {
-      id: user.id,
-      username: user.username,
-      nickname: profile.nickname,
-      avatar: profile.avatar,
-      intro: profile.intro,
-    };
+    return [
+      {
+        id: user.id,
+        username: user.username,
+        nickname: profile.nickname,
+        avatar: profile.avatar,
+        intro: profile.intro,
+      },
+      await this.createSession(user.id),
+    ];
   }
 
-  async userLoginToken(userId: number): Promise<string> {
-    return this.authService.sign({
+  private createSession(userId: number): Promise<string> {
+    const authorization: Authorization = {
       userId: userId,
       permissions: [
         {
           authorizedActions: [AuthorizedAction.query],
-          authorizedResource: { ownedByUser: userId },
+          authorizedResource: {
+            ownedByUser: userId,
+            types: null,
+            resourceIds: null,
+          },
         },
         {
           authorizedActions: [AuthorizedAction.modify],
@@ -445,7 +463,12 @@ export class UsersService {
           },
         },
       ],
-    });
+    };
+    return this.sessionService.createSession(userId, authorization);
+  }
+
+  get passwordResetEmailValidSeconds(): number {
+    return 60 * 10; // 10 minutes
   }
 
   async sendResetPasswordEmail(
@@ -481,20 +504,23 @@ export class UsersService {
     })
     this.userResetPasswordRequestRepository.save(request);
     */
-    const token = this.authService.sign({
-      userId: user.id,
-      permissions: [
-        {
-          authorizedActions: [AuthorizedAction.modify],
-          authorizedResource: {
-            ownedByUser: user.id,
-            types: ['users/user-password-reset'],
-            resourceIds: null,
-            data: Date.now(),
+    const token = this.authService.sign(
+      {
+        userId: user.id,
+        permissions: [
+          {
+            authorizedActions: [AuthorizedAction.modify],
+            authorizedResource: {
+              ownedByUser: user.id,
+              types: ['users/password:reset'],
+              resourceIds: null,
+              data: Date.now(),
+            },
           },
-        },
-      ],
-    });
+        ],
+      },
+      this.passwordResetEmailValidSeconds,
+    );
     try {
       await this.emailService.sendPasswordResetEmail(email, token);
     } catch {
@@ -521,7 +547,7 @@ export class UsersService {
         token,
         AuthorizedAction.modify,
         userId,
-        'users/user-password-reset',
+        'users/password:reset',
         null,
       );
     } catch (e) {
@@ -533,35 +559,15 @@ export class UsersService {
         });
         await this.userResetPasswordLogRepository.save(log);
       }
-      throw e;
-    }
-
-    // Check expired. The token expires after a long time, but we do not want so.
-    var signedTime: number = null;
-    for (const permission of decoded.permissions) {
-      if (
-        permission.authorizedActions.findIndex(
-          (p) => p == AuthorizedAction.modify,
-        ) != -1 &&
-        permission.authorizedResource.ownedByUser == userId &&
-        permission.authorizedResource.types.findIndex(
-          (p) => p == 'users/user-password-reset',
-        ) != -1
-      ) {
-        signedTime = permission.authorizedResource.data;
+      if (e instanceof TokenExpiredError) {
+        const log = this.userResetPasswordLogRepository.create({
+          type: UserResetPasswordLogType.FailDueToExpiredRequest,
+          ip: ip,
+          userAgent: userAgent,
+        });
+        await this.userResetPasswordLogRepository.save(log);
       }
-    }
-    if (signedTime == null)
-      throw new Error('Impossible! Check the code carefully.');
-    if (Date.now() - signedTime > 10 * 60 * 1000) {
-      const log = this.userResetPasswordLogRepository.create({
-        type: UserResetPasswordLogType.FailDueToExpiredRequest,
-        userId: userId,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userResetPasswordLogRepository.save(log);
-      throw new PasswordResetTokenExpiredError();
+      throw e;
     }
 
     // Operation permitted.

@@ -9,18 +9,26 @@
 
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { JWT_EXPIRES_IN, JWT_SECRET } from '../../.secret/jwt.config';
+import { JWT_SECRET } from '../../.secret/jwt.config';
 import { AuthService } from './auth.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Session, SessionRefreshLog } from './session.entity';
+import { SessionService } from './session.service';
 
 @Module({
   imports: [
     JwtModule.register({
       secret: JWT_SECRET,
-      signOptions: { expiresIn: JWT_EXPIRES_IN },
+      // This expire date is meaningless, as we use
+      // a field in token payload to determine whether
+      // the token is expired. Thus, we set it to a
+      // very large value.
+      signOptions: { expiresIn: '361 days' },
     }),
+    TypeOrmModule.forFeature([Session, SessionRefreshLog]),
   ],
   controllers: [],
-  providers: [AuthService],
-  exports: [AuthService],
+  providers: [AuthService, SessionService],
+  exports: [AuthService, SessionService],
 })
 export class AuthModule {}
