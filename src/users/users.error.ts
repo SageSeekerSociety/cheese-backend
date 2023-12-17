@@ -134,16 +134,6 @@ export class EmailNotFoundError extends BaseError {
   }
 }
 
-export class PasswordResetTokenExpiredError extends BaseError {
-  constructor() {
-    super(
-      'PasswordResetTokenExpiredError',
-      'Password reset token expired.',
-      401,
-    );
-  }
-}
-
 export class NotFollowedYetError extends BaseError {
   constructor(public readonly followeeId: number) {
     super(

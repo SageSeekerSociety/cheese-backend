@@ -22,6 +22,7 @@ import { UsersModule } from './users/users.module';
       database: DB_DATABASE,
       autoLoadEntities: true,
       synchronize: true,
+      connectTimeout: 60000,
     }),
     UsersModule,
     QuestionsModule,
