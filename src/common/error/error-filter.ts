@@ -38,7 +38,7 @@ export class BaseErrorExceptionFilter implements ExceptionFilter {
         message: `${exception.name}: ${exception.message}`,
       });
     } else {
-      Logger.error(exception);
+      Logger.error(exception.stack);
       response.status(500).json({
         code: 500,
         message: 'Internal Server Error',

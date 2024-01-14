@@ -7,12 +7,13 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
   AuthenticationRequiredError,
   InvalidTokenError,
   PermissionDeniedError,
+  TokenExpiredError,
   TokenFormatError,
 } from './auth.error';
 
@@ -21,6 +22,12 @@ export enum AuthorizedAction {
   delete = 2,
   modify = 3,
   query = 4,
+
+  other = 5,
+  // When the action is not one of the four actions above,
+  // we use "other", and store the action info in resourceType.
+  // For example, resource type "auth/session:refresh"
+  // means the action is to refresh a session.
 }
 
 export function authorizedActionToString(action: AuthorizedAction): string {
@@ -33,6 +40,8 @@ export function authorizedActionToString(action: AuthorizedAction): string {
       return 'modify';
     case AuthorizedAction.query:
       return 'query';
+    case AuthorizedAction.other:
+      return 'other';
   }
 }
 
@@ -52,17 +61,17 @@ export function authorizedActionToString(action: AuthorizedAction): string {
 //      matches every resource, including the resources that are not owned by any user.
 // { ownedByUser: 123, types: null, resourceId: null }
 //      matches all the resources owned by user whose user id is 123.
-// { ownedByUser: 123, types: ["password"], resourceId: null }
-//      matches the password (as a resource) of user whose id is 123.
+// { ownedByUser: 123, types: ["users/profile"], resourceId: null }
+//      matches the profile of user whose id is 123.
 // { ownedByUser: null, types: ["blog"], resourceId: [42, 95, 928] }
 //      matches blogs whose IDs are 42, 95 and 928.
 // { ownedByUser: null, types: [], resourceId: null }
 //      matches nothing and is meaningless.
 //
 export class AuthorizedResource {
-  ownedByUser?: number; // owner's user id
-  types?: string[]; // resource type
-  resourceIds?: number[];
+  ownedByUser: number; // owner's user id
+  types: string[]; // resource type
+  resourceIds: number[];
   data?: any; // additional data
 }
 
@@ -79,13 +88,22 @@ export class Authorization {
   permissions: Permission[];
 }
 
+class TokenPayload {
+  authorization: Authorization;
+  validUntil: number; // timestamp in milliseconds
+}
+
 @Injectable()
 export class AuthService {
   constructor(private readonly jwtService: JwtService) {}
 
   // Sign a token for an authorization.
-  sign(authorization: Authorization): string {
-    return this.jwtService.sign(authorization, {});
+  sign(authorization: Authorization, validSeconds: number = 60): string {
+    const payload: TokenPayload = {
+      authorization: authorization,
+      validUntil: Date.now() + validSeconds * 1000,
+    };
+    return this.jwtService.sign(payload);
   }
 
   // Verify a token and decodes its payload.
@@ -106,7 +124,9 @@ export class AuthService {
     try {
       const result = this.jwtService.verify(token);
       try {
-        return result as Authorization;
+        const payload = result as TokenPayload;
+        if (Date.now() > payload.validUntil) throw new TokenExpiredError();
+        return payload.authorization;
       } catch {
         throw new TokenFormatError(token);
       }
@@ -136,7 +156,7 @@ export class AuthService {
     //  resourceOwnerId = Number.parseInt(resourceOwnerId as any as string);
     //if (typeof resourceId == "string")
     //  resourceId = Number.parseInt(resourceId as any as string);
-    if (resourceId !== null && typeof resourceOwnerId != 'number') {
+    if (resourceOwnerId !== null && typeof resourceOwnerId != 'number') {
       //Logger.error(typeof resourceOwnerId);
       throw new Error('resourceOwnerId must be a number.');
     }

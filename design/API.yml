@@ -11,9 +11,18 @@ servers:
 components:
   securitySchemes:
     bearerAuth:
+      description: The access token is used in this way.
+      name: Authorization
+      in: header
       type: http
       scheme: bearer
       bearerFormat: JWT
+    bearerAuth2:
+      type: apiKey
+      description: The refresh token is used in this way.
+      name: REFRESH_TOKEN
+      in: cookie
+    
   schemas:
     CommonResponse:
       type: object
@@ -334,7 +343,7 @@ components:
             data:
               type: object
               properties:
-                token:
+                refreshToken:
                   type: string
                 user:
                   $ref: "#/components/schemas/User"
@@ -369,7 +378,7 @@ components:
             data:
               type: object
               properties:
-                token:
+                refreshToken:
                   type: string
                 user:
                   $ref: "#/components/schemas/User"
@@ -412,6 +421,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
+  /users/auth/access-token:
+    get:
+      summary: 用户刷新 token
+      operationId: refresh-access-token
+      security:
+        - REFRESH_TOKEN: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      accessToken:
+                        type: string
+                    required:
+                      - accessToken
+  
+  /users/auth/logout:
+    post:
+      summary: 用户退出登录
+      operationId: logout
+      security:
+        - REFRESH_TOKEN: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+
   /users/verify/email:
     post:
       summary: 发送邮箱验证码

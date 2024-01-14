@@ -24,12 +24,16 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { SessionService } from '../auth/session.service';
+import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { AddFollowerRespondDto } from './DTO/add-follower.dto';
-import { GetFollowersRespondDto } from './DTO/get-followers-dto';
+import { GetFollowersRespondDto } from './DTO/get-followers.dto';
 import { GetUserRespondDto } from './DTO/get-user.dto';
 import { LoginRequestDto } from './DTO/login.dto';
+import { RefreshTokenRespondDto } from './DTO/refresh-token.dto';
 import { RegisterRequestDto, RegisterResponseDto } from './DTO/register.dto';
 import {
   ResetPasswordRequestRequestDto,
@@ -54,6 +58,7 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
   ) {}
 
   @Post('/verify/email')
@@ -84,12 +89,18 @@ export class UsersController {
       ip,
       userAgent,
     );
+    const [_, refreshToken] = await this.usersService.login(
+      request.username,
+      request.password,
+      ip,
+      userAgent,
+    );
     return {
       code: 201,
       message: 'Register successfully.',
       data: {
         user: userDto,
-        token: await this.usersService.userLoginToken(userDto.id),
+        refreshToken: refreshToken,
       },
     };
   }
@@ -100,7 +111,7 @@ export class UsersController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ) {
-    const userDto = await this.usersService.login(
+    const [userDto, refreshToken] = await this.usersService.login(
       request.username,
       request.password,
       ip,
@@ -111,8 +122,52 @@ export class UsersController {
       message: 'Login successfully.',
       data: {
         user: userDto,
-        token: await this.usersService.userLoginToken(userDto.id),
+        refreshToken: refreshToken,
       },
+    };
+  }
+
+  @Get('/auth/access-token')
+  async refreshToken(
+    @Headers('cookie') cookieHeader: string,
+  ): Promise<RefreshTokenRespondDto> {
+    if (cookieHeader == null) {
+      throw new AuthenticationRequiredError();
+    }
+    const cookies = cookieHeader.split(';').map((cookie) => cookie.trim());
+    const refreshTokenCookie = cookies.find((cookie) =>
+      cookie.startsWith('REFRESH_TOKEN='),
+    );
+    if (refreshTokenCookie == null) {
+      throw new AuthenticationRequiredError();
+    }
+    const refreshToken = refreshTokenCookie.split('=')[1];
+    return {
+      code: 200,
+      message: 'Refresh token successfully.',
+      accessToken: await this.sessionService.refreshSession(refreshToken),
+    };
+  }
+
+  @Post('/auth/logout')
+  async logout(
+    @Headers('cookie') cookieHeader: string,
+  ): Promise<BaseRespondDto> {
+    if (cookieHeader == null) {
+      throw new AuthenticationRequiredError();
+    }
+    const cookies = cookieHeader.split(';').map((cookie) => cookie.trim());
+    const refreshTokenCookie = cookies.find((cookie) =>
+      cookie.startsWith('REFRESH_TOKEN='),
+    );
+    if (refreshTokenCookie == null) {
+      throw new AuthenticationRequiredError();
+    }
+    const refreshToken = refreshTokenCookie.split('=')[1];
+    await this.sessionService.revokeSession(refreshToken);
+    return {
+      code: 201,
+      message: 'Logout successfully.',
     };
   }
 
