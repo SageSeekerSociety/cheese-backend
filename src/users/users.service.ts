@@ -10,7 +10,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TokenExpiredError } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PermissionDeniedError } from '../auth/auth.error';
