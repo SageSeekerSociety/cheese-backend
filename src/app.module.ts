@@ -9,6 +9,7 @@ import {
   DB_USERNAME,
 } from '../.secret/database.config';
 import { QuestionsModule } from './questions/questions.module';
+import { TopicsModule } from './topics/topics.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { UsersModule } from './users/users.module';
     }),
     UsersModule,
     QuestionsModule,
+    TopicsModule,
   ],
   controllers: [],
   providers: [],

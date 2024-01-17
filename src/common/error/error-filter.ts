@@ -7,7 +7,13 @@
  *
  */
 
-import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  BadRequestException,
+  Catch,
+  ExceptionFilter,
+  Logger,
+} from '@nestjs/common';
 import { Response } from 'express';
 import { BaseError } from './base-error';
 
@@ -35,6 +41,11 @@ export class BaseErrorExceptionFilter implements ExceptionFilter {
       const status = exception.statusCode || 500;
       response.status(status).json({
         code: status,
+        message: `${exception.name}: ${exception.message}`,
+      });
+    } else if (exception instanceof BadRequestException) {
+      response.status(400).json({
+        code: 400,
         message: `${exception.name}: ${exception.message}`,
       });
     } else {

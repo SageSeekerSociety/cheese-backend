@@ -450,6 +450,30 @@ export class UsersService {
             resourceIds: null,
           },
         },
+        {
+          // An user can control the questions he/she created.
+          authorizedActions: [
+            AuthorizedAction.create,
+            AuthorizedAction.delete,
+            AuthorizedAction.modify,
+            AuthorizedAction.query,
+            AuthorizedAction.other,
+          ],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['questions'],
+            resourceIds: null,
+          },
+        },
+        {
+          // Everyone can create a topic.
+          authorizedActions: [AuthorizedAction.create],
+          authorizedResource: {
+            ownedByUser: null,
+            types: ['topics'],
+            resourceIds: null,
+          },
+        },
       ],
     };
     return this.sessionService.createSession(userId, authorization);
