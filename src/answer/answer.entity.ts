@@ -7,6 +7,7 @@ import {
     PrimaryGeneratedColumn,
     UpdateDateColumn,
   } from 'typeorm';
+import { ColumnMetadata } from 'typeorm/metadata/ColumnMetadata';
   
   @Entity()
   export class Answer {
@@ -44,4 +45,36 @@ import {
   
     @DeleteDateColumn()
     deletedAt: Date;
+
+    //likes
+    @Column('text', {array: true, nullable: true})
+    likes: string[];
+
+    @Column({default: 0})
+    likesCount: number;
+
+    //favorite
+    @Column({default: false})
+    isFavorited: boolean;
+
+    @Column({
+        type: 'simple-array',
+        default: [],
+        transformer: {
+          to: (value: string[]) => JSON.stringify(value),
+          from: (value: string) => JSON.parse(value)
+        }
+    })
+    favoritedBy: string[];
+
+    @Column({default: 0})
+    favoriteCount: number;
+
+    //comment
+    @Column({ type: 'simple-json', nullable: true }) 
+    comments: { userId: string, comment: string, createdAt: Date }[]; 
+
+    @Column({default: 0})
+    commentCount: number;
+  
   }

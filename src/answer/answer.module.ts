@@ -17,6 +17,13 @@ export class AnswerModule {
 
   @Column()
   authorId: number;
+  
+  @Column()
+  CreateTime: Date;
 
-  // 其他属性
+  @Column()
+  DeleteTime: Date;
+
+  @Column()
+  UpdateTime: Date;
 }
