@@ -99,11 +99,14 @@ export class TopicsService {
           'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
         ])
         .where(
-          'ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) > ROUND(:relevanceCursor, 5)',
+          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
         )
-        .orWhere(
-          'ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
-            ' AND topic.id < :firstTopicId',
+        .andWhere(
+          '(' +
+            ' ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) > ROUND(:relevanceCursor, 5)' +
+            ' OR ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
+            ' AND topic.id < :firstTopicId' +
+            ')',
         )
         .orderBy({ relevance: 'ASC', id: 'DESC' })
         .limit(pageSize)
@@ -119,11 +122,14 @@ export class TopicsService {
           'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
         ])
         .where(
-          'ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) < ROUND(:relevanceCursor, 5)',
+          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
         )
-        .orWhere(
-          'ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
-            ' AND topic.id >= :firstTopicId',
+        .andWhere(
+          '(' +
+            ' ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) < ROUND(:relevanceCursor, 5)' +
+            ' OR ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
+            ' AND topic.id >= :firstTopicId' +
+            ')',
         )
         .orderBy({ relevance: 'DESC', id: 'ASC' })
         .limit(pageSize + 1)

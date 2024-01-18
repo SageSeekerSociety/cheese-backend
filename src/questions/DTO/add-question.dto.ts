@@ -1,4 +1,5 @@
 import { IsArray, IsInt, IsString } from 'class-validator';
+import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
 export class AddQuestionRequestDto {
   @IsString()
@@ -15,4 +16,10 @@ export class AddQuestionRequestDto {
 
   @IsInt()
   groupId: number;
+}
+
+export class AddQuestionResponseDto extends BaseRespondDto {
+  data: {
+    id: number;
+  };
 }

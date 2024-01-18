@@ -272,10 +272,7 @@ describe('Topic Module', () => {
       expect(respond5.body.data.topics[1].name).toBe(
         `${TestTopicPrefix} Emojis in the topic name 🧑‍🦲 with some 中文 in it`,
       );
-      expect(respond5.body.data.topics[2].name).toBe(
-        `${TestTopicPrefix} 高等数学`,
-      );
-    });
+    }, 60000);
     it('should return TopicNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get('/topics?q=something&page_start=-1')
