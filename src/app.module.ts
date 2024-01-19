@@ -8,6 +8,7 @@ import {
   DB_TYPE,
   DB_USERNAME,
 } from '../.secret/database.config';
+import { CommentModule } from './comments/comments.module';
 import { QuestionsModule } from './questions/questions.module';
 import { UsersModule } from './users/users.module';
 
@@ -26,8 +27,9 @@ import { UsersModule } from './users/users.module';
     }),
     UsersModule,
     QuestionsModule,
+    CommentModule,
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule { }
