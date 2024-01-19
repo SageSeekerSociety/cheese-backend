@@ -27,8 +27,8 @@ describe('CommentService', () => {
     commentRepository = module.get<Repository<Comment>>(getRepositoryToken(Comment));
 
     // Mocking create and save
-    jest.spyOn(commentRepository, 'create').mockImplementation((dto: CreateCommentDto) => {
-      return { ...dto, id: 1, createdAt: new Date(), updatedAt: new Date(), deletedAt: null };
+    jest.spyOn(commentRepository, 'create').mockImplementation((comment: DeepPartial<Comment>) => {
+      return { ...comment, id: 1, createdAt: new Date(), updatedAt: new Date(), deletedAt: null, } as Comment;
     });
 
     jest.spyOn(commentRepository, 'save').mockImplementation((comment: DeepPartial<Comment>) => {

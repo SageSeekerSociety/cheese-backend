@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { CommentController } from './comments.controller';
-import { CommentService } from './comments.service';
 import { CreateCommentDto } from './DTO/CreateComment.dto';
+import { CommentController } from './comments.controller';
 import { Comment } from './comments.entity'; // Import the Comment entity
+import { CommentService } from './comments.service';
 
 describe('CommentController', () => {
   let controller: CommentController;
