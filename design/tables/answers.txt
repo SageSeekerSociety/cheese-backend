@@ -1,0 +1,48 @@
+Author：    Nictheboy
+Topic:      问题模块中与回答相关的的各个表结构
+Notice:     本文件只是设计阶段的想法，实际表结构以 .entity.ts 文件中的各个实体为准。
+
+回答表：
+    id
+    answerer_id
+    question_id
+    content
+    group_id    # 可空
+
+    created_at
+    updated_at
+    queried_at
+    is_deleted
+    deleted_at
+
+赞同（agree）关系表：
+    answer_id
+    user_id
+    created_at
+
+收藏（favourite）关系表
+    answer_id
+    user_id
+    created_at
+
+回答评论表：
+    id
+    answer_id
+    user_id
+    father_id   # 可空
+    content
+
+    created_at
+    is_deleted
+    deleted_at
+
+回答评论赞同表：
+    answer_comment_id
+    user_id
+    created_at
+    
+回答浏览关系表：
+    answer_id
+    user_id
+    upsert_at   # 最后一次创建时间或更新时间，代表最后一次浏览的时间
+    upsert_cnt  # 创建或更新的次数，代表浏览次数
