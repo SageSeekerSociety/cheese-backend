@@ -110,7 +110,7 @@ components:
         content:
           type: string
           description: 问题详情
-        user:
+        author:
           $ref: "#/components/schemas/User"
         type:
           type: integer
