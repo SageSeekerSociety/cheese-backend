@@ -1,9 +1,9 @@
 // src/groups/group.service.ts
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import assert from 'assert';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
+import { GetGroupsRespondDto } from './DTO/get-groups.dto';
 import { GroupDto } from './DTO/group.dto';
 import { Group, GroupMembership, GroupProfile, GroupTarget } from './group.entity';
 import { CannotDeleteGroupError, GroupIdNotFoundError, GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
@@ -44,7 +44,7 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if (await this.groupsRepository.findOne({ where: { name } })) {
+    if (await this.groupsRepository.findOneBy({ name })) {
       // todo: create log?
       throw new GroupNameAlreadyExistsError(name);
     }
@@ -79,89 +79,84 @@ export class GroupsService {
     size: number,
     key: string,
     type: GroupQueryType,
-  ): Promise<Group[]> {
-    const skip = (page - 1) * size;
-    const query = this.groupsRepository.createQueryBuilder('group');
-    if (key) {
-      query.where('group.name like :key', { key: `%${key}%` });
-    }
-    switch (type) {
-      case GroupQueryType.Recommend:
-        query.orderBy('group.createdAt', 'DESC');
-        break;
-      case GroupQueryType.Hot:
-        query.orderBy('group.membersCount', 'DESC');
-        break;
-      case GroupQueryType.New:
-        query.orderBy('group.createdAt', 'DESC');
-        break;
-    }
-    query.skip(skip).take(size);
-    return query.getMany();
+  ): Promise<GetGroupsRespondDto> {
+
   }
 
   async getGroupDtoById(id: number): Promise<GroupDto> {
-    const group = await this.groupsRepository.findOneBy({ id });
+    const group = await this.groupsRepository.findOne({
+      where: { id },
+      relations: ['profile'],
+    })
     if (group == null) {
       throw new GroupIdNotFoundError(id);
-    }
-    const groupProfile = await this.groupProfilesRepository.findOneBy({ group });
-    if (groupProfile == null) {
-      Logger.error(`Group profile not found for group ${id}`);
-      return {
-        id: group.id,
-        name: group.name,
-        intro: '',
-        avatar: '',
-      };
     }
     return {
       id: group.id,
       name: group.name,
-      intro: groupProfile.intro,
-      avatar: groupProfile.avatar,
+      intro: group.profile.intro,
+      avatar: group.profile.avatar,
     };
   }
 
   async updateGroup(
-    id: number,
+    userId: number,
+    groupId: number,
     name: string,
     intro: string,
     avatar: string,
   ): Promise<void> {
-    if (!this.isValidGroupName(name)) {
-      throw new InvalidGroupNameError(name, this.groupNameRule);
-    }
-    const group = await this.groupsRepository.findOneBy({ id });
-    if (group == null) {
-      throw new GroupIdNotFoundError(id);
-    }
-    group.name = name;
-    await this.groupsRepository.save(group);
-
-    const groupProfile = await this.groupProfilesRepository.findOneBy({ group });
-    if (groupProfile == null) {
-      Logger.error(`Group profile not found for group ${id}`);
-      return;
-    }
-    groupProfile.intro = intro;
-    groupProfile.avatar = avatar;
-    await this.groupProfilesRepository.save(groupProfile);
-  }
-
-  async deleteGroup(userId: number, groupId: number): Promise<void> {
-    const group = await this.groupsRepository.findOneBy({ id: groupId });
+    const group = await this.groupsRepository.findOne({
+      where: { id: groupId },
+      relations: ['profile'],
+    });
     if (group == null) {
       throw new GroupIdNotFoundError(groupId);
     }
-    const owner = await this.GroupMembershipsRepository.findOneBy({
-      group,
-      role: 'owner',
+
+    const userMembership = await this.GroupMembershipsRepository.findOneBy({
+      groupId,
+      memberId: userId,
+      role: In(['owner', 'admin']),
     });
-    assert(owner != null, 'Group owner not found');
-    if (owner.memberId !== userId) {
+    if (userMembership == null) {
       throw new CannotDeleteGroupError(groupId);
     }
+
+    if (!this.isValidGroupName(name)) {
+      throw new InvalidGroupNameError(name, this.groupNameRule);
+    }
+    if (await this.groupsRepository.findOneBy({ name })) {
+      // todo: create log?
+      throw new GroupNameAlreadyExistsError(name);
+    }
+    group.name = name;
+    group.profile.intro = intro;
+    group.profile.avatar = avatar;
+    await this.groupsRepository.save(group);
+    await this.groupProfilesRepository.save(group.profile);
+  }
+
+  async deleteGroup(userId: number, groupId: number): Promise<void> {
+    const group = await this.groupsRepository.findOne({
+      where: { id: groupId },
+      relations: ['profile'],
+    });
+    if (group == null) {
+      throw new GroupIdNotFoundError(groupId);
+    }
+
+    const owner = await this.GroupMembershipsRepository.findOneBy({
+      group,
+      memberId: userId,
+      role: 'owner',
+    });
+    if (owner == null) {
+      throw new CannotDeleteGroupError(groupId);
+    }
+
+    await this.groupProfilesRepository.softRemove(group.profile);
+    await this.GroupMembershipsRepository.softRemove({ groupId });
     await this.groupsRepository.softRemove(group);
   }
 
