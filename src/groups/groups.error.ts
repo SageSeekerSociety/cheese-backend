@@ -28,3 +28,13 @@ export class GroupIdNotFoundError extends BaseError {
     super('GroupIdNotFoundError', `Group with id ${groupId} not found`, 404);
   }
 }
+
+export class CannotDeleteGroupError extends BaseError {
+  constructor(public readonly groupId: number) {
+    super(
+      'CannotDeleteGroupError',
+      `Cannot delete group ${groupId}`,
+      403,
+    );
+  }
+}

@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { User } from '../users/users.entity';
 
 @Entity()
@@ -10,12 +10,11 @@ export class Group {
   @Index({ unique: true })
   name: string;
 
-  @ManyToOne(() => User)
-  @Index()
-  owner: User;
+  @OneToOne(() => GroupProfile, profile => profile.group, { cascade: ['soft-remove'] })
+  profile: GroupProfile;
 
-  @Column()
-  ownerId: number;
+  @OneToMany(() => GroupMembership, membership => membership.group)
+  memberships: GroupMembership[];
 
   @CreateDateColumn()
   createdAt: Date;
@@ -25,6 +24,7 @@ export class Group {
 
   @DeleteDateColumn()
   deletedAt?: Date;
+
 }
 
 @Entity()
@@ -32,28 +32,18 @@ export class GroupProfile {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => Group)
-  @Index({ unique: true })
-  @JoinColumn()
-  group: Group; // This links the profile to the corresponding group
-
-  @Column()
-  groupId: number;
-
   @Column()
   intro: string;
 
   @Column()
-  membersCount: number = 1;
-
-  @Column()
-  questionsCount: number = 0;
-
-  @Column()
-  answersCount: number = 0;
-
-  @Column()
   avatar: string;
+
+  @OneToOne(() => Group, group => group.profile)
+  @JoinColumn()
+  group: Group;
+
+  @Column()
+  groupId: number;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -66,11 +56,11 @@ export class GroupProfile {
 }
 
 @Entity()
-export class GroupMember {
+export class GroupMembership {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Group)
+  @ManyToOne(() => Group, group => group.memberships)
   @Index()
   group: Group;
 

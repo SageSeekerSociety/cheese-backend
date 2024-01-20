@@ -2,10 +2,11 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import assert from 'assert';
 import { Repository } from 'typeorm';
 import { GroupDto } from './DTO/group.dto';
-import { Group, GroupMember, GroupProfile, GroupTarget } from './group.entity';
-import { GroupIdNotFoundError, GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
+import { Group, GroupMembership, GroupProfile, GroupTarget } from './group.entity';
+import { CannotDeleteGroupError, GroupIdNotFoundError, GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
 
 export enum GroupQueryType {
   Recommend = 'recommend',
@@ -20,8 +21,8 @@ export class GroupsService {
     private groupsRepository: Repository<Group>,
     @InjectRepository(GroupProfile)
     private groupProfilesRepository: Repository<GroupProfile>,
-    @InjectRepository(GroupMember)
-    private groupMembersRepository: Repository<GroupMember>,
+    @InjectRepository(GroupMembership)
+    private GroupMembershipsRepository: Repository<GroupMembership>,
     @InjectRepository(GroupTarget)
     private groupTargetsRepository: Repository<GroupTarget>,
   ) { }
@@ -36,7 +37,7 @@ export class GroupsService {
 
   async createGroup(
     name: string,
-    ownerId: number,
+    userId: number,
     intro: string,
     avatar: string,
   ): Promise<GroupDto> {
@@ -48,10 +49,7 @@ export class GroupsService {
       throw new GroupNameAlreadyExistsError(name);
     }
 
-    const group = this.groupsRepository.create({
-      name,
-      ownerId,
-    });
+    const group = this.groupsRepository.create({ name });
     await this.groupsRepository.save(group);
 
     const groupProfile = this.groupProfilesRepository.create({
@@ -61,12 +59,12 @@ export class GroupsService {
     });
     await this.groupProfilesRepository.save(groupProfile);
 
-    const groupMember = this.groupMembersRepository.create({
-      memberId: ownerId,
+    const GroupMembership = this.GroupMembershipsRepository.create({
+      memberId: userId,
       groupId: group.id,
       role: 'owner',
     });
-    await this.groupMembersRepository.save(groupMember);
+    await this.GroupMembershipsRepository.save(GroupMembership);
 
     return {
       id: group.id,
@@ -151,121 +149,46 @@ export class GroupsService {
     await this.groupProfilesRepository.save(groupProfile);
   }
 
-  async deleteGroup(id: number): Promise<void> {
-    await this.groupsRepository.delete(id);
-  }
-
-  async joinGroup(userId: number, groupId: number): Promise<void> {
-    await this.groupMembersRepository.insert({
-      userId,
-      groupId,
+  async deleteGroup(userId: number, groupId: number): Promise<void> {
+    const group = await this.groupsRepository.findOneBy({ id: groupId });
+    if (group == null) {
+      throw new GroupIdNotFoundError(groupId);
+    }
+    const owner = await this.GroupMembershipsRepository.findOneBy({
+      group,
+      role: 'owner',
     });
-    const group = await this.groupsRepository.findOne(groupId);
-    group.membersCount++;
-    await this.groupsRepository.save(group);
+    assert(owner != null, 'Group owner not found');
+    if (owner.memberId !== userId) {
+      throw new CannotDeleteGroupError(groupId);
+    }
+    await this.groupsRepository.softRemove(group);
   }
 
-  async leaveGroup(userId: number, groupId: number): Promise<void> {
-    await this.groupMembersRepository.delete({ userId, groupId });
-    const group = await this.groupsRepository.findOne(groupId);
-    group.membersCount--;
-    await this.groupsRepository.save(group);
-  }
+  async joinGroup(userId: number, groupId: number, intro: string): Promise<void> {
+    const group = await this.groupsRepository.findOneBy({ id: groupId });
+    if (group == null) {
+      throw new GroupIdNotFoundError(groupId);
+    }
+    if (await this.GroupMembershipsRepository.findOneBy({ groupId, memberId: userId })) {
+      return; // or throw error?
+    }
 
-  async getGroupMembers(groupId: number): Promise<GroupMember[]> {
-    return this.groupMembersRepository.find({ groupId });
-  }
-
-  async getGroupTargets(groupId: number): Promise<GroupTarget[]> {
-    return this.groupTargetsRepository.find({ groupId });
-  }
-
-  async getGroupTargetsByUserId(userId: number): Promise<GroupTarget[]> {
-    return this.groupTargetsRepository.find({ userId });
-  }
-
-  async getGroupTargetsByGroupId(groupId: number): Promise<GroupTarget[]> {
-    return this.groupTargetsRepository.find({ groupId });
-  }
-
-  async getGroupTargetByUserIdAndGroupId(
-    userId: number,
-    groupId: number,
-  ): Promise<GroupTarget> {
-    return this.groupTargetsRepository.findOne({ userId, groupId });
-  }
-
-  async updateGroupTarget(
-    userId: number,
-    groupId: number,
-    target: string,
-  ): Promise<GroupTarget> {
-    const groupTarget = await this.groupTargetsRepository.findOne({
-      userId,
+    await this.GroupMembershipsRepository.insert({
       groupId,
+      memberId: userId,
+      role: 'member',
     });
-    groupTarget.target = target;
-    await this.groupTargetsRepository.save(groupTarget);
-    return groupTarget;
   }
 
-  async createGroupTarget(
-    userId: number,
-    groupId: number,
-    target: string,
-  ): Promise<GroupTarget> {
-    await this.groupTargetsRepository.insert({ userId, groupId, target });
-    return this.groupTargetsRepository.findOne({ userId, groupId });
-  }
-
-  async deleteGroupTarget(
-    userId: number,
-    groupId: number,
-  ): Promise<GroupTarget> {
-    const groupTarget = await this.groupTargetsRepository.findOne({
-      userId,
-      groupId,
-    });
-    await this.groupTargetsRepository.delete({ userId, groupId });
-    return groupTarget;
-  }
-
-  async getGroupProfile(groupId: number): Promise<GroupProfile> {
-    return this.groupProfilesRepository.findOne({ groupId });
-  }
-
-  async getGroupProfileByUserId(userId: number): Promise<GroupProfile> {
-    return this.groupProfilesRepository.findOne({ userId });
-  }
-
-  async updateGroupProfile(
-    groupId: number,
-    intro: string,
-    avatar: string,
-  ): Promise<GroupProfile> {
-    const groupProfile = await this.groupProfilesRepository.findOne({
-      groupId,
-    });
-    groupProfile.intro = intro;
-    groupProfile.avatar = avatar;
-    await this.groupProfilesRepository.save(groupProfile);
-    return groupProfile;
-  }
-
-  async createGroupProfile(
-    groupId: number,
-    intro: string,
-    avatar: string,
-  ): Promise<GroupProfile> {
-    await this.groupProfilesRepository.insert({ groupId, intro, avatar });
-    return this.groupProfilesRepository.findOne({ groupId });
-  }
-
-  async deleteGroupProfile(groupId: number): Promise<GroupProfile> {
-    const groupProfile = await this.groupProfilesRepository.findOne({
-      groupId,
-    });
-    await this.groupProfilesRepository.delete({ groupId });
-    return groupProfile;
+  async quitGroup(userId: number, groupId: number): Promise<void> {
+    const group = await this.groupsRepository.findOne({
+      where: { id: groupId },
+      relations: ['profile'],
+    })
+    if (group == null) {
+      throw new GroupIdNotFoundError(groupId);
+    }
+    await this.GroupMembershipsRepository.softDelete({ groupId, memberId: userId });
   }
 }

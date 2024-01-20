@@ -132,14 +132,13 @@ export class GroupsController {
   @Post('/:id/members')
   async joinGroup(
     @Param('id', ParseIntPipe) id: number,
-    @Body() joinGroupDto: JoinGroupDto
+    @Headers('Authorization') auth: string,
+    @Body() joinGroupDto: JoinGroupDto,
   ): Promise<JoinGroupRespondDto> {
-    const user = await this.authService.getUserFromSession(
-      this.sessionService.getSession(),
-    );
+    const userId = this.authService.verify(auth).userId;
     const group = await this.groupsService.joinGroup(
       id,
-      user.id,
+      userId,
       joinGroupDto.intro,
     );
     return {
@@ -153,12 +152,11 @@ export class GroupsController {
 
   @Delete('/:id/members')
   async quitGroup(
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string,
   ): Promise<QuitGroupRespondDto> {
-    const user = await this.authService.getUserFromSession(
-      this.sessionService.getSession(),
-    );
-    const group = await this.groupsService.quitGroup(id, user.id);
+    const userId = this.authService.verify(auth).userId;
+    const group = await this.groupsService.quitGroup(id, userId);
     return {
       code: 200,
       message: 'Quit group successfully.',
