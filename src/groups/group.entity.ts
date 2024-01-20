@@ -38,6 +38,9 @@ export class GroupProfile {
   group: Group; // This links the profile to the corresponding group
 
   @Column()
+  groupId: number;
+
+  @Column()
   intro: string;
 
   @Column()

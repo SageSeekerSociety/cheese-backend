@@ -76,11 +76,11 @@ export class GroupsController {
   async getGroupDetail(
     @Param('id', ParseIntPipe) id: number
   ): Promise<GroupRespondDto> {
-    const group = await this.groupsService.getGroupById(id);
+    const groupDto = await this.groupsService.getGroupDtoById(id);
     return {
       code: 200,
       message: 'Group fetched successfully.',
-      data: group,
+      data: groupDto,
     };
   }
 
@@ -89,7 +89,7 @@ export class GroupsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateGroupDto: UpdateGroupDto
   ): Promise<UpdateGroupRespondDto> {
-    const group = await this.groupsService.updateGroup(
+    await this.groupsService.updateGroup(
       id,
       updateGroupDto.name,
       updateGroupDto.intro,

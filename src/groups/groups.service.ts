@@ -1,11 +1,11 @@
 // src/groups/group.service.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { GroupDto } from './DTO/group.dto';
 import { Group, GroupMember, GroupProfile, GroupTarget } from './group.entity';
-import { GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
+import { GroupIdNotFoundError, GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
 
 export enum GroupQueryType {
   Recommend = 'recommend',
@@ -77,10 +77,10 @@ export class GroupsService {
   }
 
   async getGroups(
-    page: number = 1,
-    size: number = 20,
-    key?: string,
-    type: GroupQueryType = GroupQueryType.Recommend,
+    page: number,
+    size: number,
+    key: string,
+    type: GroupQueryType,
   ): Promise<Group[]> {
     const skip = (page - 1) * size;
     const query = this.groupsRepository.createQueryBuilder('group');
@@ -102,8 +102,27 @@ export class GroupsService {
     return query.getMany();
   }
 
-  async getGroupById(id: number): Promise<Group> {
-    return this.groupsRepository.findOne(id);
+  async getGroupDtoById(id: number): Promise<GroupDto> {
+    const group = await this.groupsRepository.findOneBy({ id });
+    if (group == null) {
+      throw new GroupIdNotFoundError(id);
+    }
+    const groupProfile = await this.groupProfilesRepository.findOneBy({ group });
+    if (groupProfile == null) {
+      Logger.error(`Group profile not found for group ${id}`);
+      return {
+        id: group.id,
+        name: group.name,
+        intro: '',
+        avatar: '',
+      };
+    }
+    return {
+      id: group.id,
+      name: group.name,
+      intro: groupProfile.intro,
+      avatar: groupProfile.avatar,
+    };
   }
 
   async updateGroup(
@@ -111,22 +130,25 @@ export class GroupsService {
     name: string,
     intro: string,
     avatar: string,
-  ): Promise<Group> {
+  ): Promise<void> {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    const group = await this.groupsRepository.findOne(id);
-    if (!group) {
-      throw new Error('Group not found.');
+    const group = await this.groupsRepository.findOneBy({ id });
+    if (group == null) {
+      throw new GroupIdNotFoundError(id);
     }
     group.name = name;
     await this.groupsRepository.save(group);
-    const groupProfile = await this.groupProfilesRepository.findOne({ group });
+
+    const groupProfile = await this.groupProfilesRepository.findOneBy({ group });
+    if (groupProfile == null) {
+      Logger.error(`Group profile not found for group ${id}`);
+      return;
+    }
     groupProfile.intro = intro;
     groupProfile.avatar = avatar;
     await this.groupProfilesRepository.save(groupProfile);
-    return group;
-
   }
 
   async deleteGroup(id: number): Promise<void> {
