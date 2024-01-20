@@ -75,12 +75,65 @@ export class GroupsService {
   }
 
   async getGroups(
-    page: number,
-    size: number,
     key: string,
-    type: GroupQueryType,
+    page_start_id: number,
+    page_size: number,
+    order_type: GroupQueryType,
   ): Promise<GetGroupsRespondDto> {
+    let queryBuilder = this.groupsRepository.createQueryBuilder('group');
 
+    if (key) {
+      queryBuilder = queryBuilder.where('group.name LIKE :key', { key: `%${key}%` });
+    }
+
+    if (page_start_id) {
+      const referenceGroup = await this.groupsRepository.findOneBy({ id: page_start_id });
+      if (!referenceGroup) {
+        throw new GroupIdNotFoundError(page_start_id);
+      }
+      switch (order_type) {
+        case GroupQueryType.Recommend: {
+          let referenceValue = getRecommendationScore(referenceGroup);
+          queryBuilder = queryBuilder
+            .addSelect('getRecommendationScore(group)', 'score')
+            .andWhere('score < :referenceValue', { referenceValue });
+          break;
+        }
+        case GroupQueryType.Hot: {
+          let referenceValue = getGroupHotness(referenceGroup);
+          queryBuilder = queryBuilder
+            .addSelect('getGroupHotness(group)', 'hotness')
+            .andWhere('hotness < :referenceValue', { referenceValue });
+          break;
+        }
+        case GroupQueryType.New: {
+          let referenceValue = referenceGroup.createdAt;
+          queryBuilder = queryBuilder
+            .andWhere('group.createdAt < :referenceValue', { referenceValue });
+          break;
+        }
+      }
+    }
+
+    queryBuilder = queryBuilder.orderBy(order_type, 'DESC')
+
+    const groups = await queryBuilder.getMany();
+
+    const groupsDto = groups.map(group => ({
+      id: group.id,
+      name: group.name,
+      intro: group.profile.intro,
+      avatar: group.profile.avatar,
+    }));
+
+    return {
+      code: 200,
+      message: 'Groups retrieved successfully.',
+      data: {
+        groups: groupsDto,
+        page
+      },
+    };
   }
 
   async getGroupDtoById(id: number): Promise<GroupDto> {
@@ -177,13 +230,19 @@ export class GroupsService {
   }
 
   async quitGroup(userId: number, groupId: number): Promise<void> {
-    const group = await this.groupsRepository.findOne({
-      where: { id: groupId },
-      relations: ['profile'],
-    })
+    const group = await this.groupsRepository.findOneBy({ id: groupId })
     if (group == null) {
       throw new GroupIdNotFoundError(groupId);
     }
-    await this.GroupMembershipsRepository.softDelete({ groupId, memberId: userId });
+    // todo: check if user is owner
+    await this.GroupMembershipsRepository.softDelete({ group, memberId: userId });
   }
 }
+function getRecommendationScore(referenceGroup: Group): number {
+  throw new Error('Function not implemented.');
+}
+
+function getGroupHotness(referenceGroup: Group): number {
+  throw new Error('Function not implemented.');
+}
+

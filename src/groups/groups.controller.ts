@@ -87,14 +87,12 @@ export class GroupsController {
   @Put('/:id')
   async updateGroup(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateGroupDto: UpdateGroupDto
+    @Headers('Authorization') auth: string,
+    @Body() req: UpdateGroupDto,
   ): Promise<UpdateGroupRespondDto> {
+    const userId = this.authService.verify(auth).userId;
     await this.groupsService.updateGroup(
-      id,
-      updateGroupDto.name,
-      updateGroupDto.intro,
-      updateGroupDto.avatar,
-    );
+      userId, id, req.name, req.intro, req.avatar);
     return {
       code: 200,
       message: 'Group updated successfully.',
@@ -103,9 +101,11 @@ export class GroupsController {
 
   @Delete('/:id')
   async deleteGroup(
+    @Headers('Authorization') auth: string,
     @Param('id', ParseIntPipe) id: number
   ): Promise<BaseRespondDto> {
-    await this.groupsService.deleteGroup(id);
+    const userId = this.authService.verify(auth).userId;
+    await this.groupsService.deleteGroup(userId, id);
     return {
       code: 204,
       message: 'No Content.'
@@ -136,7 +136,7 @@ export class GroupsController {
     @Body() joinGroupDto: JoinGroupDto,
   ): Promise<JoinGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const group = await this.groupsService.joinGroup(
+    await this.groupsService.joinGroup(
       id,
       userId,
       joinGroupDto.intro,
