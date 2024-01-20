@@ -3,6 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { GroupDto } from './DTO/group.dto';
 import { Group, GroupMember, GroupProfile, GroupTarget } from './group.entity';
 import { GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
 
@@ -34,26 +35,215 @@ export class GroupsService {
   }
 
   async createGroup(
-    name: string, // todo: displayName
+    name: string,
+    ownerId: number,
+    intro: string,
+    avatar: string,
+  ): Promise<GroupDto> {
+    if (!this.isValidGroupName(name)) {
+      throw new InvalidGroupNameError(name, this.groupNameRule);
+    }
+    if (await this.groupsRepository.findOne({ where: { name } })) {
+      // todo: create log?
+      throw new GroupNameAlreadyExistsError(name);
+    }
+
+    const group = this.groupsRepository.create({
+      name,
+      ownerId,
+    });
+    await this.groupsRepository.save(group);
+
+    const groupProfile = this.groupProfilesRepository.create({
+      group,
+      intro,
+      avatar,
+    });
+    await this.groupProfilesRepository.save(groupProfile);
+
+    const groupMember = this.groupMembersRepository.create({
+      memberId: ownerId,
+      groupId: group.id,
+      role: 'owner',
+    });
+    await this.groupMembersRepository.save(groupMember);
+
+    return {
+      id: group.id,
+      name: group.name,
+      intro: groupProfile.intro,
+      avatar: groupProfile.avatar,
+    };
+  }
+
+  async getGroups(
+    page: number = 1,
+    size: number = 20,
+    key?: string,
+    type: GroupQueryType = GroupQueryType.Recommend,
+  ): Promise<Group[]> {
+    const skip = (page - 1) * size;
+    const query = this.groupsRepository.createQueryBuilder('group');
+    if (key) {
+      query.where('group.name like :key', { key: `%${key}%` });
+    }
+    switch (type) {
+      case GroupQueryType.Recommend:
+        query.orderBy('group.createdAt', 'DESC');
+        break;
+      case GroupQueryType.Hot:
+        query.orderBy('group.membersCount', 'DESC');
+        break;
+      case GroupQueryType.New:
+        query.orderBy('group.createdAt', 'DESC');
+        break;
+    }
+    query.skip(skip).take(size);
+    return query.getMany();
+  }
+
+  async getGroupById(id: number): Promise<Group> {
+    return this.groupsRepository.findOne(id);
+  }
+
+  async updateGroup(
+    id: number,
+    name: string,
     intro: string,
     avatar: string,
   ): Promise<Group> {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if (await this.groupsRepository.findOne({ name })) {
-      // todo: create log?
-      throw new GroupNameAlreadyExistsError(name);
+    const group = await this.groupsRepository.findOne(id);
+    if (!group) {
+      throw new Error('Group not found.');
     }
-    await this.groupsRepository.insert({ name });
-    const group = await this.groupsRepository.findOne({ name });
-    await this.groupProfilesRepository.insert({
-      group,
-      intro,
-      avatar,
-    });
+    group.name = name;
+    await this.groupsRepository.save(group);
+    const groupProfile = await this.groupProfilesRepository.findOne({ group });
+    groupProfile.intro = intro;
+    groupProfile.avatar = avatar;
+    await this.groupProfilesRepository.save(groupProfile);
     return group;
+
   }
 
-  // Implement other methods such as getGroupById, updateGroup, deleteGroup, etc.
+  async deleteGroup(id: number): Promise<void> {
+    await this.groupsRepository.delete(id);
+  }
+
+  async joinGroup(userId: number, groupId: number): Promise<void> {
+    await this.groupMembersRepository.insert({
+      userId,
+      groupId,
+    });
+    const group = await this.groupsRepository.findOne(groupId);
+    group.membersCount++;
+    await this.groupsRepository.save(group);
+  }
+
+  async leaveGroup(userId: number, groupId: number): Promise<void> {
+    await this.groupMembersRepository.delete({ userId, groupId });
+    const group = await this.groupsRepository.findOne(groupId);
+    group.membersCount--;
+    await this.groupsRepository.save(group);
+  }
+
+  async getGroupMembers(groupId: number): Promise<GroupMember[]> {
+    return this.groupMembersRepository.find({ groupId });
+  }
+
+  async getGroupTargets(groupId: number): Promise<GroupTarget[]> {
+    return this.groupTargetsRepository.find({ groupId });
+  }
+
+  async getGroupTargetsByUserId(userId: number): Promise<GroupTarget[]> {
+    return this.groupTargetsRepository.find({ userId });
+  }
+
+  async getGroupTargetsByGroupId(groupId: number): Promise<GroupTarget[]> {
+    return this.groupTargetsRepository.find({ groupId });
+  }
+
+  async getGroupTargetByUserIdAndGroupId(
+    userId: number,
+    groupId: number,
+  ): Promise<GroupTarget> {
+    return this.groupTargetsRepository.findOne({ userId, groupId });
+  }
+
+  async updateGroupTarget(
+    userId: number,
+    groupId: number,
+    target: string,
+  ): Promise<GroupTarget> {
+    const groupTarget = await this.groupTargetsRepository.findOne({
+      userId,
+      groupId,
+    });
+    groupTarget.target = target;
+    await this.groupTargetsRepository.save(groupTarget);
+    return groupTarget;
+  }
+
+  async createGroupTarget(
+    userId: number,
+    groupId: number,
+    target: string,
+  ): Promise<GroupTarget> {
+    await this.groupTargetsRepository.insert({ userId, groupId, target });
+    return this.groupTargetsRepository.findOne({ userId, groupId });
+  }
+
+  async deleteGroupTarget(
+    userId: number,
+    groupId: number,
+  ): Promise<GroupTarget> {
+    const groupTarget = await this.groupTargetsRepository.findOne({
+      userId,
+      groupId,
+    });
+    await this.groupTargetsRepository.delete({ userId, groupId });
+    return groupTarget;
+  }
+
+  async getGroupProfile(groupId: number): Promise<GroupProfile> {
+    return this.groupProfilesRepository.findOne({ groupId });
+  }
+
+  async getGroupProfileByUserId(userId: number): Promise<GroupProfile> {
+    return this.groupProfilesRepository.findOne({ userId });
+  }
+
+  async updateGroupProfile(
+    groupId: number,
+    intro: string,
+    avatar: string,
+  ): Promise<GroupProfile> {
+    const groupProfile = await this.groupProfilesRepository.findOne({
+      groupId,
+    });
+    groupProfile.intro = intro;
+    groupProfile.avatar = avatar;
+    await this.groupProfilesRepository.save(groupProfile);
+    return groupProfile;
+  }
+
+  async createGroupProfile(
+    groupId: number,
+    intro: string,
+    avatar: string,
+  ): Promise<GroupProfile> {
+    await this.groupProfilesRepository.insert({ groupId, intro, avatar });
+    return this.groupProfilesRepository.findOne({ groupId });
+  }
+
+  async deleteGroupProfile(groupId: number): Promise<GroupProfile> {
+    const groupProfile = await this.groupProfilesRepository.findOne({
+      groupId,
+    });
+    await this.groupProfilesRepository.delete({ groupId });
+    return groupProfile;
+  }
 }

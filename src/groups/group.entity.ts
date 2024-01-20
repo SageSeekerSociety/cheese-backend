@@ -10,19 +10,20 @@ export class Group {
   @Index({ unique: true })
   name: string;
 
-  @Column()
+  @ManyToOne(() => User)
+  @Index()
   owner: User;
 
   @Column()
   ownerId: number;
 
-  @Column()
+  @CreateDateColumn()
   createdAt: Date;
 
-  @Column()
+  @UpdateDateColumn()
   updatedAt: Date;
 
-  @Column()
+  @DeleteDateColumn()
   deletedAt?: Date;
 }
 
@@ -40,16 +41,16 @@ export class GroupProfile {
   intro: string;
 
   @Column()
-  membersCount: number;
+  membersCount: number = 1;
 
   @Column()
-  questionsCount: number;
+  questionsCount: number = 0;
 
   @Column()
-  answersCount: number;
+  answersCount: number = 0;
 
   @Column()
-  avatar: string; // Group image or avatar
+  avatar: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -81,7 +82,7 @@ export class GroupMember {
   memberId: number;
 
   @Column()
-  role: string;
+  role: string; // todo: enum
 
   @CreateDateColumn()
   createdAt: Date;

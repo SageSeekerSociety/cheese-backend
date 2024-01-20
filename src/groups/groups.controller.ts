@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   ParseIntPipe,
   Post,
@@ -13,7 +14,6 @@ import {
   ValidationPipe
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
-import { SessionService } from '../auth/session.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { CreateGroupDto } from './DTO/create-group.dto';
@@ -30,25 +30,27 @@ import { GroupQueryType, GroupsService } from './groups.service';
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
 export class GroupsController {
-  constructor(private readonly groupsService: GroupsService,
+  constructor(
     private readonly authService: AuthService,
-    private readonly sessionService: SessionService,) { }
+    private readonly groupsService: GroupsService,
+  ) { }
 
   @Post('/')
   async createGroup(
-    @Body() createGroupDto: CreateGroupDto
+    @Body() req: CreateGroupDto,
+    @Headers('Authorization') auth: string,
   ): Promise<GroupRespondDto> {
+    const userId = this.authService.verify(auth).userId;
     const groupDto = await this.groupsService.createGroup(
-      createGroupDto.name,
-      createGroupDto.intro,
-      createGroupDto.avatar,
+      req.name,
+      userId,
+      req.intro,
+      req.avatar,
     );
     return {
       code: 200,
       message: 'Group created successfully.',
-      data: {
-        group: groupDto,
-      },
+      data: groupDto,
     };
   }
 
