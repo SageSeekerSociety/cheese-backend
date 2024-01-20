@@ -1,9 +1,6 @@
-import { IsInt, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 
 export class CreateGroupDto {
-  @IsInt()
-  id: number;
-
   @IsString()
   readonly name: string;
 

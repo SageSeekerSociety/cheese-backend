@@ -77,7 +77,7 @@ export class UsersService {
     private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
-  ) {}
+  ) { }
 
   private generateVerifyCode(): string {
     var code: string = '';

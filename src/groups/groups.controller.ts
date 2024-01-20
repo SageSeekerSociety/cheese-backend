@@ -3,24 +3,28 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
-  Ip,
   Param,
   ParseIntPipe,
   Post,
   Put,
   Query,
-  Request,
   UseFilters,
   UsePipes,
-  ValidationPipe,
+  ValidationPipe
 } from '@nestjs/common';
-import { AuthenticationRequiredError } from '../auth/auth.error';
-import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { GroupsService } from './groups.service';
+import { CreateGroupDto } from './DTO/create-group.dto';
+import { GetGroupsRespondDto } from './DTO/get-groups.dto';
+import { GetGroupMembersRespondDto } from './DTO/get-members.dto';
+import { GetGroupQuestionsRespondDto } from './DTO/get-questions.dto';
+import { GroupRespondDto } from './DTO/group.dto';
+import { JoinGroupDto, JoinGroupRespondDto } from './DTO/join-group.dto';
+import { QuitGroupRespondDto } from './DTO/quit-group.dto';
+import { UpdateGroupDto, UpdateGroupRespondDto } from './DTO/update-group.dto';
+import { GroupQueryType, GroupsService } from './groups.service';
 
 @Controller('/groups')
 @UsePipes(new ValidationPipe())
@@ -31,55 +35,157 @@ export class GroupsController {
     private readonly sessionService: SessionService,) { }
 
   @Post('/')
-  async create(
-    @Body() createGroupDto: CreateGroupDto,
-    @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
-  ): Promise<RegisterResponseDto> {
-    const userDto = await this.groupsService.createGroup(
-      request.username,
-      request.nickname,
-      request.password,
-      request.email,
-      request.emailCode,
-      ip,
-      userAgent,
-    );
-    const [_, refreshToken] = await this.usersService.login(
-      request.username,
-      request.password,
-      ip,
-      userAgent,
+  async createGroup(
+    @Body() createGroupDto: CreateGroupDto
+  ): Promise<GroupRespondDto> {
+    const groupDto = await this.groupsService.createGroup(
+      createGroupDto.name,
+      createGroupDto.intro,
+      createGroupDto.avatar,
     );
     return {
-      code: 201,
-      message: 'Register successfully.',
+      code: 200,
+      message: 'Group created successfully.',
       data: {
-        user: userDto,
-        refreshToken: refreshToken,
+        group: groupDto,
       },
     };
   }
 
-  @Get()
-  findAll(@Query() query: QueryGroupDto) {
-    return this.groupsService.findAll(query);
+  @Get('/')
+  async getGroups(
+    @Query('q') key?: string,
+    @Query('page_start') page_start?: number,
+    @Query('page_size') page_size: number = 20,
+    @Query('type') type: GroupQueryType = GroupQueryType.Recommend,
+  ): Promise<GetGroupsRespondDto> {
+    const groups = await this.groupsService.getGroups(page, size, key, type);
+    return {
+      code: 200,
+      message: 'Groups fetched successfully.',
+      data: {
+        groups,
+        page
+      },
+    };
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.groupsService.findOne(+id);
+  @Get('/:id')
+  async getGroupDetail(
+    @Param('id', ParseIntPipe) id: number
+  ): Promise<GroupRespondDto> {
+    const group = await this.groupsService.getGroupById(id);
+    return {
+      code: 200,
+      message: 'Group fetched successfully.',
+      data: group,
+    };
   }
 
-  @Put(':id')
-  update(@Param('id') id: string, @Body() updateGroupDto: UpdateGroupDto) {
-    return this.groupsService.update(+id, updateGroupDto);
+  @Put('/:id')
+  async updateGroup(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateGroupDto: UpdateGroupDto
+  ): Promise<UpdateGroupRespondDto> {
+    const group = await this.groupsService.updateGroup(
+      id,
+      updateGroupDto.name,
+      updateGroupDto.intro,
+      updateGroupDto.avatar,
+    );
+    return {
+      code: 200,
+      message: 'Group updated successfully.',
+    };
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.groupsService.remove(+id);
+  @Delete('/:id')
+  async deleteGroup(
+    @Param('id', ParseIntPipe) id: number
+  ): Promise<BaseRespondDto> {
+    await this.groupsService.deleteGroup(id);
+    return {
+      code: 204,
+      message: 'No Content.'
+    };
   }
 
-  // other endpoints for members, questions, and targets
+  @Get('/:id/members')
+  async getGroupMembers(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page_start') page_start?: number,
+    @Query('page_size') page_size: number = 20,
+  ): Promise<GetGroupMembersRespondDto> {
+    const members = await this.groupsService.getGroupMembers(id, page, size);
+    return {
+      code: 200,
+      message: 'Group members fetched successfully.',
+      data: {
+        members,
+        page
+      },
+    };
+  }
+
+  @Post('/:id/members')
+  async joinGroup(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() joinGroupDto: JoinGroupDto
+  ): Promise<JoinGroupRespondDto> {
+    const user = await this.authService.getUserFromSession(
+      this.sessionService.getSession(),
+    );
+    const group = await this.groupsService.joinGroup(
+      id,
+      user.id,
+      joinGroupDto.intro,
+    );
+    return {
+      code: 200,
+      message: 'Joined group successfully.',
+      data: {
+        group,
+      },
+    };
+  }
+
+  @Delete('/:id/members')
+  async quitGroup(
+    @Param('id', ParseIntPipe) id: number
+  ): Promise<QuitGroupRespondDto> {
+    const user = await this.authService.getUserFromSession(
+      this.sessionService.getSession(),
+    );
+    const group = await this.groupsService.quitGroup(id, user.id);
+    return {
+      code: 200,
+      message: 'Quit group successfully.',
+      data: {
+        group,
+      },
+    };
+  }
+
+  @Get('/:id/questions')
+  async getGroupQuestions(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page_start') page_start?: number,
+    @Query('page_size') page_size: number = 20,
+  ): Promise<GetGroupQuestionsRespondDto> {
+    const questions = await this.groupsService.getGroupQuestions(
+      id,
+      page,
+      size,
+    );
+    return {
+      code: 200,
+      message: 'Group questions fetched successfully.',
+      data: {
+        questions,
+        page
+      },
+    };
+  }
+
+  
 }

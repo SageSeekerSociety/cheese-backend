@@ -2019,7 +2019,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          users:
+                          members:
                             type: array
                             items:
                               $ref: "#/components/schemas/User"
@@ -2143,11 +2143,14 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Question"
-                      page:
-                        $ref: "#/components/schemas/Page"
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
+                          page:
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /groups/{id}/targets:

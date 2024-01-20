@@ -8,10 +8,13 @@ export class Group {
 
   @Column()
   @Index({ unique: true })
-  groupName: string;
+  name: string;
 
   @Column()
-  creatorId: number;
+  owner: User;
+
+  @Column()
+  ownerId: number;
 
   @Column()
   createdAt: Date;
@@ -34,12 +37,18 @@ export class GroupProfile {
   group: Group; // This links the profile to the corresponding group
 
   @Column()
-  displayName: string; // The name displayed to users, can be changed
+  intro: string;
 
-  @Column({ type: 'text', nullable: true })
-  description: string;
+  @Column()
+  membersCount: number;
 
-  @Column({ nullable: true })
+  @Column()
+  questionsCount: number;
+
+  @Column()
+  answersCount: number;
+
+  @Column()
   avatar: string; // Group image or avatar
 
   @CreateDateColumn()
@@ -66,10 +75,10 @@ export class GroupMember {
 
   @ManyToOne(() => User)
   @Index()
-  user: User;
+  member: User;
 
   @Column()
-  userId: number;
+  memberId: number;
 
   @Column()
   role: string;
@@ -82,4 +91,47 @@ export class GroupMember {
 
   @DeleteDateColumn()
   deletedAt?: Date;
+}
+
+export enum GroupAttendanceFrequency {
+  Daily = 'daily',
+  Weekly = 'weekly',
+  Monthly = 'monthly',
+}
+
+@Entity()
+export class GroupTarget {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => Group) // todo: Is it possible to use @OneToOne here?
+  @Index()
+  group: Group;
+
+  @Column()
+  groupId: number;
+
+  @Column()
+  name: string;
+
+  @Column()
+  intro: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
+
+  @Column({ type: 'date' })
+  startedAt: Date;
+
+  @Column({ type: 'date' })
+  endedAt: Date;
+
+  @Column()
+  attendanceFrequency: GroupAttendanceFrequency;
 }

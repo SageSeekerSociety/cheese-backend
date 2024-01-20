@@ -1,9 +1,7 @@
-// src/groups/DTO/create-group.dto.ts
+import { IsString } from "class-validator";
+import { BaseRespondDto } from "../../common/DTO/base-respond.dto";
 
 export class UpdateGroupDto {
-  @IsInt()
-  id: number;
-
   @IsString()
   readonly name: string;
 
@@ -12,4 +10,9 @@ export class UpdateGroupDto {
 
   @IsString()
   readonly avatar: string;
+
+  @IsString()
+  readonly cover: string;
 }
+
+export class UpdateGroupRespondDto extends BaseRespondDto { }
