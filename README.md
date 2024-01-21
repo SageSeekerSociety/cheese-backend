@@ -1,3 +1,6 @@
+# cheese-backend
+芝士后端
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
 </p>
@@ -29,33 +32,62 @@
 ## Installation
 
 ```bash
-$ yarn install
+$ pnpm install
+```
+
+## Config the app
+
+Create a .secret directory in the repo directory, and create the following files:
+
+### .secret/database.config.ts
+
+```typescript
+export const DB_TYPE = 'mysql'; // Theoryly, you can use other database types,
+                                // but I haven't tested it yet. We recommend
+                                // that you use MySQL. If you want to use other
+                                // database types, you need to install the
+                                // corresponding database driver, and run all
+                                // the tests to make sure that the app works.
+export const DB_HOST = 'Your database host';
+export const DB_PORT = 3306; // Your database port
+export const DB_USERNAME = 'Your database username';
+export const DB_PASSWORD = 'Your database password';
+export const DB_DATABASE = 'Your database name';
+```
+
+### .secret/jwt.config.ts
+
+```typescript
+export const JWT_SECRET = 'Your JWT secret';
 ```
 
 ## Running the app
 
 ```bash
 # development
-$ yarn run start
+$ pnpm run start
 
 # watch mode
-$ yarn run start:dev
+$ pnpm run start:dev
 
 # production mode
-$ yarn run start:prod
+$ pnpm run start:prod
 ```
 
 ## Test
 
+We mainly use e2e tests to test the app, because the app is mainly responsible for CRUD operations, and the e2e tests can test the app more comprehensively.
+
 ```bash
-# unit tests
-$ yarn run test
-
 # e2e tests
-$ yarn run test:e2e
+$ pnpm run test:e2e
 
-# test coverage
-$ yarn run test:cov
+# e2e tests with coverage report
+$ pnpm run test:e2e:cov
+```
+However, we alse support unit tests, you can run the following command to run unit tests:
+```bash
+$ pnpm run test
 ```
 
 ## Support

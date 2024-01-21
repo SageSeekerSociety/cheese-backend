@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 //mport { AnswerModule } from './answer.module';
 import { Answer } from './answer.entity';
-import { CreateAnswerDto } from './dto/create-answer.dto';
-import { UpdateAnswerDto } from './dto/update-answer.dto';
+import { CreateAnswerDto } from './DTO/create-answer.dto';
+import { UpdateAnswerDto } from './DTO/update-answer.dto';
 
 @Injectable()
 export class AnswerService {
