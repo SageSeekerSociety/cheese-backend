@@ -10,7 +10,8 @@ import { GetGroupQuestionsResultDto } from './DTO/get-group-questions.dto';
 import { GetGroupsResultDto } from './DTO/get-groups.dto';
 import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
-import { Group, GroupMembership, GroupProfile, GroupQuestionRelationship, GroupTarget } from './group.entity';
+import { GroupProfile } from './group-profile.entity';
+import { Group, GroupMembership, GroupQuestionRelationship, GroupTarget } from './group.entity';
 import { CannotDeleteGroupError, GroupIdNotFoundError, GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
 
 export enum GroupQueryType {

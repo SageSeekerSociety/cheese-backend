@@ -1,6 +1,11 @@
-import { Entity } from "typeorm";
+import { Entity, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { GroupQuestionRelationship } from "../groups/group.entity";
 
 @Entity()
 export class Question {
-  // todo
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @OneToOne(() => GroupQuestionRelationship, gqr => gqr.question)
+  groupQuestionRelationship: GroupQuestionRelationship;
 }
