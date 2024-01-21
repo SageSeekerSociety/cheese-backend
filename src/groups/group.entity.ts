@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Question } from '../questions/question.entity';
 import { User } from '../users/users.entity';
 
 @Entity()
@@ -45,6 +46,8 @@ export class GroupProfile {
   @Column()
   groupId: number;
 
+  // todo: visibility
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -78,6 +81,35 @@ export class GroupMembership {
   role: string; // todo: enum
 
   @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
+}
+
+@Entity()
+export class GroupQuestionRelationship {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => Group)
+  @Index()
+  group: Group;
+
+  @Column()
+  groupId: number;
+
+  @OneToOne(() => Question)
+  @JoinColumn()
+  question: Question;
+
+  @Column()
+  questionId: number;
+
+  @Column()
   createdAt: Date;
 
   @UpdateDateColumn()

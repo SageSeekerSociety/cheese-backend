@@ -120,14 +120,11 @@ export class GroupsController {
     @Query('page_start') page_start?: number,
     @Query('page_size') page_size: number = 20,
   ): Promise<GetGroupMembersRespondDto> {
-    const members = await this.groupsService.getGroupMembers(id, page, size);
+    const getGroupMembersResult = await this.groupsService.getGroupMembers(id, page, size);
     return {
       code: 200,
       message: 'Group members fetched successfully.',
-      data: {
-        members,
-        page
-      },
+      data: getGroupMembersResult
     };
   }
 
@@ -170,18 +167,15 @@ export class GroupsController {
     @Query('page_start') page_start?: number,
     @Query('page_size') page_size: number = 20,
   ): Promise<GetGroupQuestionsRespondDto> {
-    const questions = await this.groupsService.getGroupQuestions(
+    const getGroupQuestionsResult = await this.groupsService.getGroupQuestions(
       id,
-      page,
-      size,
+      page_start,
+      page_size,
     );
     return {
       code: 200,
       message: 'Group questions fetched successfully.',
-      data: {
-        questions,
-        page
-      },
+      data: getGroupQuestionsResult
     };
   }
 

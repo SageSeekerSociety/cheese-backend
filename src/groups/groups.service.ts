@@ -3,10 +3,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { QuestionIdNotFoundError } from '../questions/questions.error';
+import { UserIdNotFoundError } from '../users/users.error';
+import { GetGroupMembersResultDto } from './DTO/get-group-members.dto';
+import { GetGroupQuestionsResultDto } from './DTO/get-group-questions.dto';
 import { GetGroupsResultDto } from './DTO/get-groups.dto';
 import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
-import { Group, GroupMembership, GroupProfile, GroupTarget } from './group.entity';
+import { Group, GroupMembership, GroupProfile, GroupQuestionRelationship, GroupTarget } from './group.entity';
 import { CannotDeleteGroupError, GroupIdNotFoundError, GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
 
 export enum GroupQueryType {
@@ -24,6 +28,8 @@ export class GroupsService {
     private groupProfilesRepository: Repository<GroupProfile>,
     @InjectRepository(GroupMembership)
     private groupMembershipsRepository: Repository<GroupMembership>,
+    @InjectRepository(GroupQuestionRelationship)
+    private groupQuestionRelationshipsRepository: Repository<GroupQuestionRelationship>,
     @InjectRepository(GroupTarget)
     private groupTargetsRepository: Repository<GroupTarget>,
   ) { }
@@ -286,7 +292,119 @@ export class GroupsService {
     const member_count = await this.groupMembershipsRepository.countBy({ groupId });
     return member_count;
   }
+
+  async getGroupMembers(
+    groupId: number,
+    page_start_id: number,
+    page_size: number,
+  ): Promise<GetGroupMembersResultDto> {
+    let queryBuilder = this.groupMembershipsRepository
+      .createQueryBuilder('membership')
+      .where('membership.groupId = :groupId', { groupId });
+    queryBuilder = queryBuilder
+      .orderBy('membership.createdAt', 'DESC');
+
+    let prevDTOs = null, currDTOs = null;
+    if (page_start_id) {
+      const referenceRelationship = await this.groupMembershipsRepository
+        .findOneBy({ memberId: page_start_id });
+      if (!referenceRelationship) {
+        throw new UserIdNotFoundError(page_start_id);
+      }
+      const referenceValue = referenceRelationship.createdAt;
+      prevDTOs = await queryBuilder
+        .andWhere('membership.createdAt > :referenceValue', { referenceValue })
+        .limit(page_size)
+        .getMany();
+      currDTOs = await queryBuilder
+        .andWhere('membership.createdAt <= :referenceValue', { referenceValue })
+        .limit(page_size + 1)
+        .getMany();
+    } else {
+      prevDTOs = null;
+      currDTOs = await queryBuilder
+        .limit(page_size + 1)
+        .getMany();
+    }
+    const has_prev = prevDTOs && prevDTOs.length > 0;
+    const has_more = currDTOs && currDTOs.length > page_size;
+    const page_start = currDTOs[0].memberId;
+    const real_page_size = currDTOs.length > page_size ? page_size : currDTOs.length;
+    const members = currDTOs.map(relationship => ({
+      id: relationship.memberId,
+      nickname: relationship.member.profile.nickname,
+      avatar: relationship.member.profile.avatar,
+      intro: relationship.intro,
+    }));
+    return {
+      members,
+      page: {
+        page_start,
+        page_size: real_page_size,
+        has_prev,
+        prev_start: has_prev ? prevDTOs[0].memberId : null,
+        has_more,
+        next_start: has_more ? currDTOs[page_size - 1].memberId : null,
+      }
+    };
+  }
+
+  async getGroupQuestions(
+    groupId: number,
+    page_start_id: number,
+    page_size: number,
+  ): Promise<GetGroupQuestionsResultDto> {
+    let queryBuilder = this.groupQuestionRelationshipsRepository
+      .createQueryBuilder('relationship')
+      .where('relationship.groupId = :groupId', { groupId });
+    queryBuilder = queryBuilder
+      .orderBy('relationship.createdAt', 'DESC');
+
+    let prevDTOs = null, currDTOs = null;
+    if (page_start_id) {
+      const referenceRelationship = await this.groupQuestionRelationshipsRepository
+        .findOneBy({ questionId: page_start_id });
+      if (!referenceRelationship) {
+        throw new QuestionIdNotFoundError(page_start_id);
+      }
+      const referenceValue = referenceRelationship.createdAt;
+      prevDTOs = await queryBuilder
+        .andWhere('relationship.createdAt > :referenceValue', { referenceValue })
+        .limit(page_size)
+        .getMany();
+      currDTOs = await queryBuilder
+        .andWhere('relationship.createdAt <= :referenceValue', { referenceValue })
+        .limit(page_size + 1)
+        .getMany();
+    } else {
+      prevDTOs = null;
+      currDTOs = await queryBuilder
+        .limit(page_size + 1)
+        .getMany();
+    }
+    const has_prev = prevDTOs && prevDTOs.length > 0;
+    const has_more = currDTOs && currDTOs.length > page_size;
+    const page_start = currDTOs[0].questionId;
+    const real_page_size = currDTOs.length > page_size ? page_size : currDTOs.length;
+    const questions = currDTOs.map(relationship => ({
+      id: relationship.questionId,
+      title: relationship.question.title,
+      content: relationship.question.content,
+    }));
+    return {
+      questions,
+      page: {
+        page_start,
+        page_size: real_page_size,
+        has_prev,
+        prev_start: has_prev ? prevDTOs[0].questionId : null,
+        has_more,
+        next_start: has_more ? currDTOs[page_size - 1].questionId : null,
+      }
+    };
+  }
 }
+
 function getRecommendationScore(referenceGroup: Group): number {
   throw new Error('Function not implemented.');
 }
