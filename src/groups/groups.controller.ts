@@ -120,7 +120,11 @@ export class GroupsController {
     @Query('page_start') page_start?: number,
     @Query('page_size') page_size: number = 20,
   ): Promise<GetGroupMembersRespondDto> {
-    const getGroupMembersResult = await this.groupsService.getGroupMembers(id, page, size);
+    const getGroupMembersResult = await this.groupsService.getGroupMembers(
+      id,
+      page_start,
+      page_size,
+    );
     return {
       code: 200,
       message: 'Group members fetched successfully.',
