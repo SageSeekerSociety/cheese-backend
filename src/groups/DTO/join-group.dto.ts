@@ -6,10 +6,12 @@ export class JoinGroupDto {
   readonly intro: string;
 }
 
+export class JoinGroupResultDto {
+  member_count: number;
+  is_member: boolean;
+  is_waiting: boolean;
+}
+
 export class JoinGroupRespondDto extends BaseRespondDto {
-  data: {
-    member_count: number,
-    is_member: boolean,
-    is_waiting: boolean,
-  };
+  data: JoinGroupResultDto;
 }

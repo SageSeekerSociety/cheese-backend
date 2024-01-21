@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { GetGroupsRespondDto } from './DTO/get-groups.dto';
 import { GroupDto } from './DTO/group.dto';
+import { JoinGroupResultDto } from './DTO/join-group.dto';
 import { Group, GroupMembership, GroupProfile, GroupTarget } from './group.entity';
 import { CannotDeleteGroupError, GroupIdNotFoundError, GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
 
@@ -22,7 +23,7 @@ export class GroupsService {
     @InjectRepository(GroupProfile)
     private groupProfilesRepository: Repository<GroupProfile>,
     @InjectRepository(GroupMembership)
-    private GroupMembershipsRepository: Repository<GroupMembership>,
+    private groupMembershipsRepository: Repository<GroupMembership>,
     @InjectRepository(GroupTarget)
     private groupTargetsRepository: Repository<GroupTarget>,
   ) { }
@@ -59,12 +60,12 @@ export class GroupsService {
     });
     await this.groupProfilesRepository.save(groupProfile);
 
-    const GroupMembership = this.GroupMembershipsRepository.create({
+    const GroupMembership = this.groupMembershipsRepository.create({
       memberId: userId,
       groupId: group.id,
       role: 'owner',
     });
-    await this.GroupMembershipsRepository.save(GroupMembership);
+    await this.groupMembershipsRepository.save(GroupMembership);
 
     return {
       id: group.id,
@@ -167,7 +168,7 @@ export class GroupsService {
       throw new GroupIdNotFoundError(groupId);
     }
 
-    const userMembership = await this.GroupMembershipsRepository.findOneBy({
+    const userMembership = await this.groupMembershipsRepository.findOneBy({
       groupId,
       memberId: userId,
       role: In(['owner', 'admin']),
@@ -199,7 +200,7 @@ export class GroupsService {
       throw new GroupIdNotFoundError(groupId);
     }
 
-    const owner = await this.GroupMembershipsRepository.findOneBy({
+    const owner = await this.groupMembershipsRepository.findOneBy({
       group,
       memberId: userId,
       role: 'owner',
@@ -209,33 +210,42 @@ export class GroupsService {
     }
 
     await this.groupProfilesRepository.softRemove(group.profile);
-    await this.GroupMembershipsRepository.softRemove({ groupId });
+    await this.groupMembershipsRepository.softRemove({ groupId });
     await this.groupsRepository.softRemove(group);
   }
 
-  async joinGroup(userId: number, groupId: number, intro: string): Promise<void> {
+  async joinGroup(
+    userId: number, groupId: number, intro: string
+  ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
     if (group == null) {
       throw new GroupIdNotFoundError(groupId);
     }
-    if (await this.GroupMembershipsRepository.findOneBy({ groupId, memberId: userId })) {
+    if (await this.groupMembershipsRepository.findOneBy({ groupId, memberId: userId })) {
       return; // or throw error?
     }
 
-    await this.GroupMembershipsRepository.insert({
+    await this.groupMembershipsRepository.insert({
       groupId,
       memberId: userId,
       role: 'member',
     });
+
+    const member_count = await this.groupMembershipsRepository.countBy({ groupId });
+    const is_member = true;
+    const is_waiting = false; // todo: pending logic
+    return { member_count, is_member, is_waiting };
   }
 
-  async quitGroup(userId: number, groupId: number): Promise<void> {
+  async quitGroup(userId: number, groupId: number): Promise<number> {
     const group = await this.groupsRepository.findOneBy({ id: groupId })
     if (group == null) {
       throw new GroupIdNotFoundError(groupId);
     }
     // todo: check if user is owner
-    await this.GroupMembershipsRepository.softDelete({ group, memberId: userId });
+    await this.groupMembershipsRepository.softDelete({ group, memberId: userId });
+    const member_count = await this.groupMembershipsRepository.countBy({ groupId });
+    return member_count;
   }
 }
 function getRecommendationScore(referenceGroup: Group): number {

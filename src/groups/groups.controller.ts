@@ -136,7 +136,7 @@ export class GroupsController {
     @Body() joinGroupDto: JoinGroupDto,
   ): Promise<JoinGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    await this.groupsService.joinGroup(
+    const joinResult = await this.groupsService.joinGroup(
       id,
       userId,
       joinGroupDto.intro,
@@ -144,9 +144,7 @@ export class GroupsController {
     return {
       code: 200,
       message: 'Joined group successfully.',
-      data: {
-        group,
-      },
+      data: joinResult,
     };
   }
 
@@ -156,13 +154,11 @@ export class GroupsController {
     @Headers('Authorization') auth: string,
   ): Promise<QuitGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const group = await this.groupsService.quitGroup(id, userId);
+    const member_count = await this.groupsService.quitGroup(id, userId);
     return {
       code: 200,
       message: 'Quit group successfully.',
-      data: {
-        group,
-      },
+      data: { member_count }
     };
   }
 
