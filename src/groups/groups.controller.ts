@@ -61,14 +61,16 @@ export class GroupsController {
     @Query('page_size') page_size: number = 20,
     @Query('type') type: GroupQueryType = GroupQueryType.Recommend,
   ): Promise<GetGroupsRespondDto> {
-    const groups = await this.groupsService.getGroups(page, size, key, type);
+    const getGroupResult = await this.groupsService.getGroups(
+      key,
+      page_start,
+      page_size,
+      type,
+    );
     return {
       code: 200,
       message: 'Groups fetched successfully.',
-      data: {
-        groups,
-        page
-      },
+      data: getGroupResult,
     };
   }
 

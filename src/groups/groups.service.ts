@@ -3,7 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { GetGroupsRespondDto } from './DTO/get-groups.dto';
+import { GetGroupsResultDto } from './DTO/get-groups.dto';
 import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
 import { Group, GroupMembership, GroupProfile, GroupTarget } from './group.entity';
@@ -80,61 +80,100 @@ export class GroupsService {
     page_start_id: number,
     page_size: number,
     order_type: GroupQueryType,
-  ): Promise<GetGroupsRespondDto> {
+  ): Promise<GetGroupsResultDto> {
     let queryBuilder = this.groupsRepository.createQueryBuilder('group');
 
     if (key) {
       queryBuilder = queryBuilder.where('group.name LIKE :key', { key: `%${key}%` });
     }
 
+    let prevDTOs = null, currDTOs = null;
     if (page_start_id) {
       const referenceGroup = await this.groupsRepository.findOneBy({ id: page_start_id });
       if (!referenceGroup) {
         throw new GroupIdNotFoundError(page_start_id);
       }
+      let referenceValue;
       switch (order_type) {
         case GroupQueryType.Recommend: {
-          let referenceValue = getRecommendationScore(referenceGroup);
+          referenceValue = getRecommendationScore(referenceGroup);
           queryBuilder = queryBuilder
-            .addSelect('getRecommendationScore(group)', 'score')
-            .andWhere('score < :referenceValue', { referenceValue });
+            .addSelect('getRecommendationScore(group)', 'score');
           break;
         }
         case GroupQueryType.Hot: {
-          let referenceValue = getGroupHotness(referenceGroup);
+          referenceValue = getGroupHotness(referenceGroup);
           queryBuilder = queryBuilder
             .addSelect('getGroupHotness(group)', 'hotness')
-            .andWhere('hotness < :referenceValue', { referenceValue });
           break;
         }
         case GroupQueryType.New: {
-          let referenceValue = referenceGroup.createdAt;
-          queryBuilder = queryBuilder
-            .andWhere('group.createdAt < :referenceValue', { referenceValue });
+          referenceValue = referenceGroup.createdAt;
           break;
         }
       }
+      queryBuilder = queryBuilder.orderBy(order_type, 'DESC')
+      switch (order_type) {
+        case GroupQueryType.Recommend:
+          prevDTOs = await queryBuilder
+            .andWhere('recommendation_score > :referenceValue', { referenceValue })
+            .limit(page_size)
+            .getMany();
+          currDTOs = await queryBuilder
+            .andWhere('recommendation_score <= :referenceValue', { referenceValue })
+            .limit(page_size + 1)
+            .getMany();
+          break;
+        case GroupQueryType.Hot:
+          prevDTOs = await queryBuilder
+            .andWhere('hotness > :referenceValue', { referenceValue })
+            .limit(page_size)
+            .getMany();
+          currDTOs = await queryBuilder
+            .andWhere('hotness <= :referenceValue', { referenceValue })
+            .limit(page_size + 1)
+            .getMany();
+          break;
+        case GroupQueryType.New:
+          prevDTOs = await queryBuilder
+            .andWhere('createdAt > :referenceValue', { referenceValue })
+            .limit(page_size)
+            .getMany();
+          currDTOs = await queryBuilder
+            .andWhere('createdAt <= :referenceValue', { referenceValue })
+            .limit(page_size + 1)
+            .getMany();
+          break;
+      }
+    } else {
+      prevDTOs = null;
+      currDTOs = await queryBuilder
+        .limit(page_size + 1)
+        .getMany();
     }
-
-    queryBuilder = queryBuilder.orderBy(order_type, 'DESC')
-
-    const groups = await queryBuilder.getMany();
-
-    const groupsDto = groups.map(group => ({
+    const has_prev = prevDTOs && prevDTOs.length > 0;
+    const has_more = currDTOs && currDTOs.length > page_size;
+    const page_start = currDTOs[0].id;
+    const real_page_size = currDTOs.length > page_size ? page_size : currDTOs.length;
+    const next_start = currDTOs[page_size - 1].id;
+    const groups = currDTOs.map(group => ({
       id: group.id,
       name: group.name,
       intro: group.profile.intro,
       avatar: group.profile.avatar,
     }));
-
     return {
-      code: 200,
-      message: 'Groups retrieved successfully.',
-      data: {
-        groups: groupsDto,
-        page
-      },
+      groups,
+      page: {
+        page_start,
+        page_size: real_page_size,
+        has_prev,
+        prev_start: has_prev ? prevDTOs[0].id : null,
+        has_more,
+        next_start: has_more ? next_start : null,
+      }
     };
+
   }
 
   async getGroupDtoById(id: number): Promise<GroupDto> {
