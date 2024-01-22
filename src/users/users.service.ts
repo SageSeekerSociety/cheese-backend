@@ -21,6 +21,7 @@ import {
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageHelper } from '../common/helper/page.helper';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import {
@@ -692,43 +693,7 @@ export class UsersService {
           return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
         }),
       );
-      if (DTOs.length == 0) {
-        return [
-          [],
-          {
-            page_start: 0,
-            page_size: 0,
-            has_prev: false,
-            prev_start: 0,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      } else if (DTOs.length > pageSize) {
-        return [
-          DTOs.slice(0, pageSize),
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: false,
-            prev_start: 0,
-            has_more: true,
-            next_start: DTOs.at(-1).id,
-          },
-        ];
-      } else {
-        return [
-          DTOs,
-          {
-            page_start: DTOs[0].id,
-            page_size: DTOs.length,
-            has_prev: false,
-            prev_start: 0,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      }
+      return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise = this.userFollowingRepository.find({
         where: {
@@ -736,7 +701,7 @@ export class UsersService {
           followerId: LessThan(firstFollowerId),
         },
         take: pageSize,
-        order: { followerId: 'ASC' },
+        order: { followerId: 'DESC' },
       });
       const queriedRelationsPromise = this.userFollowingRepository.find({
         where: {
@@ -751,50 +716,14 @@ export class UsersService {
           return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
         }),
       );
-      var has_prev = false,
-        prev_start = 0;
-      const prevRelationships = await prevRelationshipsPromise;
-      if (prevRelationships.length > 0) {
-        has_prev = true;
-        prev_start = prevRelationships[0].followerId;
-      }
-      if (DTOs.length == 0) {
-        return [
-          [],
-          {
-            page_start: 0,
-            page_size: 0,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      } else if (DTOs.length > pageSize) {
-        return [
-          DTOs.slice(0, pageSize),
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: true,
-            next_start: DTOs.at(-1).id,
-          },
-        ];
-      } else {
-        return [
-          DTOs,
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      }
+      const prev = await prevRelationshipsPromise;
+      return PageHelper.Page(
+        prev,
+        DTOs,
+        pageSize,
+        (i) => i.followerId,
+        (i) => i.id,
+      );
     }
   }
 
@@ -820,43 +749,7 @@ export class UsersService {
           return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
         }),
       );
-      if (DTOs.length == 0) {
-        return [
-          [],
-          {
-            page_start: 0,
-            page_size: 0,
-            has_prev: false,
-            prev_start: 0,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      } else if (DTOs.length > pageSize) {
-        return [
-          DTOs.slice(0, pageSize),
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: false,
-            prev_start: 0,
-            has_more: true,
-            next_start: DTOs.at(-1).id,
-          },
-        ];
-      } else {
-        return [
-          DTOs,
-          {
-            page_start: DTOs[0].id,
-            page_size: DTOs.length,
-            has_prev: false,
-            prev_start: 0,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      }
+      return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise = this.userFollowingRepository.find({
         where: {
@@ -864,7 +757,7 @@ export class UsersService {
           followeeId: LessThan(firstFolloweeId),
         },
         take: pageSize,
-        order: { followeeId: 'ASC' },
+        order: { followeeId: 'DESC' },
       });
       const queriedRelationsPromise = this.userFollowingRepository.find({
         where: {
@@ -879,50 +772,14 @@ export class UsersService {
           return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
         }),
       );
-      var has_prev = false,
-        prev_start = 0;
-      const prevRelationships = await prevRelationshipsPromise;
-      if (prevRelationships.length > 0) {
-        has_prev = true;
-        prev_start = prevRelationships[0].followeeId;
-      }
-      if (DTOs.length == 0) {
-        return [
-          [],
-          {
-            page_start: 0,
-            page_size: 0,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      } else if (DTOs.length > pageSize) {
-        return [
-          DTOs.slice(0, pageSize),
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: true,
-            next_start: DTOs.at(-1).id,
-          },
-        ];
-      } else {
-        return [
-          DTOs,
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      }
+      const prev = await prevRelationshipsPromise;
+      return PageHelper.Page(
+        prev,
+        DTOs,
+        pageSize,
+        (i) => i.followeeId,
+        (i) => i.id,
+      );
     }
   }
 }
