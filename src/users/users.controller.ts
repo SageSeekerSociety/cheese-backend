@@ -29,7 +29,10 @@ import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { AddFollowerRespondDto } from './DTO/add-follower.dto';
+import {
+  FollowRespondDto as FollowUserRespondDto,
+  UnfollowRespondDto as UnfollowUserRespondDto,
+} from './DTO/follow-unfollow.dto';
 import { GetFollowersRespondDto } from './DTO/get-followers.dto';
 import { GetUserRespondDto } from './DTO/get-user.dto';
 import { LoginRequestDto } from './DTO/login.dto';
@@ -256,10 +259,10 @@ export class UsersController {
   }
 
   @Post('/:id/followers')
-  async addFollower(
+  async followUser(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
-  ): Promise<AddFollowerRespondDto> {
+  ): Promise<FollowUserRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -279,10 +282,10 @@ export class UsersController {
   }
 
   @Delete('/:id/followers')
-  async deleteFollower(
+  async unfollowUser(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
-  ) {
+  ): Promise<UnfollowUserRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
