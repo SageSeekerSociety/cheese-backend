@@ -33,8 +33,8 @@ export class PageHelper {
     idGetterPrev: (item: TPrev) => number,
     idGetter: (item: TData) => number,
   ): [TData[], PageRespondDto] {
-    var has_prev = false;
-    var prev_start = 0;
+    let has_prev = false;
+    let prev_start = 0;
     if (prev.length > 0) {
       has_prev = true;
       prev_start = idGetterPrev(prev.at(-1));

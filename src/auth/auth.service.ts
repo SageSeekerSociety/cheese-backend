@@ -7,7 +7,7 @@
  *
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
   AuthenticationRequiredError,
@@ -165,7 +165,7 @@ export class AuthService {
       throw new Error('resourceId must be a number.');
     }
     for (const permission of authorization.permissions) {
-      var actionMatches = false;
+      let actionMatches = false;
       for (const authorizedAction of permission.authorizedActions) {
         if (authorizedAction === action) {
           actionMatches = true;
@@ -182,7 +182,7 @@ export class AuthService {
         continue;
       // Now, owner matches.
 
-      var typeMatches =
+      let typeMatches =
         permission.authorizedResource.types === null ? true : false;
       if (permission.authorizedResource.types !== null) {
         for (const authorizedType of permission.authorizedResource.types) {
@@ -194,7 +194,7 @@ export class AuthService {
       if (typeMatches == false) continue;
       // Now, type matches.
 
-      var idMatches =
+      let idMatches =
         permission.authorizedResource.resourceIds === null ? true : false;
       if (permission.authorizedResource.resourceIds !== null) {
         for (const authorizedId of permission.authorizedResource.resourceIds) {

@@ -82,7 +82,7 @@ export class UsersService {
   ) {}
 
   private generateVerifyCode(): string {
-    var code: string = '';
+    let code: string = '';
     for (let i = 0; i < 6; i++) {
       code += Math.floor(Math.random() * 10).toString()[0];
     }
@@ -245,7 +245,7 @@ export class UsersService {
     }
 
     // Determine whether the email code is correct.
-    var records = await this.userRegisterRequestRepository.find({
+    let records = await this.userRegisterRequestRepository.find({
       where: { email: email },
     });
     for (const record of records) {
