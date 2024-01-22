@@ -165,3 +165,9 @@ export class AlreadyFollowedError extends BaseError {
     );
   }
 }
+
+export class UserNoProfileError extends BaseError {
+  constructor(public readonly userId: number) {
+    super('UserNoProfileError', `User with id ${userId} has no profile.`, 422);
+  }
+}

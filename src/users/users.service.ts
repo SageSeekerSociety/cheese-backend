@@ -52,6 +52,7 @@ import {
   NotFollowedYetError,
   PasswordNotMatchError,
   UserIdNotFoundError,
+  UserNoProfileError,
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
 } from './users.error';
@@ -353,13 +354,7 @@ export class UsersService {
     const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == null) {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
-      return {
-        id: user.id,
-        username: user.username,
-        nickname: '',
-        avatar: '',
-        intro: '',
-      };
+      throw new UserNoProfileError(userId);
     }
     const log = this.userProfileQueryLogRepository.create({
       viewerId: viewer,
