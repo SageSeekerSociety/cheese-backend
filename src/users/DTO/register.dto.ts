@@ -21,7 +21,7 @@ export class RegisterRequestDto {
 
 export class RegisterResponseDto extends BaseRespondDto {
   data: {
-    refreshToken: string;
+    accessToken: string;
     user: UserDto;
   };
 }

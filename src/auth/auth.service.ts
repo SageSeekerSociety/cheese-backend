@@ -88,7 +88,7 @@ export class Authorization {
   permissions: Permission[];
 }
 
-class TokenPayload {
+export class TokenPayload {
   authorization: Authorization;
   validUntil: number; // timestamp in milliseconds
 }
@@ -215,5 +215,20 @@ export class AuthService {
       resourceType,
       resourceId,
     );
+  }
+
+  // Decode a token, WITHOUT verifying it.
+  decode(token: string): TokenPayload {
+    if (token == null || token == undefined || token == '')
+      throw new AuthenticationRequiredError();
+    if (token.indexOf('Bearer ') == 0) token = token.slice(7);
+    else if (token.indexOf('bearer ') == 0) token = token.slice(7);
+    const result = this.jwtService.decode(token);
+    try {
+      const payload = result as TokenPayload;
+      return payload;
+    } catch {
+      throw new TokenFormatError(token);
+    }
   }
 }

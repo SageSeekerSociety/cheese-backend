@@ -1,12 +1,12 @@
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
-export class AddFollowerRespondDto extends BaseRespondDto {
+export class FollowRespondDto extends BaseRespondDto {
   data: {
     follow_count: number;
   };
 }
 
-export class DeleteFollowerRespondDto extends BaseRespondDto {
+export class UnfollowRespondDto extends BaseRespondDto {
   data: {
     follow_count: number;
   };

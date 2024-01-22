@@ -21,7 +21,7 @@ export class SessionService {
     private readonly sessionRepository: Repository<Session>,
     @InjectRepository(SessionRefreshLog)
     private readonly sessionRefreshLogRepository: Repository<SessionRefreshLog>,
-  ) {}
+  ) { }
 
   // Returns:
   //     The refresh token of the session.
@@ -76,7 +76,7 @@ export class SessionService {
       throw new SessionRevokedError();
     }
     const authorization = JSON.parse(session.authorization) as Authorization;
-    const accessToken = this.authService.sign(authorization, 60);
+    const accessToken = this.authService.sign(authorization, 15 * 60);
 
     // Update lastRefreshedAt
     session.lastRefreshedAt = new Date();
