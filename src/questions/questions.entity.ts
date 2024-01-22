@@ -21,6 +21,8 @@ import { Topic } from '../topics/topics.entity';
 import { User } from '../users/users.entity';
 
 @Entity()
+// Use fulltext index to support fulltext search.
+@Index('idx_ft_title_content', ['title', 'content'], { fulltext: true, parser: 'ngram' })
 export class Question {
   @PrimaryGeneratedColumn()
   id: number;
@@ -34,14 +36,10 @@ export class Question {
 
   // Use column type 'text' to support arbitrary length of string.
   @Column('text')
-  // Use fulltext index to support fulltext search.
-  @Index('idx_ft_title', { fulltext: true, parser: 'ngram' })
   title: string;
 
   // Use column type 'text' to support arbitrary length of string.
   @Column('text')
-  // Use fulltext index to support fulltext search.
-  @Index('idx_ft_content', { fulltext: true, parser: 'ngram' })
   content: string;
 
   @Column()

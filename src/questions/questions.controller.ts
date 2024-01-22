@@ -48,7 +48,7 @@ export class QuestionsController {
   constructor(
     private readonly questionsService: QuestionsService,
     private readonly authService: AuthService,
-  ) {}
+  ) { }
 
   @Get('/')
   async searchQuestion(
@@ -77,7 +77,21 @@ export class QuestionsController {
       'questions',
       null,
     );
-    throw new Error();
+    const questionId = await this.questionsService.addQuestion(
+      userId,
+      body.title,
+      body.content,
+      body.type,
+      body.topics,
+      body.groupId,
+    );
+    return {
+      code: 201,
+      message: 'Created',
+      data: {
+        id: questionId,
+      },
+    }
   }
 
   @Get('/:id')

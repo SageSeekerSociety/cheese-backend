@@ -11,5 +11,6 @@ export class UpdateQuestionRequestDto {
   type: number;
 
   @IsArray()
+  @IsInt({ each: true })
   topics: number[];
 }
