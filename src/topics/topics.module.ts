@@ -21,5 +21,6 @@ import { TopicsService } from './topics.service';
   ],
   controllers: [TopicsController],
   providers: [TopicsService],
+  exports: [TopicsService],
 })
 export class TopicsModule {}

@@ -791,4 +791,8 @@ export class UsersService {
       );
     }
   }
+
+  async isUserExists(userId: number): Promise<boolean> {
+    return (await this.userRepository.findOneBy({ id: userId })) != null;
+  }
 }

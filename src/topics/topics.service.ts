@@ -158,4 +158,13 @@ export class TopicsService {
       );
     }
   }
+
+  async getTopicDtoById(topicId: number): Promise<TopicDto> {
+    const topic = await this.topicRepository.findOneBy({ id: topicId });
+    if (topic == null) throw new TopicNotFoundError(topicId);
+    return {
+      id: topic.id,
+      name: topic.name,
+    };
+  }
 }

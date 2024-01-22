@@ -22,17 +22,20 @@ import { User } from '../users/users.entity';
 
 @Entity()
 // Use fulltext index to support fulltext search.
-@Index('idx_ft_title_content', ['title', 'content'], { fulltext: true, parser: 'ngram' })
+@Index('idx_ft_title_content', ['title', 'content'], {
+  fulltext: true,
+  parser: 'ngram',
+})
 export class Question {
   @PrimaryGeneratedColumn()
   id: number;
 
   @ManyToOne(() => User)
-  askerUser: User;
+  createdBy: User;
 
   @Column()
   @Index('idx_asker_user', { unique: false })
-  askerUserId: number;
+  createdById: number;
 
   // Use column type 'text' to support arbitrary length of string.
   @Column('text')

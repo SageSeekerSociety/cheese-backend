@@ -48,7 +48,7 @@ export class QuestionsController {
   constructor(
     private readonly questionsService: QuestionsService,
     private readonly authService: AuthService,
-  ) { }
+  ) {}
 
   @Get('/')
   async searchQuestion(
@@ -91,7 +91,7 @@ export class QuestionsController {
       data: {
         id: questionId,
       },
-    }
+    };
   }
 
   @Get('/:id')
@@ -101,7 +101,21 @@ export class QuestionsController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionResponseDto> {
-    throw new Error();
+    let userId: number;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {}
+    const questionDto = await this.questionsService.getQuestionDto(
+      id,
+      userId,
+      ip,
+      userAgent,
+    );
+    return {
+      code: 200,
+      message: 'OK',
+      data: questionDto,
+    };
   }
 
   @Put('/:id')
