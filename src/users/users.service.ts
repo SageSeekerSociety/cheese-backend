@@ -129,7 +129,7 @@ export class UsersService {
     // TODO: Add logic to determain whether code is sent too frequently.
 
     // Determine whether the email is registered.
-    if ((await this.userRepository.findOneBy({ email: email })) != null) {
+    if ((await this.userRepository.findOneBy({ email })) != null) {
       const log = this.userRegisterLogRepository.create({
         type: UserRegisterLogType.RequestFailDueToAlreadyRegistered,
         email: email,
@@ -270,7 +270,7 @@ export class UsersService {
         await this.userRegisterRequestRepository.delete(record.id);
 
         // Verify whether the email is registered.
-        if ((await this.userRepository.findOneBy({ email: email })) != null) {
+        if ((await this.userRepository.findOneBy({ email })) != null) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToEmailExistence,
             email: email,
@@ -283,9 +283,7 @@ export class UsersService {
         }
 
         // Verify whether the username is registered.
-        if (
-          (await this.userRepository.findOneBy({ username: username })) != null
-        ) {
+        if ((await this.userRepository.findOneBy({ username })) != null) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToUserExistence,
             email: email,
@@ -347,16 +345,12 @@ export class UsersService {
     ip: string,
     userAgent: string,
   ): Promise<UserDto> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
+    const user = await this.userRepository.findOneBy({ id: userId });
     if (user == null) {
       throw new UserIdNotFoundError(userId);
     }
 
-    const profile = await this.userProfileRepository.findOne({
-      where: { userId: user.id },
-    });
+    const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == null) {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
       return {
@@ -391,9 +385,7 @@ export class UsersService {
     ip: string,
     userAgent: string,
   ): Promise<[UserDto, string]> {
-    const user = await this.userRepository.findOne({
-      where: { username: username },
-    });
+    const user = await this.userRepository.findOneBy({ username });
     if (user == null) {
       throw new UsernameNotFoundError(username);
     }
@@ -401,8 +393,8 @@ export class UsersService {
       throw new PasswordNotMatchError(username);
     }
     // Login successfully.
-    const profile = await this.userProfileRepository.findOne({
-      where: { userId: user.id },
+    const profile = await this.userProfileRepository.findOneBy({
+      userId: user.id,
     });
     if (profile == null) {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
@@ -489,7 +481,7 @@ export class UsersService {
     }
 
     // Find email.
-    const user = await this.userRepository.findOneBy({ email: email });
+    const user = await this.userRepository.findOneBy({ email });
     if (user == null) {
       const log = this.userResetPasswordLogRepository.create({
         type: UserResetPasswordLogType.RequestFailDueToNoneExistentEmail,
@@ -607,9 +599,7 @@ export class UsersService {
     avatar: string,
     intro: string,
   ): Promise<void> {
-    const profile = await this.userProfileRepository.findOneBy({
-      userId: userId,
-    });
+    const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == null) {
       throw new UserIdNotFoundError(userId);
     }
@@ -644,8 +634,8 @@ export class UsersService {
     }
     if (
       (await this.userFollowingRepository.findOneBy({
-        followerId: followerId,
-        followeeId: followeeId,
+        followerId,
+        followeeId,
       })) != null
     ) {
       throw new AlreadyFollowedError(followeeId);
@@ -662,8 +652,8 @@ export class UsersService {
     followeeId: number,
   ): Promise<void> {
     const relationship = await this.userFollowingRepository.findOneBy({
-      followerId: followerId,
-      followeeId: followeeId,
+      followerId,
+      followeeId,
     });
     if (relationship == null) {
       throw new NotFollowedYetError(followeeId);
