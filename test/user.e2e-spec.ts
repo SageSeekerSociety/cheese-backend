@@ -20,9 +20,9 @@ describe('User Module', () => {
   const TestEmail = `test-${Math.floor(
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
-  var TestUserId: number;
-  var TestRefreshToken: string;
-  var TestToken: string;
+  let TestUserId: number;
+  let TestRefreshToken: string;
+  let TestToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -491,10 +491,11 @@ describe('User Module', () => {
       expect(respond.body.data.intro).toBe('test user updated');
     });
     it('should get modified user profile even without a token', async () => {
-      const respond = await request(app.getHttpServer())
-        .get(`/users/${TestUserId}`)
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .set('authorization', 'Bearer ' + TestToken);
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${TestUserId}`,
+      );
+      //.set('User-Agent', 'PostmanRuntime/7.26.8')
+      //.set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.message).toBe('Query user successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
@@ -612,7 +613,7 @@ describe('User Module', () => {
   });
 
   describe('follow logic', () => {
-    var tempUserIds: number[] = [];
+    let tempUserIds: number[] = [];
     it('should successfully create some auxiliary users first', async () => {
       const server = app.getHttpServer();
       async function createAuxiliaryUser(
@@ -644,7 +645,7 @@ describe('User Module', () => {
         expect(respond2.status).toBe(201);
         return respond2.body.data.user.id;
       }
-      for (var i = 0; i < 10; i++) {
+      for (let i = 0; i < 10; i++) {
         tempUserIds.push(
           await createAuxiliaryUser(
             `TestUser-${Math.floor(Math.random() * 10000000000)}`,

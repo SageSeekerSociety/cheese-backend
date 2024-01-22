@@ -21,6 +21,7 @@ import {
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageHelper } from '../common/helper/page.helper';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import {
@@ -51,6 +52,7 @@ import {
   NotFollowedYetError,
   PasswordNotMatchError,
   UserIdNotFoundError,
+  UserNoProfileError,
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
 } from './users.error';
@@ -80,7 +82,7 @@ export class UsersService {
   ) {}
 
   private generateVerifyCode(): string {
-    var code: string = '';
+    let code: string = '';
     for (let i = 0; i < 6; i++) {
       code += Math.floor(Math.random() * 10).toString()[0];
     }
@@ -128,7 +130,7 @@ export class UsersService {
     // TODO: Add logic to determain whether code is sent too frequently.
 
     // Determine whether the email is registered.
-    if ((await this.userRepository.findOneBy({ email: email })) != null) {
+    if ((await this.userRepository.findOneBy({ email })) != null) {
       const log = this.userRegisterLogRepository.create({
         type: UserRegisterLogType.RequestFailDueToAlreadyRegistered,
         email: email,
@@ -243,7 +245,7 @@ export class UsersService {
     }
 
     // Determine whether the email code is correct.
-    var records = await this.userRegisterRequestRepository.find({
+    let records = await this.userRegisterRequestRepository.find({
       where: { email: email },
     });
     for (const record of records) {
@@ -269,7 +271,7 @@ export class UsersService {
         await this.userRegisterRequestRepository.delete(record.id);
 
         // Verify whether the email is registered.
-        if ((await this.userRepository.findOneBy({ email: email })) != null) {
+        if ((await this.userRepository.findOneBy({ email })) != null) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToEmailExistence,
             email: email,
@@ -282,9 +284,7 @@ export class UsersService {
         }
 
         // Verify whether the username is registered.
-        if (
-          (await this.userRepository.findOneBy({ username: username })) != null
-        ) {
+        if ((await this.userRepository.findOneBy({ username })) != null) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToUserExistence,
             email: email,
@@ -346,25 +346,15 @@ export class UsersService {
     ip: string,
     userAgent: string,
   ): Promise<UserDto> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
+    const user = await this.userRepository.findOneBy({ id: userId });
     if (user == null) {
       throw new UserIdNotFoundError(userId);
     }
 
-    const profile = await this.userProfileRepository.findOne({
-      where: { userId: user.id },
-    });
+    const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == null) {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
-      return {
-        id: user.id,
-        username: user.username,
-        nickname: '',
-        avatar: '',
-        intro: '',
-      };
+      throw new UserNoProfileError(userId);
     }
     const log = this.userProfileQueryLogRepository.create({
       viewerId: viewer,
@@ -390,9 +380,7 @@ export class UsersService {
     ip: string,
     userAgent: string,
   ): Promise<[UserDto, string]> {
-    const user = await this.userRepository.findOne({
-      where: { username: username },
-    });
+    const user = await this.userRepository.findOneBy({ username });
     if (user == null) {
       throw new UsernameNotFoundError(username);
     }
@@ -400,8 +388,8 @@ export class UsersService {
       throw new PasswordNotMatchError(username);
     }
     // Login successfully.
-    const profile = await this.userProfileRepository.findOne({
-      where: { userId: user.id },
+    const profile = await this.userProfileRepository.findOneBy({
+      userId: user.id,
     });
     if (profile == null) {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
@@ -488,7 +476,7 @@ export class UsersService {
     }
 
     // Find email.
-    const user = await this.userRepository.findOneBy({ email: email });
+    const user = await this.userRepository.findOneBy({ email });
     if (user == null) {
       const log = this.userResetPasswordLogRepository.create({
         type: UserResetPasswordLogType.RequestFailDueToNoneExistentEmail,
@@ -606,9 +594,7 @@ export class UsersService {
     avatar: string,
     intro: string,
   ): Promise<void> {
-    const profile = await this.userProfileRepository.findOneBy({
-      userId: userId,
-    });
+    const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == null) {
       throw new UserIdNotFoundError(userId);
     }
@@ -643,8 +629,8 @@ export class UsersService {
     }
     if (
       (await this.userFollowingRepository.findOneBy({
-        followerId: followerId,
-        followeeId: followeeId,
+        followerId,
+        followeeId,
       })) != null
     ) {
       throw new AlreadyFollowedError(followeeId);
@@ -661,8 +647,8 @@ export class UsersService {
     followeeId: number,
   ): Promise<void> {
     const relationship = await this.userFollowingRepository.findOneBy({
-      followerId: followerId,
-      followeeId: followeeId,
+      followerId,
+      followeeId,
     });
     if (relationship == null) {
       throw new NotFollowedYetError(followeeId);
@@ -692,43 +678,7 @@ export class UsersService {
           return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
         }),
       );
-      if (DTOs.length == 0) {
-        return [
-          [],
-          {
-            page_start: 0,
-            page_size: 0,
-            has_prev: false,
-            prev_start: 0,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      } else if (DTOs.length > pageSize) {
-        return [
-          DTOs.slice(0, pageSize),
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: false,
-            prev_start: 0,
-            has_more: true,
-            next_start: DTOs.at(-1).id,
-          },
-        ];
-      } else {
-        return [
-          DTOs,
-          {
-            page_start: DTOs[0].id,
-            page_size: DTOs.length,
-            has_prev: false,
-            prev_start: 0,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      }
+      return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise = this.userFollowingRepository.find({
         where: {
@@ -736,7 +686,7 @@ export class UsersService {
           followerId: LessThan(firstFollowerId),
         },
         take: pageSize,
-        order: { followerId: 'ASC' },
+        order: { followerId: 'DESC' },
       });
       const queriedRelationsPromise = this.userFollowingRepository.find({
         where: {
@@ -751,50 +701,14 @@ export class UsersService {
           return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
         }),
       );
-      var has_prev = false,
-        prev_start = 0;
-      const prevRelationships = await prevRelationshipsPromise;
-      if (prevRelationships.length > 0) {
-        has_prev = true;
-        prev_start = prevRelationships[0].followerId;
-      }
-      if (DTOs.length == 0) {
-        return [
-          [],
-          {
-            page_start: 0,
-            page_size: 0,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      } else if (DTOs.length > pageSize) {
-        return [
-          DTOs.slice(0, pageSize),
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: true,
-            next_start: DTOs.at(-1).id,
-          },
-        ];
-      } else {
-        return [
-          DTOs,
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      }
+      const prev = await prevRelationshipsPromise;
+      return PageHelper.Page(
+        prev,
+        DTOs,
+        pageSize,
+        (i) => i.followerId,
+        (i) => i.id,
+      );
     }
   }
 
@@ -820,43 +734,7 @@ export class UsersService {
           return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
         }),
       );
-      if (DTOs.length == 0) {
-        return [
-          [],
-          {
-            page_start: 0,
-            page_size: 0,
-            has_prev: false,
-            prev_start: 0,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      } else if (DTOs.length > pageSize) {
-        return [
-          DTOs.slice(0, pageSize),
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: false,
-            prev_start: 0,
-            has_more: true,
-            next_start: DTOs.at(-1).id,
-          },
-        ];
-      } else {
-        return [
-          DTOs,
-          {
-            page_start: DTOs[0].id,
-            page_size: DTOs.length,
-            has_prev: false,
-            prev_start: 0,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      }
+      return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise = this.userFollowingRepository.find({
         where: {
@@ -864,7 +742,7 @@ export class UsersService {
           followeeId: LessThan(firstFolloweeId),
         },
         take: pageSize,
-        order: { followeeId: 'ASC' },
+        order: { followeeId: 'DESC' },
       });
       const queriedRelationsPromise = this.userFollowingRepository.find({
         where: {
@@ -879,50 +757,14 @@ export class UsersService {
           return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
         }),
       );
-      var has_prev = false,
-        prev_start = 0;
-      const prevRelationships = await prevRelationshipsPromise;
-      if (prevRelationships.length > 0) {
-        has_prev = true;
-        prev_start = prevRelationships[0].followeeId;
-      }
-      if (DTOs.length == 0) {
-        return [
-          [],
-          {
-            page_start: 0,
-            page_size: 0,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      } else if (DTOs.length > pageSize) {
-        return [
-          DTOs.slice(0, pageSize),
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: true,
-            next_start: DTOs.at(-1).id,
-          },
-        ];
-      } else {
-        return [
-          DTOs,
-          {
-            page_start: DTOs[0].id,
-            page_size: pageSize,
-            has_prev: has_prev,
-            prev_start: prev_start,
-            has_more: false,
-            next_start: 0,
-          },
-        ];
-      }
+      const prev = await prevRelationshipsPromise;
+      return PageHelper.Page(
+        prev,
+        DTOs,
+        pageSize,
+        (i) => i.followeeId,
+        (i) => i.id,
+      );
     }
   }
 }

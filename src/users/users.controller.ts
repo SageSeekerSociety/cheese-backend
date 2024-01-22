@@ -209,16 +209,13 @@ export class UsersController {
   @Get('/:id')
   async getUser(
     @Param('id', ParseIntPipe) id: number,
-    // @Headers('Authorization') auth: string,
-    @Request() req: Request,
+    @Headers('Authorization') auth: string,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetUserRespondDto> {
-    var viewerId: number = null;
+    let viewerId: number = null;
     try {
-      const auth = req.headers['Authorization'];
-      const decoded = this.authService.verify(auth);
-      viewerId = decoded.userId;
+      viewerId = this.authService.verify(auth).userId;
     } catch {}
     const user = await this.usersService.getUserDtoById(
       id,
@@ -316,7 +313,7 @@ export class UsersController {
   ): Promise<GetFollowersRespondDto> {
     if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var viewerId: number = null;
+    let viewerId: number = null;
     try {
       const auth = req.headers['Authorization'];
       const decoded = this.authService.verify(auth.split(' ')[1]);
@@ -352,7 +349,7 @@ export class UsersController {
   ): Promise<GetFollowersRespondDto> {
     if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var viewerId: number = null;
+    let viewerId: number = null;
     try {
       const auth = req.headers['Authorization'];
       const decoded = this.authService.verify(auth.split(' ')[1]);
