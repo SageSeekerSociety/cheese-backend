@@ -491,10 +491,11 @@ describe('User Module', () => {
       expect(respond.body.data.intro).toBe('test user updated');
     });
     it('should get modified user profile even without a token', async () => {
-      const respond = await request(app.getHttpServer())
-        .get(`/users/${TestUserId}`)
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .set('authorization', 'Bearer ' + TestToken);
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${TestUserId}`,
+      );
+      //.set('User-Agent', 'PostmanRuntime/7.26.8')
+      //.set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.message).toBe('Query user successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
