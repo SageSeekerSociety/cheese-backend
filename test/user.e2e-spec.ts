@@ -363,7 +363,16 @@ describe('User Module', () => {
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
       TestUserId = respond.body.data.user.id;
-      TestRefreshToken = respond.body.data.refreshToken;
+      expect(respond.header['set-cookie'][0]).toMatch(
+        /^REFRESH_TOKEN=.+; Path=\/users\/auth\/access-token; Expires=.+; HttpOnly; SameSite=Strict$/,
+      );
+      TestRefreshToken = respond.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      expect(respond.body.data.accessToken).toBeDefined();
+      TestToken = respond.body.data.accessToken;
+    });
+    it('should refresh access token successfully', async () => {
       const respond2 = await request(app.getHttpServer())
         .get('/users/auth/access-token')
         .set(
@@ -375,7 +384,6 @@ describe('User Module', () => {
       expect(respond2.status).toBe(200);
       expect(respond2.body.code).toBe(200);
       expect(respond2.body.accessToken).toBeDefined();
-      TestToken = respond2.body.accessToken;
     });
     it('should return UsernameNotFoundError', async () => {
       const respond = await request(app.getHttpServer())

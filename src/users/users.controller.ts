@@ -20,10 +20,12 @@ import {
   Put,
   Query,
   Request,
+  Res,
   UseFilters,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
@@ -35,7 +37,7 @@ import {
 } from './DTO/follow-unfollow.dto';
 import { GetFollowersRespondDto } from './DTO/get-followers.dto';
 import { GetUserRespondDto } from './DTO/get-user.dto';
-import { LoginRequestDto } from './DTO/login.dto';
+import { LoginRequestDto, LoginRespondDto } from './DTO/login.dto';
 import { RefreshTokenRespondDto } from './DTO/refresh-token.dto';
 import { RegisterRequestDto, RegisterResponseDto } from './DTO/register.dto';
 import {
@@ -82,7 +84,8 @@ export class UsersController {
     @Body() request: RegisterRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<RegisterResponseDto> {
+    @Res() res: Response,
+  ): Promise<Response> {
     const userDto = await this.usersService.register(
       request.username,
       request.nickname,
@@ -98,14 +101,26 @@ export class UsersController {
       ip,
       userAgent,
     );
-    return {
+    const refreshTokenExpire = new Date(
+      this.authService.decode(refreshToken).validUntil,
+    );
+    const accessToken = await this.sessionService.refreshSession(refreshToken);
+    const data: RegisterResponseDto = {
       code: 201,
       message: 'Register successfully.',
       data: {
         user: userDto,
-        refreshToken: refreshToken,
+        accessToken,
       },
     };
+    return res
+      .cookie('REFRESH_TOKEN', refreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/users/auth/access-token',
+        expires: new Date(refreshTokenExpire),
+      })
+      .json(data);
   }
 
   @Post('/auth/login')
@@ -113,21 +128,34 @@ export class UsersController {
     @Body() request: LoginRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ) {
+    @Res() res: Response,
+  ): Promise<Response> {
     const [userDto, refreshToken] = await this.usersService.login(
       request.username,
       request.password,
       ip,
       userAgent,
     );
-    return {
+    const refreshTokenExpire = new Date(
+      this.authService.decode(refreshToken).validUntil,
+    );
+    const accessToken = await this.sessionService.refreshSession(refreshToken);
+    const data: LoginRespondDto = {
       code: 201,
       message: 'Login successfully.',
       data: {
         user: userDto,
-        refreshToken: refreshToken,
+        accessToken,
       },
     };
+    return res
+      .cookie('REFRESH_TOKEN', refreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/users/auth/access-token',
+        expires: new Date(refreshTokenExpire),
+      })
+      .json(data);
   }
 
   @Get('/auth/access-token')
