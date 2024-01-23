@@ -245,7 +245,7 @@ export class UsersService {
     }
 
     // Determine whether the email code is correct.
-    let records = await this.userRegisterRequestRepository.find({
+    const records = await this.userRegisterRequestRepository.find({
       where: { email: email },
     });
     for (const record of records) {
