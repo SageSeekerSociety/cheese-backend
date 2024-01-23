@@ -407,7 +407,7 @@ paths:
               description: "refresh token"
               schema:
                 type: string
-                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/access-token; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/refresh-token; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
@@ -429,12 +429,12 @@ paths:
               description: "refresh token"
               schema:
                 type: string
-                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/access-token; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/refresh-token; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
-  /users/auth/access-token:
+  /users/auth/refresh-token:
     get:
       summary: 用户刷新 token
       operationId: refresh-access-token
