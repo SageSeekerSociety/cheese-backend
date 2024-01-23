@@ -95,7 +95,7 @@ export class UsersController {
       ip,
       userAgent,
     );
-    const [_, refreshToken] = await this.usersService.login(
+    const [, refreshToken] = await this.usersService.login(
       request.username,
       request.password,
       ip,
@@ -117,7 +117,7 @@ export class UsersController {
       .cookie('REFRESH_TOKEN', refreshToken, {
         httpOnly: true,
         sameSite: 'strict',
-        path: '/users/auth/access-token',
+        path: '/users/auth',
         expires: new Date(refreshTokenExpire),
       })
       .json(data);
@@ -152,7 +152,7 @@ export class UsersController {
       .cookie('REFRESH_TOKEN', refreshToken, {
         httpOnly: true,
         sameSite: 'strict',
-        path: '/users/auth/access-token',
+        path: '/users/auth',
         expires: new Date(refreshTokenExpire),
       })
       .json(data);
