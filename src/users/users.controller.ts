@@ -158,7 +158,7 @@ export class UsersController {
       .json(data);
   }
 
-  @Get('/auth/access-token')
+  @Post('/auth/refresh-token')
   async refreshToken(
     @Headers('cookie') cookieHeader: string,
   ): Promise<RefreshTokenRespondDto> {
