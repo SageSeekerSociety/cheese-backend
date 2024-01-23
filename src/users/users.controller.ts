@@ -176,7 +176,9 @@ export class UsersController {
     return {
       code: 200,
       message: 'Refresh token successfully.',
-      accessToken: await this.sessionService.refreshSession(refreshToken),
+      data: {
+        accessToken: await this.sessionService.refreshSession(refreshToken),
+      },
     };
   }
 
