@@ -158,7 +158,7 @@ export class UsersController {
       .json(data);
   }
 
-  @Get('/auth/access-token')
+  @Post('/auth/refresh-token')
   async refreshToken(
     @Headers('cookie') cookieHeader: string,
   ): Promise<RefreshTokenRespondDto> {
@@ -176,7 +176,9 @@ export class UsersController {
     return {
       code: 200,
       message: 'Refresh token successfully.',
-      accessToken: await this.sessionService.refreshSession(refreshToken),
+      data: {
+        accessToken: await this.sessionService.refreshSession(refreshToken),
+      },
     };
   }
 

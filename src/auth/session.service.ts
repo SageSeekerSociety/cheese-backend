@@ -21,7 +21,7 @@ export class SessionService {
     private readonly sessionRepository: Repository<Session>,
     @InjectRepository(SessionRefreshLog)
     private readonly sessionRefreshLogRepository: Repository<SessionRefreshLog>,
-  ) { }
+  ) {}
 
   // Returns:
   //     The refresh token of the session.
