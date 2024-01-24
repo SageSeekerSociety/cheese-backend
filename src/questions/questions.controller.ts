@@ -143,11 +143,28 @@ export class QuestionsController {
 
   @Put('/:id')
   async updateQuestion(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Body() body: UpdateQuestionRequestDto,
     @Headers('Authorization') auth: string,
   ): Promise<BaseRespondDto> {
-    throw new Error();
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
+    await this.questionsService.updateQuestion(
+      id,
+      body.title,
+      body.content,
+      body.type,
+      body.topics,
+    );
+    return {
+      code: 200,
+      message: 'OK',
+    };
   }
 
   @Delete('/:id')

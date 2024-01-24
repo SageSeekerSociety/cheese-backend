@@ -22,8 +22,6 @@ describe('Topic Module', () => {
   )}@ruc.edu.cn`;
   const TestTopicCode = Math.floor(Math.random() * 10000000000).toString();
   const TestTopicPrefix = `[Test(${TestTopicCode}) Topic]`;
-  var TestUserId: number;
-  var TestRefreshToken: string;
   var TestToken: string;
 
   beforeAll(async () => {
@@ -86,34 +84,8 @@ describe('Topic Module', () => {
       expect(respond.body.message).toStrictEqual('Register successfully.');
       expect(respond.body.code).toEqual(201);
       req.expect(201);
-    });
-    it('should login successfully', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          password: 'abc123456!!!',
-        });
-      expect(respond.body.message).toBe('Login successfully.');
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user');
-      TestUserId = respond.body.data.user.id;
-      TestRefreshToken = respond.body.data.refreshToken;
-      const respond2 = await request(app.getHttpServer())
-        .get('/users/auth/access-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond2.body.message).toBe('Refresh token successfully.');
-      expect(respond2.status).toBe(200);
-      expect(respond2.body.code).toBe(200);
-      expect(respond2.body.accessToken).toBeDefined();
-      TestToken = respond2.body.accessToken;
+      expect(respond.body.data.accessToken).toBeDefined();
+      TestToken = respond.body.data.accessToken;
     });
   });
 

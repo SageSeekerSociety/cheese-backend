@@ -11,7 +11,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
-import exp from 'constants';
 jest.mock('../src/users/email.service');
 
 describe('Topic Module', () => {
@@ -25,9 +24,8 @@ describe('Topic Module', () => {
   const TestTopicPrefix = `[Test(${TestTopicCode}) Question]`;
   const TestQuestionCode = Math.floor(Math.random() * 10000000000).toString();
   const TestQuestionPrefix = `[Test(${TestQuestionCode}) Question]`;
-  let TestUserId: number;
-  let TestRefreshToken: string;
   let TestToken: string;
+  let TestUserId: number;
   let TopicIds: number[] = [];
   let questionIds: number[] = [];
 
@@ -91,34 +89,10 @@ describe('Topic Module', () => {
       expect(respond.body.message).toStrictEqual('Register successfully.');
       expect(respond.body.code).toEqual(201);
       req.expect(201);
-    });
-    it('should login successfully', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          password: 'abc123456!!!',
-        });
-      expect(respond.body.message).toBe('Login successfully.');
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user');
+      expect(respond.body.data.accessToken).toBeDefined();
+      TestToken = respond.body.data.accessToken;
+      expect(respond.body.data.user.id).toBeDefined();
       TestUserId = respond.body.data.user.id;
-      TestRefreshToken = respond.body.data.refreshToken;
-      const respond2 = await request(app.getHttpServer())
-        .get('/users/auth/access-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond2.body.message).toBe('Refresh token successfully.');
-      expect(respond2.status).toBe(200);
-      expect(respond2.body.code).toBe(200);
-      expect(respond2.body.accessToken).toBeDefined();
-      TestToken = respond2.body.accessToken;
     });
     it('should create some topics', async () => {
       async function createTopic(name: string) {
@@ -133,7 +107,9 @@ describe('Topic Module', () => {
         expect(respond.body.code).toBe(201);
         TopicIds.push(respond.body.data.id);
       }
-      await Promise.all([createTopic('数学'), createTopic('哥德巴赫猜想')]);
+      await createTopic('数学');
+      await createTopic('哥德巴赫猜想');
+      await createTopic('钓鱼');
     }, 60000);
   });
 
@@ -338,6 +314,106 @@ describe('Topic Module', () => {
       expect(respond2.body.data.page.has_prev).toBe(true);
       expect(respond2.body.data.page.prev_start).toBe(questionIds[0]);
       expect(respond2.body.data.page.has_more).toBe(true);
+    });
+  });
+
+  describe('update question', () => {
+    it('should update a question', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({
+          title: `${TestQuestionPrefix} 我这个哥德巴赫猜想的证明对吗？(flag)`,
+          content:
+            '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。(flag)',
+          type: 1,
+          topics: [TopicIds[2]],
+        });
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      const respond2 = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[0]}`)
+        .send();
+      expect(respond2.body.message).toBe('OK');
+      expect(respond2.body.code).toBe(200);
+      expect(respond2.status).toBe(200);
+      expect(respond2.body.data.id).toBe(questionIds[0]);
+      expect(respond2.body.data.title).toContain('flag');
+      expect(respond2.body.data.content).toContain('flag');
+      expect(respond2.body.data.type).toBe(1);
+      expect(respond2.body.data.topics.length).toBe(1);
+      expect(respond2.body.data.topics[0].id).toBe(TopicIds[2]);
+      expect(respond2.body.data.topics[0].name).toBe(`${TestTopicPrefix} 钓鱼`);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[0]}`)
+        .send({
+          title: `${TestQuestionPrefix} 我这个哥德巴赫猜想的证明对吗？(flag)`,
+          content:
+            '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。(flag)',
+          type: 1,
+          topics: [TopicIds[2]],
+        });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should return QuestionNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put('/questions/-1')
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({
+          title: `${TestQuestionPrefix} 我这个哥德巴赫猜想的证明对吗？(flag)`,
+          content:
+            '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。(flag)',
+          type: 1,
+          topics: [TopicIds[2]],
+        });
+      expect(respond.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return PermissionDeniedError', async () => {
+      async function createAuxiliaryUser_version2(): Promise<[number, string]> {
+        // returns [userId, accessToken]
+        const email = `test-${Math.floor(
+          Math.random() * 10000000000,
+        )}@ruc.edu.cn`;
+        const respond = await request(app.getHttpServer())
+          .post('/users/verify/email')
+          //.set('User-Agent', 'PostmanRuntime/7.26.8')
+          .send({ email });
+        expect(respond.status).toBe(201);
+        const verificationCode = (
+          MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        ).mock.calls.at(-1)[1];
+        const respond2 = await request(app.getHttpServer())
+          .post('/users')
+          //.set('User-Agent', 'PostmanRuntime/7.26.8')
+          .send({
+            username: `TestUser-${Math.floor(Math.random() * 10000000000)}`,
+            nickname: 'auxiliary_user',
+            password: 'abc123456!!!',
+            email,
+            emailCode: verificationCode,
+          });
+        expect(respond2.status).toBe(201);
+        return [respond2.body.data.user.id, respond2.body.data.accessToken];
+      }
+      const [, accessToken] = await createAuxiliaryUser_version2();
+      Logger.log(`accessToken: ${accessToken}`);
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[0]}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          title: `${TestQuestionPrefix} 我这个哥德巴赫猜想的证明对吗？(flag)`,
+          content:
+            '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。(flag)',
+          type: 1,
+          topics: [TopicIds[2]],
+        });
+      expect(respond.body.message).toMatch(/^PermissionDeniedError: /);
+      expect(respond.body.code).toBe(403);
     });
   });
 

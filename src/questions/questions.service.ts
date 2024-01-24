@@ -352,4 +352,49 @@ export class QuestionsService {
       );
     }
   }
+
+  async updateQuestion(
+    questionId: number,
+    title: string,
+    content: string,
+    type: number,
+    topicIds: number[],
+  ): Promise<void> {
+    const question = await this.questionRepository.findOneBy({
+      id: questionId,
+    });
+    if (question == null) throw new QuestionNotFoundError(questionId);
+    await this.entityManager.transaction(
+      async (entityManager: EntityManager) => {
+        const questionRepository = entityManager.getRepository(Question);
+        question.title = title;
+        question.content = content;
+        question.type = type;
+        await questionRepository.save(question);
+        const questionTopicRelationRepository = entityManager.getRepository(
+          QuestionTopicRelation,
+        );
+        await questionTopicRelationRepository.softDelete({ questionId });
+        await Promise.all(
+          topicIds.map((topicId) =>
+            this.addTopicToQuestion(
+              question.id,
+              topicId,
+              question.createdById,
+              true,
+              questionTopicRelationRepository,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  async getQuestionCreatedById(questionId: number): Promise<number> {
+    const question = await this.questionRepository.findOneBy({
+      id: questionId,
+    });
+    if (question == null) throw new QuestionNotFoundError(questionId);
+    return question.createdById;
+  }
 }
