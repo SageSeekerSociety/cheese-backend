@@ -164,6 +164,8 @@ export class UsersController {
   async refreshToken(
     @Headers('cookie') cookieHeader: string,
     @Res() res: Response,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<Response> {
     if (cookieHeader == null) {
       throw new AuthenticationRequiredError();
@@ -181,11 +183,19 @@ export class UsersController {
     const newRefreshTokenExpire = new Date(
       this.authService.decode(newRefreshToken).validUntil,
     );
+    const decodedAccessToken = this.authService.decode(accessToken);
+    const userDto = await this.usersService.getUserDtoById(
+      decodedAccessToken.authorization.userId,
+      decodedAccessToken.authorization.userId,
+      ip,
+      userAgent,
+    );
     const data: RefreshTokenRespondDto = {
       code: 201,
       message: 'Refresh token successfully.',
       data: {
         accessToken: accessToken,
+        user: userDto,
       },
     };
     return res
