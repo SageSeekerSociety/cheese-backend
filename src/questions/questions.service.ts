@@ -8,9 +8,10 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageHelper } from '../common/helper/page.helper';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
@@ -22,6 +23,7 @@ import {
   Question,
   QuestionFollowerRelation,
   QuestionQueryLog,
+  QuestionSearchLog,
   QuestionTopicRelation,
 } from './questions.entity';
 import { QuestionNotFoundError } from './questions.error';
@@ -31,6 +33,8 @@ export class QuestionsService {
   constructor(
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
+    @InjectEntityManager()
+    private readonly entityManager,
     @InjectRepository(Question)
     private readonly questionRepository: Repository<Question>,
     @InjectRepository(QuestionTopicRelation)
@@ -39,27 +43,36 @@ export class QuestionsService {
     private readonly questionQueryLogRepository: Repository<QuestionQueryLog>,
     @InjectRepository(QuestionFollowerRelation)
     private readonly questionFollowRelationRepository: Repository<QuestionFollowerRelation>,
+    @InjectRepository(QuestionSearchLog)
+    private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
   ) {}
 
   async addTopicToQuestion(
     questionId: number,
     topicId: number,
     createdById: number,
+    // for transaction
+    omitQuestionExistsCheck: boolean = false,
+    questionTopicRelationRepository?: Repository<QuestionTopicRelation>,
   ): Promise<void> {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
-    });
-    if (question == null) throw new QuestionNotFoundError(questionId);
+    if (questionTopicRelationRepository == null)
+      questionTopicRelationRepository = this.questionTopicRelationRepository;
+    if (omitQuestionExistsCheck == false) {
+      const question = await this.questionRepository.findOneBy({
+        id: questionId,
+      });
+      if (question == null) throw new QuestionNotFoundError(questionId);
+    }
     const topic = await this.topicService.getTopicDtoById(topicId);
     if (topic == null) throw new TopicNotFoundError(topicId);
     const createBy = await this.userService.isUserExists(createdById);
     if (createBy == false) throw new UserIdNotFoundError(createdById);
-    const relation = this.questionTopicRelationRepository.create({
+    const relation = questionTopicRelationRepository.create({
       questionId,
       topicId,
       createdById,
     });
-    await this.questionTopicRelationRepository.save(relation);
+    await questionTopicRelationRepository.save(relation);
   }
 
   // returns: question id
@@ -68,24 +81,42 @@ export class QuestionsService {
     title: string,
     content: string,
     type: number,
-    topics: number[],
+    topicIds: number[],
     groupId?: number,
   ): Promise<number> {
+    for (const topicId of topicIds) {
+      const topic = await this.topicService.getTopicDtoById(topicId);
+      if (topic == null) throw new TopicNotFoundError(topicId);
+    }
     // TODO: Validate groupId.
-    const question = this.questionRepository.create({
-      createdById: askerUserId,
-      title,
-      content,
-      type,
-      groupId,
-    });
-    await this.questionRepository.save(question);
-    await Promise.all(
-      topics.map((topicId) =>
-        this.addTopicToQuestion(question.id, topicId, askerUserId),
-      ),
+    return this.entityManager.transaction(
+      async (entityManager: EntityManager) => {
+        const questionRepository = entityManager.getRepository(Question);
+        const question = questionRepository.create({
+          createdById: askerUserId,
+          title,
+          content,
+          type,
+          groupId,
+        });
+        await questionRepository.save(question);
+        const questionTopicRelationRepository = entityManager.getRepository(
+          QuestionTopicRelation,
+        );
+        await Promise.all(
+          topicIds.map((topicId) =>
+            this.addTopicToQuestion(
+              question.id,
+              topicId,
+              askerUserId,
+              true,
+              questionTopicRelationRepository,
+            ),
+          ),
+        );
+        return question.id;
+      },
     );
-    return question.id;
   }
 
   async hasFollowedQuestion(
@@ -126,6 +157,7 @@ export class QuestionsService {
     ip: string,
     userAgent: string,
   ): Promise<QuestionDto> {
+    if (questionId == null) throw new Error('questionId is null');
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
@@ -185,12 +217,139 @@ export class QuestionsService {
 
   async searchQuestions(
     keywords: string,
-    firstTopicId: number, // null if from start
+    firstQuestionId: number, // null if from start
     pageSize: number,
     searcherId: number, // nullable
     ip: string,
     userAgent: string,
   ): Promise<[QuestionDto[], PageRespondDto]> {
-    throw new Error();
+    const timeBegin = Date.now();
+    if (firstQuestionId == null) {
+      const questionIds = (await this.questionRepository
+        .createQueryBuilder('question')
+        // 'relevance' is used for sorting
+        .select([
+          'question.id',
+          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
+        ])
+        // TypeORM uses query template to prevent SQL injection.
+        // ':keywords' is translated to a parameter placeholder in the SQL query template,
+        // so it cannot be injected.
+        .where(
+          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
+        )
+        .orderBy({ relevance: 'DESC', id: 'ASC' })
+        .limit(pageSize + 1)
+        .setParameter('keywords', keywords)
+        .getRawMany()) as { question_id: number; relevance: number }[];
+      const questionDtos = await Promise.all(
+        questionIds.map((questionId) =>
+          this.getQuestionDto(
+            questionId.question_id,
+            searcherId,
+            ip,
+            userAgent,
+          ),
+        ),
+      );
+      const log = this.questionSearchLogRepository.create({
+        keywords,
+        firstQuestionId,
+        pageSize,
+        result: questionIds.map((t) => t.question_id).join(','),
+        duration: (Date.now() - timeBegin) / 1000,
+        searcherId,
+        ip,
+        userAgent,
+      });
+      await this.questionSearchLogRepository.save(log);
+      return PageHelper.PageStart(questionDtos, pageSize, (q) => q.id);
+    } else {
+      const relevanceCursorRaw = await this.questionRepository
+        .createQueryBuilder('question')
+        .select([
+          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
+        ])
+        .where('id = :firstQuestionId')
+        .setParameter('keywords', keywords)
+        .setParameter('firstQuestionId', firstQuestionId)
+        .getRawOne();
+      if (relevanceCursorRaw == null)
+        throw new QuestionNotFoundError(firstQuestionId);
+      const relevanceCursor = relevanceCursorRaw.relevance as number;
+      const prevPromise = this.questionRepository
+        .createQueryBuilder('question')
+        .select([
+          'question.id',
+          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
+        ])
+        .where(
+          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
+        )
+        .andWhere(
+          '(' +
+            ' ROUND(MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) > ROUND(:relevanceCursor, 5)' +
+            ' OR ROUND(MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
+            ' AND question.id < :firstQuestionId' +
+            ')',
+        )
+        .orderBy({ relevance: 'ASC', id: 'DESC' })
+        .limit(pageSize)
+        .setParameter('keywords', keywords)
+        .setParameter('relevanceCursor', relevanceCursor)
+        .setParameter('firstQuestionId', firstQuestionId)
+        .getRawMany() as Promise<{ question_id: number; relevance: number }[]>;
+      const herePromise = this.questionRepository
+        .createQueryBuilder('question')
+        .select([
+          'question.id',
+          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
+        ])
+        .where(
+          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
+        )
+        .andWhere(
+          '(' +
+            ' ROUND(MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) < ROUND(:relevanceCursor, 5)' +
+            ' OR ROUND(MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
+            ' AND question.id >= :firstQuestionId' +
+            ')',
+        )
+        .orderBy({ relevance: 'DESC', id: 'ASC' })
+        .limit(pageSize + 1)
+        .setParameter('keywords', keywords)
+        .setParameter('relevanceCursor', relevanceCursor)
+        .setParameter('firstQuestionId', firstQuestionId)
+        .getRawMany() as Promise<{ question_id: number; relevance: number }[]>;
+      const [prev, here] = await Promise.all([prevPromise, herePromise]);
+      const questionDtos = await Promise.all(
+        here.map((questionId) =>
+          this.getQuestionDto(
+            questionId.question_id,
+            searcherId,
+            ip,
+            userAgent,
+          ),
+        ),
+      );
+      const log = this.questionSearchLogRepository.create({
+        keywords,
+        firstQuestionId,
+        pageSize,
+        result: here.map((t) => t.question_id).join(','),
+        duration: (Date.now() - timeBegin) / 1000,
+        searcherId,
+        ip,
+        userAgent,
+      });
+      await this.questionSearchLogRepository.save(log);
+      return PageHelper.Page(
+        prev,
+        questionDtos,
+        pageSize,
+        (q) => q.question_id,
+        (q) => q.id,
+      );
+    }
   }
 }

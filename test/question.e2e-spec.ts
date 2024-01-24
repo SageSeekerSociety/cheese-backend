@@ -134,27 +134,42 @@ describe('Topic Module', () => {
         TopicIds.push(respond.body.data.id);
       }
       await Promise.all([createTopic('数学'), createTopic('哥德巴赫猜想')]);
-    });
+    }, 60000);
   });
 
   describe('create question', () => {
-    it('should create a question', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/questions')
-        .set('Authorization', `Bearer ${TestToken}`)
-        .send({
-          title: `${TestQuestionPrefix} 我这个哥德巴赫猜想的证明对吗？`,
-          content:
-            '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
-          type: 0,
-          topics: [TopicIds[0], TopicIds[1]],
-        });
-      expect(respond.body.message).toBe('Created');
-      expect(respond.body.code).toBe(201);
-      expect(respond.status).toBe(201);
-      expect(respond.body.data.id).toBeDefined();
-      questionIds.push(respond.body.data.id);
-    });
+    it('should create some questions', async () => {
+      async function createQuestion(title, content) {
+        const respond = await request(app.getHttpServer())
+          .post('/questions')
+          .set('Authorization', `Bearer ${TestToken}`)
+          .send({
+            title: `${TestQuestionPrefix} ${title}`,
+            content,
+            type: 0,
+            topics: [TopicIds[0], TopicIds[1]],
+          });
+        expect(respond.body.message).toBe('Created');
+        expect(respond.body.code).toBe(201);
+        expect(respond.status).toBe(201);
+        expect(respond.body.data.id).toBeDefined();
+        questionIds.push(respond.body.data.id);
+      }
+      await createQuestion(
+        '我这个哥德巴赫猜想的证明对吗？',
+        '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
+      );
+      await Promise.all([
+        createQuestion('这学期几号放假啊？', '如题'),
+        createQuestion(
+          '好难受啊',
+          '我这学期选了五十学分，每天都要早八，而且还有好多作业要写，好难受啊。安慰安慰我吧。',
+        ),
+        createQuestion('Question title with emoji: 😂😂', 'content'),
+        createQuestion('title', 'Question content with emoji: 😂😂'),
+        createQuestion('long question', '啊'.repeat(30000)),
+      ]);
+    }, 60000);
     it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
         .post('/questions')
@@ -263,6 +278,66 @@ describe('Topic Module', () => {
         .send();
       expect(respond.body.message).toMatch(/^QuestionNotFoundError: /);
       expect(respond.body.code).toBe(404);
+    });
+  });
+
+  describe('search question', () => {
+    it('should return empty question list', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/questions')
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.questions.length).toBe(0);
+      expect(respond.body.data.page.page_start).toBe(0);
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
+    });
+    it('should search successfully without page_size and page_start', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions?q=${TestQuestionCode}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.questions.length).toBe(
+        respond.body.data.page.page_size,
+      );
+      expect(respond.body.data.page.page_start).toBe(questionIds[0]);
+      expect(respond.body.data.page.page_size).toBeGreaterThanOrEqual(6);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+    });
+    it('should search successfully with page_size, with or without page_start', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions?q=${TestQuestionCode}&page_size=1`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.questions.length).toBe(1);
+      expect(respond.body.data.page.page_start).toBe(questionIds[0]);
+      expect(respond.body.data.page.page_size).toBe(1);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(true);
+      const next = respond.body.data.page.next_start;
+      const respond2 = await request(app.getHttpServer())
+        .get(`/questions?q=${TestQuestionCode}&page_size=1&page_start=${next}`)
+        .send();
+      expect(respond2.body.message).toBe('OK');
+      expect(respond2.body.code).toBe(200);
+      expect(respond2.status).toBe(200);
+      expect(respond2.body.data.questions.length).toBe(1);
+      expect(respond2.body.data.page.page_start).toBe(next);
+      expect(respond2.body.data.page.page_size).toBe(1);
+      expect(respond2.body.data.page.has_prev).toBe(true);
+      expect(respond2.body.data.page.prev_start).toBe(questionIds[0]);
+      expect(respond2.body.data.page.has_more).toBe(true);
     });
   });
 

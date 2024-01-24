@@ -24,6 +24,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { unescape } from 'querystring';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
@@ -61,7 +62,29 @@ export class QuestionsController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchQuestionResponseDto> {
-    throw new Error();
+    if (pageSize == null || pageSize == 0) pageSize = 20;
+    // try get viewer id
+    var searcherId: number = null;
+    try {
+      searcherId = this.authService.verify(auth).userId;
+    } catch {}
+    const [questions, pageRespond] =
+      await this.questionsService.searchQuestions(
+        unescape(q),
+        pageStart,
+        pageSize,
+        searcherId,
+        ip,
+        userAgent,
+      );
+    return {
+      code: 200,
+      message: 'OK',
+      data: {
+        questions,
+        page: pageRespond,
+      },
+    };
   }
 
   @Post('/')

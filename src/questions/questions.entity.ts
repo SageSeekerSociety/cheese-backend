@@ -37,12 +37,12 @@ export class Question {
   @Index('idx_asker_user', { unique: false })
   createdById: number;
 
-  // Use column type 'text' to support arbitrary length of string.
+  // Use column type 'text' to support string with a maximum length of 64K.
   @Column('text')
   title: string;
 
-  // Use column type 'text' to support arbitrary length of string.
-  @Column('text')
+  // Use column type 'mediumtext' to support string with a maximum length of 16M.
+  @Column('mediumtext')
   content: string;
 
   @Column()
@@ -140,6 +140,59 @@ export class QuestionQueryLog {
   @Column()
   @Index('idx_question', { unique: false })
   questionId: number;
+
+  @Column()
+  ip: string;
+
+  @Column()
+  userAgent: string = '';
+
+  @CreateDateColumn()
+  createdAt: Date;
+}
+
+@Entity()
+// The search history is a precious data source,
+// so we should record it even if it is not used for now.
+export class QuestionSearchLog {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  // In the future, we may want to use the search history to recommend topics to users.
+  // So we use fulltext index here, although it is not necessary for now.
+  @Index('idx_keywords', { fulltext: true, parser: 'ngram' })
+  keywords: string;
+
+  @Column({ nullable: true })
+  // A paging argument.
+  firstQuestionId: number;
+
+  @Column()
+  // A paging argument.
+  pageSize: number;
+
+  @Column()
+  // The result is represented as a string of question ids, separated by comma.
+  // For example, if the result is [1, 2, 3], then the result string is "1,2,3".
+  result: string;
+
+  @Column('double')
+  // The search duration in seconds.
+  duration: number;
+
+  @ManyToOne(() => User)
+  @Index()
+  searcher: User;
+
+  // This property does not generate a new column, because the column `searcherId` is
+  // generated automatically according to the @ManyToOne decorator by TypeORM engine.
+  //
+  // This property is used for accessing the user id without joining the user table.
+  //
+  // Null if the searcher is not logged in.
+  @Column({ nullable: true })
+  searcherId: number;
 
   @Column()
   ip: string;

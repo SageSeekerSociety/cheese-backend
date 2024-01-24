@@ -16,6 +16,7 @@ import {
   Question,
   QuestionFollowerRelation,
   QuestionQueryLog,
+  QuestionSearchLog,
   QuestionTopicRelation,
 } from './questions.entity';
 import { QuestionsService } from './questions.service';
@@ -27,6 +28,7 @@ import { QuestionsService } from './questions.service';
       QuestionTopicRelation,
       QuestionFollowerRelation,
       QuestionQueryLog,
+      QuestionSearchLog,
     ]),
     AuthModule,
     UsersModule,
