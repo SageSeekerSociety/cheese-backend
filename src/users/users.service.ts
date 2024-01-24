@@ -190,7 +190,7 @@ export class UsersService {
   private isValidPassword(password: string): boolean {
     // Password should contains at least one letter, one special character and one number.
     // It should contain at least 8 chars.
-    return /^(?=.*[a-zA-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+]).{8,}$/.test(
+    return /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F]).{8,}$/.test(
       password,
     );
   }
@@ -208,7 +208,7 @@ export class UsersService {
   }
 
   get defaultAvatar(): string {
-    return 'deafult.jpg';
+    return 'default.jpg';
   }
 
   get defaultIntro(): string {
