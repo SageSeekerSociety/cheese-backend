@@ -208,7 +208,7 @@ export class UsersService {
   }
 
   get defaultAvatar(): string {
-    return 'deafult.jpg';
+    return 'default.jpg';
   }
 
   get defaultIntro(): string {
