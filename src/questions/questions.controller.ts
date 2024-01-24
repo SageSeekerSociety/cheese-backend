@@ -196,22 +196,73 @@ export class QuestionsController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionFollowerResponseDto> {
-    throw new Error();
+    if (pageSize == null || pageSize == 0) pageSize = 20;
+    let userId: number;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {}
+    const [followers, pageRespond] =
+      await this.questionsService.getQuestionFollowers(
+        id,
+        pageStart,
+        pageSize,
+        userId,
+        ip,
+        userAgent,
+      );
+    return {
+      code: 200,
+      message: 'OK',
+      data: {
+        users: followers,
+        page: pageRespond,
+      },
+    };
   }
 
   @Put('/:id/followers')
   async followQuestion(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
   ): Promise<FollowQuestionResponseDto> {
-    throw new Error();
+    const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.create,
+      userId,
+      'questions/following',
+      id,
+    );
+    await this.questionsService.followQuestion(userId, id);
+    return {
+      code: 200,
+      message: 'OK',
+      data: {
+        follow_count: await this.questionsService.getFollowCountOfQuestion(id),
+      },
+    };
   }
 
   @Delete('/:id/followers')
   async unfollowQuestion(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
   ): Promise<UnfollowQuestionResponseDto> {
-    throw new Error();
+    const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.delete,
+      userId,
+      'questions/following',
+      id,
+    );
+    await this.questionsService.unfollowQuestion(userId, id);
+    return {
+      code: 200,
+      message: 'OK',
+      data: {
+        follow_count: await this.questionsService.getFollowCountOfQuestion(id),
+      },
+    };
   }
 }

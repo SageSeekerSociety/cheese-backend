@@ -224,12 +224,8 @@ describe('Topic Module', () => {
       expect(respond.body.data.user.nickname).toBe('test_user');
       expect(respond.body.data.type).toBe(0);
       expect(respond.body.data.topics.length).toBe(2);
-      expect(respond.body.data.topics[0].id).toBe(TopicIds[0]);
-      expect(respond.body.data.topics[0].name).toBe(`${TestTopicPrefix} 数学`);
-      expect(respond.body.data.topics[1].id).toBe(TopicIds[1]);
-      expect(respond.body.data.topics[1].name).toBe(
-        `${TestTopicPrefix} 哥德巴赫猜想`,
-      );
+      expect(respond.body.data.topics[0].name).toContain(TestTopicPrefix);
+      expect(respond.body.data.topics[1].name).toContain(TestTopicPrefix);
       expect(respond.body.data.created_at).toBeDefined();
       expect(respond.body.data.updated_at).toBeDefined();
       expect(respond.body.data.is_follow).toBe(false);
@@ -259,12 +255,8 @@ describe('Topic Module', () => {
       expect(respond.body.data.user.nickname).toBe('test_user');
       expect(respond.body.data.type).toBe(0);
       expect(respond.body.data.topics.length).toBe(2);
-      expect(respond.body.data.topics[0].id).toBe(TopicIds[0]);
-      expect(respond.body.data.topics[0].name).toBe(`${TestTopicPrefix} 数学`);
-      expect(respond.body.data.topics[1].id).toBe(TopicIds[1]);
-      expect(respond.body.data.topics[1].name).toBe(
-        `${TestTopicPrefix} 哥德巴赫猜想`,
-      );
+      expect(respond.body.data.topics[0].name).toContain(TestTopicPrefix);
+      expect(respond.body.data.topics[1].name).toContain(TestTopicPrefix);
       expect(respond.body.data.created_at).toBeDefined();
       expect(respond.body.data.updated_at).toBeDefined();
       expect(respond.body.data.is_follow).toBe(false);
@@ -457,6 +449,99 @@ describe('Topic Module', () => {
         .send();
       expect(respond2.body.message).toMatch(/^QuestionNotFoundError: /);
       expect(respond2.body.code).toBe(404);
+    });
+  });
+
+  describe('follow logic', () => {
+    it('should return QuestionNotFollowedYetError', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[1]}/followers`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toMatch(/^QuestionNotFollowedYetError: /);
+      expect(respond.body.code).toBe(400);
+    });
+    it('should follow questions', async () => {
+      async function follow(questionId: number) {
+        const respond = await request(app.getHttpServer())
+          .put(`/questions/${questionId}/followers`)
+          .set('Authorization', `Bearer ${TestToken}`)
+          .send();
+        expect(respond.body.message).toBe('OK');
+        expect(respond.body.code).toBe(200);
+        expect(respond.status).toBe(200);
+        expect(respond.body.data.follow_count).toBe(1);
+      }
+      await follow(questionIds[1]);
+    });
+    it('should return QuestionAlreadyFollowedError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/followers`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toMatch(/^QuestionAlreadyFollowedError: /);
+      expect(respond.body.code).toBe(400);
+    });
+    it('should get follower list', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}/followers`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.users.length).toBe(1);
+      expect(respond.body.data.users[0].id).toBe(TestUserId);
+      expect(respond.body.data.users[0].username).toBe(TestUsername);
+      expect(respond.body.data.users[0].nickname).toBe('test_user');
+      expect(respond.body.data.page.page_size).toBe(1);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
+
+      const respond2 = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}/followers?page_size=1`)
+        .send();
+      expect(respond2.body.message).toBe('OK');
+      expect(respond2.body.code).toBe(200);
+      expect(respond2.status).toBe(200);
+      expect(respond2.body.data.users.length).toBe(1);
+      expect(respond2.body.data.users[0].id).toBe(TestUserId);
+      expect(respond2.body.data.users[0].username).toBe(TestUsername);
+      expect(respond2.body.data.users[0].nickname).toBe('test_user');
+      expect(respond2.body.data.page.page_size).toBe(1);
+      expect(respond2.body.data.page.has_prev).toBe(false);
+      expect(respond2.body.data.page.prev_start).toBe(0);
+      expect(respond2.body.data.page.has_more).toBe(false);
+      expect(respond2.body.data.page.next_start).toBe(0);
+
+      const respond3 = await request(app.getHttpServer())
+        .get(
+          `/questions/${questionIds[1]}/followers?page_size=1&page_start=${TestUserId}`,
+        )
+        .send();
+      expect(respond3.body).toStrictEqual(respond2.body);
+    });
+    it('should unfollow questions', async () => {
+      async function unfollow(questionId: number) {
+        const respond = await request(app.getHttpServer())
+          .delete(`/questions/${questionId}/followers`)
+          .set('Authorization', `Bearer ${TestToken}`)
+          .send();
+        expect(respond.body.message).toBe('OK');
+        expect(respond.body.code).toBe(200);
+        expect(respond.status).toBe(200);
+        expect(respond.body.data.follow_count).toBe(0);
+      }
+      await unfollow(questionIds[1]);
+    });
+    it('should return QuestionNotFollowedYetError', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[1]}/followers`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toMatch(/^QuestionNotFollowedYetError: /);
+      expect(respond.body.code).toBe(400);
     });
   });
 

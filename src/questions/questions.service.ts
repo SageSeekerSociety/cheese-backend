@@ -9,14 +9,14 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
-import { UserIdNotFoundError } from '../users/users.error';
+import { BadRequestError, UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { QuestionDto } from './DTO/question.dto';
 import {
@@ -26,7 +26,11 @@ import {
   QuestionSearchLog,
   QuestionTopicRelation,
 } from './questions.entity';
-import { QuestionNotFoundError } from './questions.error';
+import {
+  QuestionAlreadyFollowedError,
+  QuestionNotFollowedYetError,
+  QuestionNotFoundError,
+} from './questions.error';
 
 @Injectable()
 export class QuestionsService {
@@ -404,5 +408,117 @@ export class QuestionsService {
     });
     if (question == null) throw new QuestionNotFoundError(questionId);
     await this.questionRepository.softDelete({ id: questionId });
+  }
+
+  async followQuestion(followerId: number, questionId: number): Promise<void> {
+    const question = await this.questionRepository.findOneBy({
+      id: questionId,
+    });
+    if (question == null) throw new QuestionNotFoundError(questionId);
+    if ((await this.userService.isUserExists(followerId)) == false)
+      throw new UserIdNotFoundError(followerId);
+    const relationOld = await this.questionFollowRelationRepository.findOneBy({
+      followerId,
+      questionId,
+    });
+    if (relationOld != null) throw new QuestionAlreadyFollowedError(questionId);
+    const relation = this.questionFollowRelationRepository.create({
+      followerId,
+      questionId,
+    });
+    await this.questionFollowRelationRepository.save(relation);
+  }
+
+  async unfollowQuestion(
+    followerId: number,
+    questionId: number,
+  ): Promise<void> {
+    const question = await this.questionRepository.findOneBy({
+      id: questionId,
+    });
+    if (question == null) throw new QuestionNotFoundError(questionId);
+    if ((await this.userService.isUserExists(followerId)) == false)
+      throw new UserIdNotFoundError(followerId);
+    const relation = await this.questionFollowRelationRepository.findOneBy({
+      followerId,
+      questionId,
+    });
+    if (relation == null) throw new QuestionNotFollowedYetError(questionId);
+    await this.questionFollowRelationRepository.softDelete({
+      followerId,
+      questionId,
+    });
+  }
+
+  async getQuestionFollowers(
+    questionId: number,
+    firstFollowerId: number, // null if from start
+    pageSize: number,
+    viewerId: number, // nullable
+    ip: string,
+    userAgent: string,
+  ): Promise<[UserDto[], PageRespondDto]> {
+    if (pageSize <= 0) {
+      throw new BadRequestError('pageSize should be positive number');
+    }
+    if (firstFollowerId == null) {
+      const relations = await this.questionFollowRelationRepository.find({
+        where: { questionId },
+        take: pageSize + 1,
+        order: { followerId: 'ASC' },
+      });
+      const DTOs = await Promise.all(
+        relations.map((r) => {
+          return this.userService.getUserDtoById(
+            r.followerId,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
+    } else {
+      const prevRelationshipsPromise =
+        this.questionFollowRelationRepository.find({
+          where: {
+            questionId,
+            followerId: LessThan(firstFollowerId),
+          },
+          take: pageSize,
+          order: { followerId: 'DESC' },
+        });
+      const queriedRelationsPromise =
+        this.questionFollowRelationRepository.find({
+          where: {
+            questionId,
+            followerId: MoreThanOrEqual(firstFollowerId),
+          },
+          take: pageSize + 1,
+          order: { followerId: 'ASC' },
+        });
+      const DTOs = await Promise.all(
+        (await queriedRelationsPromise).map((r) => {
+          return this.userService.getUserDtoById(
+            r.followerId,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      const prev = await prevRelationshipsPromise;
+      return PageHelper.Page(
+        prev,
+        DTOs,
+        pageSize,
+        (i) => i.followerId,
+        (i) => i.id,
+      );
+    }
+  }
+
+  async getFollowerCountOfQuestion(questionId: number): Promise<number> {
+    return await this.questionFollowRelationRepository.countBy({ questionId });
   }
 }
