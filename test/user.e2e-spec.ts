@@ -21,7 +21,9 @@ describe('User Module', () => {
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
   let TestUserId: number;
+  let TestRefreshTokenOld: string;
   let TestRefreshToken: string;
+  let TestTokenOld: string;
   let TestToken: string;
 
   beforeAll(async () => {
@@ -364,7 +366,7 @@ describe('User Module', () => {
       expect(respond.body.data.user.nickname).toBe('test_user');
       TestUserId = respond.body.data.user.id;
       expect(respond.header['set-cookie'][0]).toMatch(
-        /^REFRESH_TOKEN=.+; Path=\/users\/auth\/access-token; Expires=.+; HttpOnly; SameSite=Strict$/,
+        /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
       );
       TestRefreshToken = respond.header['set-cookie'][0]
         .split(';')[0]
@@ -374,16 +376,53 @@ describe('User Module', () => {
     });
     it('should refresh access token successfully', async () => {
       const respond2 = await request(app.getHttpServer())
-        .get('/users/auth/access-token')
+        .post('/users/auth/refresh-token')
         .set(
           'Cookie',
           `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
         )
         .send();
       expect(respond2.body.message).toBe('Refresh token successfully.');
-      expect(respond2.status).toBe(200);
-      expect(respond2.body.code).toBe(200);
-      expect(respond2.body.accessToken).toBeDefined();
+      expect(respond2.status).toBe(201);
+      expect(respond2.body.code).toBe(201);
+      expect(respond2.body.data.accessToken).toBeDefined();
+      TestRefreshTokenOld = TestRefreshToken;
+      TestTokenOld = TestToken;
+      TestRefreshToken = respond2.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      TestToken = respond2.body.data.accessToken;
+    });
+    it('should return RefreshTokenAlreadyUsedError', async () => {
+      const respond2 = await request(app.getHttpServer())
+        .post('/users/auth/refresh-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshTokenOld};    other_cookie=value`,
+        )
+        .send();
+      expect(respond2.body.message).toMatch(/^RefreshTokenAlreadyUsedError: /);
+      expect(respond2.status).toBe(401);
+      expect(respond2.body.code).toBe(401);
+    });
+    it('should refresh access token successfully again', async () => {
+      const respond2 = await request(app.getHttpServer())
+        .post('/users/auth/refresh-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond2.body.message).toBe('Refresh token successfully.');
+      expect(respond2.status).toBe(201);
+      expect(respond2.body.code).toBe(201);
+      expect(respond2.body.data.accessToken).toBeDefined();
+      TestRefreshTokenOld = TestRefreshToken;
+      TestTokenOld = TestToken;
+      TestRefreshToken = respond2.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      TestToken = respond2.body.data.accessToken;
     });
     it('should return UsernameNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
@@ -423,7 +462,7 @@ describe('User Module', () => {
     });
     it('should return SessionRevokedError', async () => {
       const respond = await request(app.getHttpServer())
-        .get('/users/auth/access-token')
+        .post('/users/auth/refresh-token')
         .set(
           'Cookie',
           `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,

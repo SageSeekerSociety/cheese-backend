@@ -407,7 +407,7 @@ paths:
               description: "refresh token"
               schema:
                 type: string
-                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/access-token; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
@@ -429,13 +429,13 @@ paths:
               description: "refresh token"
               schema:
                 type: string
-                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/access-token; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
-  /users/auth/access-token:
-    get:
+  /users/auth/refresh-token:
+    post:
       summary: 用户刷新 token
       operationId: refresh-access-token
       security:
@@ -443,6 +443,12 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            Set-Cookie:
+              description: "refresh token"
+              schema:
+                type: string
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
@@ -450,10 +456,15 @@ paths:
                   - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
-                      accessToken:
-                        type: string
+                      data:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
+                        required:
+                          - accessToken
                     required:
-                      - accessToken
+                      - data
   
   /users/auth/logout:
     post:
