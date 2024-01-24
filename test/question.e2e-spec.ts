@@ -28,6 +28,32 @@ describe('Topic Module', () => {
   let TestUserId: number;
   let TopicIds: number[] = [];
   let questionIds: number[] = [];
+  let auxAccessToken: string;
+
+  async function createAuxiliaryUser(): Promise<[number, string]> {
+    // returns [userId, accessToken]
+    const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
+    const respond = await request(app.getHttpServer())
+      .post('/users/verify/email')
+      //.set('User-Agent', 'PostmanRuntime/7.26.8')
+      .send({ email });
+    expect(respond.status).toBe(201);
+    const verificationCode = (
+      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+    ).mock.calls.at(-1)[1];
+    const respond2 = await request(app.getHttpServer())
+      .post('/users')
+      //.set('User-Agent', 'PostmanRuntime/7.26.8')
+      .send({
+        username: `TestUser-${Math.floor(Math.random() * 10000000000)}`,
+        nickname: 'auxiliary_user',
+        password: 'abc123456!!!',
+        email,
+        emailCode: verificationCode,
+      });
+    expect(respond2.status).toBe(201);
+    return [respond2.body.data.user.id, respond2.body.data.accessToken];
+  }
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -111,6 +137,10 @@ describe('Topic Module', () => {
       await createTopic('哥德巴赫猜想');
       await createTopic('钓鱼');
     }, 60000);
+    it('should create an auxiliary user', async () => {
+      const [, accessToken] = await createAuxiliaryUser();
+      auxAccessToken = accessToken;
+    });
   });
 
   describe('create question', () => {
@@ -374,37 +404,10 @@ describe('Topic Module', () => {
       expect(respond.body.code).toBe(404);
     });
     it('should return PermissionDeniedError', async () => {
-      async function createAuxiliaryUser_version2(): Promise<[number, string]> {
-        // returns [userId, accessToken]
-        const email = `test-${Math.floor(
-          Math.random() * 10000000000,
-        )}@ruc.edu.cn`;
-        const respond = await request(app.getHttpServer())
-          .post('/users/verify/email')
-          //.set('User-Agent', 'PostmanRuntime/7.26.8')
-          .send({ email });
-        expect(respond.status).toBe(201);
-        const verificationCode = (
-          MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-        ).mock.calls.at(-1)[1];
-        const respond2 = await request(app.getHttpServer())
-          .post('/users')
-          //.set('User-Agent', 'PostmanRuntime/7.26.8')
-          .send({
-            username: `TestUser-${Math.floor(Math.random() * 10000000000)}`,
-            nickname: 'auxiliary_user',
-            password: 'abc123456!!!',
-            email,
-            emailCode: verificationCode,
-          });
-        expect(respond2.status).toBe(201);
-        return [respond2.body.data.user.id, respond2.body.data.accessToken];
-      }
-      const [, accessToken] = await createAuxiliaryUser_version2();
-      Logger.log(`accessToken: ${accessToken}`);
+      Logger.log(`accessToken: ${auxAccessToken}`);
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[0]}`)
-        .set('Authorization', `Bearer ${accessToken}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({
           title: `${TestQuestionPrefix} 我这个哥德巴赫猜想的证明对吗？(flag)`,
           content:
@@ -414,6 +417,46 @@ describe('Topic Module', () => {
         });
       expect(respond.body.message).toMatch(/^PermissionDeniedError: /);
       expect(respond.body.code).toBe(403);
+    });
+  });
+
+  describe('delete question', () => {
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[0]}`)
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should return QuestionNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete('/questions/-1')
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return PermissionDeniedError', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[0]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toMatch(/^PermissionDeniedError: /);
+      expect(respond.body.code).toBe(403);
+    });
+    it('should delete a question', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      const respond2 = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[0]}`)
+        .send();
+      expect(respond2.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond2.body.code).toBe(404);
     });
   });
 

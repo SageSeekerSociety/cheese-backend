@@ -169,10 +169,21 @@ export class QuestionsController {
 
   @Delete('/:id')
   async deleteQuestion(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
   ): Promise<BaseRespondDto> {
-    throw new Error();
+    this.authService.audit(
+      auth,
+      AuthorizedAction.delete,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
+    await this.questionsService.deleteQuestion(id);
+    return {
+      code: 200,
+      message: 'OK',
+    };
   }
 
   @Get('/:id/followers')

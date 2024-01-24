@@ -397,4 +397,12 @@ export class QuestionsService {
     if (question == null) throw new QuestionNotFoundError(questionId);
     return question.createdById;
   }
+
+  async deleteQuestion(questionId): Promise<void> {
+    const question = await this.questionRepository.findOneBy({
+      id: questionId,
+    });
+    if (question == null) throw new QuestionNotFoundError(questionId);
+    await this.questionRepository.softDelete({ id: questionId });
+  }
 }
