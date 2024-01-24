@@ -72,3 +72,13 @@ export class SessionRevokedError extends BaseError {
     super('SessionRevokedError', 'Session revoked', 401);
   }
 }
+
+export class RefreshTokenAlreadyUsedError extends BaseError {
+  constructor() {
+    super(
+      'RefreshTokenAlreadyUsedError',
+      'The refresh token has already been used. A refresh token can only be used once.',
+      401,
+    );
+  }
+}

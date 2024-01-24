@@ -101,10 +101,11 @@ export class UsersController {
       ip,
       userAgent,
     );
-    const refreshTokenExpire = new Date(
-      this.authService.decode(refreshToken).validUntil,
+    const [newRefreshToken, accessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
     );
-    const accessToken = await this.sessionService.refreshSession(refreshToken);
     const data: RegisterResponseDto = {
       code: 201,
       message: 'Register successfully.',
@@ -114,11 +115,11 @@ export class UsersController {
       },
     };
     return res
-      .cookie('REFRESH_TOKEN', refreshToken, {
+      .cookie('REFRESH_TOKEN', newRefreshToken, {
         httpOnly: true,
         sameSite: 'strict',
         path: '/users/auth',
-        expires: new Date(refreshTokenExpire),
+        expires: new Date(newRefreshTokenExpire),
       })
       .json(data);
   }
@@ -136,10 +137,11 @@ export class UsersController {
       ip,
       userAgent,
     );
-    const refreshTokenExpire = new Date(
-      this.authService.decode(refreshToken).validUntil,
+    const [newRefreshToken, accessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
     );
-    const accessToken = await this.sessionService.refreshSession(refreshToken);
     const data: LoginRespondDto = {
       code: 201,
       message: 'Login successfully.',
@@ -149,11 +151,11 @@ export class UsersController {
       },
     };
     return res
-      .cookie('REFRESH_TOKEN', refreshToken, {
+      .cookie('REFRESH_TOKEN', newRefreshToken, {
         httpOnly: true,
         sameSite: 'strict',
         path: '/users/auth',
-        expires: new Date(refreshTokenExpire),
+        expires: new Date(newRefreshTokenExpire),
       })
       .json(data);
   }
@@ -161,7 +163,8 @@ export class UsersController {
   @Post('/auth/refresh-token')
   async refreshToken(
     @Headers('cookie') cookieHeader: string,
-  ): Promise<RefreshTokenRespondDto> {
+    @Res() res: Response,
+  ): Promise<Response> {
     if (cookieHeader == null) {
       throw new AuthenticationRequiredError();
     }
@@ -173,13 +176,26 @@ export class UsersController {
       throw new AuthenticationRequiredError();
     }
     const refreshToken = refreshTokenCookie.split('=')[1];
-    return {
-      code: 200,
+    const [newRefreshToken, accessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
+    );
+    const data: RefreshTokenRespondDto = {
+      code: 201,
       message: 'Refresh token successfully.',
       data: {
-        accessToken: await this.sessionService.refreshSession(refreshToken),
+        accessToken: accessToken,
       },
     };
+    return res
+      .cookie('REFRESH_TOKEN', newRefreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/users/auth',
+        expires: new Date(newRefreshTokenExpire),
+      })
+      .json(data);
   }
 
   @Post('/auth/logout')

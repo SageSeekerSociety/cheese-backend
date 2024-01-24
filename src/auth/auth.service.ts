@@ -90,6 +90,7 @@ export class Authorization {
 
 export class TokenPayload {
   authorization: Authorization;
+  signedAt: number; // timestamp in milliseconds
   validUntil: number; // timestamp in milliseconds
 }
 
@@ -99,9 +100,11 @@ export class AuthService {
 
   // Sign a token for an authorization.
   sign(authorization: Authorization, validSeconds: number = 60): string {
+    const now = Date.now();
     const payload: TokenPayload = {
       authorization: authorization,
-      validUntil: Date.now() + validSeconds * 1000,
+      signedAt: now,
+      validUntil: now + validSeconds * 1000,
     };
     return this.jwtService.sign(payload);
   }
