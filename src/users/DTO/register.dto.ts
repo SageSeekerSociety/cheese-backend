@@ -1,6 +1,7 @@
 import { IsString } from 'class-validator';
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 import { UserDto } from './user.dto';
+import { LoginRespondDto } from './login.dto';
 
 export class RegisterRequestDto {
   @IsString()
@@ -19,9 +20,4 @@ export class RegisterRequestDto {
   emailCode: string;
 }
 
-export class RegisterResponseDto extends BaseRespondDto {
-  data: {
-    accessToken: string;
-    user: UserDto;
-  };
-}
+export class RegisterResponseDto extends LoginRespondDto {}

@@ -137,6 +137,8 @@ describe('User Module', () => {
       expect(respond.body.message).toStrictEqual('Register successfully.');
       expect(respond.body.code).toEqual(201);
       req.expect(201);
+      expect(respond.body.data.user.username).toBe(TestUsername);
+      expect(respond.body.data.user.nickname).toBe('test_user');
     });
     it('should return EmailAlreadyRegisteredError', () => {
       return (
@@ -392,6 +394,8 @@ describe('User Module', () => {
         .split(';')[0]
         .split('=')[1];
       TestToken = respond2.body.data.accessToken;
+      expect(respond2.body.data.user.username).toBe(TestUsername);
+      expect(respond2.body.data.user.nickname).toBe('test_user');
     });
     it('should return RefreshTokenAlreadyUsedError', async () => {
       const respond2 = await request(app.getHttpServer())
@@ -423,6 +427,8 @@ describe('User Module', () => {
         .split(';')[0]
         .split('=')[1];
       TestToken = respond2.body.data.accessToken;
+      expect(respond2.body.data.user.username).toBe(TestUsername);
+      expect(respond2.body.data.user.nickname).toBe('test_user');
     });
     it('should return UsernameNotFoundError', async () => {
       const respond = await request(app.getHttpServer())

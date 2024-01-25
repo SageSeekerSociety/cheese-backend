@@ -1,7 +1,3 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { LoginRespondDto } from './login.dto';
 
-export class RefreshTokenRespondDto extends BaseRespondDto {
-  data: {
-    accessToken: string;
-  };
-}
+export class RefreshTokenRespondDto extends LoginRespondDto {}
