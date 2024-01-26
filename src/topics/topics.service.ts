@@ -41,122 +41,46 @@ export class TopicsService {
 
   async searchTopics(
     keywords: string,
-    firstTopicId: number, // null if from start
+    pageStart: number, // null if from start
     pageSize: number,
     searcherId: number, // nullable
     ip: string,
     userAgent: string,
   ): Promise<[TopicDto[], PageRespondDto]> {
     const timeBegin = Date.now();
-    if (firstTopicId == null) {
-      const topics = await this.topicRepository
-        .createQueryBuilder('topic')
-        // TopicDto contains only id and name.
-        // 'relevance' is used for sorting
-        .select([
-          'topic.id',
-          'topic.name',
-          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-        ])
-        // TypeORM uses query template to prevent SQL injection.
-        // ':keywords' is translated to a parameter placeholder in the SQL query template,
-        // so it cannot be injected.
-        .where(
-          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
-        )
-        .orderBy({ relevance: 'DESC', id: 'ASC' })
-        .limit(pageSize + 1)
-        .setParameter('keywords', keywords)
-        .getMany();
-      const log = this.topicSearchLogRepository.create({
-        keywords: keywords,
-        firstTopicId: firstTopicId,
-        pageSize: pageSize,
-        result: topics.map((t) => t.id).join(','),
-        duration: (Date.now() - timeBegin) / 1000,
-        searcherId: searcherId,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.topicSearchLogRepository.save(log);
-      return PageHelper.PageStart(topics, pageSize, (t) => t.id);
-    } else {
-      const relevanceCursorRaw = await this.topicRepository
-        .createQueryBuilder('topic')
-        .select([
-          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-        ])
-        .where('id = :firstTopicId', { keywords, firstTopicId })
-        .getRawOne();
-      if (relevanceCursorRaw == null)
-        throw new TopicNotFoundError(firstTopicId);
-      const relevanceCursor = relevanceCursorRaw.relevance as number;
-      const prevPromise = this.topicRepository
-        .createQueryBuilder('topic')
-        .select([
-          'topic.id',
-          'topic.name',
-          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-        ])
-        .where(
-          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
-        )
-        .andWhere(
-          '(' +
-            ' ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) > ROUND(:relevanceCursor, 5)' +
-            ' OR ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
-            ' AND topic.id < :firstTopicId' +
-            ')',
-        )
-        .orderBy({ relevance: 'ASC', id: 'DESC' })
-        .limit(pageSize)
-        .setParameter('keywords', keywords)
-        .setParameter('relevanceCursor', relevanceCursor)
-        .setParameter('firstTopicId', firstTopicId)
-        .getMany();
-      const herePromise = this.topicRepository
-        .createQueryBuilder('topic')
-        .select([
-          'topic.id',
-          'topic.name',
-          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-        ])
-        .where(
-          'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
-        )
-        .andWhere(
-          '(' +
-            ' ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) < ROUND(:relevanceCursor, 5)' +
-            ' OR ROUND(MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
-            ' AND topic.id >= :firstTopicId' +
-            ')',
-        )
-        .orderBy({ relevance: 'DESC', id: 'ASC' })
-        .limit(pageSize + 1)
-        .setParameter('keywords', keywords)
-        .setParameter('relevanceCursor', relevanceCursor)
-        .setParameter('firstTopicId', firstTopicId)
-        .getMany();
-      const [prev, here] = await Promise.all([prevPromise, herePromise]);
-      const log = this.topicSearchLogRepository.create({
-        keywords: keywords,
-        firstTopicId: firstTopicId,
-        pageSize: pageSize,
-        result: here.map((t) => t.id).join(','),
-        duration: (Date.now() - timeBegin) / 1000,
-        searcherId: searcherId,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.topicSearchLogRepository.save(log);
-      return PageHelper.Page(
-        prev,
-        here,
-        pageSize,
-        (i) => i.id,
-        (i) => i.id,
-      );
-    }
+    const allData = await this.topicRepository
+      .createQueryBuilder('topic')
+      .select([
+        'topic.id',
+        'topic.name',
+        'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
+      ])
+      .where('MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE)')
+      .orderBy({ relevance: 'DESC', id: 'ASC' })
+      .limit(1000)
+      .setParameter('keywords', keywords)
+      .getMany();
+    const [data, page] = PageHelper.PageFromAll(
+      allData,
+      pageStart,
+      pageSize,
+      (i) => i.id,
+      () => {
+        throw new TopicNotFoundError(pageStart);
+      },
+    );
+    const log = this.topicSearchLogRepository.create({
+      keywords: keywords,
+      firstTopicId: pageStart,
+      pageSize: pageSize,
+      result: data.map((t) => t.id).join(','),
+      duration: (Date.now() - timeBegin) / 1000,
+      searcherId: searcherId,
+      ip: ip,
+      userAgent: userAgent,
+    });
+    await this.topicSearchLogRepository.save(log);
+    return [data, page];
   }
 
   async getTopicDtoById(topicId: number): Promise<TopicDto> {

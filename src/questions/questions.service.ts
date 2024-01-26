@@ -221,140 +221,52 @@ export class QuestionsService {
 
   async searchQuestions(
     keywords: string,
-    firstQuestionId: number, // null if from start
+    pageStart: number, // null if from start
     pageSize: number,
     searcherId: number, // nullable
     ip: string,
     userAgent: string,
   ): Promise<[QuestionDto[], PageRespondDto]> {
     const timeBegin = Date.now();
-    if (firstQuestionId == null) {
-      const questionIds = (await this.questionRepository
-        .createQueryBuilder('question')
-        // 'relevance' is used for sorting
-        .select([
-          'question.id',
-          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-        ])
-        // TypeORM uses query template to prevent SQL injection.
-        // ':keywords' is translated to a parameter placeholder in the SQL query template,
-        // so it cannot be injected.
-        .where(
-          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
-        )
-        .orderBy({ relevance: 'DESC', id: 'ASC' })
-        .limit(pageSize + 1)
-        .setParameter('keywords', keywords)
-        .getRawMany()) as { question_id: number; relevance: number }[];
-      const questionDtos = await Promise.all(
-        questionIds.map((questionId) =>
-          this.getQuestionDto(
-            questionId.question_id,
-            searcherId,
-            ip,
-            userAgent,
-          ),
-        ),
-      );
-      const log = this.questionSearchLogRepository.create({
-        keywords,
-        firstQuestionId,
-        pageSize,
-        result: questionIds.map((t) => t.question_id).join(','),
-        duration: (Date.now() - timeBegin) / 1000,
-        searcherId,
-        ip,
-        userAgent,
-      });
-      await this.questionSearchLogRepository.save(log);
-      return PageHelper.PageStart(questionDtos, pageSize, (q) => q.id);
-    } else {
-      const relevanceCursorRaw = await this.questionRepository
-        .createQueryBuilder('question')
-        .select([
-          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-        ])
-        .where('id = :firstQuestionId')
-        .setParameter('keywords', keywords)
-        .setParameter('firstQuestionId', firstQuestionId)
-        .getRawOne();
-      if (relevanceCursorRaw == null)
-        throw new QuestionNotFoundError(firstQuestionId);
-      const relevanceCursor = relevanceCursorRaw.relevance as number;
-      const prevPromise = this.questionRepository
-        .createQueryBuilder('question')
-        .select([
-          'question.id',
-          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-        ])
-        .where(
-          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
-        )
-        .andWhere(
-          '(' +
-            ' ROUND(MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) > ROUND(:relevanceCursor, 5)' +
-            ' OR ROUND(MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
-            ' AND question.id < :firstQuestionId' +
-            ')',
-        )
-        .orderBy({ relevance: 'ASC', id: 'DESC' })
-        .limit(pageSize)
-        .setParameter('keywords', keywords)
-        .setParameter('relevanceCursor', relevanceCursor)
-        .setParameter('firstQuestionId', firstQuestionId)
-        .getRawMany() as Promise<{ question_id: number; relevance: number }[]>;
-      const herePromise = this.questionRepository
-        .createQueryBuilder('question')
-        .select([
-          'question.id',
-          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-        ])
-        .where(
-          'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
-        )
-        .andWhere(
-          '(' +
-            ' ROUND(MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) < ROUND(:relevanceCursor, 5)' +
-            ' OR ROUND(MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE), 5) = ROUND(:relevanceCursor, 5)' +
-            ' AND question.id >= :firstQuestionId' +
-            ')',
-        )
-        .orderBy({ relevance: 'DESC', id: 'ASC' })
-        .limit(pageSize + 1)
-        .setParameter('keywords', keywords)
-        .setParameter('relevanceCursor', relevanceCursor)
-        .setParameter('firstQuestionId', firstQuestionId)
-        .getRawMany() as Promise<{ question_id: number; relevance: number }[]>;
-      const [prev, here] = await Promise.all([prevPromise, herePromise]);
-      const questionDtos = await Promise.all(
-        here.map((questionId) =>
-          this.getQuestionDto(
-            questionId.question_id,
-            searcherId,
-            ip,
-            userAgent,
-          ),
-        ),
-      );
-      const log = this.questionSearchLogRepository.create({
-        keywords,
-        firstQuestionId,
-        pageSize,
-        result: here.map((t) => t.question_id).join(','),
-        duration: (Date.now() - timeBegin) / 1000,
-        searcherId,
-        ip,
-        userAgent,
-      });
-      await this.questionSearchLogRepository.save(log);
-      return PageHelper.Page(
-        prev,
-        questionDtos,
-        pageSize,
-        (q) => q.question_id,
-        (q) => q.id,
-      );
-    }
+    const allQuestionIds = (await this.questionRepository
+      .createQueryBuilder('question')
+      .select([
+        'question.id AS id',
+        'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
+      ])
+      .where(
+        'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
+      )
+      .orderBy({ relevance: 'DESC', id: 'ASC' })
+      .limit(1000)
+      .setParameter('keywords', keywords)
+      .getRawMany()) as { id: number }[];
+    const [questionIds, page] = PageHelper.PageFromAll(
+      allQuestionIds,
+      pageStart,
+      pageSize,
+      (i) => i.id,
+      () => {
+        throw new QuestionNotFoundError(pageStart);
+      },
+    );
+    const questions = await Promise.all(
+      questionIds.map((questionId) =>
+        this.getQuestionDto(questionId.id, searcherId, ip, userAgent),
+      ),
+    );
+    const log = this.questionSearchLogRepository.create({
+      keywords,
+      firstQuestionId: pageStart,
+      pageSize,
+      result: questionIds.map((t) => t.id).join(','),
+      duration: (Date.now() - timeBegin) / 1000,
+      searcherId,
+      ip,
+      userAgent,
+    });
+    await this.questionSearchLogRepository.save(log);
+    return [questions, page];
   }
 
   async updateQuestion(
@@ -508,7 +420,7 @@ export class QuestionsService {
         }),
       );
       const prev = await prevRelationshipsPromise;
-      return PageHelper.Page(
+      return PageHelper.PageMiddle(
         prev,
         DTOs,
         pageSize,

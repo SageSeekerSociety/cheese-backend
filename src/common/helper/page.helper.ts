@@ -11,7 +11,13 @@ import { PageRespondDto } from '../DTO/page-respond.dto';
 
 export class PageHelper {
   // Used when you do
-  // 'SELECT ... WHERE id >= (firstId) LIMIT (pageSize + 1) ORDER BY id ASC'
+  //
+  // SELECT ... FROM ...
+  //   WHERE ...
+  //   AND id >= (firstId)
+  // LIMIT (pageSize + 1)
+  // ORDER BY id ASC
+  //
   // in SQL.
   static PageStart<TData>(
     data: TData[],
@@ -22,11 +28,23 @@ export class PageHelper {
   }
 
   // Used when you do both
-  // 'SELECT ... WHERE id < (firstId) LIMIT (pageSize) ORDER BY id DESC'
+  //
+  // SELECT ... FROM ...
+  //   WHERE ...
+  //   AND id < (firstId)
+  // LIMIT (pageSize)
+  // ORDER BY id DESC
+  //
   // and
-  // 'SELECT ... WHERE id >= (firstId) LIMIT (pageSize + 1) ORDER BY id ASC'
+  //
+  // SELECT ... FROM ...
+  //   WHERE ...
+  //   AND id >= (firstId)
+  // LIMIT (pageSize + 1)
+  // ORDER BY id ASC
+  //
   // in SQL.
-  static Page<TPrev, TData>(
+  static PageMiddle<TPrev, TData>(
     prev: TPrev[],
     data: TData[],
     pageSize: number,
@@ -46,6 +64,39 @@ export class PageHelper {
       prev_start,
       idGetter,
     );
+  }
+
+  // Used when you do
+  //
+  // SELECT ... FROM ...
+  //   WHERE ...
+  // LIMIT 1000
+  // ORDER BY id ASC
+  //
+  // in SQL.
+  static PageFromAll<TData>(
+    allData: TData[],
+    pageStart: number, // nullable
+    pageSize: number,
+    idGetter: (item: TData) => number,
+    // nullable
+    // Something like '() => { throw new TopicNotFoundError(pageStart); }'
+    // If pageStart is not found in allData, this function will be called.
+    errorIfNotFound?: () => void,
+  ): [TData[], PageRespondDto] {
+    if (pageStart == null) {
+      const data = allData.slice(0, pageSize + 1);
+      return PageHelper.PageStart(data, pageSize, idGetter);
+    } else {
+      const pageStartIndex = allData.findIndex((r) => idGetter(r) == pageStart);
+      if (pageStartIndex == -1)
+        if (errorIfNotFound == null)
+          return this.PageStart([], pageSize, (i) => i.id);
+        else errorIfNotFound();
+      const prev = allData.slice(0, pageStartIndex).slice(-pageSize).reverse();
+      const data = allData.slice(pageStartIndex, pageStartIndex + pageSize + 1);
+      return PageHelper.PageMiddle(prev, data, pageSize, idGetter, idGetter);
+    }
   }
 
   private static PageInternal<TData>(
