@@ -734,7 +734,7 @@ export class UsersService {
         }),
       );
       const prev = await prevRelationshipsPromise;
-      return PageHelper.Page(
+      return PageHelper.PageMiddle(
         prev,
         DTOs,
         pageSize,
@@ -790,7 +790,7 @@ export class UsersService {
         }),
       );
       const prev = await prevRelationshipsPromise;
-      return PageHelper.Page(
+      return PageHelper.PageMiddle(
         prev,
         DTOs,
         pageSize,
