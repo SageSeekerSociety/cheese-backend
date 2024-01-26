@@ -752,12 +752,12 @@ describe('User Module', () => {
       }
     });
 
-    it('should return AlreadyFollowedError', async () => {
+    it('should return UserAlreadyFollowedError', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/users/${tempUserIds[0]}/followers`)
         //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .set('authorization', 'Bearer ' + TestToken);
-      expect(respond.body.message).toMatch(/^AlreadyFollowedError: /);
+      expect(respond.body.message).toMatch(/^UserAlreadyFollowedError: /);
       expect(respond.status).toBe(422);
       expect(respond.body.code).toBe(422);
     });

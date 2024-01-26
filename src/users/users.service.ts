@@ -37,7 +37,6 @@ import {
   UserResetPasswordLogType,
 } from './users.entity';
 import {
-  AlreadyFollowedError,
   BadRequestError,
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
@@ -49,10 +48,11 @@ import {
   InvalidNicknameError,
   InvalidPasswordError,
   InvalidUsernameError,
-  NotFollowedYetError,
   PasswordNotMatchError,
+  UserAlreadyFollowedError,
   UserIdNotFoundError,
   UserNoProfileError,
+  UserNotFollowedYetError,
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
 } from './users.error';
@@ -450,6 +450,38 @@ export class UsersService {
             resourceIds: null,
           },
         },
+        {
+          // An user can control the questions he/she created.
+          authorizedActions: [
+            AuthorizedAction.create,
+            AuthorizedAction.delete,
+            AuthorizedAction.modify,
+            AuthorizedAction.query,
+            AuthorizedAction.other,
+          ],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['questions'],
+            resourceIds: null,
+          },
+        },
+        {
+          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['questions/following'],
+            resourceIds: null,
+          },
+        },
+        {
+          // Everyone can create a topic.
+          authorizedActions: [AuthorizedAction.create],
+          authorizedResource: {
+            ownedByUser: null,
+            types: ['topics'],
+            resourceIds: null,
+          },
+        },
       ],
     };
     return this.sessionService.createSession(userId, authorization);
@@ -633,7 +665,7 @@ export class UsersService {
         followeeId,
       })) != null
     ) {
-      throw new AlreadyFollowedError(followeeId);
+      throw new UserAlreadyFollowedError(followeeId);
     }
     const relationship = this.userFollowingRepository.create({
       follower: follower,
@@ -651,7 +683,7 @@ export class UsersService {
       followeeId,
     });
     if (relationship == null) {
-      throw new NotFollowedYetError(followeeId);
+      throw new UserNotFollowedYetError(followeeId);
     }
     await this.userFollowingRepository.softRemove(relationship);
   }
@@ -766,5 +798,9 @@ export class UsersService {
         (i) => i.id,
       );
     }
+  }
+
+  async isUserExists(userId: number): Promise<boolean> {
+    return (await this.userRepository.findOneBy({ id: userId })) != null;
   }
 }
