@@ -14,7 +14,6 @@ import {
   InvalidTokenError,
   PermissionDeniedError,
   TokenExpiredError,
-  TokenFormatError,
 } from './auth.error';
 
 export enum AuthorizedAction {
@@ -131,7 +130,10 @@ export class AuthService {
         if (Date.now() > payload.validUntil) throw new TokenExpiredError();
         return payload.authorization;
       } catch {
-        throw new TokenFormatError(token);
+        throw new Error(
+          'The token is valid, but the payload of the token is' +
+            ' not an Authorization object. This is ether a bug or a malicious attack.',
+        );
       }
     } catch {
       throw new InvalidTokenError();
@@ -231,7 +233,10 @@ export class AuthService {
       const payload = result as TokenPayload;
       return payload;
     } catch {
-      throw new TokenFormatError(token);
+      throw new Error(
+        'The token is valid, but the payload of the token is' +
+          ' not an Authorization object. This is ether a bug or a malicious attack.',
+      );
     }
   }
 }

@@ -22,16 +22,6 @@ export class InvalidTokenError extends BaseError {
   }
 }
 
-export class TokenFormatError extends BaseError {
-  constructor(public readonly token: string) {
-    super(
-      'TokenFormatError',
-      `The token is valid, but AuthService could not understand its payload. Token: ${token}`,
-      401,
-    );
-  }
-}
-
 export class TokenExpiredError extends BaseError {
   constructor() {
     super('TokenExpiredError', 'Token expired', 401);
