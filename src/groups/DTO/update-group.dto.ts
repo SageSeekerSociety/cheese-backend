@@ -1,5 +1,5 @@
-import { IsString } from "class-validator";
-import { BaseRespondDto } from "../../common/DTO/base-respond.dto";
+import { IsString } from 'class-validator';
+import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
 export class UpdateGroupDto {
   @IsString()
@@ -15,4 +15,4 @@ export class UpdateGroupDto {
   readonly cover: string;
 }
 
-export class UpdateGroupRespondDto extends BaseRespondDto { }
+export class UpdateGroupRespondDto extends BaseRespondDto {}

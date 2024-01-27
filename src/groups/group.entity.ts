@@ -1,4 +1,16 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Question } from '../questions/questions.entity';
 import { User } from '../users/users.entity';
 import { GroupProfile } from './group-profile.entity';
@@ -12,10 +24,12 @@ export class Group {
   @Index({ unique: true })
   name: string;
 
-  @OneToOne(() => GroupProfile, profile => profile.group, { cascade: ['soft-remove'] })
+  @OneToOne(() => GroupProfile, (profile) => profile.group, {
+    cascade: ['soft-remove'],
+  })
   profile: GroupProfile;
 
-  @OneToMany(() => GroupMembership, membership => membership.group)
+  @OneToMany(() => GroupMembership, (membership) => membership.group)
   memberships: GroupMembership[];
 
   @CreateDateColumn()
@@ -26,7 +40,6 @@ export class Group {
 
   @DeleteDateColumn()
   deletedAt?: Date;
-
 }
 
 @Entity()
@@ -34,7 +47,7 @@ export class GroupMembership {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Group, group => group.memberships)
+  @ManyToOne(() => Group, (group) => group.memberships)
   @Index()
   group: Group;
 
@@ -73,7 +86,7 @@ export class GroupQuestionRelationship {
   @Column()
   groupId: number;
 
-  @OneToOne(() => Question, question => question.groupQuestionRelationship)
+  @OneToOne(() => Question, (question) => question.groupQuestionRelationship)
   @JoinColumn()
   question: Question;
 

@@ -11,7 +11,7 @@ import {
   Query,
   UseFilters,
   UsePipes,
-  ValidationPipe
+  ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
@@ -33,7 +33,7 @@ export class GroupsController {
   constructor(
     private readonly authService: AuthService,
     private readonly groupsService: GroupsService,
-  ) { }
+  ) {}
 
   @Post('/')
   async createGroup(
@@ -96,7 +96,12 @@ export class GroupsController {
   ): Promise<UpdateGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     await this.groupsService.updateGroup(
-      userId, id, req.name, req.intro, req.avatar);
+      userId,
+      id,
+      req.name,
+      req.intro,
+      req.avatar,
+    );
     return {
       code: 200,
       message: 'Group updated successfully.',
@@ -106,13 +111,13 @@ export class GroupsController {
   @Delete('/:id')
   async deleteGroup(
     @Headers('Authorization') auth: string,
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
     await this.groupsService.deleteGroup(userId, id);
     return {
       code: 204,
-      message: 'No Content.'
+      message: 'No Content.',
     };
   }
 
@@ -130,7 +135,7 @@ export class GroupsController {
     return {
       code: 200,
       message: 'Group members fetched successfully.',
-      data: getGroupMembersResult
+      data: getGroupMembersResult,
     };
   }
 
@@ -163,7 +168,7 @@ export class GroupsController {
     return {
       code: 200,
       message: 'Quit group successfully.',
-      data: { member_count }
+      data: { member_count },
     };
   }
 
@@ -181,7 +186,7 @@ export class GroupsController {
     return {
       code: 200,
       message: 'Group questions fetched successfully.',
-      data: getGroupQuestionsResult
+      data: getGroupQuestionsResult,
     };
   }
 

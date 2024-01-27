@@ -1,5 +1,14 @@
-import { Column, CreateDateColumn, DeleteDateColumn, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Group } from "./group.entity";
+import {
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  JoinColumn,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Group } from './group.entity';
 
 @Entity()
 export class GroupProfile {
@@ -12,7 +21,7 @@ export class GroupProfile {
   @Column()
   avatar: string;
 
-  @OneToOne(() => Group, group => group.profile)
+  @OneToOne(() => Group, (group) => group.profile)
   @JoinColumn()
   group: Group;
 

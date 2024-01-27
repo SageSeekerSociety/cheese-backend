@@ -49,7 +49,7 @@ export class QuestionsService {
     private readonly questionFollowRelationRepository: Repository<QuestionFollowerRelation>,
     @InjectRepository(QuestionSearchLog)
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
-  ) { }
+  ) {}
 
   async addTopicToQuestion(
     questionId: number,
@@ -221,9 +221,7 @@ export class QuestionsService {
 
   // !This internal method is used to get question info without logging.
   // !It should not be used in controller.
-  async _getQuestionDto(
-    questionId: number,
-  ): Promise<QuestionDto> {
+  async _getQuestionDto(questionId: number): Promise<QuestionDto> {
     if (questionId == null) throw new Error('questionId is null');
     const question = await this.questionRepository.findOneBy({
       id: questionId,

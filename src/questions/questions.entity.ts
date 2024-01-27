@@ -46,13 +46,13 @@ export class Question {
   title: string;
 
   // Use column type 'mediumtext' to support string with a maximum length of 16M.
-  @Column({type: isMySql() ? 'mediumtext' : 'text'})
+  @Column({ type: isMySql() ? 'mediumtext' : 'text' })
   content: string;
 
   @Column()
   type: number;
 
-  @OneToOne(() => GroupQuestionRelationship, gqr => gqr.question)
+  @OneToOne(() => GroupQuestionRelationship, (gqr) => gqr.question)
   groupQuestionRelationship: GroupQuestionRelationship;
 
   @Column({ nullable: true })

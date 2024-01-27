@@ -1,5 +1,5 @@
-import { IsString } from "class-validator";
-import { BaseRespondDto } from "../../common/DTO/base-respond.dto";
+import { IsString } from 'class-validator';
+import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
 export class JoinGroupDto {
   @IsString()

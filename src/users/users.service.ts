@@ -79,7 +79,7 @@ export class UsersService {
     private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
-  ) { }
+  ) {}
 
   private generateVerifyCode(): string {
     let code: string = '';
@@ -392,7 +392,6 @@ export class UsersService {
       intro: profile.intro,
     };
   }
-
 
   // Returns:
   //     [userDto, refreshToken]

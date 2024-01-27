@@ -73,7 +73,7 @@ export class TopicSearchLog {
   // For example, if the result is [1, 2, 3], then the result string is "1,2,3".
   result: string;
 
-  @Column({ type: isMySql() ? 'double' : 'float'})
+  @Column({ type: isMySql() ? 'double' : 'float' })
   // The search duration in seconds.
   duration: number;
 

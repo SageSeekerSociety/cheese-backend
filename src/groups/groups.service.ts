@@ -14,8 +14,18 @@ import { GetGroupsResultDto } from './DTO/get-groups.dto';
 import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
 import { GroupProfile } from './group-profile.entity';
-import { Group, GroupMembership, GroupQuestionRelationship, GroupTarget } from './group.entity';
-import { CannotDeleteGroupError, GroupIdNotFoundError, GroupNameAlreadyExistsError, InvalidGroupNameError } from './groups.error';
+import {
+  Group,
+  GroupMembership,
+  GroupQuestionRelationship,
+  GroupTarget,
+} from './group.entity';
+import {
+  CannotDeleteGroupError,
+  GroupIdNotFoundError,
+  GroupNameAlreadyExistsError,
+  InvalidGroupNameError,
+} from './groups.error';
 
 export enum GroupQueryType {
   Recommend = 'recommend',
@@ -38,7 +48,7 @@ export class GroupsService {
     private groupQuestionRelationshipsRepository: Repository<GroupQuestionRelationship>,
     @InjectRepository(GroupTarget)
     private groupTargetsRepository: Repository<GroupTarget>,
-  ) { }
+  ) {}
 
   private isValidGroupName(name: string): boolean {
     return /^[a-zA-Z0-9_\-\u4e00-\u9fa5]{1,16}$/.test(name);
@@ -106,12 +116,17 @@ export class GroupsService {
     let queryBuilder = this.groupsRepository.createQueryBuilder('group');
 
     if (key) {
-      queryBuilder = queryBuilder.where('group.name LIKE :key', { key: `%${key}%` });
+      queryBuilder = queryBuilder.where('group.name LIKE :key', {
+        key: `%${key}%`,
+      });
     }
 
-    let prevDTOs = null, currDTOs = null;
+    let prevDTOs = null,
+      currDTOs = null;
     if (page_start_id) {
-      const referenceGroup = await this.groupsRepository.findOneBy({ id: page_start_id });
+      const referenceGroup = await this.groupsRepository.findOneBy({
+        id: page_start_id,
+      });
       if (!referenceGroup) {
         throw new GroupIdNotFoundError(page_start_id);
       }
@@ -119,14 +134,18 @@ export class GroupsService {
       switch (order_type) {
         case GroupQueryType.Recommend: {
           referenceValue = getRecommendationScore(referenceGroup);
-          queryBuilder = queryBuilder
-            .addSelect('getRecommendationScore(group)', 'score');
+          queryBuilder = queryBuilder.addSelect(
+            'getRecommendationScore(group)',
+            'score',
+          );
           break;
         }
         case GroupQueryType.Hot: {
           referenceValue = getGroupHotness(referenceGroup);
-          queryBuilder = queryBuilder
-            .addSelect('getGroupHotness(group)', 'hotness')
+          queryBuilder = queryBuilder.addSelect(
+            'getGroupHotness(group)',
+            'hotness',
+          );
           break;
         }
         case GroupQueryType.New: {
@@ -134,15 +153,19 @@ export class GroupsService {
           break;
         }
       }
-      queryBuilder = queryBuilder.orderBy(order_type, 'DESC')
+      queryBuilder = queryBuilder.orderBy(order_type, 'DESC');
       switch (order_type) {
         case GroupQueryType.Recommend:
           prevDTOs = await queryBuilder
-            .andWhere('recommendation_score > :referenceValue', { referenceValue })
+            .andWhere('recommendation_score > :referenceValue', {
+              referenceValue,
+            })
             .limit(page_size)
             .getMany();
           currDTOs = await queryBuilder
-            .andWhere('recommendation_score <= :referenceValue', { referenceValue })
+            .andWhere('recommendation_score <= :referenceValue', {
+              referenceValue,
+            })
             .limit(page_size + 1)
             .getMany();
           break;
@@ -169,16 +192,15 @@ export class GroupsService {
       }
     } else {
       prevDTOs = null;
-      currDTOs = await queryBuilder
-        .limit(page_size + 1)
-        .getMany();
+      currDTOs = await queryBuilder.limit(page_size + 1).getMany();
     }
     const has_prev = prevDTOs && prevDTOs.length > 0;
     const has_more = currDTOs && currDTOs.length > page_size;
     const page_start = currDTOs[0].id;
-    const real_page_size = currDTOs.length > page_size ? page_size : currDTOs.length;
+    const real_page_size =
+      currDTOs.length > page_size ? page_size : currDTOs.length;
     const next_start = currDTOs[page_size - 1].id;
-    const groups = currDTOs.map(group => ({
+    const groups = currDTOs.map((group) => ({
       id: group.id,
       name: group.name,
       intro: group.profile.intro,
@@ -193,16 +215,15 @@ export class GroupsService {
         prev_start: has_prev ? prevDTOs[0].id : null,
         has_more,
         next_start: has_more ? next_start : null,
-      }
+      },
     };
-
   }
 
   async getGroupDtoById(userId: number, groupId: number): Promise<GroupDto> {
     const group = await this.groupsRepository.findOne({
       where: { id: groupId },
       relations: ['profile'],
-    })
+    });
     if (group == null) {
       throw new GroupIdNotFoundError(groupId);
     }
@@ -214,18 +235,28 @@ export class GroupsService {
     const ownerId = ownership.memberId;
     const ownerDto = await this.usersService._getUserDtoById(ownerId);
 
-    const member_count = await this.groupMembershipsRepository.countBy({ group });
-    const questions = await this.groupQuestionRelationshipsRepository.findBy({ group });
-    const question_count = questions.length;
-    const getQuestionAnswerCount = async (questionId: number) => 
-      (await this.questionsService._getQuestionDto(questionId)).answer_count;
-    const answer_count_promises = questions.map(question => getQuestionAnswerCount(question.id));
-    const answer_count = (await Promise.all(answer_count_promises)).reduce((a, b) => a + b, 0);
-
-    const is_member = await this.groupMembershipsRepository.findOneBy({
+    const member_count = await this.groupMembershipsRepository.countBy({
       group,
-      memberId: userId,
-    }) != null;
+    });
+    const questions = await this.groupQuestionRelationshipsRepository.findBy({
+      group,
+    });
+    const question_count = questions.length;
+    const getQuestionAnswerCount = async (questionId: number) =>
+      (await this.questionsService._getQuestionDto(questionId)).answer_count;
+    const answer_count_promises = questions.map((question) =>
+      getQuestionAnswerCount(question.id),
+    );
+    const answer_count = (await Promise.all(answer_count_promises)).reduce(
+      (a, b) => a + b,
+      0,
+    );
+
+    const is_member =
+      (await this.groupMembershipsRepository.findOneBy({
+        group,
+        memberId: userId,
+      })) != null;
     const is_owner = ownerId == userId;
 
     return {
@@ -306,13 +337,20 @@ export class GroupsService {
   }
 
   async joinGroup(
-    userId: number, groupId: number, intro: string
+    userId: number,
+    groupId: number,
+    intro: string,
   ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
     if (group == null) {
       throw new GroupIdNotFoundError(groupId);
     }
-    if (await this.groupMembershipsRepository.findOneBy({ groupId, memberId: userId })) {
+    if (
+      await this.groupMembershipsRepository.findOneBy({
+        groupId,
+        memberId: userId,
+      })
+    ) {
       return; // or throw error?
     }
 
@@ -322,20 +360,27 @@ export class GroupsService {
       role: 'member',
     });
 
-    const member_count = await this.groupMembershipsRepository.countBy({ groupId });
+    const member_count = await this.groupMembershipsRepository.countBy({
+      groupId,
+    });
     const is_member = true;
     const is_waiting = false; // todo: pending logic
     return { member_count, is_member, is_waiting };
   }
 
   async quitGroup(userId: number, groupId: number): Promise<number> {
-    const group = await this.groupsRepository.findOneBy({ id: groupId })
+    const group = await this.groupsRepository.findOneBy({ id: groupId });
     if (group == null) {
       throw new GroupIdNotFoundError(groupId);
     }
     // todo: check if user is owner
-    await this.groupMembershipsRepository.softDelete({ group, memberId: userId });
-    const member_count = await this.groupMembershipsRepository.countBy({ groupId });
+    await this.groupMembershipsRepository.softDelete({
+      group,
+      memberId: userId,
+    });
+    const member_count = await this.groupMembershipsRepository.countBy({
+      groupId,
+    });
     return member_count;
   }
 
@@ -347,13 +392,15 @@ export class GroupsService {
     let queryBuilder = this.groupMembershipsRepository
       .createQueryBuilder('membership')
       .where('membership.groupId = :groupId', { groupId });
-    queryBuilder = queryBuilder
-      .orderBy('membership.createdAt', 'DESC');
+    queryBuilder = queryBuilder.orderBy('membership.createdAt', 'DESC');
 
-    let prevDTOs = null, currDTOs = null;
+    let prevDTOs = null,
+      currDTOs = null;
     if (page_start_id) {
-      const referenceRelationship = await this.groupMembershipsRepository
-        .findOneBy({ memberId: page_start_id });
+      const referenceRelationship =
+        await this.groupMembershipsRepository.findOneBy({
+          memberId: page_start_id,
+        });
       if (!referenceRelationship) {
         throw new UserIdNotFoundError(page_start_id);
       }
@@ -368,15 +415,14 @@ export class GroupsService {
         .getMany();
     } else {
       prevDTOs = null;
-      currDTOs = await queryBuilder
-        .limit(page_size + 1)
-        .getMany();
+      currDTOs = await queryBuilder.limit(page_size + 1).getMany();
     }
     const has_prev = prevDTOs && prevDTOs.length > 0;
     const has_more = currDTOs && currDTOs.length > page_size;
     const page_start = currDTOs[0].memberId;
-    const real_page_size = currDTOs.length > page_size ? page_size : currDTOs.length;
-    const members = currDTOs.map(relationship => ({
+    const real_page_size =
+      currDTOs.length > page_size ? page_size : currDTOs.length;
+    const members = currDTOs.map((relationship) => ({
       id: relationship.memberId,
       nickname: relationship.member.profile.nickname,
       avatar: relationship.member.profile.avatar,
@@ -391,7 +437,7 @@ export class GroupsService {
         prev_start: has_prev ? prevDTOs[0].memberId : null,
         has_more,
         next_start: has_more ? currDTOs[page_size - 1].memberId : null,
-      }
+      },
     };
   }
 
@@ -403,36 +449,41 @@ export class GroupsService {
     let queryBuilder = this.groupQuestionRelationshipsRepository
       .createQueryBuilder('relationship')
       .where('relationship.groupId = :groupId', { groupId });
-    queryBuilder = queryBuilder
-      .orderBy('relationship.createdAt', 'DESC');
+    queryBuilder = queryBuilder.orderBy('relationship.createdAt', 'DESC');
 
-    let prevDTOs = null, currDTOs = null;
+    let prevDTOs = null,
+      currDTOs = null;
     if (page_start_id) {
-      const referenceRelationship = await this.groupQuestionRelationshipsRepository
-        .findOneBy({ questionId: page_start_id });
+      const referenceRelationship =
+        await this.groupQuestionRelationshipsRepository.findOneBy({
+          questionId: page_start_id,
+        });
       if (!referenceRelationship) {
         throw new QuestionIdNotFoundError(page_start_id);
       }
       const referenceValue = referenceRelationship.createdAt;
       prevDTOs = await queryBuilder
-        .andWhere('relationship.createdAt > :referenceValue', { referenceValue })
+        .andWhere('relationship.createdAt > :referenceValue', {
+          referenceValue,
+        })
         .limit(page_size)
         .getMany();
       currDTOs = await queryBuilder
-        .andWhere('relationship.createdAt <= :referenceValue', { referenceValue })
+        .andWhere('relationship.createdAt <= :referenceValue', {
+          referenceValue,
+        })
         .limit(page_size + 1)
         .getMany();
     } else {
       prevDTOs = null;
-      currDTOs = await queryBuilder
-        .limit(page_size + 1)
-        .getMany();
+      currDTOs = await queryBuilder.limit(page_size + 1).getMany();
     }
     const has_prev = prevDTOs && prevDTOs.length > 0;
     const has_more = currDTOs && currDTOs.length > page_size;
     const page_start = currDTOs[0].questionId;
-    const real_page_size = currDTOs.length > page_size ? page_size : currDTOs.length;
-    const questions = currDTOs.map(relationship => ({
+    const real_page_size =
+      currDTOs.length > page_size ? page_size : currDTOs.length;
+    const questions = currDTOs.map((relationship) => ({
       id: relationship.questionId,
       title: relationship.question.title,
       content: relationship.question.content,
@@ -446,7 +497,7 @@ export class GroupsService {
         prev_start: has_prev ? prevDTOs[0].questionId : null,
         has_more,
         next_start: has_more ? currDTOs[page_size - 1].questionId : null,
-      }
+      },
     };
   }
 }
@@ -458,4 +509,3 @@ function getRecommendationScore(referenceGroup: Group): number {
 function getGroupHotness(referenceGroup: Group): number {
   throw new Error('Function not implemented.');
 }
-

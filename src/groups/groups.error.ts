@@ -1,15 +1,11 @@
-import { BaseError } from "../common/error/base-error";
+import { BaseError } from '../common/error/base-error';
 
 export class InvalidGroupNameError extends BaseError {
   constructor(
     public readonly name: string,
     public readonly rule: string,
   ) {
-    super(
-      'InvalidGroupNameError',
-      `Invalid group name: ${name}. ${rule}`,
-      422,
-    );
+    super('InvalidGroupNameError', `Invalid group name: ${name}. ${rule}`, 422);
   }
 }
 
@@ -31,10 +27,6 @@ export class GroupIdNotFoundError extends BaseError {
 
 export class CannotDeleteGroupError extends BaseError {
   constructor(public readonly groupId: number) {
-    super(
-      'CannotDeleteGroupError',
-      `Cannot delete group ${groupId}`,
-      403,
-    );
+    super('CannotDeleteGroupError', `Cannot delete group ${groupId}`, 403);
   }
 }
