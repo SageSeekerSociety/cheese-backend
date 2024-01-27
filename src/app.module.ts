@@ -10,6 +10,7 @@ import {
 } from '../.secret/database.config';
 import { GroupsModule } from './groups/groups.module';
 import { QuestionsModule } from './questions/questions.module';
+import { TopicsModule } from './topics/topics.module';
 import { UsersModule } from './users/users.module';
 
 @Module({

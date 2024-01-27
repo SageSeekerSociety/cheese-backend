@@ -20,9 +20,11 @@ describe('User Module', () => {
   const TestEmail = `test-${Math.floor(
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
-  var TestUserId: number;
-  var TestRefreshToken: string;
-  var TestToken: string;
+  let TestUserId: number;
+  let TestRefreshTokenOld: string;
+  let TestRefreshToken: string;
+  let TestTokenOld: string;
+  let TestToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -135,6 +137,8 @@ describe('User Module', () => {
       expect(respond.body.message).toStrictEqual('Register successfully.');
       expect(respond.body.code).toEqual(201);
       req.expect(201);
+      expect(respond.body.data.user.username).toBe(TestUsername);
+      expect(respond.body.data.user.nickname).toBe('test_user');
     });
     it('should return EmailAlreadyRegisteredError', () => {
       return (
@@ -363,19 +367,68 @@ describe('User Module', () => {
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
       TestUserId = respond.body.data.user.id;
-      TestRefreshToken = respond.body.data.refreshToken;
+      expect(respond.header['set-cookie'][0]).toMatch(
+        /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
+      );
+      TestRefreshToken = respond.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      expect(respond.body.data.accessToken).toBeDefined();
+      TestToken = respond.body.data.accessToken;
+    });
+    it('should refresh access token successfully', async () => {
       const respond2 = await request(app.getHttpServer())
-        .get('/users/auth/access-token')
+        .post('/users/auth/refresh-token')
         .set(
           'Cookie',
           `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
         )
         .send();
       expect(respond2.body.message).toBe('Refresh token successfully.');
-      expect(respond2.status).toBe(200);
-      expect(respond2.body.code).toBe(200);
-      expect(respond2.body.accessToken).toBeDefined();
-      TestToken = respond2.body.accessToken;
+      expect(respond2.status).toBe(201);
+      expect(respond2.body.code).toBe(201);
+      expect(respond2.body.data.accessToken).toBeDefined();
+      TestRefreshTokenOld = TestRefreshToken;
+      TestTokenOld = TestToken;
+      TestRefreshToken = respond2.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      TestToken = respond2.body.data.accessToken;
+      expect(respond2.body.data.user.username).toBe(TestUsername);
+      expect(respond2.body.data.user.nickname).toBe('test_user');
+    });
+    it('should return RefreshTokenAlreadyUsedError', async () => {
+      const respond2 = await request(app.getHttpServer())
+        .post('/users/auth/refresh-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshTokenOld};    other_cookie=value`,
+        )
+        .send();
+      expect(respond2.body.message).toMatch(/^RefreshTokenAlreadyUsedError: /);
+      expect(respond2.status).toBe(401);
+      expect(respond2.body.code).toBe(401);
+    });
+    it('should refresh access token successfully again', async () => {
+      const respond2 = await request(app.getHttpServer())
+        .post('/users/auth/refresh-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond2.body.message).toBe('Refresh token successfully.');
+      expect(respond2.status).toBe(201);
+      expect(respond2.body.code).toBe(201);
+      expect(respond2.body.data.accessToken).toBeDefined();
+      TestRefreshTokenOld = TestRefreshToken;
+      TestTokenOld = TestToken;
+      TestRefreshToken = respond2.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      TestToken = respond2.body.data.accessToken;
+      expect(respond2.body.data.user.username).toBe(TestUsername);
+      expect(respond2.body.data.user.nickname).toBe('test_user');
     });
     it('should return UsernameNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
@@ -415,7 +468,7 @@ describe('User Module', () => {
     });
     it('should return SessionRevokedError', async () => {
       const respond = await request(app.getHttpServer())
-        .get('/users/auth/access-token')
+        .post('/users/auth/refresh-token')
         .set(
           'Cookie',
           `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
@@ -491,10 +544,11 @@ describe('User Module', () => {
       expect(respond.body.data.intro).toBe('test user updated');
     });
     it('should get modified user profile even without a token', async () => {
-      const respond = await request(app.getHttpServer())
-        .get(`/users/${TestUserId}`)
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .set('authorization', 'Bearer ' + TestToken);
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${TestUserId}`,
+      );
+      //.set('User-Agent', 'PostmanRuntime/7.26.8')
+      //.set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.message).toBe('Query user successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
@@ -612,7 +666,7 @@ describe('User Module', () => {
   });
 
   describe('follow logic', () => {
-    var tempUserIds: number[] = [];
+    let tempUserIds: number[] = [];
     it('should successfully create some auxiliary users first', async () => {
       const server = app.getHttpServer();
       async function createAuxiliaryUser(
@@ -644,7 +698,7 @@ describe('User Module', () => {
         expect(respond2.status).toBe(201);
         return respond2.body.data.user.id;
       }
-      for (var i = 0; i < 10; i++) {
+      for (let i = 0; i < 10; i++) {
         tempUserIds.push(
           await createAuxiliaryUser(
             `TestUser-${Math.floor(Math.random() * 10000000000)}`,
@@ -698,12 +752,12 @@ describe('User Module', () => {
       }
     });
 
-    it('should return AlreadyFollowedError', async () => {
+    it('should return UserAlreadyFollowedError', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/users/${tempUserIds[0]}/followers`)
         //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .set('authorization', 'Bearer ' + TestToken);
-      expect(respond.body.message).toMatch(/^AlreadyFollowedError: /);
+      expect(respond.body.message).toMatch(/^UserAlreadyFollowedError: /);
       expect(respond.status).toBe(422);
       expect(respond.body.code).toBe(422);
     });

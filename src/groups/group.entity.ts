@@ -1,5 +1,5 @@
 import { Column, CreateDateColumn, DeleteDateColumn, Entity, Index, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { Question } from '../questions/question.entity';
+import { Question } from '../questions/questions.entity';
 import { User } from '../users/users.entity';
 import { GroupProfile } from './group-profile.entity';
 

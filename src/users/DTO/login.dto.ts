@@ -12,7 +12,7 @@ export class LoginRequestDto {
 
 export class LoginRespondDto extends BaseRespondDto {
   data: {
-    refreshToken: string;
+    accessToken: string;
     user: UserDto;
   };
 }

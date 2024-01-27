@@ -76,9 +76,11 @@ export class GroupsController {
 
   @Get('/:id')
   async getGroupDetail(
-    @Param('id', ParseIntPipe) id: number
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string,
   ): Promise<GroupRespondDto> {
-    const groupDto = await this.groupsService.getGroupDtoById(id);
+    const userId = this.authService.verify(auth).userId;
+    const groupDto = await this.groupsService.getGroupDtoById(userId, id);
     return {
       code: 200,
       message: 'Group fetched successfully.',

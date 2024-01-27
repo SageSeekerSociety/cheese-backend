@@ -2,9 +2,12 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import assert from 'assert';
 import { In, Repository } from 'typeorm';
 import { QuestionIdNotFoundError } from '../questions/questions.error';
+import { QuestionsService } from '../questions/questions.service';
 import { UserIdNotFoundError } from '../users/users.error';
+import { UsersService } from '../users/users.service';
 import { GetGroupMembersResultDto } from './DTO/get-group-members.dto';
 import { GetGroupQuestionsResultDto } from './DTO/get-group-questions.dto';
 import { GetGroupsResultDto } from './DTO/get-groups.dto';
@@ -23,6 +26,8 @@ export enum GroupQueryType {
 @Injectable()
 export class GroupsService {
   constructor(
+    private usersService: UsersService,
+    private questionsService: QuestionsService,
     @InjectRepository(Group)
     private groupsRepository: Repository<Group>,
     @InjectRepository(GroupProfile)
@@ -74,11 +79,21 @@ export class GroupsService {
     });
     await this.groupMembershipsRepository.save(GroupMembership);
 
+    const userDto = await this.usersService._getUserDtoById(userId);
+
     return {
       id: group.id,
       name: group.name,
       intro: groupProfile.intro,
       avatar: groupProfile.avatar,
+      owner: userDto,
+      created_at: group.createdAt.getTime(),
+      member_count: 1,
+      question_count: 0,
+      answer_count: 0,
+      is_member: true,
+      is_owner: true,
+      is_public: true,
     };
   }
 
@@ -183,19 +198,49 @@ export class GroupsService {
 
   }
 
-  async getGroupDtoById(id: number): Promise<GroupDto> {
+  async getGroupDtoById(userId: number, groupId: number): Promise<GroupDto> {
     const group = await this.groupsRepository.findOne({
-      where: { id },
+      where: { id: groupId },
       relations: ['profile'],
     })
     if (group == null) {
-      throw new GroupIdNotFoundError(id);
+      throw new GroupIdNotFoundError(groupId);
     }
+    const ownership = await this.groupMembershipsRepository.findOneBy({
+      group,
+      role: 'owner',
+    });
+    assert(ownership != null);
+    const ownerId = ownership.memberId;
+    const ownerDto = await this.usersService._getUserDtoById(ownerId);
+
+    const member_count = await this.groupMembershipsRepository.countBy({ group });
+    const questions = await this.groupQuestionRelationshipsRepository.findBy({ group });
+    const question_count = questions.length;
+    const getQuestionAnswerCount = async (questionId: number) => 
+      (await this.questionsService._getQuestionDto(questionId)).answer_count;
+    const answer_count_promises = questions.map(question => getQuestionAnswerCount(question.id));
+    const answer_count = (await Promise.all(answer_count_promises)).reduce((a, b) => a + b, 0);
+
+    const is_member = await this.groupMembershipsRepository.findOneBy({
+      group,
+      memberId: userId,
+    }) != null;
+    const is_owner = ownerId == userId;
+
     return {
       id: group.id,
       name: group.name,
       intro: group.profile.intro,
       avatar: group.profile.avatar,
+      owner: ownerDto,
+      created_at: group.createdAt.getTime(),
+      member_count,
+      question_count,
+      answer_count,
+      is_member,
+      is_owner,
+      is_public: true, // todo: implement
     };
   }
 

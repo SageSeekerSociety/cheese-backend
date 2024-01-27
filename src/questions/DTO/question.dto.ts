@@ -1,57 +1,23 @@
-import { IsBoolean, IsInt, IsString } from "class-validator";
-import { GroupDto } from "../../groups/DTO/group.dto";
-import { UserDto } from "../../users/DTO/user.dto";
+import { GroupDto } from '../../groups/DTO/group.dto';
+import { TopicDto } from '../../topics/DTO/topic.dto';
+import { UserDto } from '../../users/DTO/user.dto';
 
 export class QuestionDto {
-  @IsInt()
-  readonly id: number;
-
-  @IsString()
-  readonly title: string;
-
-  @IsString()
-  readonly content: string;
-
-  readonly author: UserDto;
-
-  @IsInt()
-  readonly type: number;
-
-  @IsInt()
-  readonly created_at: number;
-
-  // todo: topics
-  // @IsArray()
-  // @ValidateNested({ each: true })
-  // @Type(() => Topic)
-  // readonly topics: Topic[];
-
-  @IsInt()
-  readonly updated_at: number;
-
-  @IsBoolean()
-  readonly is_follow: boolean;
-
-  @IsBoolean()
-  readonly is_like: boolean;
-
-  @IsInt()
-  readonly answer_count: number;
-
-  @IsInt()
-  readonly comment_count: number;
-
-  @IsInt()
-  readonly follow_count: number;
-
-  @IsInt()
-  readonly like_count: number;
-
-  @IsInt()
-  readonly view_count: number;
-
-  @IsBoolean()
-  readonly is_group: boolean;
-
-  readonly group?: GroupDto;
+  id: number;
+  title: string;
+  content: string;
+  user: UserDto;
+  type: number;
+  topics: TopicDto[];
+  created_at: number; // timestamp
+  updated_at: number; // timestamp
+  is_follow: boolean;
+  is_like: boolean;
+  answer_count: number;
+  comment_count: number;
+  follow_count: number;
+  like_count: number;
+  view_count: number;
+  is_group: boolean;
+  group: GroupDto;
 }

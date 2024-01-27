@@ -20,19 +20,24 @@ import {
   Put,
   Query,
   Request,
+  Res,
   UseFilters,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { AddFollowerRespondDto } from './DTO/add-follower.dto';
+import {
+  FollowRespondDto as FollowUserRespondDto,
+  UnfollowRespondDto as UnfollowUserRespondDto,
+} from './DTO/follow-unfollow.dto';
 import { GetFollowersRespondDto } from './DTO/get-followers.dto';
 import { GetUserRespondDto } from './DTO/get-user.dto';
-import { LoginRequestDto } from './DTO/login.dto';
+import { LoginRequestDto, LoginRespondDto } from './DTO/login.dto';
 import { RefreshTokenRespondDto } from './DTO/refresh-token.dto';
 import { RegisterRequestDto, RegisterResponseDto } from './DTO/register.dto';
 import {
@@ -79,7 +84,8 @@ export class UsersController {
     @Body() request: RegisterRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<RegisterResponseDto> {
+    @Res() res: Response,
+  ): Promise<Response> {
     const userDto = await this.usersService.register(
       request.username,
       request.nickname,
@@ -89,20 +95,33 @@ export class UsersController {
       ip,
       userAgent,
     );
-    const [_, refreshToken] = await this.usersService.login(
+    const [, refreshToken] = await this.usersService.login(
       request.username,
       request.password,
       ip,
       userAgent,
     );
-    return {
+    const [newRefreshToken, accessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
+    );
+    const data: RegisterResponseDto = {
       code: 201,
       message: 'Register successfully.',
       data: {
         user: userDto,
-        refreshToken: refreshToken,
+        accessToken,
       },
     };
+    return res
+      .cookie('REFRESH_TOKEN', newRefreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/users/auth',
+        expires: new Date(newRefreshTokenExpire),
+      })
+      .json(data);
   }
 
   @Post('/auth/login')
@@ -110,27 +129,44 @@ export class UsersController {
     @Body() request: LoginRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ) {
+    @Res() res: Response,
+  ): Promise<Response> {
     const [userDto, refreshToken] = await this.usersService.login(
       request.username,
       request.password,
       ip,
       userAgent,
     );
-    return {
+    const [newRefreshToken, accessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
+    );
+    const data: LoginRespondDto = {
       code: 201,
       message: 'Login successfully.',
       data: {
         user: userDto,
-        refreshToken: refreshToken,
+        accessToken,
       },
     };
+    return res
+      .cookie('REFRESH_TOKEN', newRefreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/users/auth',
+        expires: new Date(newRefreshTokenExpire),
+      })
+      .json(data);
   }
 
-  @Get('/auth/access-token')
+  @Post('/auth/refresh-token')
   async refreshToken(
     @Headers('cookie') cookieHeader: string,
-  ): Promise<RefreshTokenRespondDto> {
+    @Res() res: Response,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
+  ): Promise<Response> {
     if (cookieHeader == null) {
       throw new AuthenticationRequiredError();
     }
@@ -142,11 +178,34 @@ export class UsersController {
       throw new AuthenticationRequiredError();
     }
     const refreshToken = refreshTokenCookie.split('=')[1];
-    return {
-      code: 200,
+    const [newRefreshToken, accessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
+    );
+    const decodedAccessToken = this.authService.decode(accessToken);
+    const userDto = await this.usersService.getUserDtoById(
+      decodedAccessToken.authorization.userId,
+      decodedAccessToken.authorization.userId,
+      ip,
+      userAgent,
+    );
+    const data: RefreshTokenRespondDto = {
+      code: 201,
       message: 'Refresh token successfully.',
-      accessToken: await this.sessionService.refreshSession(refreshToken),
+      data: {
+        accessToken: accessToken,
+        user: userDto,
+      },
     };
+    return res
+      .cookie('REFRESH_TOKEN', newRefreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/users/auth',
+        expires: new Date(newRefreshTokenExpire),
+      })
+      .json(data);
   }
 
   @Post('/auth/logout')
@@ -209,16 +268,13 @@ export class UsersController {
   @Get('/:id')
   async getUser(
     @Param('id', ParseIntPipe) id: number,
-    // @Headers('Authorization') auth: string,
-    @Request() req: Request,
+    @Headers('Authorization') auth: string,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetUserRespondDto> {
-    var viewerId: number = null;
+    let viewerId: number = null;
     try {
-      const auth = req.headers['Authorization'];
-      const decoded = this.authService.verify(auth);
-      viewerId = decoded.userId;
+      viewerId = this.authService.verify(auth).userId;
     } catch {}
     const user = await this.usersService.getUserDtoById(
       id,
@@ -259,10 +315,10 @@ export class UsersController {
   }
 
   @Post('/:id/followers')
-  async addFollower(
+  async followUser(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
-  ): Promise<AddFollowerRespondDto> {
+  ): Promise<FollowUserRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -282,10 +338,10 @@ export class UsersController {
   }
 
   @Delete('/:id/followers')
-  async deleteFollower(
+  async unfollowUser(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string,
-  ) {
+  ): Promise<UnfollowUserRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -316,7 +372,7 @@ export class UsersController {
   ): Promise<GetFollowersRespondDto> {
     if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var viewerId: number = null;
+    let viewerId: number = null;
     try {
       const auth = req.headers['Authorization'];
       const decoded = this.authService.verify(auth.split(' ')[1]);
@@ -352,7 +408,7 @@ export class UsersController {
   ): Promise<GetFollowersRespondDto> {
     if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var viewerId: number = null;
+    let viewerId: number = null;
     try {
       const auth = req.headers['Authorization'];
       const decoded = this.authService.verify(auth.split(' ')[1]);

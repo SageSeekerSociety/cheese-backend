@@ -7,7 +7,7 @@
  *
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import {
   AuthenticationRequiredError,
@@ -88,8 +88,9 @@ export class Authorization {
   permissions: Permission[];
 }
 
-class TokenPayload {
+export class TokenPayload {
   authorization: Authorization;
+  signedAt: number; // timestamp in milliseconds
   validUntil: number; // timestamp in milliseconds
 }
 
@@ -99,9 +100,11 @@ export class AuthService {
 
   // Sign a token for an authorization.
   sign(authorization: Authorization, validSeconds: number = 60): string {
+    const now = Date.now();
     const payload: TokenPayload = {
       authorization: authorization,
-      validUntil: Date.now() + validSeconds * 1000,
+      signedAt: now,
+      validUntil: now + validSeconds * 1000,
     };
     return this.jwtService.sign(payload);
   }
@@ -165,7 +168,7 @@ export class AuthService {
       throw new Error('resourceId must be a number.');
     }
     for (const permission of authorization.permissions) {
-      var actionMatches = false;
+      let actionMatches = false;
       for (const authorizedAction of permission.authorizedActions) {
         if (authorizedAction === action) {
           actionMatches = true;
@@ -182,7 +185,7 @@ export class AuthService {
         continue;
       // Now, owner matches.
 
-      var typeMatches =
+      let typeMatches =
         permission.authorizedResource.types === null ? true : false;
       if (permission.authorizedResource.types !== null) {
         for (const authorizedType of permission.authorizedResource.types) {
@@ -194,7 +197,7 @@ export class AuthService {
       if (typeMatches == false) continue;
       // Now, type matches.
 
-      var idMatches =
+      let idMatches =
         permission.authorizedResource.resourceIds === null ? true : false;
       if (permission.authorizedResource.resourceIds !== null) {
         for (const authorizedId of permission.authorizedResource.resourceIds) {
@@ -215,5 +218,20 @@ export class AuthService {
       resourceType,
       resourceId,
     );
+  }
+
+  // Decode a token, WITHOUT verifying it.
+  decode(token: string): TokenPayload {
+    if (token == null || token == undefined || token == '')
+      throw new AuthenticationRequiredError();
+    if (token.indexOf('Bearer ') == 0) token = token.slice(7);
+    else if (token.indexOf('bearer ') == 0) token = token.slice(7);
+    const result = this.jwtService.decode(token);
+    try {
+      const payload = result as TokenPayload;
+      return payload;
+    } catch {
+      throw new TokenFormatError(token);
+    }
   }
 }
