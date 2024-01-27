@@ -409,7 +409,9 @@ describe('User Module', () => {
       expect(respond2.status).toBe(401);
       expect(respond2.body.code).toBe(401);
     });
-    it('should refresh access token successfully again', async () => {
+    it('should refresh access token successfully after 29 days', async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      jest.setSystemTime(Date.now() + 29 * 24 * 60 * 60 * 1000);
       const respond2 = await request(app.getHttpServer())
         .post('/users/auth/refresh-token')
         .set(
@@ -429,6 +431,20 @@ describe('User Module', () => {
       TestToken = respond2.body.data.accessToken;
       expect(respond2.body.data.user.username).toBe(TestUsername);
       expect(respond2.body.data.user.nickname).toBe('test_user');
+    });
+    it('should return TokenExpiredError after 31 days', async () => {
+      jest.setSystemTime(Date.now() + 31 * 24 * 60 * 60 * 1000);
+      const respond2 = await request(app.getHttpServer())
+        .post('/users/auth/refresh-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond2.body.message).toMatch(/^TokenExpiredError: /);
+      expect(respond2.status).toBe(401);
+      expect(respond2.body.code).toBe(401);
+      jest.useRealTimers();
     });
     it('should return UsernameNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
