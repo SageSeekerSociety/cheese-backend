@@ -2,7 +2,6 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import assert from 'assert';
 import { In, Repository } from 'typeorm';
 import { QuestionIdNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
@@ -223,13 +222,17 @@ export class GroupsService {
       where: { id: groupId },
       relations: ['profile'],
     });
-    assert(group != null, new GroupIdNotFoundError(groupId));
+    if (group == null) {
+      throw new GroupIdNotFoundError(groupId);
+    }
 
     const ownership = await this.groupMembershipsRepository.findOneBy({
       group,
       role: 'owner',
     });
-    assert(ownership != null);
+    if (ownership == null) {
+      throw new Error('Group has no owner.');
+    }
     const ownerId = ownership.memberId;
     const ownerDto = await this.usersService.getUserDtoById(ownerId);
 
@@ -340,15 +343,18 @@ export class GroupsService {
     intro: string,
   ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
-    assert(group != null, new GroupIdNotFoundError(groupId));
+    if (group == null) {
+      throw new GroupIdNotFoundError(groupId);
+    }
 
-    assert(
+    if (
       (await this.groupMembershipsRepository.findOneBy({
-        groupId,
+        group,
         memberId: userId,
-      })) == null,
-      new GroupAlreadyJoinedError(groupId),
-    );
+      })) != null
+    ) {
+      throw new GroupAlreadyJoinedError(groupId);
+    }
 
     await this.groupMembershipsRepository.insert({
       groupId,

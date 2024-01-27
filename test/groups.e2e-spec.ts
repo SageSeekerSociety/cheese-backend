@@ -53,7 +53,20 @@ describe('Groups Module', () => {
     await app.init();
   }, 20000);
 
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    (
+      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+    ).mock.calls.length = 0;
+    (
+      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+    ).mock.results.length = 0;
+    (
+      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+    ).mock.calls.length = 0;
+    (
+      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+    ).mock.results.length = 0;
+  });
 
   describe('preparation', () => {
     it(`should send an email and register a user ${TestUsername}`, async () => {

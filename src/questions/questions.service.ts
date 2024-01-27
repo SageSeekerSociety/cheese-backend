@@ -9,7 +9,6 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
-import assert from 'assert';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
@@ -315,7 +314,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    assert(question != null, new QuestionIdNotFoundError(questionId));
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     return question.createdById;
   }
 
@@ -323,7 +322,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    assert(question != null, new QuestionIdNotFoundError(questionId));
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     await this.questionRepository.softDelete({ id: questionId });
   }
 
@@ -331,17 +330,15 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    assert(question != null, new QuestionIdNotFoundError(questionId));
-    assert(
-      await this.userService.isUserExists(followerId),
-      new UserIdNotFoundError(followerId),
-    );
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
+    if ((await this.userService.isUserExists(followerId)) == false)
+      throw new UserIdNotFoundError(followerId);
 
     const relationOld = await this.questionFollowRelationRepository.findOneBy({
       followerId,
       questionId,
     });
-    assert(relationOld == null, new QuestionAlreadyFollowedError(questionId));
+    if (relationOld != null) throw new QuestionAlreadyFollowedError(questionId);
 
     const relation = this.questionFollowRelationRepository.create({
       followerId,
@@ -357,17 +354,15 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    assert(question != null, new QuestionIdNotFoundError(questionId));
-    assert(
-      await this.userService.isUserExists(followerId),
-      new UserIdNotFoundError(followerId),
-    );
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
+    if ((await this.userService.isUserExists(followerId)) == false)
+      throw new UserIdNotFoundError(followerId);
 
     const relation = await this.questionFollowRelationRepository.findOneBy({
       followerId,
       questionId,
     });
-    assert(relation != null, new QuestionNotFollowedYetError(questionId));
+    if (relation == null) throw new QuestionNotFollowedYetError(questionId);
     await this.questionFollowRelationRepository.softDelete({
       followerId,
       questionId,
