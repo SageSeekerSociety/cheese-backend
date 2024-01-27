@@ -22,6 +22,7 @@ import {
 } from './group.entity';
 import {
   CannotDeleteGroupError,
+  GroupAlreadyJoinedError,
   GroupIdNotFoundError,
   GroupNameAlreadyExistsError,
   InvalidGroupNameError,
@@ -108,8 +109,9 @@ export class GroupsService {
   }
 
   async getGroups(
-    key: string,
-    page_start_id: number,
+    userId: number,
+    key: string | null,
+    page_start_id: number | null,
     page_size: number,
     order_type: GroupQueryType,
   ): Promise<GetGroupsResultDto> {
@@ -194,27 +196,24 @@ export class GroupsService {
       prevDTOs = null;
       currDTOs = await queryBuilder.limit(page_size + 1).getMany();
     }
-    const has_prev = prevDTOs && prevDTOs.length > 0;
-    const has_more = currDTOs && currDTOs.length > page_size;
+    const has_prev = prevDTOs != null && prevDTOs.length > 0;
+    const has_more = currDTOs != null && currDTOs.length > page_size;
     const page_start = currDTOs[0].id;
     const real_page_size =
       currDTOs.length > page_size ? page_size : currDTOs.length;
     const next_start = currDTOs[page_size - 1].id;
-    const groups = currDTOs.map((group) => ({
-      id: group.id,
-      name: group.name,
-      intro: group.profile.intro,
-      avatar: group.profile.avatar,
-    }));
+    const groups = await Promise.all(
+      currDTOs.map((group) => this.getGroupDtoById(userId, group.id)),
+    );
     return {
       groups,
       page: {
         page_start,
         page_size: real_page_size,
         has_prev,
-        prev_start: has_prev ? prevDTOs[0].id : null,
+        prev_start: prevDTOs?.[0]?.id,
         has_more,
-        next_start: has_more ? next_start : null,
+        next_start,
       },
     };
   }
@@ -224,9 +223,8 @@ export class GroupsService {
       where: { id: groupId },
       relations: ['profile'],
     });
-    if (group == null) {
-      throw new GroupIdNotFoundError(groupId);
-    }
+    assert(group != null, new GroupIdNotFoundError(groupId));
+
     const ownership = await this.groupMembershipsRepository.findOneBy({
       group,
       role: 'owner',
@@ -342,17 +340,15 @@ export class GroupsService {
     intro: string,
   ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
-    if (group == null) {
-      throw new GroupIdNotFoundError(groupId);
-    }
-    if (
-      await this.groupMembershipsRepository.findOneBy({
+    assert(group != null, new GroupIdNotFoundError(groupId));
+
+    assert(
+      (await this.groupMembershipsRepository.findOneBy({
         groupId,
         memberId: userId,
-      })
-    ) {
-      return; // or throw error?
-    }
+      })) == null,
+      new GroupAlreadyJoinedError(groupId),
+    );
 
     await this.groupMembershipsRepository.insert({
       groupId,
@@ -386,7 +382,7 @@ export class GroupsService {
 
   async getGroupMembers(
     groupId: number,
-    page_start_id: number,
+    page_start_id: number | undefined,
     page_size: number,
   ): Promise<GetGroupMembersResultDto> {
     let queryBuilder = this.groupMembershipsRepository
@@ -422,12 +418,11 @@ export class GroupsService {
     const page_start = currDTOs[0].memberId;
     const real_page_size =
       currDTOs.length > page_size ? page_size : currDTOs.length;
-    const members = currDTOs.map((relationship) => ({
-      id: relationship.memberId,
-      nickname: relationship.member.profile.nickname,
-      avatar: relationship.member.profile.avatar,
-      intro: relationship.intro,
-    }));
+    const members = await Promise.all(
+      currDTOs.map((relationship) =>
+        this.usersService._getUserDtoById(relationship.memberId),
+      ),
+    );
     return {
       members,
       page: {
@@ -443,7 +438,7 @@ export class GroupsService {
 
   async getGroupQuestions(
     groupId: number,
-    page_start_id: number,
+    page_start_id: number | undefined,
     page_size: number,
   ): Promise<GetGroupQuestionsResultDto> {
     let queryBuilder = this.groupQuestionRelationshipsRepository
@@ -483,11 +478,11 @@ export class GroupsService {
     const page_start = currDTOs[0].questionId;
     const real_page_size =
       currDTOs.length > page_size ? page_size : currDTOs.length;
-    const questions = currDTOs.map((relationship) => ({
-      id: relationship.questionId,
-      title: relationship.question.title,
-      content: relationship.question.content,
-    }));
+    const questions = await Promise.all(
+      currDTOs.map((relationship) =>
+        this.questionsService._getQuestionDto(relationship.questionId),
+      ),
+    );
     return {
       questions,
       page: {

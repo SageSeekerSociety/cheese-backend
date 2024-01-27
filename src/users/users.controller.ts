@@ -374,7 +374,7 @@ export class UsersController {
     // try get viewer id
     let viewerId: number = null;
     try {
-      const auth = req.headers['Authorization'];
+      const auth = req.headers.get('Authorization');
       const decoded = this.authService.verify(auth.split(' ')[1]);
       viewerId = decoded.userId;
     } catch {}
@@ -410,7 +410,7 @@ export class UsersController {
     // try get viewer id
     let viewerId: number = null;
     try {
-      const auth = req.headers['Authorization'];
+      const auth = req.headers.get('Authorization');
       const decoded = this.authService.verify(auth.split(' ')[1]);
       viewerId = decoded.userId;
     } catch {}

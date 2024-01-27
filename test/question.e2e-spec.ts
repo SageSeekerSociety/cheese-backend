@@ -138,14 +138,13 @@ describe('Topic Module', () => {
       await createTopic('钓鱼');
     }, 60000);
     it('should create an auxiliary user', async () => {
-      const [, accessToken] = await createAuxiliaryUser();
-      auxAccessToken = accessToken;
+      [, auxAccessToken] = await createAuxiliaryUser();
     });
   });
 
   describe('create question', () => {
     it('should create some questions', async () => {
-      async function createQuestion(title, content) {
+      async function createQuestion(title: string, content: string) {
         const respond = await request(app.getHttpServer())
           .post('/questions')
           .set('Authorization', `Bearer ${TestToken}`)

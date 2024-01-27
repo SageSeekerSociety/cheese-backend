@@ -36,18 +36,7 @@ describe('User Module', () => {
   }, 20000);
 
   beforeEach(() => {
-    (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.results.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-    ).mock.results.length = 0;
+    jest.clearAllMocks();
   });
 
   describe('register logic', () => {

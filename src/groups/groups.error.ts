@@ -30,3 +30,9 @@ export class CannotDeleteGroupError extends BaseError {
     super('CannotDeleteGroupError', `Cannot delete group ${groupId}`, 403);
   }
 }
+
+export class GroupAlreadyJoinedError extends BaseError {
+  constructor(public readonly groupId: number) {
+    super('GroupAlreadyJoinedError', `Group ${groupId} already joined`, 409);
+  }
+}

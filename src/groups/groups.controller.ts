@@ -56,12 +56,15 @@ export class GroupsController {
 
   @Get('/')
   async getGroups(
+    @Headers('Authorization') auth: string,
     @Query('q') key?: string,
     @Query('page_start') page_start?: number,
     @Query('page_size') page_size: number = 20,
     @Query('type') type: GroupQueryType = GroupQueryType.Recommend,
   ): Promise<GetGroupsRespondDto> {
+    const userId = this.authService.verify(auth).userId;
     const getGroupResult = await this.groupsService.getGroups(
+      userId,
       key,
       page_start,
       page_size,
