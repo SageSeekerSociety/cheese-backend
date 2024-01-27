@@ -145,7 +145,7 @@ describe('Topic Module', () => {
 
   describe('create question', () => {
     it('should create some questions', async () => {
-      async function createQuestion(title, content) {
+      async function createQuestion(title: string, content:string) {
         const respond = await request(app.getHttpServer())
           .post('/questions')
           .set('Authorization', `Bearer ${TestToken}`)

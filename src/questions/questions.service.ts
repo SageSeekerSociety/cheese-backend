@@ -38,7 +38,7 @@ export class QuestionsService {
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
     @InjectEntityManager()
-    private readonly entityManager,
+    private readonly entityManager: EntityManager,
     @InjectRepository(Question)
     private readonly questionRepository: Repository<Question>,
     @InjectRepository(QuestionTopicRelation)
@@ -318,7 +318,7 @@ export class QuestionsService {
     return question.createdById;
   }
 
-  async deleteQuestion(questionId): Promise<void> {
+  async deleteQuestion(questionId: number): Promise<void> {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });

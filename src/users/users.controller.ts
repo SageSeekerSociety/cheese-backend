@@ -366,7 +366,7 @@ export class UsersController {
     @Query('page_start', new ParseIntPipe({ optional: true }))
     pageStart: number,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
-    @Request() req: Request,
+    @Headers('Authorization') auth: string,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetFollowersRespondDto> {
@@ -374,9 +374,7 @@ export class UsersController {
     // try get viewer id
     let viewerId: number = null;
     try {
-      const auth = req.headers['Authorization'];
-      const decoded = this.authService.verify(auth.split(' ')[1]);
-      viewerId = decoded.userId;
+      viewerId = this.authService.verify(auth).userId;
     } catch {}
     const [followers, page] = await this.usersService.getFollowers(
       id,
@@ -402,7 +400,7 @@ export class UsersController {
     @Query('page_start', new ParseIntPipe({ optional: true }))
     pageStart: number,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
-    @Request() req: Request,
+    @Headers('Authorization') auth: string,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetFollowersRespondDto> {
@@ -410,9 +408,7 @@ export class UsersController {
     // try get viewer id
     let viewerId: number = null;
     try {
-      const auth = req.headers['Authorization'];
-      const decoded = this.authService.verify(auth.split(' ')[1]);
-      viewerId = decoded.userId;
+      viewerId = this.authService.verify(auth).userId;
     } catch {}
     const [followees, page] = await this.usersService.getFollowees(
       id,
