@@ -43,9 +43,9 @@ export class TopicsService {
     keywords: string,
     pageStart: number, // null if from start
     pageSize: number,
-    searcherId: number, // nullable
-    ip: string,
-    userAgent: string,
+    searcherId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[TopicDto[], PageRespondDto]> {
     const timeBegin = Date.now();
     const allData = await this.topicRepository
@@ -69,17 +69,19 @@ export class TopicsService {
         throw new TopicNotFoundError(pageStart);
       },
     );
-    const log = this.topicSearchLogRepository.create({
-      keywords: keywords,
-      firstTopicId: pageStart,
-      pageSize: pageSize,
-      result: data.map((t) => t.id).join(','),
-      duration: (Date.now() - timeBegin) / 1000,
-      searcherId: searcherId,
-      ip: ip,
-      userAgent: userAgent,
-    });
-    await this.topicSearchLogRepository.save(log);
+    if (searcherId != null || ip != null || userAgent != null) {
+      const log = this.topicSearchLogRepository.create({
+        keywords: keywords,
+        firstTopicId: pageStart,
+        pageSize: pageSize,
+        result: data.map((t) => t.id).join(','),
+        duration: (Date.now() - timeBegin) / 1000,
+        searcherId: searcherId,
+        ip: ip,
+        userAgent: userAgent,
+      });
+      await this.topicSearchLogRepository.save(log);
+    }
     return [data, page];
   }
 

@@ -158,9 +158,9 @@ export class QuestionsService {
 
   async getQuestionDto(
     questionId: number,
-    viewerId: number,
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<QuestionDto> {
     if (questionId == null) throw new Error('questionId is null');
     const question = await this.questionRepository.findOneBy({
@@ -192,13 +192,15 @@ export class QuestionsService {
       // does not exist now. This is NOT a data integrity problem, since user can be
       // deleted. So we just return a null and not throw an error.
     }
-    const log = this.questionQueryLogRepository.create({
-      viewerId,
-      questionId,
-      ip,
-      userAgent,
-    });
-    await this.questionQueryLogRepository.save(log);
+    if (viewerId != null || ip != null || userAgent != null) {
+      const log = this.questionQueryLogRepository.create({
+        viewerId,
+        questionId,
+        ip,
+        userAgent,
+      });
+      await this.questionQueryLogRepository.save(log);
+    }
     return {
       id: question.id,
       title: question.title,
@@ -220,65 +222,13 @@ export class QuestionsService {
     };
   }
 
-  // !This internal method is used to get question info without logging.
-  // !It should not be used in controller.
-  async _getQuestionDto(questionId: number): Promise<QuestionDto> {
-    if (questionId == null) throw new Error('questionId is null');
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
-    });
-    if (question == null) throw new QuestionIdNotFoundError(questionId);
-    const topicsPromise = this.getTopicDtosOfQuestion(questionId);
-    const followCountPromise = this.getFollowCountOfQuestion(questionId);
-    const viewCountPromise = this.getViewCountOfQuestion(questionId);
-
-    const [topics, followCount, viewCount] = await Promise.all([
-      topicsPromise,
-      followCountPromise,
-      viewCountPromise,
-    ]);
-    if (question == null) throw new QuestionIdNotFoundError(questionId);
-    let user: UserDto = null;
-    try {
-      user = await this.userService.getUserDtoById(
-        question.createdById,
-        null,
-        null,
-        null,
-      );
-    } catch (e) {
-      // If user is null, it means that one user created this question, but the user
-      // does not exist now. This is NOT a data integrity problem, since user can be
-      // deleted. So we just return a null and not throw an error.
-    }
-    return {
-      id: question.id,
-      title: question.title,
-      content: question.content,
-      user,
-      type: question.type,
-      topics,
-      created_at: question.createdAt.getTime(),
-      updated_at: question.updatedAt.getTime(),
-      is_follow: false,
-      is_like: false, // TODO: Implement this.
-      answer_count: 0, // TODO: Implement this.
-      comment_count: 0, // TODO: Implement this.
-      follow_count: followCount,
-      like_count: 0, // TODO: Implement this.
-      view_count: viewCount,
-      is_group: question.groupId != null,
-      group: null, // TODO: Implement this.
-    };
-  }
-
   async searchQuestions(
     keywords: string,
     pageStart: number, // null if from start
     pageSize: number,
-    searcherId: number, // nullable
-    ip: string,
-    userAgent: string,
+    searcherId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[QuestionDto[], PageRespondDto]> {
     const timeBegin = Date.now();
     const allQuestionIds = (await this.questionRepository
@@ -308,17 +258,19 @@ export class QuestionsService {
         this.getQuestionDto(questionId.id, searcherId, ip, userAgent),
       ),
     );
-    const log = this.questionSearchLogRepository.create({
-      keywords,
-      firstQuestionId: pageStart,
-      pageSize,
-      result: questionIds.map((t) => t.id).join(','),
-      duration: (Date.now() - timeBegin) / 1000,
-      searcherId,
-      ip,
-      userAgent,
-    });
-    await this.questionSearchLogRepository.save(log);
+    if (searcherId != null || ip != null || userAgent != null) {
+      const log = this.questionSearchLogRepository.create({
+        keywords,
+        firstQuestionId: pageStart,
+        pageSize,
+        result: questionIds.map((t) => t.id).join(','),
+        duration: (Date.now() - timeBegin) / 1000,
+        searcherId,
+        ip,
+        userAgent,
+      });
+      await this.questionSearchLogRepository.save(log);
+    }
     return [questions, page];
   }
 
@@ -426,9 +378,9 @@ export class QuestionsService {
     questionId: number,
     firstFollowerId: number | undefined, // if from start
     pageSize: number,
-    viewerId: number | null,
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
     if (pageSize <= 0) {
       throw new BadRequestError('pageSize should be positive number');
