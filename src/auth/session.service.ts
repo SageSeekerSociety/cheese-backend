@@ -6,7 +6,7 @@
  *
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -27,6 +27,7 @@ export class SessionService {
     private readonly sessionRefreshLogRepository: Repository<SessionRefreshLog>,
   ) {}
 
+  private readonly defaultSessionValidSeconds = 60 * 60 * 24 * 30 * 12;
   private readonly defaultRefreshTokenValidSeconds = 60 * 60 * 24 * 30;
   private readonly defaultAccessTokenValidSeconds = 15 * 60;
 
@@ -57,6 +58,7 @@ export class SessionService {
     // The refresh token is valid for refreshTokenValidSeconds seconds.
     // By default, it is valid for defaultRefreshTokenValidSeconds seconds.
     refreshTokenValidSeconds?: number,
+    sessionValidSeconds?: number,
   ): Promise<string> {
     const session = new Session();
     session.userId = userId;
@@ -64,7 +66,10 @@ export class SessionService {
     if (refreshTokenValidSeconds == null) {
       refreshTokenValidSeconds = this.defaultRefreshTokenValidSeconds;
     }
-    session.validUntil = new Date(Date.now() + refreshTokenValidSeconds * 1000);
+    if (sessionValidSeconds == null) {
+      sessionValidSeconds = this.defaultSessionValidSeconds;
+    }
+    session.validUntil = new Date(Date.now() + sessionValidSeconds * 1000);
     session.revoked = false;
     session.lastRefreshedAt = new Date().getTime();
     await this.sessionRepository.save(session);
