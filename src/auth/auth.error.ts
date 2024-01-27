@@ -39,13 +39,7 @@ export class PermissionDeniedError extends BaseError {
       'PermissionDeniedError',
       `The attempt to perform action '${authorizedActionToString(
         action,
-      )}' on resource (resourceOwnerId: ${
-        resourceOwnerId === null ? 'null' : resourceOwnerId
-      }, resourceType: ${
-        resourceType === null ? 'null' : resourceType
-      }, resourceId: ${
-        resourceId === null ? 'null' : resourceId
-      }) is not permitted by the given token.`,
+      )}' on resource (resourceOwnerId: ${resourceOwnerId}, resourceType: ${resourceType}, resourceId: ${resourceId}) is not permitted by the given token.`,
       403,
     );
   }
