@@ -409,9 +409,120 @@ describe('User Module', () => {
       expect(respond2.status).toBe(401);
       expect(respond2.body.code).toBe(401);
     });
-    it('should refresh access token successfully after 29 days', async () => {
+    it('should refresh successfully after 29 days but return TokenExpiredError after 31 days', async () => {
       jest.useFakeTimers({ advanceTimers: true });
       jest.setSystemTime(Date.now() + 29 * 24 * 60 * 60 * 1000);
+      const respond2 = await request(app.getHttpServer())
+        .post('/users/auth/refresh-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond2.body.message).toBe('Refresh token successfully.');
+      expect(respond2.status).toBe(201);
+      expect(respond2.body.code).toBe(201);
+      expect(respond2.body.data.accessToken).toBeDefined();
+      expect(respond2.body.data.user.username).toBe(TestUsername);
+      expect(respond2.body.data.user.nickname).toBe('test_user');
+      const refreshToken = respond2.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      jest.setSystemTime(Date.now() + 31 * 24 * 60 * 60 * 1000);
+      const respond3 = await request(app.getHttpServer())
+        .post('/users/auth/refresh-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${refreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond3.body.message).toMatch(/^TokenExpiredError: /);
+      expect(respond3.status).toBe(401);
+      expect(respond3.body.code).toBe(401);
+      jest.useRealTimers();
+    });
+    it('should login successfully again', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/users/auth/login')
+        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .send({
+          username: TestUsername,
+          password: 'abc123456!!!',
+        });
+      expect(respond.body.message).toBe('Login successfully.');
+      expect(respond.status).toBe(201);
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data.user.username).toBe(TestUsername);
+      expect(respond.body.data.user.nickname).toBe('test_user');
+      TestUserId = respond.body.data.user.id;
+      expect(respond.header['set-cookie'][0]).toMatch(
+        /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
+      );
+      TestRefreshToken = respond.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      expect(respond.body.data.accessToken).toBeDefined();
+      TestToken = respond.body.data.accessToken;
+    });
+    it('should return SessionExpiredError', async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+      let refreshToken: string = TestRefreshToken;
+      for (let i = 0; i < 12; i++) {
+        jest.advanceTimersByTime(1000 * 60 * 60 * 24 * 29);
+        const respond2 = await request(app.getHttpServer())
+          .post('/users/auth/refresh-token')
+          .set(
+            'Cookie',
+            `some_cookie=12345;    REFRESH_TOKEN=${refreshToken};    other_cookie=value`,
+          )
+          .send();
+        expect(respond2.body.message).toBe('Refresh token successfully.');
+        expect(respond2.status).toBe(201);
+        expect(respond2.body.code).toBe(201);
+        expect(respond2.body.data.accessToken).toBeDefined();
+        refreshToken = respond2.header['set-cookie'][0]
+          .split(';')[0]
+          .split('=')[1];
+        expect(respond2.body.data.user.username).toBe(TestUsername);
+        expect(respond2.body.data.user.nickname).toBe('test_user');
+      }
+      jest.advanceTimersByTime(1000 * 60 * 60 * 24 * 29);
+      const respond2 = await request(app.getHttpServer())
+        .post('/users/auth/refresh-token')
+        .set(
+          'Cookie',
+          `some_cookie=12345;    REFRESH_TOKEN=${refreshToken};    other_cookie=value`,
+        )
+        .send();
+      expect(respond2.body.message).toMatch(/^SessionExpiredError: /);
+      expect(respond2.status).toBe(401);
+      expect(respond2.body.code).toBe(401);
+      jest.useRealTimers();
+    }, 30000);
+    it('should login successfully again', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/users/auth/login')
+        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .send({
+          username: TestUsername,
+          password: 'abc123456!!!',
+        });
+      expect(respond.body.message).toBe('Login successfully.');
+      expect(respond.status).toBe(201);
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data.user.username).toBe(TestUsername);
+      expect(respond.body.data.user.nickname).toBe('test_user');
+      TestUserId = respond.body.data.user.id;
+      expect(respond.header['set-cookie'][0]).toMatch(
+        /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
+      );
+      TestRefreshToken = respond.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      expect(respond.body.data.accessToken).toBeDefined();
+      TestToken = respond.body.data.accessToken;
+    });
+    it('should refresh access token successfully again', async () => {
       const respond2 = await request(app.getHttpServer())
         .post('/users/auth/refresh-token')
         .set(
@@ -431,20 +542,6 @@ describe('User Module', () => {
       TestToken = respond2.body.data.accessToken;
       expect(respond2.body.data.user.username).toBe(TestUsername);
       expect(respond2.body.data.user.nickname).toBe('test_user');
-    });
-    it('should return TokenExpiredError after 31 days', async () => {
-      jest.setSystemTime(Date.now() + 31 * 24 * 60 * 60 * 1000);
-      const respond2 = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond2.body.message).toMatch(/^TokenExpiredError: /);
-      expect(respond2.status).toBe(401);
-      expect(respond2.body.code).toBe(401);
-      jest.useRealTimers();
     });
     it('should return UsernameNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
