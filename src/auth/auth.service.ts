@@ -123,21 +123,27 @@ export class AuthService {
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
+
+    let result: any;
     try {
-      const result = this.jwtService.verify(token);
-      try {
-        const payload = result as TokenPayload;
-        if (Date.now() > payload.validUntil) throw new TokenExpiredError();
-        return payload.authorization;
-      } catch {
-        throw new Error(
-          'The token is valid, but the payload of the token is' +
-            ' not an Authorization object. This is ether a bug or a malicious attack.',
-        );
-      }
+      result = this.jwtService.verify(token);
     } catch {
       throw new InvalidTokenError();
     }
+
+    let payload: TokenPayload;
+    try {
+      payload = result as TokenPayload;
+    } catch {
+      throw new Error(
+        'The token is valid, but the payload of the token is' +
+          ' not an Authorization object. This is ether a bug or a malicious attack.',
+      );
+    }
+
+    if (Date.now() > payload.validUntil) throw new TokenExpiredError();
+
+    return payload.authorization;
   }
 
   // If the toke is invalid, or the operation is not permitted, an exception is thrown.
