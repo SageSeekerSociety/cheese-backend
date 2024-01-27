@@ -89,7 +89,7 @@ export class GroupsService {
     });
     await this.groupMembershipsRepository.save(GroupMembership);
 
-    const userDto = await this.usersService._getUserDtoById(userId);
+    const userDto = await this.usersService.getUserDtoById(userId);
 
     return {
       id: group.id,
@@ -233,7 +233,7 @@ export class GroupsService {
     });
     assert(ownership != null);
     const ownerId = ownership.memberId;
-    const ownerDto = await this.usersService._getUserDtoById(ownerId);
+    const ownerDto = await this.usersService.getUserDtoById(ownerId);
 
     const member_count = await this.groupMembershipsRepository.countBy({
       group,
@@ -243,7 +243,7 @@ export class GroupsService {
     });
     const question_count = questions.length;
     const getQuestionAnswerCount = async (questionId: number) =>
-      (await this.questionsService._getQuestionDto(questionId)).answer_count;
+      (await this.questionsService.getQuestionDto(questionId)).answer_count;
     const answer_count_promises = questions.map((question) =>
       getQuestionAnswerCount(question.id),
     );
