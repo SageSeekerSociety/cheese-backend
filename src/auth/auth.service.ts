@@ -7,8 +7,25 @@
  *
  */
 
+/*
+
+IMPORTANT NOTICE:
+
+If you have modified this file, please run the following linux command:
+
+./node_modules/.bin/ts-json-schema-generator \
+  --path 'src/auth/auth.service.ts'          \
+  --type 'TokenPayload'                      \
+  > src/auth/token-payload.schema.json
+
+to update the schema file, which is used in validating the token payload.
+
+*/
+
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import Ajv from 'ajv';
+import { readFileSync } from 'fs';
 import {
   AuthenticationRequiredError,
   InvalidTokenError,
@@ -68,9 +85,9 @@ export function authorizedActionToString(action: AuthorizedAction): string {
 //      matches nothing and is meaningless.
 //
 export class AuthorizedResource {
-  ownedByUser: number; // owner's user id
-  types: string[]; // resource type
-  resourceIds: number[];
+  ownedByUser: number | null; // owner's user id
+  types: string[] | null; // resource type
+  resourceIds: number[] | null;
   data?: any; // additional data
 }
 
@@ -95,7 +112,31 @@ export class TokenPayload {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly jwtService: JwtService) {
+    const tokenPayloadSchemaRaw = readFileSync(
+      'src/auth/token-payload.schema.json',
+      'utf8',
+    );
+    const tokenPayloadSchema = JSON.parse(tokenPayloadSchemaRaw);
+    this.isTokenPayloadValidate = new Ajv().compile(tokenPayloadSchema);
+  }
+
+  private isTokenPayloadValidate: (payload: any) => boolean;
+
+  private decodePayload(data: any): TokenPayload {
+    const payload = data.payload;
+    if (payload == null || !this.isTokenPayloadValidate(payload)) {
+      throw new Error(
+        'The token is valid, but the payload of the token is' +
+          ' not a TokenPayload object. This is ether a bug or a malicious attack.',
+      );
+    }
+    return payload as TokenPayload;
+  }
+
+  private encodePayload(payload: TokenPayload): any {
+    return { payload: payload };
+  }
 
   // Sign a token for an authorization.
   sign(authorization: Authorization, validSeconds: number = 60): string {
@@ -105,7 +146,7 @@ export class AuthService {
       signedAt: now,
       validUntil: now + validSeconds * 1000,
     };
-    return this.jwtService.sign(payload);
+    return this.jwtService.sign(this.encodePayload(payload));
   }
 
   // Verify a token and decodes its payload.
@@ -131,15 +172,7 @@ export class AuthService {
       throw new InvalidTokenError();
     }
 
-    let payload: TokenPayload;
-    try {
-      payload = result as TokenPayload;
-    } catch {
-      throw new Error(
-        'The token is valid, but the payload of the token is' +
-          ' not an Authorization object. This is ether a bug or a malicious attack.',
-      );
-    }
+    const payload = this.decodePayload(result);
 
     if (Date.now() > payload.validUntil) throw new TokenExpiredError();
 
@@ -235,14 +268,6 @@ export class AuthService {
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
     const result = this.jwtService.decode(token);
-    try {
-      const payload = result as TokenPayload;
-      return payload;
-    } catch {
-      throw new Error(
-        'The token is valid, but the payload of the token is' +
-          ' not an Authorization object. This is ether a bug or a malicious attack.',
-      );
-    }
+    return this.decodePayload(result);
   }
 }
