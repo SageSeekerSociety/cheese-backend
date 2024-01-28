@@ -68,17 +68,13 @@ $ pnpm run start:prod
 We mainly use e2e tests to test the app, because the app is mainly responsible for CRUD operations, and the e2e tests can test the app more comprehensively.
 
 ```bash
-# e2e tests
-$ pnpm run test:e2e
-
-# e2e tests with coverage report
-$ pnpm run test:e2e:cov
-```
-However, we alse support unit tests, you can run the following command to run unit tests:
-```bash
+# run all tests
 $ pnpm run test
-```
 
+# run all tests with coverage report
+$ pnpm run test:cov
+```
+With the commands above, all tests, including e2e tests and unit tests, will be run.
 ## Support
 
 Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
