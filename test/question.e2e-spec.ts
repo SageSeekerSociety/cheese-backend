@@ -537,7 +537,9 @@ describe('Questions Module', () => {
       expect(respond3.body).toStrictEqual(respond2.body);
 
       const respond4 = await request(app.getHttpServer())
-        .get(`/questions/${questionIds[1]}/followers?page_size=1&page_start=${auxUserId}`)
+        .get(
+          `/questions/${questionIds[1]}/followers?page_size=1&page_start=${auxUserId}`,
+        )
         .send();
       expect(respond4.body.message).toBe('OK');
       expect(respond4.body.code).toBe(200);

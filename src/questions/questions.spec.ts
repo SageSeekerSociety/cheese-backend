@@ -47,8 +47,12 @@ describe('Questions Module', () => {
   let questionId: number;
 
   it('should add topic to question', async () => {
-    const topicId1 = (await topicsService.addTopic(randomString + ' unit test topic 1', 1)).id;
-    const topicId2 = (await topicsService.addTopic(randomString + ' unit test topic 2', 1)).id;
+    const topicId1 = (
+      await topicsService.addTopic(randomString + ' unit test topic 1', 1)
+    ).id;
+    const topicId2 = (
+      await topicsService.addTopic(randomString + ' unit test topic 2', 1)
+    ).id;
     questionId = await questionsService.addQuestion(
       1,
       'unit test question',
@@ -87,10 +91,10 @@ describe('Questions Module', () => {
 
   it('should throw UserIdNotFoundError', async () => {
     await expect(
-      questionsService.followQuestion(-1, questionId)
+      questionsService.followQuestion(-1, questionId),
     ).rejects.toThrow(new UserIdNotFoundError(-1));
     await expect(
-      questionsService.unfollowQuestion(-1, questionId)
+      questionsService.unfollowQuestion(-1, questionId),
     ).rejects.toThrow(new UserIdNotFoundError(-1));
   });
 });

@@ -370,9 +370,6 @@ export class QuestionsService {
     ip: string,
     userAgent: string,
   ): Promise<[UserDto[], PageRespondDto]> {
-    if (pageSize <= 0) {
-      throw new BadRequestError('pageSize should be positive number');
-    }
     if (firstFollowerId == null) {
       const relations = await this.questionFollowRelationRepository.find({
         where: { questionId },
@@ -428,9 +425,5 @@ export class QuestionsService {
         (i) => i.id,
       );
     }
-  }
-
-  async getFollowerCountOfQuestion(questionId: number): Promise<number> {
-    return await this.questionFollowRelationRepository.countBy({ questionId });
   }
 }
