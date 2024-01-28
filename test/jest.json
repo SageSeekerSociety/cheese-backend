@@ -6,11 +6,13 @@
   ],
   "rootDir": "..",
   "testEnvironment": "node",
-  "testRegex": ".e2e-spec.ts$",
+  "testMatch": [
+    "**/*.e2e-spec.ts",
+    "**/*.spec.ts"
+  ],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "collectCoverage": true,
   "collectCoverageFrom": [
     "src/*/**/*.ts",
     "!src/*/**/*.dto.ts"
