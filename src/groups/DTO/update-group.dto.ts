@@ -11,8 +11,7 @@ export class UpdateGroupDto {
   @IsString()
   readonly avatar: string;
 
-  @IsString()
-  readonly cover: string;
+  // todo: add cover
 }
 
 export class UpdateGroupRespondDto extends BaseRespondDto {}

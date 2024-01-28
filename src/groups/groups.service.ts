@@ -23,7 +23,8 @@ import {
   CannotDeleteGroupError,
   GroupAlreadyJoinedError,
   GroupIdNotFoundError,
-  GroupNameAlreadyExistsError,
+  GroupNameAlreadyUsedError,
+  GroupNotJoinedError,
   InvalidGroupNameError,
 } from './groups.error';
 
@@ -69,14 +70,14 @@ export class GroupsService {
     }
     if (await this.groupsRepository.findOneBy({ name })) {
       // todo: create log?
-      throw new GroupNameAlreadyExistsError(name);
+      throw new GroupNameAlreadyUsedError(name);
     }
 
     const group = this.groupsRepository.create({ name });
     await this.groupsRepository.save(group);
 
     const groupProfile = this.groupProfilesRepository.create({
-      group,
+      groupId: group.id,
       intro,
       avatar,
     });
@@ -98,6 +99,7 @@ export class GroupsService {
       avatar: groupProfile.avatar,
       owner: userDto,
       created_at: group.createdAt.getTime(),
+      updated_at: group.updatedAt.getTime(),
       member_count: 1,
       question_count: 0,
       answer_count: 0,
@@ -197,10 +199,10 @@ export class GroupsService {
     }
     const has_prev = prevDTOs != null && prevDTOs.length > 0;
     const has_more = currDTOs != null && currDTOs.length > page_size;
-    const page_start = currDTOs[0].id;
+    const page_start = currDTOs[0]?.id;
     const real_page_size =
       currDTOs.length > page_size ? page_size : currDTOs.length;
-    const next_start = currDTOs[page_size - 1].id;
+    const next_start = currDTOs[page_size - 1]?.id;
     const groups = await Promise.all(
       currDTOs.map((group) => this.getGroupDtoById(userId, group.id)),
     );
@@ -227,20 +229,20 @@ export class GroupsService {
     }
 
     const ownership = await this.groupMembershipsRepository.findOneBy({
-      group,
+      groupId,
       role: 'owner',
     });
     if (ownership == null) {
-      throw new Error('Group has no owner.');
+      throw new Error(`Group ${groupId} has no owner.`);
     }
     const ownerId = ownership.memberId;
     const ownerDto = await this.usersService.getUserDtoById(ownerId);
 
     const member_count = await this.groupMembershipsRepository.countBy({
-      group,
+      groupId,
     });
     const questions = await this.groupQuestionRelationshipsRepository.findBy({
-      group,
+      groupId,
     });
     const question_count = questions.length;
     const getQuestionAnswerCount = async (questionId: number) =>
@@ -255,7 +257,7 @@ export class GroupsService {
 
     const is_member =
       (await this.groupMembershipsRepository.findOneBy({
-        group,
+        groupId,
         memberId: userId,
       })) != null;
     const is_owner = ownerId == userId;
@@ -267,6 +269,7 @@ export class GroupsService {
       avatar: group.profile.avatar,
       owner: ownerDto,
       created_at: group.createdAt.getTime(),
+      updated_at: group.updatedAt.getTime(),
       member_count,
       question_count,
       answer_count,
@@ -305,7 +308,7 @@ export class GroupsService {
     }
     if (await this.groupsRepository.findOneBy({ name })) {
       // todo: create log?
-      throw new GroupNameAlreadyExistsError(name);
+      throw new GroupNameAlreadyUsedError(name);
     }
     group.name = name;
     group.profile.intro = intro;
@@ -324,7 +327,7 @@ export class GroupsService {
     }
 
     const owner = await this.groupMembershipsRepository.findOneBy({
-      group,
+      groupId,
       memberId: userId,
       role: 'owner',
     });
@@ -349,7 +352,7 @@ export class GroupsService {
 
     if (
       (await this.groupMembershipsRepository.findOneBy({
-        group,
+        groupId,
         memberId: userId,
       })) != null
     ) {
@@ -375,9 +378,18 @@ export class GroupsService {
     if (group == null) {
       throw new GroupIdNotFoundError(groupId);
     }
+
+    const membership = await this.groupMembershipsRepository.findOneBy({
+      groupId,
+      memberId: userId,
+    });
+    if (membership == null) {
+      throw new GroupNotJoinedError(groupId);
+    }
+
     // todo: check if user is owner
     await this.groupMembershipsRepository.softDelete({
-      group,
+      groupId,
       memberId: userId,
     });
     const member_count = await this.groupMembershipsRepository.countBy({
@@ -504,9 +516,9 @@ export class GroupsService {
 }
 
 function getRecommendationScore(referenceGroup: Group): number {
-  throw new Error('Function not implemented.');
+  throw new Error('Function getRecommendationScore not implemented.');
 }
 
 function getGroupHotness(referenceGroup: Group): number {
-  throw new Error('Function not implemented.');
+  throw new Error('Function getGroupHotness not implemented.');
 }

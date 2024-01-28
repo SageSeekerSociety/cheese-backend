@@ -2,18 +2,22 @@ import { BaseError } from '../common/error/base-error';
 
 export class InvalidGroupNameError extends BaseError {
   constructor(
-    public readonly name: string,
+    public readonly groupName: string,
     public readonly rule: string,
   ) {
-    super('InvalidGroupNameError', `Invalid group name: ${name}. ${rule}`, 422);
+    super(
+      'InvalidGroupNameError',
+      `Invalid group name ${groupName} since ${rule}`,
+      422,
+    );
   }
 }
 
-export class GroupNameAlreadyExistsError extends BaseError {
-  constructor(public readonly name: string) {
+export class GroupNameAlreadyUsedError extends BaseError {
+  constructor(public readonly groupName: string) {
     super(
-      'GroupNameAlreadyExistsError',
-      `Group name already exists: ${name}`,
+      'GroupNameAlreadyUsedError',
+      `Group name ${groupName} already used`,
       409,
     );
   }
@@ -34,5 +38,11 @@ export class CannotDeleteGroupError extends BaseError {
 export class GroupAlreadyJoinedError extends BaseError {
   constructor(public readonly groupId: number) {
     super('GroupAlreadyJoinedError', `Group ${groupId} already joined`, 409);
+  }
+}
+
+export class GroupNotJoinedError extends BaseError {
+  constructor(public readonly groupId: number) {
+    super('GroupNotJoinedError', `Group ${groupId} not joined`, 409);
   }
 }

@@ -8,6 +8,7 @@ export class GroupDto {
   avatar: string;
   owner: UserDto;
   created_at: number; // timestamp
+  updated_at: number; // timestamp
   member_count: number;
   question_count: number;
   answer_count: number;

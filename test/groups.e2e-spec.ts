@@ -12,10 +12,9 @@ describe('Groups Module', () => {
   const TestEmail = `test-${Math.floor(
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
-  const TestGroupCode = Math.floor(Math.random() * 10000000000).toString();
-  const TestGroupPrefix = `[Test(${TestGroupCode}) Group]`;
   let TestToken: string;
   let TestUserId: number;
+  let TestUserDto: any;
   let GroupIds: number[] = [];
   let auxAccessToken: string;
 
@@ -108,6 +107,7 @@ describe('Groups Module', () => {
       TestToken = respond.body.data.accessToken;
       expect(respond.body.data.user.id).toBeDefined();
       TestUserId = respond.body.data.user.id;
+      TestUserDto = respond.body.data.user;
     });
     it('should create some groups', async () => {
       async function createGroup(name: string, intro: string, avatar: string) {
@@ -115,16 +115,30 @@ describe('Groups Module', () => {
           .post('/groups')
           .set('Authorization', `Bearer ${TestToken}`)
           .send({ name, intro, avatar });
-        expect(respond.status).toBe(200);
-        expect(respond.body.code).toBe(200);
+        console.log('CheckRespondBodyData:', respond.body.data); // Add this line to check the value of respond.body.data
         expect(respond.body.message).toBe('Group created successfully.');
-        expect(respond.body.data.id).toBeDefined();
+        expect(respond.body.code).toBe(201);
+        expect(respond.status).toBe(201);
+        expect(respond.body.data.id).toBeTruthy();
+        expect(respond.body.data.name).toBe(name);
+        expect(respond.body.data.intro).toBe(intro);
+        expect(respond.body.data.avatar).toBe(avatar);
+        expect(respond.body.data.owner.id).toBe(TestUserId);
+        expect(respond.body.data.created_at).toBeDefined();
+        expect(respond.body.data.updated_at).toBeDefined();
+        expect(respond.body.data.member_count).toBe(1);
+        expect(respond.body.data.question_count).toBe(0);
+        expect(respond.body.data.answer_count).toBe(0);
+        expect(respond.body.data.is_member).toBe(true);
+        expect(respond.body.data.is_owner).toBe(true);
+        expect(respond.body.data.is_public).toBe(true);
         GroupIds.push(respond.body.data.id);
+        console.log('CheckGroupIds:', GroupIds); // Add this line to check the value of GroupIds
       }
       await createGroup('数学之神膜膜喵', '不如原神', '🥸');
       await createGroup('ICS膜膜膜', 'pwb txdy!', '🐂');
       await createGroup('嘉然今天学什么', '学, 学个屁!', '🤡');
-      await createGroup('XCPC, 启动!', '启不动了', '🐱');
+      await createGroup('XCPC启动', '启不动了', '🐱');
     }, 80000);
     it('should create an auxiliary user', async () => {
       [, auxAccessToken] = await createAuxiliaryUser();
@@ -135,57 +149,60 @@ describe('Groups Module', () => {
     it('should get all groups', async () => {
       const respond = await request(app.getHttpServer())
         .get('/groups')
-        .query({ q: '', page_start: 0, page_size: 2, type: 'recommend' })
+        .query({ q: '', page_size: 2, type: 'recommend' })
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
+      expect(respond.body.message).toBe('Groups fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Get groups successfully.');
       expect(respond.body.data.groups.length).toBe(4);
       expect(respond.body.data.groups[0].id).toBeDefined();
       expect(respond.body.data.groups[0].name).toBe('数学之神膜膜喵');
       expect(respond.body.data.groups[0].intro).toBe('不如原神');
       expect(respond.body.data.groups[0].avatar).toBe('🥸');
-      expect(respond.body.data.groups[0].owner).toBe(TestUserId);
-      expect(respond.body.data.groups[0].createdAt).toBeDefined();
-      expect(respond.body.data.groups[0].updatedAt).toBeDefined();
-      expect(respond.body.data.groups[0].members).toBe(1);
-      expect(respond.body.data.groups[0].posts).toBe(0);
-      expect(respond.body.data.groups[0].isMember).toBe(true);
-      expect(respond.body.data.groups[0].isOwner).toBe(true);
+      expect(respond.body.data.groups[0].owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.groups[0].created_at).toBeDefined();
+      expect(respond.body.data.groups[0].updated_at).toBeDefined();
+      expect(respond.body.data.groups[0].member_count).toBe(1);
+      expect(respond.body.data.groups[0].question_count).toBe(0);
+      expect(respond.body.data.groups[0].answer_count).toBe(0);
+      expect(respond.body.data.groups[0].is_member).toBe(true);
+      expect(respond.body.data.groups[0].is_owner).toBe(true);
       expect(respond.body.data.groups[1].id).toBeDefined();
       expect(respond.body.data.groups[1].name).toBe('ICS膜膜膜');
       expect(respond.body.data.groups[1].intro).toBe('pwb txdy!');
       expect(respond.body.data.groups[1].avatar).toBe('🐂');
-      expect(respond.body.data.groups[1].owner).toBe(TestUserId);
-      expect(respond.body.data.groups[1].createdAt).toBeDefined();
-      expect(respond.body.data.groups[1].updatedAt).toBeDefined();
-      expect(respond.body.data.groups[1].members).toBe(1);
-      expect(respond.body.data.groups[1].posts).toBe(0);
-      expect(respond.body.data.groups[1].isMember).toBe(true);
-      expect(respond.body.data.groups[1].isOwner).toBe(true);
+      expect(respond.body.data.groups[1].owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.groups[1].created_at).toBeDefined();
+      expect(respond.body.data.groups[1].updated_at).toBeDefined();
+      expect(respond.body.data.groups[1].member_count).toBe(1);
+      expect(respond.body.data.groups[1].question_count).toBe(0);
+      expect(respond.body.data.groups[1].answer_count).toBe(0);
+      expect(respond.body.data.groups[1].is_member).toBe(true);
+      expect(respond.body.data.groups[1].is_owner).toBe(true);
     });
     it('should get groups by name for another user', async () => {
       const respond = await request(app.getHttpServer())
         .get('/groups')
-        .query({ q: '数学', page_start: 0, page_size: 2, type: 'search' })
+        .query({ q: '数学', page_size: 2, type: 'new' })
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toBe('Groups fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Get groups successfully.');
       expect(respond.body.data.groups.length).toBe(1);
       expect(respond.body.data.groups[0].id).toBeDefined();
       expect(respond.body.data.groups[0].name).toBe('数学之神膜膜喵');
       expect(respond.body.data.groups[0].intro).toBe('不如原神');
       expect(respond.body.data.groups[0].avatar).toBe('🥸');
-      expect(respond.body.data.groups[0].owner).toBe(TestUserId);
-      expect(respond.body.data.groups[0].createdAt).toBeDefined();
-      expect(respond.body.data.groups[0].updatedAt).toBeDefined();
-      expect(respond.body.data.groups[0].members).toBe(1);
-      expect(respond.body.data.groups[0].posts).toBe(0);
-      expect(respond.body.data.groups[0].isMember).toBe(false);
-      expect(respond.body.data.groups[0].isOwner).toBe(false);
+      expect(respond.body.data.groups[0].owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.groups[0].created_at).toBeDefined();
+      expect(respond.body.data.groups[0].updated_at).toBeDefined();
+      expect(respond.body.data.groups[0].member_count).toBe(1);
+      expect(respond.body.data.groups[0].question_count).toBe(0);
+      expect(respond.body.data.groups[0].answer_count).toBe(0);
+      expect(respond.body.data.groups[0].is_member).toBe(false);
+      expect(respond.body.data.groups[0].is_owner).toBe(false);
     });
     it('should get groups from half of the groups', async () => {
       const respond = await request(app.getHttpServer())
@@ -198,21 +215,22 @@ describe('Groups Module', () => {
         })
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
+      expect(respond.body.message).toBe('Groups fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Get groups successfully.');
       expect(respond.body.data.groups.length).toBe(1);
       expect(respond.body.data.groups[0].id).toBeDefined();
       expect(respond.body.data.groups[0].name).toBe('ICS膜膜膜');
       expect(respond.body.data.groups[0].intro).toBe('pwb txdy!');
       expect(respond.body.data.groups[0].avatar).toBe('🐂');
-      expect(respond.body.data.groups[0].owner).toBe(TestUserId);
-      expect(respond.body.data.groups[0].createdAt).toBeDefined();
-      expect(respond.body.data.groups[0].updatedAt).toBeDefined();
-      expect(respond.body.data.groups[0].members).toBe(1);
-      expect(respond.body.data.groups[0].posts).toBe(0);
-      expect(respond.body.data.groups[0].isMember).toBe(true);
-      expect(respond.body.data.groups[0].isOwner).toBe(true);
+      expect(respond.body.data.groups[0].owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.groups[0].created_at).toBeDefined();
+      expect(respond.body.data.groups[0].updated_at).toBeDefined();
+      expect(respond.body.data.groups[0].member_count).toBe(1);
+      expect(respond.body.data.groups[0].question_count).toBe(0);
+      expect(respond.body.data.groups[0].answer_count).toBe(0);
+      expect(respond.body.data.groups[0].is_member).toBe(true);
+      expect(respond.body.data.groups[0].is_owner).toBe(true);
     });
     it('should return empty array when no group is found', async () => {
       const respond = await request(app.getHttpServer())
@@ -221,119 +239,126 @@ describe('Groups Module', () => {
           q: '嘉然',
           page_start: GroupIds[3],
           page_size: 2,
-          type: 'search',
+          type: 'new',
         })
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
+      expect(respond.body.message).toBe('Groups fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Get groups successfully.');
       expect(respond.body.data.groups.length).toBe(0);
     });
   });
 
   describe('get group', () => {
-    const TestGroupId = GroupIds[0];
     it('should get a group', async () => {
+      const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
+      expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Get group successfully.');
       expect(respond.body.data.id).toBe(TestGroupId);
       expect(respond.body.data.name).toBe('数学之神膜膜喵');
       expect(respond.body.data.intro).toBe('不如原神');
       expect(respond.body.data.avatar).toBe('🥸');
-      expect(respond.body.data.owner).toBe(TestUserId);
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.updatedAt).toBeDefined();
-      expect(respond.body.data.members).toBe(1);
-      expect(respond.body.data.posts).toBe(0);
-      expect(respond.body.data.isMember).toBe(true);
-      expect(respond.body.data.isOwner).toBe(true);
+      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.created_at).toBeDefined();
+      expect(respond.body.data.updated_at).toBeDefined();
+      expect(respond.body.data.member_count).toBe(1);
+      expect(respond.body.data.question_count).toBe(0);
+      expect(respond.body.data.answer_count).toBe(0);
+      expect(respond.body.data.is_member).toBe(true);
+      expect(respond.body.data.is_owner).toBe(true);
     });
 
     it('should get a group for another user', async () => {
+      const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Get group successfully.');
       expect(respond.body.data.id).toBe(TestGroupId);
       expect(respond.body.data.name).toBe('数学之神膜膜喵');
       expect(respond.body.data.intro).toBe('不如原神');
       expect(respond.body.data.avatar).toBe('🥸');
-      expect(respond.body.data.owner).toBe(TestUserId);
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.updatedAt).toBeDefined();
-      expect(respond.body.data.members).toBe(1);
-      expect(respond.body.data.posts).toBe(0);
-      expect(respond.body.data.isMember).toBe(false);
-      expect(respond.body.data.isOwner).toBe(false);
+      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.created_at).toBeDefined();
+      expect(respond.body.data.updated_at).toBeDefined();
+      expect(respond.body.data.member_count).toBe(1);
+      expect(respond.body.data.question_count).toBe(0);
+      expect(respond.body.data.answer_count).toBe(0);
+      expect(respond.body.data.is_member).toBe(false);
+      expect(respond.body.data.is_owner).toBe(false);
     });
 
-    it('should return 404 when group is not found', async () => {
+    it('should return GroupIdNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/groups/${TestGroupId + 1}`)
+        .get(`/groups/0`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
+      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
     });
   });
 
   describe('join group', () => {
-    const TestGroupId = GroupIds[0];
     it('should join a group', async () => {
+      const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .post(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send();
-      expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Join group successfully.');
+        .send({ intro: '我是初音未来' });
+      expect(respond.body.message).toBe('Joined group successfully.');
+      expect(respond.status).toBe(201);
+      expect(respond.body.code).toBe(201);
     });
-    it('should return a group with isMember true', async () => {
+    it('should return a group with is_member true', async () => {
+      const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
       expect(respond.body.data.name).toBe('数学之神膜膜喵');
       expect(respond.body.data.intro).toBe('不如原神');
       expect(respond.body.data.avatar).toBe('🥸');
-      expect(respond.body.data.owner).toBe(TestUserId);
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.updatedAt).toBeDefined();
-      expect(respond.body.data.members).toBe(2);
-      expect(respond.body.data.posts).toBe(0);
-      expect(respond.body.data.isMember).toBe(true);
-      expect(respond.body.data.isOwner).toBe(false);
+      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.created_at).toBeDefined();
+      expect(respond.body.data.updated_at).toBeDefined();
+      expect(respond.body.data.member_count).toBe(2);
+      expect(respond.body.data.question_count).toBe(0);
+      expect(respond.body.data.answer_count).toBe(0);
+      expect(respond.body.data.is_member).toBe(true);
+      expect(respond.body.data.is_owner).toBe(false);
     });
-    it('should return 404 when group is not found', async () => {
+    it('should return GroupIdNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
-        .post(`/groups/${TestGroupId + 1}/members`)
+        .post(`/groups/0/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send();
+        .send({ intro: '我是初音未来' });
+      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
     });
-    it('should return 409 when user is already in the group', async () => {
+    it('should return GroupAlreadyJoinedError when user is already in the group', async () => {
+      const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .post(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send();
+        .send({ intro: '我是初音未来' });
+      expect(respond.body.message).toMatch(/^GroupAlreadyJoinedError: /);
       expect(respond.status).toBe(409);
       expect(respond.body.code).toBe(409);
-      expect(respond.body.message).toMatch(/^UserAlreadyInGroupError: /);
     });
   });
 
@@ -341,16 +366,16 @@ describe('Groups Module', () => {
     it('should update a group', async () => {
       const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
-        .patch(`/groups/${TestGroupId}`)
+        .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
           name: '关注huancheng谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
+      expect(respond.body.message).toBe('Group updated successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Update group successfully.');
     });
     it('should return a group with updated info from another user', async () => {
       const TestGroupId = GroupIds[0];
@@ -358,23 +383,25 @@ describe('Groups Module', () => {
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
       expect(respond.body.data.name).toBe('关注huancheng谢谢喵');
       expect(respond.body.data.intro).toBe('湾原审万德');
       expect(respond.body.data.avatar).toBe('🤣');
-      expect(respond.body.data.owner).toBe(TestUserId);
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.updatedAt).toBeDefined();
-      expect(respond.body.data.members).toBe(2);
-      expect(respond.body.data.posts).toBe(0);
-      expect(respond.body.data.isMember).toBe(true);
-      expect(respond.body.data.isOwner).toBe(false);
+      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.created_at).toBeDefined();
+      expect(respond.body.data.updated_at).toBeDefined();
+      expect(respond.body.data.member_count).toBe(2);
+      expect(respond.body.data.question_count).toBe(0);
+      expect(respond.body.data.answer_count).toBe(0);
+      expect(respond.body.data.is_member).toBe(true);
+      expect(respond.body.data.is_owner).toBe(false);
     });
-    it('should return 404 when group is not found', async () => {
+    it('should return GroupIdNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
-        .patch(`/groups/${GroupIds[0] + 1}`)
+        .put('/groups/0')
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
           name: '关注huancheng谢谢喵',
@@ -385,83 +412,88 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(404);
       expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
     });
-    it('should return 409 when group name is already used', async () => {
+    it('should return GroupNameAlreadyUsedError when group name is already used', async () => {
       const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
-        .patch(`/groups/${TestGroupId}`)
+        .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
           name: 'ICS膜膜膜',
           intro: '湾原审万德',
           avatar: '🤣',
         });
+      console.log('CheckRespond', respond.body); // Add this line to check the value of respond.body
+      expect(respond.body.message).toMatch(/^GroupNameAlreadyUsedError: /);
       expect(respond.status).toBe(409);
       expect(respond.body.code).toBe(409);
-      expect(respond.body.message).toMatch(/^GroupNameAlreadyUsedError: /);
     });
-    it('should return 409 when user is not the owner', async () => {
+    it('should return CannotDeleteGroupError when user is not the owner', async () => {
       const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
-        .patch(`/groups/${TestGroupId}`)
+        .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({
           name: '关注huancheng谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
+      expect(respond.body.message).toMatch(/^CannotDeleteGroupError: /);
       expect(respond.status).toBe(403);
       expect(respond.body.code).toBe(403);
-      expect(respond.body.message).toMatch(/^CannotDeleteGroupError: /);
     });
   });
 
   describe('leave group', () => {
-    const TestGroupId = GroupIds[0];
     it('should leave a group', async () => {
+      const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .delete(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toBe('Quit group successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Leave group successfully.');
     });
-    it('should return a group with isMember false', async () => {
+    it('should return a group with is_member false', async () => {
+      const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
       expect(respond.body.data.name).toBe('关注huancheng谢谢喵');
       expect(respond.body.data.intro).toBe('湾原审万德');
       expect(respond.body.data.avatar).toBe('🤣');
-      expect(respond.body.data.owner).toBe(TestUserId);
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.updatedAt).toBeDefined();
-      expect(respond.body.data.members).toBe(1);
-      expect(respond.body.data.posts).toBe(0);
-      expect(respond.body.data.isMember).toBe(false);
-      expect(respond.body.data.isOwner).toBe(false);
+      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.created_at).toBeDefined();
+      expect(respond.body.data.updated_at).toBeDefined();
+      expect(respond.body.data.member_count).toBe(1);
+      expect(respond.body.data.question_count).toBe(0);
+      expect(respond.body.data.answer_count).toBe(0);
+      expect(respond.body.data.is_member).toBe(false);
+      expect(respond.body.data.is_owner).toBe(false);
     });
-    it('should return 404 when group is not found', async () => {
+    it('should return GroupIdNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
-        .delete(`/groups/${TestGroupId + 1}/members`)
+        .delete(`/groups/0/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
-    });
-    it('should return 409 when user is not in the group', async () => {
+    }, 10000);
+    it('should return GroupNotJoinedError when user is not in the group', async () => {
+      const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .delete(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toMatch(/^GroupNotJoinedError: /);
       expect(respond.status).toBe(409);
       expect(respond.body.code).toBe(409);
-      expect(respond.body.message).toMatch(/^UserNotInGroupError: /);
     });
     // todo: GroupOwnerCannotLeaveError
   });
@@ -473,38 +505,38 @@ describe('Groups Module', () => {
         .delete(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
+      expect(respond.body.message).toBe('No Content.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Delete group successfully.');
     });
-    it('should return 404 after deletion', async () => {
+    it('should return GroupIdNotFoundError after deletion', async () => {
       const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
+      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
     });
-    it('should return 404 when group is not found', async () => {
+    it('should return GroupIdNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
-        .delete(`/groups/${GroupIds[0] + 1}`)
+        .delete(`/groups/0`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
+      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
     });
-    it('should return 409 when user is not the owner', async () => {
+    it('should return CannotDeleteGroupError when user is not the owner', async () => {
       const TestGroupId = GroupIds[1];
       const respond = await request(app.getHttpServer())
         .delete(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(respond.body.message).toMatch(/^CannotDeleteGroupError: /);
       expect(respond.status).toBe(403);
       expect(respond.body.code).toBe(403);
-      expect(respond.body.message).toMatch(/^CannotDeleteGroupError: /);
     });
   });
 

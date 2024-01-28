@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
@@ -48,7 +49,7 @@ export class GroupsController {
       req.avatar,
     );
     return {
-      code: 200,
+      code: 201,
       message: 'Group created successfully.',
       data: groupDto,
     };
@@ -58,9 +59,12 @@ export class GroupsController {
   async getGroups(
     @Headers('Authorization') auth: string,
     @Query('q') key?: string,
-    @Query('page_start') page_start?: number,
-    @Query('page_size') page_size: number = 20,
-    @Query('type') type: GroupQueryType = GroupQueryType.Recommend,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    page_start?: number,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    page_size: number = 20,
+    @Query('type', new ParseEnumPipe(GroupQueryType))
+    type: GroupQueryType = GroupQueryType.Recommend,
   ): Promise<GetGroupsRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const getGroupResult = await this.groupsService.getGroups(
@@ -119,7 +123,7 @@ export class GroupsController {
     const userId = this.authService.verify(auth).userId;
     await this.groupsService.deleteGroup(userId, id);
     return {
-      code: 204,
+      code: 200,
       message: 'No Content.',
     };
   }
@@ -144,18 +148,18 @@ export class GroupsController {
 
   @Post('/:id/members')
   async joinGroup(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) groupId: number,
     @Headers('Authorization') auth: string,
     @Body() joinGroupDto: JoinGroupDto,
   ): Promise<JoinGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const joinResult = await this.groupsService.joinGroup(
-      id,
       userId,
+      groupId,
       joinGroupDto.intro,
     );
     return {
-      code: 200,
+      code: 201,
       message: 'Joined group successfully.',
       data: joinResult,
     };
@@ -163,11 +167,11 @@ export class GroupsController {
 
   @Delete('/:id/members')
   async quitGroup(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) groupId: number,
     @Headers('Authorization') auth: string,
   ): Promise<QuitGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const member_count = await this.groupsService.quitGroup(id, userId);
+    const member_count = await this.groupsService.quitGroup(userId, groupId);
     return {
       code: 200,
       message: 'Quit group successfully.',
@@ -178,8 +182,10 @@ export class GroupsController {
   @Get('/:id/questions')
   async getGroupQuestions(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start') page_start?: number,
-    @Query('page_size') page_size: number = 20,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    page_start?: number,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    page_size: number = 20,
   ): Promise<GetGroupQuestionsRespondDto> {
     const getGroupQuestionsResult = await this.groupsService.getGroupQuestions(
       id,

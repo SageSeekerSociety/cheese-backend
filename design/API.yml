@@ -270,6 +270,9 @@ components:
         created_at:
           type: integer
           format: int64
+        updated_at:
+          type: integer
+          format: int64
         member_count:
           type: integer
           format: int64
@@ -1910,7 +1913,7 @@ paths:
                 - intro
                 - avatar
       responses:
-        "200":
+        "201":
           description: OK
           content:
             application/json:
