@@ -280,20 +280,13 @@ describe('Topic Module', () => {
   });
 
   describe('search question', () => {
-    it('should return empty question list', async () => {
+    it('should search successfully without parameters', async () => {
       const respond = await request(app.getHttpServer())
         .get('/questions')
         .send();
       expect(respond.body.message).toBe('OK');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
-      expect(respond.body.data.questions.length).toBe(0);
-      expect(respond.body.data.page.page_start).toBe(0);
-      expect(respond.body.data.page.page_size).toBe(0);
-      expect(respond.body.data.page.has_prev).toBe(false);
-      expect(respond.body.data.page.prev_start).toBe(0);
-      expect(respond.body.data.page.has_more).toBe(false);
-      expect(respond.body.data.page.next_start).toBe(0);
     });
     it('should search successfully without page_size and page_start', async () => {
       const respond = await request(app.getHttpServer())

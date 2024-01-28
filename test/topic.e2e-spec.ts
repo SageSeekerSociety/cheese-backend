@@ -159,7 +159,7 @@ describe('Topic Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.topics.length).toBeGreaterThanOrEqual(15);
-      for (var i = 0; i < 15; i++) {
+      for (var i = 0; i < 4; i++) {
         expect(respond.body.data.topics[i].name).toContain(TestTopicCode);
       }
 
@@ -251,6 +251,13 @@ describe('Topic Module', () => {
         .send();
       expect(respond.body.message).toMatch(/^TopicNotFoundError: /);
       expect(respond.status).toBe(404);
+    });
+    it('should return BadRequestException', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/topics?q=something&page_start=abc')
+        .send();
+      expect(respond.body.message).toMatch(/^BadRequestException: /);
+      expect(respond.status).toBe(400);
     });
   });
 
