@@ -13,7 +13,7 @@ import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
 
-describe('Topic Module', () => {
+describe('Questions Module', () => {
   let app: INestApplication;
   const MockedEmailService = <jest.Mock<EmailService>>EmailService;
   const TestUsername = `TestUser-${Math.floor(Math.random() * 10000000000)}`;
@@ -28,6 +28,7 @@ describe('Topic Module', () => {
   let TestUserId: number;
   let TopicIds: number[] = [];
   let questionIds: number[] = [];
+  let auxUserId: number;
   let auxAccessToken: string;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
@@ -138,7 +139,8 @@ describe('Topic Module', () => {
       await createTopic('钓鱼');
     }, 60000);
     it('should create an auxiliary user', async () => {
-      const [, accessToken] = await createAuxiliaryUser();
+      const [userId, accessToken] = await createAuxiliaryUser();
+      auxUserId = userId;
       auxAccessToken = accessToken;
     });
   });
@@ -330,6 +332,14 @@ describe('Topic Module', () => {
       expect(respond2.body.data.page.prev_start).toBe(questionIds[0]);
       expect(respond2.body.data.page.has_more).toBe(true);
     });
+    it('should return QuestionNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions?q=${TestQuestionPrefix}&page_size=5&page_start=-1`)
+        .send();
+      expect(respond.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond.body.code).toBe(404);
+      expect(respond.status).toBe(404);
+    });
   });
 
   describe('update question', () => {
@@ -455,17 +465,31 @@ describe('Topic Module', () => {
       expect(respond.body.code).toBe(400);
     });
     it('should follow questions', async () => {
-      async function follow(questionId: number) {
-        const respond = await request(app.getHttpServer())
-          .put(`/questions/${questionId}/followers`)
-          .set('Authorization', `Bearer ${TestToken}`)
-          .send();
-        expect(respond.body.message).toBe('OK');
-        expect(respond.body.code).toBe(200);
-        expect(respond.status).toBe(200);
-        expect(respond.body.data.follow_count).toBe(1);
-      }
-      await follow(questionIds[1]);
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/followers`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.follow_count).toBe(1);
+      const respond2 = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/followers`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond2.body.message).toBe('OK');
+      expect(respond2.body.code).toBe(200);
+      expect(respond2.status).toBe(200);
+      expect(respond2.body.data.follow_count).toBe(2);
+    });
+    it('should return QuestionNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[0]}/followers`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond.body.code).toBe(404);
+      expect(respond.status).toBe(404);
     });
     it('should return QuestionAlreadyFollowedError', async () => {
       const respond = await request(app.getHttpServer())
@@ -482,11 +506,8 @@ describe('Topic Module', () => {
       expect(respond.body.message).toBe('OK');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
-      expect(respond.body.data.users.length).toBe(1);
-      expect(respond.body.data.users[0].id).toBe(TestUserId);
-      expect(respond.body.data.users[0].username).toBe(TestUsername);
-      expect(respond.body.data.users[0].nickname).toBe('test_user');
-      expect(respond.body.data.page.page_size).toBe(1);
+      expect(respond.body.data.users.length).toBe(2);
+      expect(respond.body.data.page.page_size).toBe(2);
       expect(respond.body.data.page.has_prev).toBe(false);
       expect(respond.body.data.page.prev_start).toBe(0);
       expect(respond.body.data.page.has_more).toBe(false);
@@ -505,8 +526,8 @@ describe('Topic Module', () => {
       expect(respond2.body.data.page.page_size).toBe(1);
       expect(respond2.body.data.page.has_prev).toBe(false);
       expect(respond2.body.data.page.prev_start).toBe(0);
-      expect(respond2.body.data.page.has_more).toBe(false);
-      expect(respond2.body.data.page.next_start).toBe(0);
+      expect(respond2.body.data.page.has_more).toBe(true);
+      expect(respond2.body.data.page.next_start).toBe(auxUserId);
 
       const respond3 = await request(app.getHttpServer())
         .get(
@@ -514,6 +535,20 @@ describe('Topic Module', () => {
         )
         .send();
       expect(respond3.body).toStrictEqual(respond2.body);
+
+      const respond4 = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}/followers?page_size=1&page_start=${auxUserId}`)
+        .send();
+      expect(respond4.body.message).toBe('OK');
+      expect(respond4.body.code).toBe(200);
+      expect(respond4.status).toBe(200);
+      expect(respond4.body.data.users.length).toBe(1);
+      expect(respond4.body.data.users[0].id).toBe(auxUserId);
+      expect(respond4.body.data.page.page_size).toBe(1);
+      expect(respond4.body.data.page.has_prev).toBe(true);
+      expect(respond4.body.data.page.prev_start).toBe(TestUserId);
+      expect(respond4.body.data.page.has_more).toBe(false);
+      expect(respond4.body.data.page.next_start).toBe(0);
     });
     it('should unfollow questions', async () => {
       async function unfollow(questionId: number) {
@@ -524,7 +559,7 @@ describe('Topic Module', () => {
         expect(respond.body.message).toBe('OK');
         expect(respond.body.code).toBe(200);
         expect(respond.status).toBe(200);
-        expect(respond.body.data.follow_count).toBe(0);
+        expect(respond.body.data.follow_count).toBe(1);
       }
       await unfollow(questionIds[1]);
     });

@@ -9,9 +9,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../app.module';
 import { TopicsService } from '../topics/topics.service';
+import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { QuestionsService } from './questions.service';
-jest.setTimeout(60000);
 
 describe('Questions Module', () => {
   const randomString = Math.floor(Math.random() * 10000000000).toString();
@@ -44,10 +44,12 @@ describe('Questions Module', () => {
     }
   });
 
+  let questionId: number;
+
   it('should add topic to question', async () => {
     const topicId1 = (await topicsService.addTopic(randomString + ' unit test topic 1', 1)).id;
     const topicId2 = (await topicsService.addTopic(randomString + ' unit test topic 2', 1)).id;
-    const questionId = await questionsService.addQuestion(
+    questionId = await questionsService.addQuestion(
       1,
       'unit test question',
       'unit test question description',
@@ -81,5 +83,14 @@ describe('Questions Module', () => {
       id: topicId2,
       name: `${randomString} unit test topic 2`,
     });
+  });
+
+  it('should throw UserIdNotFoundError', async () => {
+    await expect(
+      questionsService.followQuestion(-1, questionId)
+    ).rejects.toThrow(new UserIdNotFoundError(-1));
+    await expect(
+      questionsService.unfollowQuestion(-1, questionId)
+    ).rejects.toThrow(new UserIdNotFoundError(-1));
   });
 });
