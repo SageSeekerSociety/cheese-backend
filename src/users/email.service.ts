@@ -9,6 +9,8 @@
 import { Logger } from '@nestjs/common';
 import { isEmail } from 'class-validator';
 
+/* istanbul ignore next */
+// This class cannot be tested, because it uses external service.
 export class EmailService {
   constructor() {}
 
