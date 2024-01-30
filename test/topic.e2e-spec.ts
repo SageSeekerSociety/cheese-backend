@@ -245,6 +245,23 @@ describe('Topic Module', () => {
         `${TestTopicPrefix} Emojis in the topic name 🧑‍🦲 with some 中文 in it`,
       );
     }, 60000);
+    it('should return an empty page', () => {
+      return request(app.getHttpServer())
+        .get('/topics?q=%E6%AF%B3%E6%AF%B3%E6%AF%B3%E6%AF%B3')
+        .send()
+        .then((respond) => {
+          expect(respond.body.message).toBe('OK');
+          expect(respond.status).toBe(200);
+          expect(respond.body.code).toBe(200);
+          expect(respond.body.data.topics.length).toBe(0);
+          expect(respond.body.data.page.page_start).toBe(0);
+          expect(respond.body.data.page.page_size).toBe(0);
+          expect(respond.body.data.page.has_prev).toBe(false);
+          expect(respond.body.data.page.prev_start).toBe(0);
+          expect(respond.body.data.page.has_more).toBe(false);
+          expect(respond.body.data.page.next_start).toBe(0);
+        });
+    });
     it('should return TopicNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get('/topics?q=something&page_start=-1')
