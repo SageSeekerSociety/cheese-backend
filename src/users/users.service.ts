@@ -270,6 +270,7 @@ export class UsersService {
         await this.userRegisterRequestRepository.delete(record.id);
 
         // Verify whether the email is registered.
+        /* istanbul ignore if */
         if ((await this.userRepository.findOneBy({ email })) != null) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToEmailExistence,
@@ -279,7 +280,14 @@ export class UsersService {
             userAgent: userAgent,
           });
           await this.userRegisterLogRepository.save(log);
-          throw new EmailAlreadyRegisteredError(email);
+          throw new Error(
+            `In a register attempt, the email is verified, but the email is already registered!`
+            + `There are 4 possible reasons:\n`
+            + `1. The user send two register email and verified them after that.\n`
+            + `2. There is a bug in the code.\n`
+            + `3. The database is corrupted.\n`
+            + `4. We are under attack!`,
+          );
         }
 
         // Verify whether the username is registered.
@@ -351,9 +359,10 @@ export class UsersService {
     }
 
     const profile = await this.userProfileRepository.findOneBy({ userId });
+    /* istanbul ignore if */
+    // Above is a hint for istanbul to ignore the following line.
     if (profile == null) {
-      Logger.error(`User '${user.username}' DO NOT has a profile!`);
-      throw new UserNoProfileError(userId);
+      throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
     const log = this.userProfileQueryLogRepository.create({
       viewerId: viewer,
@@ -390,18 +399,10 @@ export class UsersService {
     const profile = await this.userProfileRepository.findOneBy({
       userId: user.id,
     });
+    /* istanbul ignore if */
+    // Above is a hint for istanbul to ignore the following line.
     if (profile == null) {
-      Logger.error(`User '${user.username}' DO NOT has a profile!`);
-      return [
-        {
-          id: user.id,
-          username: user.username,
-          nickname: '',
-          avatar: '',
-          intro: '',
-        },
-        await this.createSession(user.id),
-      ];
+      throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
     const log = this.userLoginLogRepository.create({
       user: user,
@@ -593,6 +594,7 @@ export class UsersService {
     }
 
     const user = await this.userRepository.findOneBy({ id: userId });
+    /* istanbul ignore if */
     if (user == null) {
       const log = this.userResetPasswordLogRepository.create({
         type: UserResetPasswordLogType.FailDueToNoUser,
@@ -601,7 +603,14 @@ export class UsersService {
         userAgent: userAgent,
       });
       await this.userResetPasswordLogRepository.save(log);
-      throw new UserIdNotFoundError(userId);
+      throw new Error(
+        `In an password reset attempt, the operation ` +
+          `is permitted, but the user is not found! There are 4 possible reasons:\n` +
+          `1. The user is deleted right after a password reset request.\n` +
+          `2. There is a bug in the code.\n` +
+          `3. The database is corrupted.\n` +
+          `4. We are under attack!`,
+      );
     }
     const salt = bcrypt.genSaltSync(10);
     user.hashedPassword = bcrypt.hashSync(newPassword, salt);
