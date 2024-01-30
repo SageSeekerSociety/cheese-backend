@@ -93,7 +93,7 @@ export class PageHelper {
         /* istanbul ignore if  */
         // Above is a hint for istanbul to ignore this if-statement.
         if (errorIfNotFound == null)
-          return this.PageStart([], pageSize, (i) => i.id);
+          return this.PageStart([], pageSize, idGetter);
         else errorIfNotFound();
       }
       const prev = allData.slice(0, pageStartIndex).slice(-pageSize).reverse();
