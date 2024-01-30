@@ -700,9 +700,6 @@ export class UsersService {
     ip: string,
     userAgent: string,
   ): Promise<[UserDto[], PageRespondDto]> {
-    if (pageSize <= 0) {
-      throw new BadRequestError('pageSize should be positive number');
-    }
     if (firstFollowerId == null) {
       const relations = await this.userFollowingRepository.find({
         where: { followeeId: followeeId },
@@ -756,9 +753,6 @@ export class UsersService {
     ip: string,
     userAgent: string,
   ): Promise<[UserDto[], PageRespondDto]> {
-    if (pageSize <= 0) {
-      throw new BadRequestError('pageSize should be positive number');
-    }
     if (firstFolloweeId == null) {
       const relations = await this.userFollowingRepository.find({
         where: { followerId: followerId },
