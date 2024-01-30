@@ -640,10 +640,6 @@ export class UsersService {
     await this.userProfileRepository.save(profile);
   }
 
-  async getFollowerCount(userId: number): Promise<number> {
-    return await this.userFollowingRepository.countBy({ followeeId: userId });
-  }
-
   async getFolloweeCount(userId: number): Promise<number> {
     return await this.userFollowingRepository.countBy({ followerId: userId });
   }
