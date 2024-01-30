@@ -16,7 +16,7 @@ describe('Groups Module', () => {
   let TestUserId: number;
   let TestUserDto: any;
   let GroupIds: number[] = [];
-  const TestGroupPrefix = `Test-${Math.floor(Math.random() * 100)}`;
+  const TestGroupPrefix = `G${Math.floor(Math.random() * 1000000)}`;
   let auxAccessToken: string;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
@@ -484,6 +484,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(409);
       expect(respond.body.code).toBe(409);
     });
+    // TODO: add permission control
     it('should return CannotDeleteGroupError when user is not the owner', async () => {
       const TestGroupId = GroupIds[0];
       const respond = await request(app.getHttpServer())
