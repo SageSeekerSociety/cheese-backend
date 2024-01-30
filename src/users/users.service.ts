@@ -7,13 +7,12 @@
  *
  */
 
-import { Injectable, Logger } from '@nestjs/common';
-import { TokenExpiredError } from '@nestjs/jwt';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
-import { PermissionDeniedError } from '../auth/auth.error';
+import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
   Authorization,
@@ -37,7 +36,6 @@ import {
   UserResetPasswordLogType,
 } from './users.entity';
 import {
-  BadRequestError,
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
   EmailNotFoundError,
@@ -51,7 +49,6 @@ import {
   PasswordNotMatchError,
   UserAlreadyFollowedError,
   UserIdNotFoundError,
-  UserNoProfileError,
   UserNotFollowedYetError,
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
