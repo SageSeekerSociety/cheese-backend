@@ -398,7 +398,7 @@ describe('Groups Module', () => {
         .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
-          name: '关注huancheng谢谢喵',
+          name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
@@ -416,7 +416,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toContain('关注huancheng谢谢喵');
+      expect(respond.body.data.name).toContain('关注幻城谢谢喵');
       expect(respond.body.data.intro).toBe('湾原审万德');
       expect(respond.body.data.avatar).toBe('🤣');
       expect(respond.body.data.owner).toStrictEqual(TestUserDto);
@@ -433,7 +433,7 @@ describe('Groups Module', () => {
         .put('/groups/0')
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
-          name: '关注huancheng谢谢喵',
+          name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
@@ -461,7 +461,7 @@ describe('Groups Module', () => {
         .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({
-          name: TestGroupPrefix + '关注huancheng谢谢喵',
+          name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
@@ -492,7 +492,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toContain('关注huancheng谢谢喵');
+      expect(respond.body.data.name).toContain('关注幻城谢谢喵');
       expect(respond.body.data.intro).toBe('湾原审万德');
       expect(respond.body.data.avatar).toBe('🤣');
       expect(respond.body.data.owner).toStrictEqual(TestUserDto);
