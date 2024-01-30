@@ -461,7 +461,7 @@ describe('Groups Module', () => {
         .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({
-          name: '关注huancheng谢谢喵',
+          name: TestGroupPrefix + '关注huancheng谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
