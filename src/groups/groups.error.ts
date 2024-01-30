@@ -1,3 +1,12 @@
+/*
+ *  Description: This file defines the errors related to groups service.
+ *               All the errors should extend `BaseError`.
+ *
+ *  Author(s):
+ *      Andy Lee    <andylizf@outlook.com>
+ *
+ */
+
 import { BaseError } from '../common/error/base-error';
 
 export class InvalidGroupNameError extends BaseError {

@@ -1,3 +1,12 @@
+/*
+ *  Description: This file defines the entities used in groups service.
+ *               It defines the SQL tables stored in the database.
+ *
+ *  Author(s):
+ *      Andy Lee    <andylizf@outlook.com>
+ *
+ */
+
 import {
   Column,
   CreateDateColumn,

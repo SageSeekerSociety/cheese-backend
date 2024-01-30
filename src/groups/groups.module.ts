@@ -1,3 +1,11 @@
+/*
+ *  Description: This file defines the groups module.
+ *
+ *  Author(s):
+ *      Andy Lee    <andylizf@outlook.com>
+ *
+ */
+
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';

@@ -1,3 +1,12 @@
+/*
+ *  Description: This file implements the groups controller.
+ *               It is responsible for handling the requests to /groups/...
+ *
+ *  Author(s):
+ *      Andy Lee    <andylizf@outlook.com>
+ *
+ */
+
 import {
   Body,
   Controller,

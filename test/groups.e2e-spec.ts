@@ -1,3 +1,11 @@
+/*
+ *  Description: This file tests the groups module.
+ *
+ *  Author(s):
+ *      Andy Lee    <andylizf@outlook.com>
+ *
+ */
+
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';

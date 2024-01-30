@@ -1,4 +1,11 @@
-// src/groups/group.service.ts
+/*
+ *  Description: This file implements the groups service.
+ *               It is responsible for the business logic of questions.
+ *
+ *  Author(s):
+ *      Andy Lee    <andylizf@outlook.com>
+ *
+ */
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
