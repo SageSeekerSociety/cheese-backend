@@ -1,5 +1,5 @@
 /*
- *  Description: This file tests the auth module.
+ *  Description: This file provide additional tests to auth module.
  *
  *  Author(s):
  *      Nictheboy Li    <nictheboy@outlook.com>

@@ -1,5 +1,5 @@
 /*
- *  Description: This file tests the questions module.
+ *  Description: This file provide additional tests to questions module.
  *
  *  Author(s):
  *      Nictheboy Li    <nictheboy@outlook.com>
@@ -8,9 +8,11 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../app.module';
+import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
+import { QuestionNotFoundError } from './questions.error';
 import { QuestionsService } from './questions.service';
 
 describe('Questions Module', () => {
@@ -45,12 +47,14 @@ describe('Questions Module', () => {
   });
 
   let questionId: number;
+  let topicId1: number;
+  let topicId2: number;
 
   it('should add topic to question', async () => {
-    const topicId1 = (
+    topicId1 = (
       await topicsService.addTopic(randomString + ' unit test topic 1', 1)
     ).id;
-    const topicId2 = (
+    topicId2 = (
       await topicsService.addTopic(randomString + ' unit test topic 2', 1)
     ).id;
     questionId = await questionsService.addQuestion(
@@ -96,5 +100,35 @@ describe('Questions Module', () => {
     await expect(
       questionsService.unfollowQuestion(-1, questionId),
     ).rejects.toThrow(new UserIdNotFoundError(-1));
+  });
+
+  it('should throw QuestionNotFoundError', async () => {
+    await expect(
+      questionsService.addTopicToQuestion(-1, topicId1, 1),
+    ).rejects.toThrow(new QuestionNotFoundError(-1));
+  });
+
+  it('should throw TopicNotFoundError', async () => {
+    await expect(
+      questionsService.addTopicToQuestion(questionId, -1, 1),
+    ).rejects.toThrow(new TopicNotFoundError(-1));
+  });
+
+  it('should throw UserIdNotFoundError', async () => {
+    await expect(
+      questionsService.addTopicToQuestion(questionId, topicId1, -1),
+    ).rejects.toThrow(new UserIdNotFoundError(-1));
+  });
+
+  it('should throw QuestionNotFoundError', async () => {
+    await expect(
+      questionsService.updateQuestion(-1, 'title', 'content', 0, []),
+    ).rejects.toThrow(new QuestionNotFoundError(-1));
+    await expect(questionsService.deleteQuestion(-1)).rejects.toThrow(
+      new QuestionNotFoundError(-1),
+    );
+    await expect(questionsService.unfollowQuestion(1, -1)).rejects.toThrow(
+      new QuestionNotFoundError(-1),
+    );
   });
 });
