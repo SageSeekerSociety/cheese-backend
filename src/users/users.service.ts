@@ -556,8 +556,9 @@ export class UsersService {
     ip: string,
     userAgent: string,
   ): Promise<void> {
-    const decoded = this.authService.verify(token);
-    const userId = decoded.userId;
+    // Here, we do not need to check whether the token is valid.
+    // If we check, then, if the token is invalid, it won't be logged.
+    const userId = this.authService.decode(token).authorization.userId;
     try {
       this.authService.audit(
         token,
