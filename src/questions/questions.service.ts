@@ -223,7 +223,7 @@ export class QuestionsService {
 
   async searchQuestions(
     keywords: string,
-    pageStart: number, // null if from start
+    firstQuestionId: number | undefined, // if from start
     pageSize: number,
     searcherId?: number, // optional
     ip?: string, // optional
@@ -245,11 +245,11 @@ export class QuestionsService {
       .getRawMany()) as { id: number }[];
     const [questionIds, page] = PageHelper.PageFromAll(
       allQuestionIds,
-      pageStart,
+      firstQuestionId,
       pageSize,
       (i) => i.id,
       () => {
-        throw new QuestionIdNotFoundError(pageStart);
+        throw new QuestionIdNotFoundError(firstQuestionId);
       },
     );
     const questions = await Promise.all(
@@ -260,7 +260,7 @@ export class QuestionsService {
     if (searcherId != null || ip != null || userAgent != null) {
       const log = this.questionSearchLogRepository.create({
         keywords,
-        firstQuestionId: pageStart,
+        firstQuestionId: firstQuestionId,
         pageSize,
         result: questionIds.map((t) => t.id).join(','),
         duration: (Date.now() - timeBegin) / 1000,

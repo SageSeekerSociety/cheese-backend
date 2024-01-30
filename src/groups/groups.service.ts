@@ -2,14 +2,16 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as dayjs from 'dayjs';
 import { In, Repository } from 'typeorm';
+import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageHelper } from '../common/helper/page.helper';
 import { QuestionIdNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
-import { UserIdNotFoundError } from '../users/users.error';
+import { BadRequestError, UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { GetGroupMembersResultDto } from './DTO/get-group-members.dto';
 import { GetGroupQuestionsResultDto } from './DTO/get-group-questions.dto';
-import { GetGroupsResultDto } from './DTO/get-groups.dto';
 import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
 import { GroupProfile } from './group-profile.entity';
@@ -111,28 +113,56 @@ export class GroupsService {
 
   async getGroups(
     userId: number,
-    key: string | null,
+    keyword: string,
     page_start_id: number | null,
     page_size: number,
     order_type: GroupQueryType,
-  ): Promise<GetGroupsResultDto> {
+  ): Promise<[GroupDto[], PageRespondDto]> {
+    if (page_size <= 0) {
+      throw new BadRequestError('pageSize should be positive number');
+    }
+
     let queryBuilder = this.groupsRepository.createQueryBuilder('group');
 
-    if (key) {
+    if (keyword) {
       queryBuilder = queryBuilder.where('group.name LIKE :key', {
-        key: `%${key}%`,
+        key: `%${keyword}%`,
       });
     }
 
-    let prevDTOs = null,
-      currDTOs = null;
-    if (page_start_id) {
+    let prevEntity = null,
+      currEntity = null;
+    if (!page_start_id) {
+      switch (order_type) {
+        case GroupQueryType.Recommend:
+          queryBuilder = queryBuilder.addSelect(
+            'getRecommendationScore(group)',
+            'score',
+          );
+          break;
+        case GroupQueryType.Hot:
+          queryBuilder = queryBuilder.addSelect(
+            'getGroupHotness(group)',
+            'hotness',
+          );
+          break;
+        case GroupQueryType.New:
+          queryBuilder = queryBuilder.orderBy('group.createdAt', 'DESC');
+          break;
+      }
+      currEntity = await queryBuilder.limit(page_size + 1).getMany();
+      const currDTOs = await Promise.all(
+        currEntity.map((entity) => this.getGroupDtoById(userId, entity.id)),
+      );
+      return PageHelper.PageStart(currDTOs, page_size, (group) => group.id);
+    } else {
       const referenceGroup = await this.groupsRepository.findOneBy({
         id: page_start_id,
       });
       if (!referenceGroup) {
         throw new GroupIdNotFoundError(page_start_id);
       }
+
       let referenceValue;
       switch (order_type) {
         case GroupQueryType.Recommend: {
@@ -156,16 +186,16 @@ export class GroupsService {
           break;
         }
       }
-      queryBuilder = queryBuilder.orderBy(order_type, 'DESC');
+
       switch (order_type) {
         case GroupQueryType.Recommend:
-          prevDTOs = await queryBuilder
+          prevEntity = await queryBuilder
             .andWhere('recommendation_score > :referenceValue', {
               referenceValue,
             })
             .limit(page_size)
             .getMany();
-          currDTOs = await queryBuilder
+          currEntity = await queryBuilder
             .andWhere('recommendation_score <= :referenceValue', {
               referenceValue,
             })
@@ -173,50 +203,47 @@ export class GroupsService {
             .getMany();
           break;
         case GroupQueryType.Hot:
-          prevDTOs = await queryBuilder
+          prevEntity = await queryBuilder
             .andWhere('hotness > :referenceValue', { referenceValue })
             .limit(page_size)
             .getMany();
-          currDTOs = await queryBuilder
+          currEntity = await queryBuilder
             .andWhere('hotness <= :referenceValue', { referenceValue })
             .limit(page_size + 1)
             .getMany();
           break;
-        case GroupQueryType.New:
-          prevDTOs = await queryBuilder
-            .andWhere('createdAt > :referenceValue', { referenceValue })
+        case GroupQueryType.New: {
+          let queryBuilderCopy = queryBuilder.clone();
+
+          prevEntity = await queryBuilder
+            .orderBy('createdAt', 'ASC')
+            .andWhere('createdAt > TIMESTAMP :referenceValue', {
+              referenceValue: dayjs(referenceValue).format(
+                'YYYY-MM-DD HH:mm:ss.SSS',
+              ),
+            })
             .limit(page_size)
             .getMany();
-          currDTOs = await queryBuilder
+
+          currEntity = await queryBuilderCopy
+            .orderBy('createdAt', 'DESC')
             .andWhere('createdAt <= :referenceValue', { referenceValue })
             .limit(page_size + 1)
             .getMany();
           break;
+        }
       }
-    } else {
-      prevDTOs = null;
-      currDTOs = await queryBuilder.limit(page_size + 1).getMany();
+      const currDTOs = await Promise.all(
+        currEntity.map((entity) => this.getGroupDtoById(userId, entity.id)),
+      );
+      return PageHelper.PageMiddle(
+        prevEntity,
+        currDTOs,
+        page_size,
+        (group) => group.id,
+        (group) => group.id,
+      );
     }
-    const has_prev = prevDTOs != null && prevDTOs.length > 0;
-    const has_more = currDTOs != null && currDTOs.length > page_size;
-    const page_start = currDTOs[0]?.id;
-    const real_page_size =
-      currDTOs.length > page_size ? page_size : currDTOs.length;
-    const next_start = currDTOs[page_size - 1]?.id;
-    const groups = await Promise.all(
-      currDTOs.map((group) => this.getGroupDtoById(userId, group.id)),
-    );
-    return {
-      groups,
-      page: {
-        page_start,
-        page_size: real_page_size,
-        has_prev,
-        prev_start: prevDTOs?.[0]?.id,
-        has_more,
-        next_start,
-      },
-    };
   }
 
   async getGroupDtoById(userId: number, groupId: number): Promise<GroupDto> {

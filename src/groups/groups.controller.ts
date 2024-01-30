@@ -67,7 +67,7 @@ export class GroupsController {
     type: GroupQueryType = GroupQueryType.Recommend,
   ): Promise<GetGroupsRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const getGroupResult = await this.groupsService.getGroups(
+    const [groups, page] = await this.groupsService.getGroups(
       userId,
       key,
       page_start,
@@ -77,7 +77,10 @@ export class GroupsController {
     return {
       code: 200,
       message: 'Groups fetched successfully.',
-      data: getGroupResult,
+      data: {
+        groups,
+        page,
+      },
     };
   }
 

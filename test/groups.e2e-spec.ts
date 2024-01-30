@@ -16,6 +16,7 @@ describe('Groups Module', () => {
   let TestUserId: number;
   let TestUserDto: any;
   let GroupIds: number[] = [];
+  const TestGroupPrefix = `Test-${Math.floor(Math.random() * 100)}`;
   let auxAccessToken: string;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
@@ -114,13 +115,12 @@ describe('Groups Module', () => {
         const respond = await request(app.getHttpServer())
           .post('/groups')
           .set('Authorization', `Bearer ${TestToken}`)
-          .send({ name, intro, avatar });
-        console.log('CheckRespondBodyData:', respond.body.data); // Add this line to check the value of respond.body.data
+          .send({ name: TestGroupPrefix + name, intro, avatar });
         expect(respond.body.message).toBe('Group created successfully.');
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
         expect(respond.body.data.id).toBeTruthy();
-        expect(respond.body.data.name).toBe(name);
+        expect(respond.body.data.name).toContain(name);
         expect(respond.body.data.intro).toBe(intro);
         expect(respond.body.data.avatar).toBe(avatar);
         expect(respond.body.data.owner.id).toBe(TestUserId);
@@ -133,7 +133,6 @@ describe('Groups Module', () => {
         expect(respond.body.data.is_owner).toBe(true);
         expect(respond.body.data.is_public).toBe(true);
         GroupIds.push(respond.body.data.id);
-        console.log('CheckGroupIds:', GroupIds); // Add this line to check the value of GroupIds
       }
       await createGroup('数学之神膜膜喵', '不如原神', '🥸');
       await createGroup('ICS膜膜膜', 'pwb txdy!', '🐂');
@@ -149,17 +148,17 @@ describe('Groups Module', () => {
     it('should get all groups', async () => {
       const respond = await request(app.getHttpServer())
         .get('/groups')
-        .query({ q: '', page_size: 2, type: 'recommend' })
+        .query({ q: '', page_size: 2, type: 'new' })
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toBe('Groups fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.groups.length).toBe(4);
+      expect(respond.body.data.groups.length).toBe(2);
       expect(respond.body.data.groups[0].id).toBeDefined();
-      expect(respond.body.data.groups[0].name).toBe('数学之神膜膜喵');
-      expect(respond.body.data.groups[0].intro).toBe('不如原神');
-      expect(respond.body.data.groups[0].avatar).toBe('🥸');
+      expect(respond.body.data.groups[0].name).toContain('XCPC启动');
+      expect(respond.body.data.groups[0].intro).toBe('启不动了');
+      expect(respond.body.data.groups[0].avatar).toBe('🐱');
       expect(respond.body.data.groups[0].owner).toStrictEqual(TestUserDto);
       expect(respond.body.data.groups[0].created_at).toBeDefined();
       expect(respond.body.data.groups[0].updated_at).toBeDefined();
@@ -169,9 +168,9 @@ describe('Groups Module', () => {
       expect(respond.body.data.groups[0].is_member).toBe(true);
       expect(respond.body.data.groups[0].is_owner).toBe(true);
       expect(respond.body.data.groups[1].id).toBeDefined();
-      expect(respond.body.data.groups[1].name).toBe('ICS膜膜膜');
-      expect(respond.body.data.groups[1].intro).toBe('pwb txdy!');
-      expect(respond.body.data.groups[1].avatar).toBe('🐂');
+      expect(respond.body.data.groups[1].name).toContain('嘉然今天学什么');
+      expect(respond.body.data.groups[1].intro).toBe('学, 学个屁!');
+      expect(respond.body.data.groups[1].avatar).toBe('🤡');
       expect(respond.body.data.groups[1].owner).toStrictEqual(TestUserDto);
       expect(respond.body.data.groups[1].created_at).toBeDefined();
       expect(respond.body.data.groups[1].updated_at).toBeDefined();
@@ -192,7 +191,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.groups.length).toBe(1);
       expect(respond.body.data.groups[0].id).toBeDefined();
-      expect(respond.body.data.groups[0].name).toBe('数学之神膜膜喵');
+      expect(respond.body.data.groups[0].name).toContain('数学之神膜膜喵');
       expect(respond.body.data.groups[0].intro).toBe('不如原神');
       expect(respond.body.data.groups[0].avatar).toBe('🥸');
       expect(respond.body.data.groups[0].owner).toStrictEqual(TestUserDto);
@@ -209,9 +208,9 @@ describe('Groups Module', () => {
         .get('/groups')
         .query({
           q: '膜',
-          page_start: GroupIds[1],
+          page_start: GroupIds[0],
           page_size: 2,
-          type: 'recommend',
+          type: 'new',
         })
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
@@ -220,9 +219,9 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.groups.length).toBe(1);
       expect(respond.body.data.groups[0].id).toBeDefined();
-      expect(respond.body.data.groups[0].name).toBe('ICS膜膜膜');
-      expect(respond.body.data.groups[0].intro).toBe('pwb txdy!');
-      expect(respond.body.data.groups[0].avatar).toBe('🐂');
+      expect(respond.body.data.groups[0].name).toContain('数学之神膜膜喵');
+      expect(respond.body.data.groups[0].intro).toBe('不如原神');
+      expect(respond.body.data.groups[0].avatar).toBe('🥸');
       expect(respond.body.data.groups[0].owner).toStrictEqual(TestUserDto);
       expect(respond.body.data.groups[0].created_at).toBeDefined();
       expect(respond.body.data.groups[0].updated_at).toBeDefined();
@@ -231,13 +230,43 @@ describe('Groups Module', () => {
       expect(respond.body.data.groups[0].answer_count).toBe(0);
       expect(respond.body.data.groups[0].is_member).toBe(true);
       expect(respond.body.data.groups[0].is_owner).toBe(true);
+      expect(respond.body.data.groups[0].is_public).toBe(true);
+    });
+    it('should return groups when page_start is lower', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/groups')
+        .query({
+          q: '嘉然',
+          page_start: GroupIds[3],
+          page_size: 2,
+          type: 'new',
+        })
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('Groups fetched successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.groups.length).toBe(1);
+      expect(respond.body.data.groups[0].id).toBeDefined();
+      expect(respond.body.data.groups[0].name).toContain('嘉然今天学什么');
+      expect(respond.body.data.groups[0].intro).toBe('学, 学个屁!');
+      expect(respond.body.data.groups[0].avatar).toBe('🤡');
+      expect(respond.body.data.groups[0].owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.groups[0].created_at).toBeDefined();
+      expect(respond.body.data.groups[0].updated_at).toBeDefined();
+      expect(respond.body.data.groups[0].member_count).toBe(1);
+      expect(respond.body.data.groups[0].question_count).toBe(0);
+      expect(respond.body.data.groups[0].answer_count).toBe(0);
+      expect(respond.body.data.groups[0].is_member).toBe(true);
+      expect(respond.body.data.groups[0].is_owner).toBe(true);
+      expect(respond.body.data.groups[0].is_public).toBe(true);
     });
     it('should return empty array when no group is found', async () => {
       const respond = await request(app.getHttpServer())
         .get('/groups')
         .query({
           q: '嘉然',
-          page_start: GroupIds[3],
+          page_start: GroupIds[1],
           page_size: 2,
           type: 'new',
         })
@@ -261,7 +290,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toBe('数学之神膜膜喵');
+      expect(respond.body.data.name).toContain('数学之神膜膜喵');
       expect(respond.body.data.intro).toBe('不如原神');
       expect(respond.body.data.avatar).toBe('🥸');
       expect(respond.body.data.owner).toStrictEqual(TestUserDto);
@@ -284,7 +313,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toBe('数学之神膜膜喵');
+      expect(respond.body.data.name).toContain('数学之神膜膜喵');
       expect(respond.body.data.intro).toBe('不如原神');
       expect(respond.body.data.avatar).toBe('🥸');
       expect(respond.body.data.owner).toStrictEqual(TestUserDto);
@@ -329,7 +358,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toBe('数学之神膜膜喵');
+      expect(respond.body.data.name).toContain('数学之神膜膜喵');
       expect(respond.body.data.intro).toBe('不如原神');
       expect(respond.body.data.avatar).toBe('🥸');
       expect(respond.body.data.owner).toStrictEqual(TestUserDto);
@@ -387,7 +416,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toBe('关注huancheng谢谢喵');
+      expect(respond.body.data.name).toContain('关注huancheng谢谢喵');
       expect(respond.body.data.intro).toBe('湾原审万德');
       expect(respond.body.data.avatar).toBe('🤣');
       expect(respond.body.data.owner).toStrictEqual(TestUserDto);
@@ -418,11 +447,10 @@ describe('Groups Module', () => {
         .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
-          name: 'ICS膜膜膜',
+          name: TestGroupPrefix + 'ICS膜膜膜',
           intro: '湾原审万德',
           avatar: '🤣',
         });
-      console.log('CheckRespond', respond.body); // Add this line to check the value of respond.body
       expect(respond.body.message).toMatch(/^GroupNameAlreadyUsedError: /);
       expect(respond.status).toBe(409);
       expect(respond.body.code).toBe(409);
@@ -464,7 +492,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toBe('关注huancheng谢谢喵');
+      expect(respond.body.data.name).toContain('关注huancheng谢谢喵');
       expect(respond.body.data.intro).toBe('湾原审万德');
       expect(respond.body.data.avatar).toBe('🤣');
       expect(respond.body.data.owner).toStrictEqual(TestUserDto);
