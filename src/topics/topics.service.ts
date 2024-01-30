@@ -83,7 +83,12 @@ export class TopicsService {
     return [data, page];
   }
 
-  async getTopicDtoById(topicId: number): Promise<TopicDto> {
+  async getTopicDtoById(
+    topicId: number,
+    viewerId?: number,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<TopicDto> {
     const topic = await this.topicRepository.findOneBy({ id: topicId });
     if (topic == null) throw new TopicNotFoundError(topicId);
     return {

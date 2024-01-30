@@ -13,6 +13,7 @@ import {
   Get,
   Headers,
   Ip,
+  Param,
   ParseIntPipe,
   Post,
   Query,
@@ -87,6 +88,30 @@ export class TopicsController {
     const topic = await this.topicsService.addTopic(request.name, userId);
     return {
       code: 201,
+      message: 'OK',
+      data: topic,
+    };
+  }
+
+  @Get('/:id')
+  async getTopic(
+    @Param('id', new ParseIntPipe()) id: number,
+    @Headers('Authorization') auth: string,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
+  ) {
+    let userId: number;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {}
+    const topic = await this.topicsService.getTopicDtoById(
+      id,
+      userId,
+      ip,
+      userAgent,
+    );
+    return {
+      code: 200,
       message: 'OK',
       data: topic,
     };

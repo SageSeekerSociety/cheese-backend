@@ -1833,6 +1833,32 @@ paths:
                         $ref: "#/components/schemas/Topic"
                     required:
                       - data
+  /topics/{id}:
+    get:
+      summary: 获取话题详情
+      operationId: getTopicDetail
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Topic"
+                    required:
+                      - data
   /groups:
     get:
       summary: 获取圈子列表
