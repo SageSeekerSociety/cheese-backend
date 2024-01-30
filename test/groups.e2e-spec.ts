@@ -179,6 +179,12 @@ describe('Groups Module', () => {
       expect(respond.body.data.groups[1].answer_count).toBe(0);
       expect(respond.body.data.groups[1].is_member).toBe(true);
       expect(respond.body.data.groups[1].is_owner).toBe(true);
+      expect(respond.body.data.page.page_start).toBe(GroupIds[3]);
+      expect(respond.body.data.page.page_size).toBe(2);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBeFalsy();
+      expect(respond.body.data.page.has_more).toBe(true);
+      expect(respond.body.data.page.next_start).toBe(GroupIds[1]);
     });
     it('should get groups by name for another user', async () => {
       const respond = await request(app.getHttpServer())
@@ -201,6 +207,12 @@ describe('Groups Module', () => {
       expect(respond.body.data.groups[0].answer_count).toBe(0);
       expect(respond.body.data.groups[0].is_member).toBe(false);
       expect(respond.body.data.groups[0].is_owner).toBe(false);
+      expect(respond.body.data.page.page_start).toBe(GroupIds[0]);
+      expect(respond.body.data.page.page_size).toBeLessThanOrEqual(2); // ! since tests are run multiple times
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBeFalsy();
+      expect(respond.body.data.page.has_more).toBeDefined();
+      expect(respond.body.data.page.next_start).toBeDefined();
     });
     it('should get groups from half of the groups', async () => {
       const respond = await request(app.getHttpServer())
@@ -229,14 +241,20 @@ describe('Groups Module', () => {
       expect(respond.body.data.groups[0].is_member).toBe(true);
       expect(respond.body.data.groups[0].is_owner).toBe(true);
       expect(respond.body.data.groups[0].is_public).toBe(true);
+      expect(respond.body.data.page.page_start).toBe(GroupIds[0]);
+      expect(respond.body.data.page.page_size).toBeLessThanOrEqual(2); // ! since tests are run multiple times
+      expect(respond.body.data.page.has_prev).toBe(true);
+      expect(respond.body.data.page.prev_start).toBe(GroupIds[1]);
+      expect(respond.body.data.page.has_more).toBeDefined();
+      expect(respond.body.data.page.next_start).toBeDefined();
     });
-    it('should return groups when page_start is lower', async () => {
+    it('should return groups even page_start group not contains keyword', async () => {
       const respond = await request(app.getHttpServer())
         .get('/groups')
         .query({
           q: '嘉然',
           page_start: GroupIds[3],
-          page_size: 2,
+          page_size: 1,
           type: 'new',
         })
         .set('Authorization', `Bearer ${TestToken}`)
@@ -244,6 +262,7 @@ describe('Groups Module', () => {
       expect(respond.body.message).toBe('Groups fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
+      expect(respond.body.data.groups.length).toBe(1);
       expect(respond.body.data.groups[0].id).toBeDefined();
       expect(respond.body.data.groups[0].name).toContain('嘉然今天学什么');
       expect(respond.body.data.groups[0].intro).toBe('学, 学个屁!');
@@ -257,6 +276,12 @@ describe('Groups Module', () => {
       expect(respond.body.data.groups[0].is_member).toBe(true);
       expect(respond.body.data.groups[0].is_owner).toBe(true);
       expect(respond.body.data.groups[0].is_public).toBe(true);
+      expect(respond.body.data.page.page_start).toBe(GroupIds[2]);
+      expect(respond.body.data.page.page_size).toBe(1);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBeFalsy();
+      expect(respond.body.data.page.has_more).toBeDefined();
+      expect(respond.body.data.page.next_start).toBeDefined();
     });
     it('should return empty array when no group is found', async () => {
       const respond = await request(app.getHttpServer())
@@ -274,6 +299,12 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.groups.length).toBe(0);
+      expect(respond.body.data.page.page_start).toBe(0);
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.has_prev).toBeDefined(); // ! since tests are run multiple times
+      expect(respond.body.data.page.prev_start).toBeDefined();
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBeFalsy();
     });
   });
 
