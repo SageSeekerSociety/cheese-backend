@@ -144,12 +144,6 @@ export class UserNotFollowedYetError extends BaseError {
   }
 }
 
-export class BadRequestError extends BaseError {
-  constructor(public readonly message: string) {
-    super('BadRequestError', message, 400);
-  }
-}
-
 export class FollowYourselfError extends BaseError {
   constructor() {
     super('FollowYourselfError', 'Cannot follow yourself.', 422);
@@ -163,11 +157,5 @@ export class UserAlreadyFollowedError extends BaseError {
       `User with id ${followeeId} already followed.`,
       422,
     );
-  }
-}
-
-export class UserNoProfileError extends BaseError {
-  constructor(public readonly userId: number) {
-    super('UserNoProfileError', `User with id ${userId} has no profile.`, 422);
   }
 }
