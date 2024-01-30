@@ -70,7 +70,7 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if (await this.groupsRepository.findOneBy({ name })) {
+    if ((await this.groupsRepository.findOneBy({ name })) != null) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
@@ -333,7 +333,7 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if (await this.groupsRepository.findOneBy({ name })) {
+    if ((await this.groupsRepository.findOneBy({ name })) != null) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
