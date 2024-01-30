@@ -16,7 +16,7 @@ import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
-import { BadRequestError, UserIdNotFoundError } from '../users/users.error';
+import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { QuestionDto } from './DTO/question.dto';
 import {
@@ -161,7 +161,6 @@ export class QuestionsService {
     ip: string,
     userAgent: string,
   ): Promise<QuestionDto> {
-    if (questionId == null) throw new Error('questionId is null');
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
@@ -177,7 +176,6 @@ export class QuestionsService {
       followCountPromise,
       viewCountPromise,
     ]);
-    if (question == null) throw new QuestionNotFoundError(questionId);
     let user: UserDto = null;
     try {
       user = await this.userService.getUserDtoById(
