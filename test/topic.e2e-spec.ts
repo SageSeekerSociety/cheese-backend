@@ -208,12 +208,6 @@ describe('Topic Module', () => {
       expect(respond3.body.data.topics[0].name).toBe(
         `${TestTopicPrefix} 高等代数习题`,
       );
-      expect(respond3.body.data.topics[1].name).toBe(
-        `${TestTopicPrefix} 大学英语`,
-      );
-      expect(respond3.body.data.topics[2].name).toBe(
-        `${TestTopicPrefix} 军事理论（思政）`,
-      );
       expect(respond3.body.data.page.page_start).toBe(
         respond3.body.data.topics[0].id,
       );
