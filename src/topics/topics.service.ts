@@ -96,4 +96,8 @@ export class TopicsService {
       name: topic.name,
     };
   }
+
+  async isTopicExists(topicId: number): Promise<boolean> {
+    return (await this.topicRepository.findOneBy({ id: topicId })) != null;
+  }
 }

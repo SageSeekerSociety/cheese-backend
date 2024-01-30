@@ -67,10 +67,10 @@ export class QuestionsService {
       });
       if (question == null) throw new QuestionNotFoundError(questionId);
     }
-    const topic = await this.topicService.getTopicDtoById(topicId);
-    if (topic == null) throw new TopicNotFoundError(topicId);
-    const createBy = await this.userService.isUserExists(createdById);
-    if (createBy == false) throw new UserIdNotFoundError(createdById);
+    const topicExists = await this.topicService.isTopicExists(topicId);
+    if (topicExists == false) throw new TopicNotFoundError(topicId);
+    const createByExists = await this.userService.isUserExists(createdById);
+    if (createByExists == false) throw new UserIdNotFoundError(createdById);
     const relation = questionTopicRelationRepository.create({
       questionId,
       topicId,
@@ -89,8 +89,8 @@ export class QuestionsService {
     groupId?: number,
   ): Promise<number> {
     for (const topicId of topicIds) {
-      const topic = await this.topicService.getTopicDtoById(topicId);
-      if (topic == null) throw new TopicNotFoundError(topicId);
+      const topicExists = await this.topicService.isTopicExists(topicId);
+      if (topicExists == false) throw new TopicNotFoundError(topicId);
     }
     // TODO: Validate groupId.
     return this.entityManager.transaction(
