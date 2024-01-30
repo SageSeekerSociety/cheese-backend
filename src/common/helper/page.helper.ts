@@ -89,10 +89,13 @@ export class PageHelper {
       return PageHelper.PageStart(data, pageSize, idGetter);
     } else {
       const pageStartIndex = allData.findIndex((r) => idGetter(r) == pageStart);
-      if (pageStartIndex == -1)
+      if (pageStartIndex == -1) {
+        /* istanbul ignore if  */
+        // Above is a hint for istanbul to ignore this if-statement.
         if (errorIfNotFound == null)
           return this.PageStart([], pageSize, (i) => i.id);
         else errorIfNotFound();
+      }
       const prev = allData.slice(0, pageStartIndex).slice(-pageSize).reverse();
       const data = allData.slice(pageStartIndex, pageStartIndex + pageSize + 1);
       return PageHelper.PageMiddle(prev, data, pageSize, idGetter, idGetter);
