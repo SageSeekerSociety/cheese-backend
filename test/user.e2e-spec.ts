@@ -1,5 +1,5 @@
 /*
- *  Description: This file tests the user module.
+ *  Description: This file tests the core function of user module.
  *
  *  Author(s):
  *      Nictheboy Li    <nictheboy@outlook.com>

@@ -1,5 +1,5 @@
 /*
- *  Description: This file tests the topic module.
+ *  Description: This file tests the following submodule of user module.
  *
  *  Author(s):
  *      Nictheboy Li    <nictheboy@outlook.com>

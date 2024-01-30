@@ -1,6 +1,6 @@
 /*
  *  Description: This file defines the errors related to users service.
- *               All the errors should extend BaseError.
+ *               All the errors in this file should extend BaseError.
  *
  *  Author(s):
  *      Nictheboy Li    <nictheboy@outlook.com>
