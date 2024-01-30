@@ -81,6 +81,9 @@ export class UsersService {
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
   ) {}
 
+  private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
+  private readonly passwordResetEmailValidSeconds = 10 * 60; // 10 minutes
+
   private generateVerifyCode(): string {
     let code: string = '';
     for (let i = 0; i < 6; i++) {
@@ -200,11 +203,7 @@ export class UsersService {
   }
 
   private isCodeExpired(createdAt: Date): boolean {
-    return new Date().getTime() - createdAt.getTime() > 10 * 60 * 1000;
-  }
-
-  get codeExpiredRule(): string {
-    return 'Code expires after 10 minutes.';
+    return new Date().getTime() - createdAt.getTime() > this.registerCodeValidSeconds * 1000;
   }
 
   get defaultAvatar(): string {
@@ -485,10 +484,6 @@ export class UsersService {
       ],
     };
     return this.sessionService.createSession(userId, authorization);
-  }
-
-  get passwordResetEmailValidSeconds(): number {
-    return 60 * 10; // 10 minutes
   }
 
   async sendResetPasswordEmail(
