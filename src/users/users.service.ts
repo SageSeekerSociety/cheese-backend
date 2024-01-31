@@ -342,9 +342,9 @@ export class UsersService {
 
   async getUserDtoById(
     userId: number,
-    viewer: number,
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<UserDto> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (user == null) {
@@ -356,13 +356,15 @@ export class UsersService {
       Logger.error(`User '${user.username}' DO NOT has a profile!`);
       throw new UserNoProfileError(userId);
     }
-    const log = this.userProfileQueryLogRepository.create({
-      viewerId: viewer,
-      vieweeId: userId,
-      ip: ip,
-      userAgent: userAgent,
-    });
-    await this.userProfileQueryLogRepository.save(log);
+    if (viewerId != null || ip != null || userAgent != null) {
+      const log = this.userProfileQueryLogRepository.create({
+        viewerId: viewerId,
+        vieweeId: userId,
+        ip: ip,
+        userAgent: userAgent,
+      });
+      await this.userProfileQueryLogRepository.save(log);
+    }
     return {
       id: user.id,
       username: user.username,
@@ -692,9 +694,9 @@ export class UsersService {
     followeeId: number,
     firstFollowerId: number, // null if from start
     pageSize: number,
-    viewerId: number, // nullable
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
     if (pageSize <= 0) {
       throw new BadRequestError('pageSize should be positive number');
@@ -748,9 +750,9 @@ export class UsersService {
     followerId: number,
     firstFolloweeId: number, // null if from start
     pageSize: number,
-    viewerId: number, // nullable
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
     if (pageSize <= 0) {
       throw new BadRequestError('pageSize should be positive number');

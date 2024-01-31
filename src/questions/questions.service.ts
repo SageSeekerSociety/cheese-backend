@@ -28,8 +28,8 @@ import {
 } from './questions.entity';
 import {
   QuestionAlreadyFollowedError,
+  QuestionIdNotFoundError,
   QuestionNotFollowedYetError,
-  QuestionNotFoundError,
 } from './questions.error';
 
 @Injectable()
@@ -38,7 +38,7 @@ export class QuestionsService {
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
     @InjectEntityManager()
-    private readonly entityManager,
+    private readonly entityManager: EntityManager,
     @InjectRepository(Question)
     private readonly questionRepository: Repository<Question>,
     @InjectRepository(QuestionTopicRelation)
@@ -65,7 +65,7 @@ export class QuestionsService {
       const question = await this.questionRepository.findOneBy({
         id: questionId,
       });
-      if (question == null) throw new QuestionNotFoundError(questionId);
+      if (question == null) throw new QuestionIdNotFoundError(questionId);
     }
     const topic = await this.topicService.getTopicDtoById(topicId);
     if (topic == null) throw new TopicNotFoundError(topicId);
@@ -157,15 +157,15 @@ export class QuestionsService {
 
   async getQuestionDto(
     questionId: number,
-    viewerId: number,
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<QuestionDto> {
     if (questionId == null) throw new Error('questionId is null');
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionNotFoundError(questionId);
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     const topicsPromise = this.getTopicDtosOfQuestion(questionId);
     const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
     const followCountPromise = this.getFollowCountOfQuestion(questionId);
@@ -177,7 +177,7 @@ export class QuestionsService {
       followCountPromise,
       viewCountPromise,
     ]);
-    if (question == null) throw new QuestionNotFoundError(questionId);
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     let user: UserDto = null;
     try {
       user = await this.userService.getUserDtoById(
@@ -191,13 +191,15 @@ export class QuestionsService {
       // does not exist now. This is NOT a data integrity problem, since user can be
       // deleted. So we just return a null and not throw an error.
     }
-    const log = this.questionQueryLogRepository.create({
-      viewerId,
-      questionId,
-      ip,
-      userAgent,
-    });
-    await this.questionQueryLogRepository.save(log);
+    if (viewerId != null || ip != null || userAgent != null) {
+      const log = this.questionQueryLogRepository.create({
+        viewerId,
+        questionId,
+        ip,
+        userAgent,
+      });
+      await this.questionQueryLogRepository.save(log);
+    }
     return {
       id: question.id,
       title: question.title,
@@ -221,11 +223,11 @@ export class QuestionsService {
 
   async searchQuestions(
     keywords: string,
-    pageStart: number, // null if from start
+    firstQuestionId: number | undefined, // if from start
     pageSize: number,
-    searcherId: number, // nullable
-    ip: string,
-    userAgent: string,
+    searcherId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[QuestionDto[], PageRespondDto]> {
     const timeBegin = Date.now();
     const allQuestionIds = (await this.questionRepository
@@ -243,11 +245,11 @@ export class QuestionsService {
       .getRawMany()) as { id: number }[];
     const [questionIds, page] = PageHelper.PageFromAll(
       allQuestionIds,
-      pageStart,
+      firstQuestionId,
       pageSize,
       (i) => i.id,
       () => {
-        throw new QuestionNotFoundError(pageStart);
+        throw new QuestionIdNotFoundError(firstQuestionId);
       },
     );
     const questions = await Promise.all(
@@ -255,17 +257,19 @@ export class QuestionsService {
         this.getQuestionDto(questionId.id, searcherId, ip, userAgent),
       ),
     );
-    const log = this.questionSearchLogRepository.create({
-      keywords,
-      firstQuestionId: pageStart,
-      pageSize,
-      result: questionIds.map((t) => t.id).join(','),
-      duration: (Date.now() - timeBegin) / 1000,
-      searcherId,
-      ip,
-      userAgent,
-    });
-    await this.questionSearchLogRepository.save(log);
+    if (searcherId != null || ip != null || userAgent != null) {
+      const log = this.questionSearchLogRepository.create({
+        keywords,
+        firstQuestionId: firstQuestionId,
+        pageSize,
+        result: questionIds.map((t) => t.id).join(','),
+        duration: (Date.now() - timeBegin) / 1000,
+        searcherId,
+        ip,
+        userAgent,
+      });
+      await this.questionSearchLogRepository.save(log);
+    }
     return [questions, page];
   }
 
@@ -279,7 +283,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionNotFoundError(questionId);
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     await this.entityManager.transaction(
       async (entityManager: EntityManager) => {
         const questionRepository = entityManager.getRepository(Question);
@@ -310,15 +314,15 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionNotFoundError(questionId);
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     return question.createdById;
   }
 
-  async deleteQuestion(questionId): Promise<void> {
+  async deleteQuestion(questionId: number): Promise<void> {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionNotFoundError(questionId);
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     await this.questionRepository.softDelete({ id: questionId });
   }
 
@@ -326,14 +330,16 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionNotFoundError(questionId);
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
+
     const relationOld = await this.questionFollowRelationRepository.findOneBy({
       followerId,
       questionId,
     });
     if (relationOld != null) throw new QuestionAlreadyFollowedError(questionId);
+
     const relation = this.questionFollowRelationRepository.create({
       followerId,
       questionId,
@@ -348,9 +354,10 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionNotFoundError(questionId);
+    if (question == null) throw new QuestionIdNotFoundError(questionId);
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
+
     const relation = await this.questionFollowRelationRepository.findOneBy({
       followerId,
       questionId,
@@ -364,11 +371,11 @@ export class QuestionsService {
 
   async getQuestionFollowers(
     questionId: number,
-    firstFollowerId: number, // null if from start
+    firstFollowerId: number | undefined, // if from start
     pageSize: number,
-    viewerId: number, // nullable
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
     if (pageSize <= 0) {
       throw new BadRequestError('pageSize should be positive number');

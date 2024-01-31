@@ -76,7 +76,7 @@ export class PageHelper {
   // in SQL.
   static PageFromAll<TData>(
     allData: TData[],
-    pageStart: number, // nullable
+    pageStart: number | null,
     pageSize: number,
     idGetter: (item: TData) => number,
     // nullable

@@ -138,14 +138,13 @@ describe('Topic Module', () => {
       await createTopic('钓鱼');
     }, 60000);
     it('should create an auxiliary user', async () => {
-      const [, accessToken] = await createAuxiliaryUser();
-      auxAccessToken = accessToken;
+      [, auxAccessToken] = await createAuxiliaryUser();
     });
   });
 
   describe('create question', () => {
     it('should create some questions', async () => {
-      async function createQuestion(title, content) {
+      async function createQuestion(title: string, content: string) {
         const respond = await request(app.getHttpServer())
           .post('/questions')
           .set('Authorization', `Bearer ${TestToken}`)
@@ -269,12 +268,12 @@ describe('Topic Module', () => {
       expect(respond.body.data.is_group).toBe(false);
       expect(respond.body.data.group).toBe(null);
     }, 20000);
-    it('should return QuestionNotFoundError', async () => {
+    it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get('/questions/-1')
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
       expect(respond.body.code).toBe(404);
     });
   });
@@ -381,7 +380,7 @@ describe('Topic Module', () => {
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
     });
-    it('should return QuestionNotFoundError', async () => {
+    it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .put('/questions/-1')
         .set('Authorization', `Bearer ${TestToken}`)
@@ -392,7 +391,7 @@ describe('Topic Module', () => {
           type: 1,
           topics: [TopicIds[2]],
         });
-      expect(respond.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
       expect(respond.body.code).toBe(404);
     });
     it('should return PermissionDeniedError', async () => {
@@ -420,12 +419,12 @@ describe('Topic Module', () => {
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
     });
-    it('should return QuestionNotFoundError', async () => {
+    it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .delete('/questions/-1')
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
       expect(respond.body.code).toBe(404);
     });
     it('should return PermissionDeniedError', async () => {
@@ -447,7 +446,7 @@ describe('Topic Module', () => {
       const respond2 = await request(app.getHttpServer())
         .get(`/questions/${questionIds[0]}`)
         .send();
-      expect(respond2.body.message).toMatch(/^QuestionNotFoundError: /);
+      expect(respond2.body.message).toMatch(/^QuestionIdNotFoundError: /);
       expect(respond2.body.code).toBe(404);
     });
   });

@@ -16,6 +16,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { isMySql } from '../common/helper/db.helper';
 import { User } from '../users/users.entity';
 
 @Entity()
@@ -72,7 +73,7 @@ export class TopicSearchLog {
   // For example, if the result is [1, 2, 3], then the result string is "1,2,3".
   result: string;
 
-  @Column('double')
+  @Column({ type: isMySql() ? 'double' : 'float' })
   // The search duration in seconds.
   duration: number;
 
