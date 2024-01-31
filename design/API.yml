@@ -110,7 +110,7 @@ components:
         content:
           type: string
           description: 问题详情
-        user:
+        author:
           $ref: "#/components/schemas/User"
         type:
           type: integer
@@ -268,6 +268,9 @@ components:
         owner:
           $ref: "#/components/schemas/User"
         created_at:
+          type: integer
+          format: int64
+        updated_at:
           type: integer
           format: int64
         member_count:
@@ -1936,7 +1939,7 @@ paths:
                 - intro
                 - avatar
       responses:
-        "200":
+        "201":
           description: OK
           content:
             application/json:
@@ -2069,7 +2072,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          users:
+                          members:
                             type: array
                             items:
                               $ref: "#/components/schemas/User"
@@ -2193,11 +2196,14 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Question"
-                      page:
-                        $ref: "#/components/schemas/Page"
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
+                          page:
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /groups/{id}/targets:

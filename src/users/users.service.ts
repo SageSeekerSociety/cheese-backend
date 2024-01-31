@@ -200,7 +200,10 @@ export class UsersService {
   }
 
   private isCodeExpired(createdAt: Date): boolean {
-    return new Date().getTime() - createdAt.getTime() > this.registerCodeValidSeconds * 1000;
+    return (
+      new Date().getTime() - createdAt.getTime() >
+      this.registerCodeValidSeconds * 1000
+    );
   }
 
   get defaultAvatar(): string {
@@ -278,12 +281,12 @@ export class UsersService {
           });
           await this.userRegisterLogRepository.save(log);
           throw new Error(
-            `In a register attempt, the email is verified, but the email is already registered!`
-            + `There are 4 possible reasons:\n`
-            + `1. The user send two register email and verified them after that.\n`
-            + `2. There is a bug in the code.\n`
-            + `3. The database is corrupted.\n`
-            + `4. We are under attack!`,
+            `In a register attempt, the email is verified, but the email is already registered!` +
+              `There are 4 possible reasons:\n` +
+              `1. The user send two register email and verified them after that.\n` +
+              `2. There is a bug in the code.\n` +
+              `3. The database is corrupted.\n` +
+              `4. We are under attack!`,
           );
         }
 
@@ -346,9 +349,9 @@ export class UsersService {
 
   async getUserDtoById(
     userId: number,
-    viewer: number,
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<UserDto> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (user == null) {
@@ -361,13 +364,15 @@ export class UsersService {
     if (profile == null) {
       throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
-    const log = this.userProfileQueryLogRepository.create({
-      viewerId: viewer,
-      vieweeId: userId,
-      ip: ip,
-      userAgent: userAgent,
-    });
-    await this.userProfileQueryLogRepository.save(log);
+    if (viewerId != null || ip != null || userAgent != null) {
+      const log = this.userProfileQueryLogRepository.create({
+        viewerId: viewerId,
+        vieweeId: userId,
+        ip: ip,
+        userAgent: userAgent,
+      });
+      await this.userProfileQueryLogRepository.save(log);
+    }
     return {
       id: user.id,
       username: user.username,
@@ -690,9 +695,9 @@ export class UsersService {
     followeeId: number,
     firstFollowerId: number, // null if from start
     pageSize: number,
-    viewerId: number, // nullable
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
     if (firstFollowerId == null) {
       const relations = await this.userFollowingRepository.find({
@@ -743,9 +748,9 @@ export class UsersService {
     followerId: number,
     firstFolloweeId: number, // null if from start
     pageSize: number,
-    viewerId: number, // nullable
-    ip: string,
-    userAgent: string,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
     if (firstFolloweeId == null) {
       const relations = await this.userFollowingRepository.find({

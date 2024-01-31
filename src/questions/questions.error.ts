@@ -9,9 +9,13 @@
 
 import { BaseError } from '../common/error/base-error';
 
-export class QuestionNotFoundError extends BaseError {
+export class QuestionIdNotFoundError extends BaseError {
   constructor(id: number) {
-    super('QuestionNotFoundError', `Question with id ${id} is not found.`, 404);
+    super(
+      'QuestionIdNotFoundError',
+      `Question with id ${id} is not found.`,
+      404,
+    );
   }
 }
 

@@ -12,7 +12,7 @@ import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
-import { QuestionNotFoundError } from './questions.error';
+import { QuestionIdNotFoundError } from './questions.error';
 import { QuestionsService } from './questions.service';
 
 describe('Questions Module', () => {
@@ -102,10 +102,10 @@ describe('Questions Module', () => {
     ).rejects.toThrow(new UserIdNotFoundError(-1));
   });
 
-  it('should throw QuestionNotFoundError', async () => {
+  it('should throw QuestionIdNotFoundError', async () => {
     await expect(
       questionsService.addTopicToQuestion(-1, topicId1, 1),
-    ).rejects.toThrow(new QuestionNotFoundError(-1));
+    ).rejects.toThrow(new QuestionIdNotFoundError(-1));
   });
 
   it('should throw TopicNotFoundError', async () => {
@@ -120,15 +120,15 @@ describe('Questions Module', () => {
     ).rejects.toThrow(new UserIdNotFoundError(-1));
   });
 
-  it('should throw QuestionNotFoundError', async () => {
+  it('should throw QuestionIdNotFoundError', async () => {
     await expect(
       questionsService.updateQuestion(-1, 'title', 'content', 0, []),
-    ).rejects.toThrow(new QuestionNotFoundError(-1));
+    ).rejects.toThrow(new QuestionIdNotFoundError(-1));
     await expect(questionsService.deleteQuestion(-1)).rejects.toThrow(
-      new QuestionNotFoundError(-1),
+      new QuestionIdNotFoundError(-1),
     );
     await expect(questionsService.unfollowQuestion(1, -1)).rejects.toThrow(
-      new QuestionNotFoundError(-1),
+      new QuestionIdNotFoundError(-1),
     );
   });
 });

@@ -6,7 +6,7 @@
  *               will check if the error is an instance of BaseError, and if so,
  *               it will return the error message and status code to the client.
  *               Otherwise, it will return a generic error message and status code 500.
- * 
+ *
  *               However, if the error is thrown because of an impossible situation,
  *               which indicates that there might be a bug in the code, curruption
  *               in the database, or even a security issue, then the error should

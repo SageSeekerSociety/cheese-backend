@@ -14,11 +14,15 @@ import {
   Entity,
   Index,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { GroupQuestionRelationship } from '../groups/group.entity';
 import { Topic } from '../topics/topics.entity';
 import { User } from '../users/users.entity';
+
+import { isMySql } from '../common/helper/db.helper';
 
 @Entity()
 // Use fulltext index to support fulltext search.
@@ -42,11 +46,14 @@ export class Question {
   title: string;
 
   // Use column type 'mediumtext' to support string with a maximum length of 16M.
-  @Column('mediumtext')
+  @Column({ type: isMySql() ? 'mediumtext' : 'text' })
   content: string;
 
   @Column()
   type: number;
+
+  @OneToOne(() => GroupQuestionRelationship, (gqr) => gqr.question)
+  groupQuestionRelationship: GroupQuestionRelationship;
 
   @Column({ nullable: true })
   @Index('idx_group', { unique: false })
@@ -177,7 +184,7 @@ export class QuestionSearchLog {
   // For example, if the result is [1, 2, 3], then the result string is "1,2,3".
   result: string;
 
-  @Column('double')
+  @Column({ type: 'float' })
   // The search duration in seconds.
   duration: number;
 

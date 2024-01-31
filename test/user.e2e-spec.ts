@@ -306,7 +306,8 @@ describe('User Module', () => {
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
-        `InvalidUsernameError: Invalid username: ${TestUsername + ' Invalid'
+        `InvalidUsernameError: Invalid username: ${
+          TestUsername + ' Invalid'
         }. Username must be 4-32 characters long and can only contain letters, numbers, underscores and hyphens.`,
       );
       expect(respond.body.code).toEqual(422);
@@ -421,7 +422,8 @@ describe('User Module', () => {
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
-        `CodeNotMatchError: Code not match: ${'another-' + TestEmail}, ${verificationCode + '1'
+        `CodeNotMatchError: Code not match: ${'another-' + TestEmail}, ${
+          verificationCode + '1'
         }`,
       );
       expect(respond.body.code).toEqual(422);

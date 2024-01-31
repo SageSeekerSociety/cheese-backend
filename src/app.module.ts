@@ -8,6 +8,8 @@ import {
   DB_TYPE,
   DB_USERNAME,
 } from '../.secret/database.config';
+import { isMySql } from './common/helper/db.helper';
+import { GroupsModule } from './groups/groups.module';
 import { QuestionsModule } from './questions/questions.module';
 import { TopicsModule } from './topics/topics.module';
 import { UsersModule } from './users/users.module';
@@ -23,11 +25,11 @@ import { UsersModule } from './users/users.module';
       database: DB_DATABASE,
       autoLoadEntities: true,
       synchronize: true,
-      connectTimeout: 60000,
+      ...(isMySql() ? { connectTimeout: 60000 } : { ConnectTimeoutMS: 60000 }),
     }),
     UsersModule,
     QuestionsModule,
-    TopicsModule,
+    GroupsModule,
   ],
   controllers: [],
   providers: [],
