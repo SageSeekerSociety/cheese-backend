@@ -9,15 +9,14 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as dayjs from 'dayjs';
-import { In, Repository } from 'typeorm';
+import { In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { QuestionIdNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
+import { UserDto } from '../users/DTO/user.dto';
 import { BadRequestError, UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
-import { GetGroupMembersResultDto } from './DTO/get-group-members.dto';
 import { GetGroupQuestionsResultDto } from './DTO/get-group-questions.dto';
 import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
@@ -189,7 +188,6 @@ export class GroupsService {
           break;
         }
         case GroupQueryType.New: {
-          referenceValue = referenceGroup.createdAt;
           break;
         }
       }
@@ -223,18 +221,14 @@ export class GroupsService {
           let queryBuilderCopy = queryBuilder.clone();
 
           prevEntity = await queryBuilder
-            .orderBy('createdAt', 'ASC')
-            .andWhere('createdAt > TIMESTAMP :referenceValue', {
-              referenceValue: dayjs(referenceValue).format(
-                'YYYY-MM-DD HH:mm:ss.SSS',
-              ),
-            })
+            .orderBy('id', 'ASC')
+            .andWhere('id > :page_start_id', { page_start_id })
             .limit(page_size)
             .getMany();
 
           currEntity = await queryBuilderCopy
-            .orderBy('createdAt', 'DESC')
-            .andWhere('createdAt <= :referenceValue', { referenceValue })
+            .orderBy('id', 'DESC')
+            .andWhere('id <= :page_start_id', { page_start_id })
             .limit(page_size + 1)
             .getMany();
           break;
@@ -434,58 +428,70 @@ export class GroupsService {
 
   async getGroupMembers(
     groupId: number,
-    page_start_id: number | undefined,
+    firstMemberId: number | undefined,
     page_size: number,
-  ): Promise<GetGroupMembersResultDto> {
-    let queryBuilder = this.groupMembershipsRepository
-      .createQueryBuilder('membership')
-      .where('membership.groupId = :groupId', { groupId });
-    queryBuilder = queryBuilder.orderBy('membership.createdAt', 'DESC');
-
-    let prevDTOs = null,
-      currDTOs = null;
-    if (page_start_id) {
-      const referenceRelationship =
-        await this.groupMembershipsRepository.findOneBy({
-          memberId: page_start_id,
-        });
-      if (!referenceRelationship) {
-        throw new UserIdNotFoundError(page_start_id);
-      }
-      const referenceValue = referenceRelationship.createdAt;
-      prevDTOs = await queryBuilder
-        .andWhere('membership.createdAt > :referenceValue', { referenceValue })
-        .limit(page_size)
-        .getMany();
-      currDTOs = await queryBuilder
-        .andWhere('membership.createdAt <= :referenceValue', { referenceValue })
-        .limit(page_size + 1)
-        .getMany();
-    } else {
-      prevDTOs = null;
-      currDTOs = await queryBuilder.limit(page_size + 1).getMany();
+  ): Promise<[UserDto[], PageRespondDto]> {
+    if ((await this.groupsRepository.findOneBy({ id: groupId })) == null) {
+      throw new GroupIdNotFoundError(groupId);
     }
-    const has_prev = prevDTOs && prevDTOs.length > 0;
-    const has_more = currDTOs && currDTOs.length > page_size;
-    const page_start = currDTOs[0].memberId;
-    const real_page_size =
-      currDTOs.length > page_size ? page_size : currDTOs.length;
-    const members = await Promise.all(
-      currDTOs.map((relationship) =>
-        this.usersService.getUserDtoById(relationship.memberId),
+    if (page_size <= 0) {
+      throw new BadRequestError('pageSize should be positive number');
+    }
+
+    if (!firstMemberId) {
+      const entity = await this.groupMembershipsRepository.find({
+        where: { groupId },
+        order: { id: 'ASC' },
+        take: page_size + 1,
+      });
+      const DTOs = await Promise.all(
+        entity.map((entity) =>
+          this.usersService.getUserDtoById(entity.memberId),
+        ),
+      );
+      return PageHelper.PageStart(DTOs, page_size, (user) => user.id);
+    }
+    // firstMemberId is not null
+    const firstMember = await this.groupMembershipsRepository.findOne({
+      where: { groupId, memberId: firstMemberId },
+      withDeleted: true,
+    }); // ! first member may be deleted while the request on sending
+    // ! so we need to include deleted members to get the correct reference value
+    // ! i.e. member joined time(id) here
+
+    if (firstMember == null) {
+      throw new UserIdNotFoundError(firstMemberId);
+    }
+    const firstMemberJoinedId = firstMember.id;
+
+    const prevEntity = this.groupMembershipsRepository.find({
+      where: {
+        groupId,
+        id: LessThan(firstMemberJoinedId),
+      },
+      take: page_size,
+      order: { id: 'DESC' },
+    });
+    const currEntity = this.groupMembershipsRepository.find({
+      where: {
+        groupId,
+        id: MoreThanOrEqual(firstMemberJoinedId),
+      },
+      take: page_size + 1,
+      order: { id: 'ASC' },
+    });
+    const currDTOs = await Promise.all(
+      (await currEntity).map((entity) =>
+        this.usersService.getUserDtoById(entity.memberId),
       ),
     );
-    return {
-      members,
-      page: {
-        page_start,
-        page_size: real_page_size,
-        has_prev,
-        prev_start: has_prev ? prevDTOs[0].memberId : null,
-        has_more,
-        next_start: has_more ? currDTOs[page_size - 1].memberId : null,
-      },
-    };
+    return PageHelper.PageMiddle(
+      await prevEntity,
+      currDTOs,
+      page_size,
+      (user) => user.memberId,
+      (user) => user.id,
+    );
   }
 
   async getGroupQuestions(
