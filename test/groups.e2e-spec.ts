@@ -20,12 +20,16 @@ describe('Groups Module', () => {
   const TestEmail = `test-${Math.floor(
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
+
   let TestToken: string;
-  let TestUserId: number;
   let TestUserDto: any;
+  let auxAccessToken: string;
+  let auxUserDto: any;
+  let auxAdminAccessToken: string;
+  let auxAdminUserDto: any;
+
   let GroupIds: number[] = [];
   const TestGroupPrefix = `G${Math.floor(Math.random() * 1000000)}`;
-  let auxAccessToken: string;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     // returns [userId, accessToken]
@@ -49,7 +53,7 @@ describe('Groups Module', () => {
         emailCode: verificationCode,
       });
     expect(respond2.status).toBe(201);
-    return [respond2.body.data.user.id, respond2.body.data.accessToken];
+    return [respond2.body.data.user, respond2.body.data.accessToken];
   }
 
   beforeAll(async () => {
@@ -115,7 +119,6 @@ describe('Groups Module', () => {
       expect(respond.body.data.accessToken).toBeDefined();
       TestToken = respond.body.data.accessToken;
       expect(respond.body.data.user.id).toBeDefined();
-      TestUserId = respond.body.data.user.id;
       TestUserDto = respond.body.data.user;
     });
     it('should create some groups', async () => {
@@ -131,7 +134,7 @@ describe('Groups Module', () => {
         expect(respond.body.data.name).toContain(name);
         expect(respond.body.data.intro).toBe(intro);
         expect(respond.body.data.avatar).toBe(avatar);
-        expect(respond.body.data.owner.id).toBe(TestUserId);
+        expect(respond.body.data.owner).toStrictEqual(TestUserDto);
         expect(respond.body.data.created_at).toBeDefined();
         expect(respond.body.data.updated_at).toBeDefined();
         expect(respond.body.data.member_count).toBe(1);
@@ -147,8 +150,9 @@ describe('Groups Module', () => {
       await createGroup('嘉然今天学什么', '学, 学个屁!', '🤡');
       await createGroup('XCPC启动', '启不动了', '🐱');
     }, 80000);
-    it('should create an auxiliary user', async () => {
-      [, auxAccessToken] = await createAuxiliaryUser();
+    it('should create some auxiliary users', async () => {
+      [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
+      [auxAdminUserDto, auxAdminAccessToken] = await createAuxiliaryUser();
     });
   });
 
@@ -307,7 +311,7 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.groups.length).toBe(0);
-      expect(respond.body.data.page.page_start).toBe(0);
+      expect(respond.body.data.page.page_start).toBeFalsy();
       expect(respond.body.data.page.page_size).toBe(0);
       expect(respond.body.data.page.has_prev).toBeDefined(); // ! since tests are run multiple times
       expect(respond.body.data.page.prev_start).toBeDefined();
@@ -376,14 +380,17 @@ describe('Groups Module', () => {
 
   describe('join group', () => {
     it('should join a group', async () => {
-      const TestGroupId = GroupIds[0];
-      const respond = await request(app.getHttpServer())
-        .post(`/groups/${TestGroupId}/members`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ intro: '我是初音未来' });
-      expect(respond.body.message).toBe('Joined group successfully.');
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
+      async function joinGroup(groupId: number) {
+        const respond = await request(app.getHttpServer())
+          .post(`/groups/${groupId}/members`)
+          .set('Authorization', `Bearer ${auxAccessToken}`)
+          .send({ intro: '我是初音未来' });
+        expect(respond.body.message).toBe('Joined group successfully.');
+        expect(respond.status).toBe(201);
+        expect(respond.body.code).toBe(201);
+      }
+      await joinGroup(GroupIds[0]);
+      await joinGroup(GroupIds[1]);
     });
     it('should return a group with is_member true', async () => {
       const TestGroupId = GroupIds[0];
@@ -566,7 +573,7 @@ describe('Groups Module', () => {
 
   describe('delete group', () => {
     it('should delete a group', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = GroupIds[3];
       const respond = await request(app.getHttpServer())
         .delete(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -576,7 +583,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(200);
     });
     it('should return GroupIdNotFoundError after deletion', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = GroupIds[3];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -603,6 +610,111 @@ describe('Groups Module', () => {
       expect(respond.body.message).toMatch(/^CannotDeleteGroupError: /);
       expect(respond.status).toBe(403);
       expect(respond.body.code).toBe(403);
+    });
+  });
+
+  describe('get group members', () => {
+    it('should get group members', async () => {
+      const TestGroupId = GroupIds[1];
+      const respond = await request(app.getHttpServer())
+        .get(`/groups/${TestGroupId}/members`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ page_size: 1 })
+        .send();
+      expect(respond.body.message).toBe('Group members fetched successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.members.length).toBe(1);
+      expect(respond.body.data.members[0]).toStrictEqual(TestUserDto);
+      expect(respond.body.data.page.page_start).toBe(TestUserDto.id);
+      expect(respond.body.data.page.page_size).toBe(1);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBeFalsy();
+      expect(respond.body.data.page.has_more).toBe(true);
+      expect(respond.body.data.page.next_start).toBe(auxUserDto.id);
+    });
+    it('should get group members from a specific user', async () => {
+      const TestGroupId = GroupIds[1];
+      const respond = await request(app.getHttpServer())
+        .get(`/groups/${TestGroupId}/members`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ page_size: 1, page_start: auxUserDto.id })
+        .send();
+      expect(respond.body.message).toBe('Group members fetched successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.members.length).toBe(1);
+      expect(respond.body.data.members[0]).toStrictEqual(auxUserDto);
+      expect(respond.body.data.page.page_start).toBe(auxUserDto.id);
+      expect(respond.body.data.page.page_size).toBe(1);
+      expect(respond.body.data.page.has_prev).toBe(true);
+      expect(respond.body.data.page.prev_start).toBe(TestUserDto.id);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBeFalsy();
+    });
+    it('should get group members from a specific user even quited', async () => {
+      const TestGroupId = GroupIds[0];
+      const respond = await request(app.getHttpServer())
+        .get(`/groups/${TestGroupId}/members`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ page_size: 1, page_start: auxUserDto.id })
+        .send();
+      expect(respond.body.message).toBe('Group members fetched successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.members.length).toBe(0);
+      expect(respond.body.data.page.page_start).toBeFalsy();
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(true);
+      expect(respond.body.data.page.prev_start).toBe(TestUserDto.id);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBeFalsy();
+    });
+    it('should get group members for another user', async () => {
+      const TestGroupId = GroupIds[1];
+      const respond = await request(app.getHttpServer())
+        .get(`/groups/${TestGroupId}/members`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('Group members fetched successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.members.length).toBe(2);
+      expect(respond.body.data.members[0]).toStrictEqual(TestUserDto);
+      expect(respond.body.data.members[1]).toStrictEqual(auxUserDto);
+      expect(respond.body.data.page.page_start).toBe(TestUserDto.id);
+      expect(respond.body.data.page.page_size).toBe(2);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBeFalsy();
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBeFalsy();
+    });
+    it('should return GroupIdNotFoundError when group is not found', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/groups/0/members`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.status).toBe(404);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return empty list when page_size is not positive', async () => {
+      const TestGroupId = GroupIds[1];
+      const respond = await request(app.getHttpServer())
+        .get(`/groups/${TestGroupId}/members`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ page_size: -1 })
+        .send();
+      expect(respond.body.message).toBe('Group members fetched successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.members.length).toBe(0);
+      expect(respond.body.data.page.page_start).toBeFalsy();
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBeFalsy();
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBeFalsy();
     });
   });
 

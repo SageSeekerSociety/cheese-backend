@@ -9,15 +9,14 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as dayjs from 'dayjs';
-import { In, Repository } from 'typeorm';
+import { In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { QuestionIdNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
+import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
-import { GetGroupMembersResultDto } from './DTO/get-group-members.dto';
 import { GetGroupQuestionsResultDto } from './DTO/get-group-questions.dto';
 import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
@@ -185,7 +184,6 @@ export class GroupsService {
           break;
         }
         case GroupQueryType.New: {
-          referenceValue = referenceGroup.createdAt;
           break;
         }
       }
@@ -219,18 +217,14 @@ export class GroupsService {
           let queryBuilderCopy = queryBuilder.clone();
 
           prevEntity = await queryBuilder
-            .orderBy('createdAt', 'ASC')
-            .andWhere('createdAt > TIMESTAMP :referenceValue', {
-              referenceValue: dayjs(referenceValue).format(
-                'YYYY-MM-DD HH:mm:ss.SSS',
-              ),
-            })
+            .orderBy('id', 'ASC')
+            .andWhere('id > :page_start_id', { page_start_id })
             .limit(page_size)
             .getMany();
 
           currEntity = await queryBuilderCopy
-            .orderBy('createdAt', 'DESC')
-            .andWhere('createdAt <= :referenceValue', { referenceValue })
+            .orderBy('id', 'DESC')
+            .andWhere('id <= :page_start_id', { page_start_id })
             .limit(page_size + 1)
             .getMany();
           break;
@@ -430,70 +424,67 @@ export class GroupsService {
 
   async getGroupMembers(
     groupId: number,
-    page_start_id: number | undefined,
+    firstMemberId: number | undefined,
     page_size: number,
-  ): Promise<GetGroupMembersResultDto> {
-    if (page_start_id) {
-      const referenceRelationship =
-        await this.groupMembershipsRepository.findOneBy({
-          memberId: page_start_id,
-        });
-      if (!referenceRelationship) {
-        throw new UserIdNotFoundError(page_start_id);
-      }
-      const referenceValue = referenceRelationship.createdAt;
-      const prev = await this.groupMembershipsRepository
-        .createQueryBuilder('membership')
-        .where('membership.groupId = :groupId', { groupId })
-        .andWhere('membership.createdAt > :referenceValue', { referenceValue })
-        .orderBy('membership.createdAt', 'DESC')
-        .limit(page_size)
-        .getMany();
-      const curr = await this.groupMembershipsRepository
-        .createQueryBuilder('membership')
-        .where('membership.groupId = :groupId', { groupId })
-        .andWhere('membership.createdAt <= :referenceValue', { referenceValue })
-        .orderBy('membership.createdAt', 'DESC')
-        .limit(page_size + 1)
-        .getMany();
-      const DTOs = await Promise.all(
-        curr.map((relationship) =>
-          this.usersService.getUserDtoById(relationship.memberId),
-        ),
-      );
-      const [retDTOs, page] = PageHelper.PageMiddle(
-        prev,
-        DTOs,
-        page_size,
-        (memberShip) => memberShip.memberId,
-        (userDto) => userDto.id,
-      );
-      return {
-        members: retDTOs,
-        page,
-      };
-    } else {
-      const curr = await this.groupMembershipsRepository
-        .createQueryBuilder('membership')
-        .where('membership.groupId = :groupId', { groupId })
-        .orderBy('membership.createdAt', 'DESC')
-        .limit(page_size + 1)
-        .getMany();
-      const DTOs = await Promise.all(
-        curr.map((relationship) =>
-          this.usersService.getUserDtoById(relationship.memberId),
-        ),
-      );
-      const [retDTOs, page] = PageHelper.PageStart(
-        DTOs,
-        page_size,
-        (userDto) => userDto.id,
-      );
-      return {
-        members: retDTOs,
-        page,
-      };
+  ): Promise<[UserDto[], PageRespondDto]> {
+    if ((await this.groupsRepository.findOneBy({ id: groupId })) == null) {
+      throw new GroupIdNotFoundError(groupId);
     }
+    
+    if (!firstMemberId) {
+      const entity = await this.groupMembershipsRepository.find({
+        where: { groupId },
+        order: { id: 'ASC' },
+        take: page_size + 1,
+      });
+      const DTOs = await Promise.all(
+        entity.map((entity) =>
+          this.usersService.getUserDtoById(entity.memberId),
+        ),
+      );
+      return PageHelper.PageStart(DTOs, page_size, (user) => user.id);
+    }
+    // firstMemberId is not null
+    const firstMember = await this.groupMembershipsRepository.findOne({
+      where: { groupId, memberId: firstMemberId },
+      withDeleted: true,
+    }); // ! first member may be deleted while the request on sending
+    // ! so we need to include deleted members to get the correct reference value
+    // ! i.e. member joined time(id) here
+
+    if (firstMember == null) {
+      throw new UserIdNotFoundError(firstMemberId);
+    }
+    const firstMemberJoinedId = firstMember.id;
+
+    const prevEntity = this.groupMembershipsRepository.find({
+      where: {
+        groupId,
+        id: LessThan(firstMemberJoinedId),
+      },
+      take: page_size,
+      order: { id: 'DESC' },
+    });
+    const currEntity = this.groupMembershipsRepository.find({
+      where: {
+        groupId,
+        id: MoreThanOrEqual(firstMemberJoinedId),
+      },
+      take: page_size + 1,
+      order: { id: 'ASC' },
+    });
+    const currDTOs = await Promise.all(
+      (await currEntity).map((entity) =>
+        this.usersService.getUserDtoById(entity.memberId),
+      ),
+    );
+    return PageHelper.PageMiddle(
+      await prevEntity,
+      currDTOs,
+      page_size,
+      (user) => user.memberId,
+      (user) => user.id,
+    );
   }
 
   async getGroupQuestions(
