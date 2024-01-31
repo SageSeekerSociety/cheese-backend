@@ -124,10 +124,10 @@ export class QuestionsService {
   }
 
   async hasFollowedQuestion(
-    userId: number, // nullable
+    userId: number | undefined,
     questionId: number,
   ): Promise<boolean> {
-    if (userId == null) return false;
+    if (userId == undefined) return false;
     const relation = await this.questionFollowRelationRepository.findOneBy({
       followerId: userId,
       questionId,
@@ -176,7 +176,7 @@ export class QuestionsService {
       followCountPromise,
       viewCountPromise,
     ]);
-    let user: UserDto = null;
+    let user: UserDto | null = null!;
     try {
       user = await this.userService.getUserDtoById(
         question.createdById,
@@ -215,7 +215,7 @@ export class QuestionsService {
       like_count: 0, // TODO: Implement this.
       view_count: viewCount,
       is_group: question.groupId != null,
-      group: null, // TODO: Implement this.
+      group: null!, // TODO: Implement this.
     };
   }
 
@@ -246,7 +246,7 @@ export class QuestionsService {
       firstQuestionId,
       pageSize,
       (i) => i.id,
-      () => {
+      (firstQuestionId) => {
         throw new QuestionIdNotFoundError(firstQuestionId);
       },
     );

@@ -31,9 +31,9 @@ export class TokenExpiredError extends BaseError {
 export class PermissionDeniedError extends BaseError {
   constructor(
     public readonly action: AuthorizedAction,
-    public readonly resourceOwnerId?: number,
-    public readonly resourceType?: string,
-    public readonly resourceId?: number,
+    public readonly resourceOwnerId: number | null,
+    public readonly resourceType: string | null,
+    public readonly resourceId: number | null,
   ) {
     super(
       'PermissionDeniedError',
@@ -62,6 +62,16 @@ export class RefreshTokenAlreadyUsedError extends BaseError {
     super(
       'RefreshTokenAlreadyUsedError',
       'The refresh token has already been used. A refresh token can only be used once.',
+      401,
+    );
+  }
+}
+
+export class NotRefreshTokenError extends BaseError {
+  constructor() {
+    super(
+      'NotRefreshTokenError',
+      'The token is not a refresh token. A refresh token is required.',
       401,
     );
   }

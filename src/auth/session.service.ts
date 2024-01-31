@@ -10,6 +10,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  NotRefreshTokenError,
   RefreshTokenAlreadyUsedError,
   SessionExpiredError,
   SessionRevokedError,
@@ -89,6 +90,13 @@ export class SessionService {
     accessTokenValidSeconds?: number,
   ): Promise<[string, string]> {
     const auth = this.authService.verify(oldRefreshToken);
+    if (
+      auth.permissions.length !== 1 ||
+      auth.permissions[0].authorizedResource.resourceIds == null ||
+      auth.permissions[0].authorizedResource.resourceIds.length !== 1
+    ) {
+      throw new NotRefreshTokenError();
+    }
     const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
     this.authService.audit(
       oldRefreshToken,
@@ -98,6 +106,18 @@ export class SessionService {
       sessionId,
     );
     const session = await this.sessionRepository.findOneBy({ id: sessionId });
+    /* istanbul ignore if */
+    if (session == null) {
+      throw new Error(
+        `In an attempt to refresh session with id ${sessionId},\n` +
+          `the refresh token is valid, but the session does not exist.\n` +
+          `Here are three possible reasons:\n` +
+          `1. There is a bug in the code.\n` +
+          `2. The database is corrupted.\n` +
+          `3. We are under attack.\n` +
+          `token: ${oldRefreshToken}`,
+      );
+    }
     if (new Date() > session.validUntil) {
       throw new SessionExpiredError();
     }
@@ -150,6 +170,13 @@ export class SessionService {
 
   async revokeSession(refreshToken: string): Promise<void> {
     const auth = this.authService.verify(refreshToken);
+    if (
+      auth.permissions.length !== 1 ||
+      auth.permissions[0].authorizedResource.resourceIds == null ||
+      auth.permissions[0].authorizedResource.resourceIds.length !== 1
+    ) {
+      throw new NotRefreshTokenError();
+    }
     const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
     this.authService.audit(
       refreshToken,
@@ -158,6 +185,21 @@ export class SessionService {
       'auth/session:revoke',
       sessionId,
     );
-    await this.sessionRepository.update({ id: sessionId }, { revoked: true });
+    const ret = await this.sessionRepository.update(
+      { id: sessionId },
+      { revoked: true },
+    );
+    /* istanbul ignore if */
+    if (ret.affected !== 1) {
+      throw new Error(
+        `In an attempt to revoke session with id ${sessionId},\n` +
+          `the refresh token is valid, but the session does not exist.\n` +
+          `Here are three possible reasons:\n` +
+          `1. There is a bug in the code.\n` +
+          `2. The database is corrupted.\n` +
+          `3. We are under attack.\n` +
+          `token: ${refreshToken}`,
+      );
+    }
   }
 }

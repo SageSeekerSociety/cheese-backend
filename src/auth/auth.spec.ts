@@ -11,6 +11,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../app.module';
 import {
   AuthenticationRequiredError,
+  NotRefreshTokenError,
   PermissionDeniedError,
 } from './auth.error';
 import {
@@ -19,6 +20,7 @@ import {
   AuthorizedAction,
   authorizedActionToString,
 } from './auth.service';
+import { SessionService } from './session.service';
 
 describe('authorizedActionToString()', () => {
   it('should return "create" when AuthorizedAction.create is passed', () => {
@@ -41,6 +43,7 @@ describe('authorizedActionToString()', () => {
 describe('AuthService', () => {
   let app: TestingModule;
   let authService: AuthService;
+  let sessionService: SessionService;
   let jwtService: JwtService;
   beforeAll(async () => {
     app = await Test.createTestingModule({
@@ -48,6 +51,7 @@ describe('AuthService', () => {
     }).compile();
     authService = app.get<AuthService>(AuthService);
     jwtService = app.get<JwtService>(JwtService);
+    sessionService = app.get<SessionService>(SessionService);
   });
   afterAll(() => {
     app.close();
@@ -165,18 +169,18 @@ describe('AuthService', () => {
       authService.audit('', AuthorizedAction.other, 1, 'type', 1),
     ).toThrow(new AuthenticationRequiredError());
     expect(() =>
-      authService.audit(null, AuthorizedAction.other, 1, 'type', 1),
+      authService.audit(null!, AuthorizedAction.other, 1, 'type', 1),
     ).toThrow(new AuthenticationRequiredError());
     expect(() =>
-      authService.audit(undefined, AuthorizedAction.other, 1, 'type', 1),
+      authService.audit(undefined!, AuthorizedAction.other, 1, 'type', 1),
     ).toThrow(new AuthenticationRequiredError());
     expect(() => authService.decode('')).toThrow(
       new AuthenticationRequiredError(),
     );
-    expect(() => authService.decode(null)).toThrow(
+    expect(() => authService.decode(null!)).toThrow(
       new AuthenticationRequiredError(),
     );
-    expect(() => authService.decode(undefined)).toThrow(
+    expect(() => authService.decode(undefined!)).toThrow(
       new AuthenticationRequiredError(),
     );
   });
@@ -229,6 +233,18 @@ describe('AuthService', () => {
     );
     expect(authService.decode(`bearer ${token}`).authorization).toEqual(
       authorization,
+    );
+  });
+  it('should throw NotRefreshTokenError()', async () => {
+    const token = authService.sign({
+      userId: 0,
+      permissions: [],
+    });
+    await expect(sessionService.refreshSession(token)).rejects.toThrow(
+      new NotRefreshTokenError(),
+    );
+    await expect(sessionService.revokeSession(token)).rejects.toThrow(
+      new NotRefreshTokenError(),
     );
   });
 });

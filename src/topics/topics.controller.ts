@@ -50,7 +50,7 @@ export class TopicsController {
   ): Promise<SearchTopicResponseDto> {
     if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var searcherId: number = null;
+    var searcherId: number | undefined = undefined;
     try {
       searcherId = this.authService.verify(auth).userId;
     } catch {}
@@ -100,7 +100,7 @@ export class TopicsController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ) {
-    let userId: number;
+    let userId: number | undefined = undefined;
     try {
       userId = this.authService.verify(auth).userId;
     } catch {}

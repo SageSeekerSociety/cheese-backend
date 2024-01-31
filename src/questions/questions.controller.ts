@@ -64,7 +64,7 @@ export class QuestionsController {
   ): Promise<SearchQuestionResponseDto> {
     if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var searcherId: number = null;
+    var searcherId: number | undefined = undefined;
     try {
       searcherId = this.authService.verify(auth).userId;
     } catch {}
@@ -124,7 +124,7 @@ export class QuestionsController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionResponseDto> {
-    let userId: number;
+    let userId: number | undefined = undefined;
     try {
       userId = this.authService.verify(auth).userId;
     } catch {}
@@ -197,7 +197,7 @@ export class QuestionsController {
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionFollowerResponseDto> {
     if (pageSize == null || pageSize == 0) pageSize = 20;
-    let userId: number;
+    let userId: number | undefined = undefined;
     try {
       userId = this.authService.verify(auth).userId;
     } catch {}

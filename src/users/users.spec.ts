@@ -27,7 +27,7 @@ describe('Users Module', () => {
   it('should wait until user with id 1 exists', async () => {
     while (true) {
       try {
-        await usersService.getUserDtoById(1, null, '', '');
+        await usersService.getUserDtoById(1);
       } catch (e) {
         // wait one second
         await new Promise((resolve) => setTimeout(resolve, 1000));

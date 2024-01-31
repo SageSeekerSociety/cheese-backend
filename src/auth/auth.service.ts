@@ -188,9 +188,9 @@ export class AuthService {
   audit(
     token: string,
     action: AuthorizedAction,
-    resourceOwnerId?: number,
-    resourceType?: string,
-    resourceId?: number,
+    resourceOwnerId: number | null,
+    resourceType: string | null,
+    resourceId: number | null,
   ): void {
     const authorization = this.verify(token);
     // In many situations, the coders may forget to convert the string to number.

@@ -196,7 +196,7 @@ describe('Following Submodule of User Module', () => {
 
     let unfollowedUserId: number;
     it('should unfollow user successfully', async () => {
-      unfollowedUserId = tempUserIds.at(-1);
+      unfollowedUserId = tempUserIds.at(-1)!;
       const respond = await request(app.getHttpServer())
         .delete(`/users/${unfollowedUserId}/followers`)
         //.set('User-Agent', 'PostmanRuntime/7.26.8')

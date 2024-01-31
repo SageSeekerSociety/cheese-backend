@@ -55,7 +55,8 @@ export class PageHelper {
     let prev_start = 0;
     if (prev.length > 0) {
       has_prev = true;
-      prev_start = idGetterPrev(prev.at(-1));
+      // Since prev.length > 0, prev.at(-1) is not null.
+      prev_start = idGetterPrev(prev.at(-1)!);
     }
     return PageHelper.PageInternal(
       data,
@@ -76,13 +77,13 @@ export class PageHelper {
   // in SQL.
   static PageFromAll<TData>(
     allData: TData[],
-    pageStart: number | null,
+    pageStart: number | null | undefined,
     pageSize: number,
     idGetter: (item: TData) => number,
     // nullable
     // Something like '() => { throw new TopicNotFoundError(pageStart); }'
     // If pageStart is not found in allData, this function will be called.
-    errorIfNotFound?: () => void,
+    errorIfNotFound?: (pageStart: number) => void,
   ): [TData[], PageRespondDto] {
     if (pageStart == null) {
       const data = allData.slice(0, pageSize + 1);
@@ -94,7 +95,7 @@ export class PageHelper {
         // Above is a hint for istanbul to ignore this if-statement.
         if (errorIfNotFound == null)
           return this.PageStart([], pageSize, idGetter);
-        else errorIfNotFound();
+        else errorIfNotFound(pageStart);
       }
       const prev = allData.slice(0, pageStartIndex).slice(-pageSize).reverse();
       const data = allData.slice(pageStartIndex, pageStartIndex + pageSize + 1);
@@ -109,7 +110,7 @@ export class PageHelper {
     prevStart: number,
     idGetter: (item: TData) => number,
   ): [TData[], PageRespondDto] {
-    if (data.length == 0) {
+    if (data.length == 0 || pageSize < 0) {
       return [
         [],
         {
@@ -130,7 +131,8 @@ export class PageHelper {
           has_prev: hasPrev,
           prev_start: prevStart,
           has_more: true,
-          next_start: idGetter(data.at(-1)),
+          // Since data.length > pageSize >= 0, data.at(-1) is not null.
+          next_start: idGetter(data.at(-1)!),
         },
       ];
     } else {
