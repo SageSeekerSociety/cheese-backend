@@ -433,13 +433,6 @@ export class GroupsService {
     page_start_id: number | undefined,
     page_size: number,
   ): Promise<GetGroupMembersResultDto> {
-    let queryBuilder = this.groupMembershipsRepository
-      .createQueryBuilder('membership')
-      .where('membership.groupId = :groupId', { groupId });
-    queryBuilder = queryBuilder.orderBy('membership.createdAt', 'DESC');
-
-    let prevDTOs = null,
-      currDTOs = null;
     if (page_start_id) {
       const referenceRelationship =
         await this.groupMembershipsRepository.findOneBy({
@@ -449,39 +442,58 @@ export class GroupsService {
         throw new UserIdNotFoundError(page_start_id);
       }
       const referenceValue = referenceRelationship.createdAt;
-      prevDTOs = await queryBuilder
+      const prev = await this.groupMembershipsRepository
+        .createQueryBuilder('membership')
+        .where('membership.groupId = :groupId', { groupId })
         .andWhere('membership.createdAt > :referenceValue', { referenceValue })
+        .orderBy('membership.createdAt', 'DESC')
         .limit(page_size)
         .getMany();
-      currDTOs = await queryBuilder
+      const curr = await this.groupMembershipsRepository
+        .createQueryBuilder('membership')
+        .where('membership.groupId = :groupId', { groupId })
         .andWhere('membership.createdAt <= :referenceValue', { referenceValue })
+        .orderBy('membership.createdAt', 'DESC')
         .limit(page_size + 1)
         .getMany();
+      const DTOs = await Promise.all(
+        curr.map((relationship) =>
+          this.usersService.getUserDtoById(relationship.memberId),
+        ),
+      );
+      const [retDTOs, page] = PageHelper.PageMiddle(
+        prev,
+        DTOs,
+        page_size,
+        (memberShip) => memberShip.memberId,
+        (userDto) => userDto.id,
+      );
+      return {
+        members: retDTOs,
+        page,
+      };
     } else {
-      prevDTOs = null;
-      currDTOs = await queryBuilder.limit(page_size + 1).getMany();
+      const curr = await this.groupMembershipsRepository
+        .createQueryBuilder('membership')
+        .where('membership.groupId = :groupId', { groupId })
+        .orderBy('membership.createdAt', 'DESC')
+        .limit(page_size + 1)
+        .getMany();
+      const DTOs = await Promise.all(
+        curr.map((relationship) =>
+          this.usersService.getUserDtoById(relationship.memberId),
+        ),
+      );
+      const [retDTOs, page] = PageHelper.PageStart(
+        DTOs,
+        page_size,
+        (userDto) => userDto.id,
+      );
+      return {
+        members: retDTOs,
+        page,
+      };
     }
-    const has_prev = prevDTOs && prevDTOs.length > 0;
-    const has_more = currDTOs && currDTOs.length > page_size;
-    const page_start = currDTOs[0].memberId;
-    const real_page_size =
-      currDTOs.length > page_size ? page_size : currDTOs.length;
-    const members = await Promise.all(
-      currDTOs.map((relationship) =>
-        this.usersService.getUserDtoById(relationship.memberId),
-      ),
-    );
-    return {
-      members,
-      page: {
-        page_start,
-        page_size: real_page_size,
-        has_prev,
-        prev_start: has_prev ? prevDTOs[0].memberId : null,
-        has_more,
-        next_start: has_more ? currDTOs[page_size - 1].memberId : null,
-      },
-    };
   }
 
   async getGroupQuestions(
@@ -489,13 +501,6 @@ export class GroupsService {
     page_start_id: number | undefined,
     page_size: number,
   ): Promise<GetGroupQuestionsResultDto> {
-    let queryBuilder = this.groupQuestionRelationshipsRepository
-      .createQueryBuilder('relationship')
-      .where('relationship.groupId = :groupId', { groupId });
-    queryBuilder = queryBuilder.orderBy('relationship.createdAt', 'DESC');
-
-    let prevDTOs = null,
-      currDTOs = null;
     if (page_start_id) {
       const referenceRelationship =
         await this.groupQuestionRelationshipsRepository.findOneBy({
@@ -505,43 +510,62 @@ export class GroupsService {
         throw new QuestionIdNotFoundError(page_start_id);
       }
       const referenceValue = referenceRelationship.createdAt;
-      prevDTOs = await queryBuilder
+      const prev = await this.groupQuestionRelationshipsRepository
+        .createQueryBuilder('relationship')
+        .where('relationship.groupId = :groupId', { groupId })
         .andWhere('relationship.createdAt > :referenceValue', {
           referenceValue,
         })
+        .orderBy('relationship.createdAt', 'DESC')
         .limit(page_size)
         .getMany();
-      currDTOs = await queryBuilder
+      const curr = await this.groupQuestionRelationshipsRepository
+        .createQueryBuilder('relationship')
+        .where('relationship.groupId = :groupId', { groupId })
         .andWhere('relationship.createdAt <= :referenceValue', {
           referenceValue,
         })
+        .orderBy('relationship.createdAt', 'DESC')
         .limit(page_size + 1)
         .getMany();
+      const DTOs = await Promise.all(
+        curr.map((relationship) =>
+          this.questionsService.getQuestionDto(relationship.questionId),
+        ),
+      );
+      const [retDTOs, page] = PageHelper.PageMiddle(
+        prev,
+        DTOs,
+        page_size,
+        (relationship) => relationship.questionId,
+        (questionDto) => questionDto.id,
+      );
+      return {
+        questions: retDTOs,
+        page,
+      };
     } else {
-      prevDTOs = null;
-      currDTOs = await queryBuilder.limit(page_size + 1).getMany();
+      const curr = await this.groupQuestionRelationshipsRepository
+        .createQueryBuilder('relationship')
+        .where('relationship.groupId = :groupId', { groupId })
+        .orderBy('relationship.createdAt', 'DESC')
+        .limit(page_size + 1)
+        .getMany();
+      const DTOs = await Promise.all(
+        curr.map((relationship) =>
+          this.questionsService.getQuestionDto(relationship.questionId),
+        ),
+      );
+      const [retDTOs, page] = PageHelper.PageStart(
+        DTOs,
+        page_size,
+        (questionDto) => questionDto.id,
+      );
+      return {
+        questions: retDTOs,
+        page,
+      };
     }
-    const has_prev = prevDTOs && prevDTOs.length > 0;
-    const has_more = currDTOs && currDTOs.length > page_size;
-    const page_start = currDTOs[0].questionId;
-    const real_page_size =
-      currDTOs.length > page_size ? page_size : currDTOs.length;
-    const questions = await Promise.all(
-      currDTOs.map((relationship) =>
-        this.questionsService.getQuestionDto(relationship.questionId),
-      ),
-    );
-    return {
-      questions,
-      page: {
-        page_start,
-        page_size: real_page_size,
-        has_prev,
-        prev_start: has_prev ? prevDTOs[0].questionId : null,
-        has_more,
-        next_start: has_more ? currDTOs[page_size - 1].questionId : null,
-      },
-    };
   }
 }
 
