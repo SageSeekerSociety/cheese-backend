@@ -8,16 +8,16 @@
  */
 
 import {
-    Column,
-    CreateDateColumn,
-    DeleteDateColumn,
-    Entity,
-    Index,
-    JoinColumn,
-    ManyToOne,
-    OneToOne,
-    PrimaryGeneratedColumn,
-    UpdateDateColumn,
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 
 @Entity()
@@ -230,7 +230,7 @@ export class UserProfileQueryLog {
   //
   // This property is used for accessing the user id without joining the user table.
   @Column({ type: 'int', nullable: true })
-  viewerId: number | undefined = undefined;
+  viewerId: number | undefined;
 
   @ManyToOne(() => User)
   @Index()
@@ -280,7 +280,7 @@ export class UserRegisterLog {
   type: UserRegisterLogType;
 
   @Column({ type: 'int', nullable: true })
-  registerRequestId: number | undefined = undefined;
+  registerRequestId: number | undefined;
 
   @Column()
   ip: string;
@@ -308,7 +308,7 @@ export class UserResetPasswordLog {
   id: number;
 
   @Column({ type: 'int', nullable: true })
-  userId: number | undefined = undefined;
+  userId: number | undefined;
 
   @Column()
   type: UserResetPasswordLogType;

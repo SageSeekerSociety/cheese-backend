@@ -85,9 +85,9 @@ export function authorizedActionToString(action: AuthorizedAction): string {
 //      matches nothing and is meaningless.
 //
 export class AuthorizedResource {
-  ownedByUser: number | undefined; // owner's user id
-  types: string[] | undefined; // resource type
-  resourceIds: number[] | undefined;
+  ownedByUser?: number; // owner's user id
+  types?: string[]; // resource type
+  resourceIds?: number[];
   data?: any; // additional data
 }
 
@@ -188,9 +188,9 @@ export class AuthService {
   audit(
     token: string,
     action: AuthorizedAction,
-    resourceOwnerId: number | undefined,
-    resourceType: string | undefined,
-    resourceId: number | undefined,
+    resourceOwnerId?: number,
+    resourceType?: string,
+    resourceId?: number,
   ): void {
     const authorization = this.verify(token);
     // In many situations, the coders may forget to convert the string to number.

@@ -430,7 +430,7 @@ export class GroupsService {
     if ((await this.groupsRepository.findOneBy({ id: groupId })) == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
-    
+
     if (!firstMemberId) {
       const entity = await this.groupMembershipsRepository.find({
         where: { groupId },

@@ -77,7 +77,7 @@ export class PageHelper {
   // in SQL.
   static PageFromAll<TData>(
     allData: TData[],
-    pageStart: number | undefined | undefined,
+    pageStart: number | undefined,
     pageSize: number,
     idGetter: (item: TData) => number,
     // nullable

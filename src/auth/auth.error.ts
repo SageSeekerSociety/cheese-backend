@@ -31,9 +31,9 @@ export class TokenExpiredError extends BaseError {
 export class PermissionDeniedError extends BaseError {
   constructor(
     public readonly action: AuthorizedAction,
-    public readonly resourceOwnerId: number | undefined,
-    public readonly resourceType: string | undefined,
-    public readonly resourceId: number | undefined,
+    public readonly resourceOwnerId?: number,
+    public readonly resourceType?: string,
+    public readonly resourceId?: number,
   ) {
     super(
       'PermissionDeniedError',

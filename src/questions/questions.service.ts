@@ -176,7 +176,7 @@ export class QuestionsService {
       followCountPromise,
       viewCountPromise,
     ]);
-    let user: UserDto | undefined = undefined!;
+    let user: UserDto = undefined!;
     try {
       user = await this.userService.getUserDtoById(
         question.createdById,
@@ -336,7 +336,8 @@ export class QuestionsService {
       followerId,
       questionId,
     });
-    if (relationOld != undefined) throw new QuestionAlreadyFollowedError(questionId);
+    if (relationOld != undefined)
+      throw new QuestionAlreadyFollowedError(questionId);
 
     const relation = this.questionFollowRelationRepository.create({
       followerId,
@@ -360,7 +361,8 @@ export class QuestionsService {
       followerId,
       questionId,
     });
-    if (relation == undefined) throw new QuestionNotFollowedYetError(questionId);
+    if (relation == undefined)
+      throw new QuestionNotFollowedYetError(questionId);
     await this.questionFollowRelationRepository.softDelete({
       followerId,
       questionId,

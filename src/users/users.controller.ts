@@ -271,7 +271,7 @@ export class UsersController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetUserRespondDto> {
-    let viewerId: number | undefined = undefined;
+    let viewerId: number | undefined;
     try {
       viewerId = this.authService.verify(auth).userId;
     } catch {}
@@ -371,7 +371,7 @@ export class UsersController {
   ): Promise<GetFollowersRespondDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
-    let viewerId: number | undefined = undefined;
+    let viewerId: number | undefined;
     try {
       viewerId = this.authService.verify(auth).userId;
     } catch {}
@@ -405,7 +405,7 @@ export class UsersController {
   ): Promise<GetFollowersRespondDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
-    let viewerId: number | undefined = undefined;
+    let viewerId: number | undefined;
     try {
       viewerId = this.authService.verify(auth).userId;
     } catch {}
