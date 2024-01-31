@@ -9,7 +9,6 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as dayjs from 'dayjs';
 import { In, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
@@ -189,7 +188,6 @@ export class GroupsService {
           break;
         }
         case GroupQueryType.New: {
-          referenceValue = referenceGroup.createdAt;
           break;
         }
       }
@@ -223,18 +221,14 @@ export class GroupsService {
           let queryBuilderCopy = queryBuilder.clone();
 
           prevEntity = await queryBuilder
-            .orderBy('createdAt', 'ASC')
-            .andWhere('createdAt > TIMESTAMP :referenceValue', {
-              referenceValue: dayjs(referenceValue).format(
-                'YYYY-MM-DD HH:mm:ss.SSS',
-              ),
-            })
+            .orderBy('id', 'ASC')
+            .andWhere('id > :page_start_id', { page_start_id })
             .limit(page_size)
             .getMany();
 
           currEntity = await queryBuilderCopy
-            .orderBy('createdAt', 'DESC')
-            .andWhere('createdAt <= :referenceValue', { referenceValue })
+            .orderBy('id', 'DESC')
+            .andWhere('id <= :page_start_id', { page_start_id })
             .limit(page_size + 1)
             .getMany();
           break;
