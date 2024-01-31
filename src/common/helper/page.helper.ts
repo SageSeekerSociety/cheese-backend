@@ -55,7 +55,7 @@ export class PageHelper {
     let prev_start = 0;
     if (prev.length > 0) {
       has_prev = true;
-      // Since prev.length > 0, prev.at(-1) is not null.
+      // Since prev.length > 0, prev.at(-1) is not undefined.
       prev_start = idGetterPrev(prev.at(-1)!);
     }
     return PageHelper.PageInternal(
@@ -77,7 +77,7 @@ export class PageHelper {
   // in SQL.
   static PageFromAll<TData>(
     allData: TData[],
-    pageStart: number | null | undefined,
+    pageStart: number | undefined | undefined,
     pageSize: number,
     idGetter: (item: TData) => number,
     // nullable
@@ -85,7 +85,7 @@ export class PageHelper {
     // If pageStart is not found in allData, this function will be called.
     errorIfNotFound?: (pageStart: number) => void,
   ): [TData[], PageRespondDto] {
-    if (pageStart == null) {
+    if (pageStart == undefined) {
       const data = allData.slice(0, pageSize + 1);
       return PageHelper.PageStart(data, pageSize, idGetter);
     } else {
@@ -93,7 +93,7 @@ export class PageHelper {
       if (pageStartIndex == -1) {
         /* istanbul ignore if  */
         // Above is a hint for istanbul to ignore this if-statement.
-        if (errorIfNotFound == null)
+        if (errorIfNotFound == undefined)
           return this.PageStart([], pageSize, idGetter);
         else errorIfNotFound(pageStart);
       }
@@ -131,7 +131,7 @@ export class PageHelper {
           has_prev: hasPrev,
           prev_start: prevStart,
           has_more: true,
-          // Since data.length > pageSize >= 0, data.at(-1) is not null.
+          // Since data.length > pageSize >= 0, data.at(-1) is not undefined.
           next_start: idGetter(data.at(-1)!),
         },
       ];

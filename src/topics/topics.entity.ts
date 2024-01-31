@@ -8,13 +8,13 @@
  */
 
 import {
-  Column,
-  CreateDateColumn,
-  DeleteDateColumn,
-  Entity,
-  Index,
-  ManyToOne,
-  PrimaryGeneratedColumn,
+    Column,
+    CreateDateColumn,
+    DeleteDateColumn,
+    Entity,
+    Index,
+    ManyToOne,
+    PrimaryGeneratedColumn,
 } from 'typeorm';
 import { isMySql } from '../common/helper/db.helper';
 import { User } from '../users/users.entity';
@@ -86,7 +86,7 @@ export class TopicSearchLog {
   //
   // This property is used for accessing the user id without joining the user table.
   //
-  // Null if the searcher is not logged in.
+  // undefined if the searcher is not logged in.
   @Column({ nullable: true })
   searcherId: number;
 

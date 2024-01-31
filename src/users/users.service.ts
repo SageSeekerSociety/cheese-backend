@@ -130,7 +130,7 @@ export class UsersService {
     // TODO: Add logic to determain whether code is sent too frequently.
 
     // Determine whether the email is registered.
-    if ((await this.userRepository.findOneBy({ email })) != null) {
+    if ((await this.userRepository.findOneBy({ email })) != undefined) {
       const log = this.userRegisterLogRepository.create({
         type: UserRegisterLogType.RequestFailDueToAlreadyRegistered,
         email: email,
@@ -271,7 +271,7 @@ export class UsersService {
 
         // Verify whether the email is registered.
         /* istanbul ignore if */
-        if ((await this.userRepository.findOneBy({ email })) != null) {
+        if ((await this.userRepository.findOneBy({ email })) != undefined) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToEmailExistence,
             email: email,
@@ -291,7 +291,7 @@ export class UsersService {
         }
 
         // Verify whether the username is registered.
-        if ((await this.userRepository.findOneBy({ username })) != null) {
+        if ((await this.userRepository.findOneBy({ username })) != undefined) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToUserExistence,
             email: email,
@@ -354,17 +354,17 @@ export class UsersService {
     userAgent?: string, // optional
   ): Promise<UserDto> {
     const user = await this.userRepository.findOneBy({ id: userId });
-    if (user == null) {
+    if (user == undefined) {
       throw new UserIdNotFoundError(userId);
     }
 
     const profile = await this.userProfileRepository.findOneBy({ userId });
     /* istanbul ignore if */
     // Above is a hint for istanbul to ignore the following line.
-    if (profile == null) {
+    if (profile == undefined) {
       throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
-    if (viewerId != null || ip != null || userAgent != null) {
+    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.userProfileQueryLogRepository.create({
         viewerId: viewerId,
         vieweeId: userId,
@@ -391,7 +391,7 @@ export class UsersService {
     userAgent: string,
   ): Promise<[UserDto, string]> {
     const user = await this.userRepository.findOneBy({ username });
-    if (user == null) {
+    if (user == undefined) {
       throw new UsernameNotFoundError(username);
     }
     if (bcrypt.compareSync(password, user.hashedPassword) == false) {
@@ -403,7 +403,7 @@ export class UsersService {
     });
     /* istanbul ignore if */
     // Above is a hint for istanbul to ignore the following line.
-    if (profile == null) {
+    if (profile == undefined) {
       throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
     const log = this.userLoginLogRepository.create({
@@ -432,8 +432,8 @@ export class UsersService {
           authorizedActions: [AuthorizedAction.query],
           authorizedResource: {
             ownedByUser: userId,
-            types: null,
-            resourceIds: null,
+            types: undefined,
+            resourceIds: undefined,
           },
         },
         {
@@ -441,7 +441,7 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: userId,
             types: ['users/profile'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
         {
@@ -449,7 +449,7 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: userId,
             types: ['users/following'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
         {
@@ -464,7 +464,7 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: userId,
             types: ['questions'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
         {
@@ -472,16 +472,16 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: userId,
             types: ['questions/following'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
         {
           // Everyone can create a topic.
           authorizedActions: [AuthorizedAction.create],
           authorizedResource: {
-            ownedByUser: null,
+            ownedByUser: undefined,
             types: ['topics'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
       ],
@@ -507,7 +507,7 @@ export class UsersService {
 
     // Find email.
     const user = await this.userRepository.findOneBy({ email });
-    if (user == null) {
+    if (user == undefined) {
       const log = this.userResetPasswordLogRepository.create({
         type: UserResetPasswordLogType.RequestFailDueToNoneExistentEmail,
         ip: ip,
@@ -531,7 +531,7 @@ export class UsersService {
             authorizedResource: {
               ownedByUser: user.id,
               types: ['users/password:reset'],
-              resourceIds: null,
+              resourceIds: undefined,
               data: Date.now(),
             },
           },
@@ -567,7 +567,7 @@ export class UsersService {
         AuthorizedAction.modify,
         userId,
         'users/password:reset',
-        null,
+        undefined,
       );
     } catch (e) {
       if (e instanceof PermissionDeniedError) {
@@ -598,7 +598,7 @@ export class UsersService {
 
     const user = await this.userRepository.findOneBy({ id: userId });
     /* istanbul ignore if */
-    if (user == null) {
+    if (user == undefined) {
       const log = this.userResetPasswordLogRepository.create({
         type: UserResetPasswordLogType.FailDueToNoUser,
         userId: userId,
@@ -634,7 +634,7 @@ export class UsersService {
     intro: string,
   ): Promise<void> {
     const profile = await this.userProfileRepository.findOneBy({ userId });
-    if (profile == null) {
+    if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
     }
     profile.nickname = nickname;
@@ -652,11 +652,11 @@ export class UsersService {
     followeeId: number,
   ): Promise<void> {
     const follower = await this.userRepository.findOneBy({ id: followerId });
-    if (follower == null) {
+    if (follower == undefined) {
       throw new UserIdNotFoundError(followerId);
     }
     const followee = await this.userRepository.findOneBy({ id: followeeId });
-    if (followee == null) {
+    if (followee == undefined) {
       throw new UserIdNotFoundError(followeeId);
     }
     if (followerId == followeeId) {
@@ -666,7 +666,7 @@ export class UsersService {
       (await this.userFollowingRepository.findOneBy({
         followerId,
         followeeId,
-      })) != null
+      })) != undefined
     ) {
       throw new UserAlreadyFollowedError(followeeId);
     }
@@ -685,7 +685,7 @@ export class UsersService {
       followerId,
       followeeId,
     });
-    if (relationship == null) {
+    if (relationship == undefined) {
       throw new UserNotFollowedYetError(followeeId);
     }
     await this.userFollowingRepository.softRemove(relationship);
@@ -693,13 +693,13 @@ export class UsersService {
 
   async getFollowers(
     followeeId: number,
-    firstFollowerId: number, // null if from start
+    firstFollowerId: number, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
-    if (firstFollowerId == null) {
+    if (firstFollowerId == undefined) {
       const relations = await this.userFollowingRepository.find({
         where: { followeeId: followeeId },
         take: pageSize + 1,
@@ -746,13 +746,13 @@ export class UsersService {
 
   async getFollowees(
     followerId: number,
-    firstFolloweeId: number, // null if from start
+    firstFolloweeId: number, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
-    if (firstFolloweeId == null) {
+    if (firstFolloweeId == undefined) {
       const relations = await this.userFollowingRepository.find({
         where: { followerId: followerId },
         take: pageSize + 1,
@@ -798,6 +798,6 @@ export class UsersService {
   }
 
   async isUserExists(userId: number): Promise<boolean> {
-    return (await this.userRepository.findOneBy({ id: userId })) != null;
+    return (await this.userRepository.findOneBy({ id: userId })) != undefined;
   }
 }

@@ -8,15 +8,15 @@
  */
 
 import {
-  Column,
-  CreateDateColumn,
-  DeleteDateColumn,
-  Entity,
-  Index,
-  ManyToOne,
-  OneToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
+    Column,
+    CreateDateColumn,
+    DeleteDateColumn,
+    Entity,
+    Index,
+    ManyToOne,
+    OneToOne,
+    PrimaryGeneratedColumn,
+    UpdateDateColumn,
 } from 'typeorm';
 import { GroupQuestionRelationship } from '../groups/group.entity';
 import { Topic } from '../topics/topics.entity';
@@ -197,7 +197,7 @@ export class QuestionSearchLog {
   //
   // This property is used for accessing the user id without joining the user table.
   //
-  // Null if the searcher is not logged in.
+  // undefined if the searcher is not logged in.
   @Column({ nullable: true })
   searcherId: number;
 

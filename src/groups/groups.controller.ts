@@ -80,7 +80,7 @@ export class GroupsController {
     const [groups, page] = await this.groupsService.getGroups(
       userId,
       unescape(key ?? ''),
-      page_start ?? null,
+      page_start ?? undefined,
       page_size,
       type,
     );

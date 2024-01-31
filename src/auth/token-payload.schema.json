@@ -36,43 +36,21 @@
       "properties": {
         "data": {},
         "ownedByUser": {
-          "type": [
-            "number",
-            "null"
-          ]
+          "type": "number"
         },
         "resourceIds": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "number"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
         },
         "types": {
-          "anyOf": [
-            {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            {
-              "type": "null"
-            }
-          ]
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
-      "required": [
-        "ownedByUser",
-        "types",
-        "resourceIds"
-      ],
       "type": "object"
     },
     "Permission": {

@@ -76,7 +76,7 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if ((await this.groupsRepository.findOneBy({ name })) != null) {
+    if ((await this.groupsRepository.findOneBy({ name })) != undefined) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
@@ -120,7 +120,7 @@ export class GroupsService {
   async getGroups(
     userId: number,
     keyword: string,
-    page_start_id: number | null,
+    page_start_id: number | undefined,
     page_size: number,
     order_type: GroupQueryType,
   ): Promise<[GroupDto[], PageRespondDto]> {
@@ -132,8 +132,8 @@ export class GroupsService {
       });
     }
 
-    let prevEntity = null,
-      currEntity = null;
+    let prevEntity = undefined,
+      currEntity = undefined;
     if (!page_start_id) {
       switch (order_type) {
         case GroupQueryType.Recommend:
@@ -248,7 +248,7 @@ export class GroupsService {
       where: { id: groupId },
       relations: ['profile'],
     });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -256,7 +256,7 @@ export class GroupsService {
       groupId,
       role: 'owner',
     });
-    if (ownership == null) {
+    if (ownership == undefined) {
       throw new Error(`Group ${groupId} has no owner.`);
     }
     const ownerId = ownership.memberId;
@@ -283,7 +283,7 @@ export class GroupsService {
       (await this.groupMembershipsRepository.findOneBy({
         groupId,
         memberId: userId,
-      })) != null;
+      })) != undefined;
     const is_owner = ownerId == userId;
 
     return {
@@ -314,7 +314,7 @@ export class GroupsService {
       where: { id: groupId },
       relations: ['profile'],
     });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -323,14 +323,14 @@ export class GroupsService {
       memberId: userId,
       role: In(['owner', 'admin']),
     });
-    if (userMembership == null) {
+    if (userMembership == undefined) {
       throw new CannotDeleteGroupError(groupId);
     }
 
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if ((await this.groupsRepository.findOneBy({ name })) != null) {
+    if ((await this.groupsRepository.findOneBy({ name })) != undefined) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
@@ -346,7 +346,7 @@ export class GroupsService {
       where: { id: groupId },
       relations: ['profile'],
     });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -355,7 +355,7 @@ export class GroupsService {
       memberId: userId,
       role: 'owner',
     });
-    if (owner == null) {
+    if (owner == undefined) {
       throw new CannotDeleteGroupError(groupId);
     }
 
@@ -370,7 +370,7 @@ export class GroupsService {
     intro: string,
   ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -378,7 +378,7 @@ export class GroupsService {
       (await this.groupMembershipsRepository.findOneBy({
         groupId,
         memberId: userId,
-      })) != null
+      })) != undefined
     ) {
       throw new GroupAlreadyJoinedError(groupId);
     }
@@ -399,7 +399,7 @@ export class GroupsService {
 
   async quitGroup(userId: number, groupId: number): Promise<number> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -407,7 +407,7 @@ export class GroupsService {
       groupId,
       memberId: userId,
     });
-    if (membership == null) {
+    if (membership == undefined) {
       throw new GroupNotJoinedError(groupId);
     }
 
@@ -427,7 +427,7 @@ export class GroupsService {
     firstMemberId: number | undefined,
     page_size: number,
   ): Promise<[UserDto[], PageRespondDto]> {
-    if ((await this.groupsRepository.findOneBy({ id: groupId })) == null) {
+    if ((await this.groupsRepository.findOneBy({ id: groupId })) == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
     
@@ -444,7 +444,7 @@ export class GroupsService {
       );
       return PageHelper.PageStart(DTOs, page_size, (user) => user.id);
     }
-    // firstMemberId is not null
+    // firstMemberId is not undefined
     const firstMember = await this.groupMembershipsRepository.findOne({
       where: { groupId, memberId: firstMemberId },
       withDeleted: true,
@@ -452,7 +452,7 @@ export class GroupsService {
     // ! so we need to include deleted members to get the correct reference value
     // ! i.e. member joined time(id) here
 
-    if (firstMember == null) {
+    if (firstMember == undefined) {
       throw new UserIdNotFoundError(firstMemberId);
     }
     const firstMemberJoinedId = firstMember.id;

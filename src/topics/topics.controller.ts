@@ -48,7 +48,7 @@ export class TopicsController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchTopicResponseDto> {
-    if (pageSize == null || pageSize == 0) pageSize = 20;
+    if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     var searcherId: number | undefined = undefined;
     try {
@@ -83,7 +83,7 @@ export class TopicsController {
       AuthorizedAction.create,
       userId,
       'topics',
-      null,
+      undefined,
     );
     const topic = await this.topicsService.addTopic(request.name, userId);
     return {

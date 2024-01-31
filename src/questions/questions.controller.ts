@@ -62,7 +62,7 @@ export class QuestionsController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchQuestionResponseDto> {
-    if (pageSize == null || pageSize == 0) pageSize = 20;
+    if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     var searcherId: number | undefined = undefined;
     try {
@@ -98,7 +98,7 @@ export class QuestionsController {
       AuthorizedAction.create,
       userId,
       'questions',
-      null,
+      undefined,
     );
     const questionId = await this.questionsService.addQuestion(
       userId,
@@ -196,7 +196,7 @@ export class QuestionsController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionFollowerResponseDto> {
-    if (pageSize == null || pageSize == 0) pageSize = 20;
+    if (pageSize == undefined || pageSize == 0) pageSize = 20;
     let userId: number | undefined = undefined;
     try {
       userId = this.authService.verify(auth).userId;

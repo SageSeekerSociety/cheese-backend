@@ -166,14 +166,14 @@ export class UsersController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<Response> {
-    if (cookieHeader == null) {
+    if (cookieHeader == undefined) {
       throw new AuthenticationRequiredError();
     }
     const cookies = cookieHeader.split(';').map((cookie) => cookie.trim());
     const refreshTokenCookie = cookies.find((cookie) =>
       cookie.startsWith('REFRESH_TOKEN='),
     );
-    if (refreshTokenCookie == null) {
+    if (refreshTokenCookie == undefined) {
       throw new AuthenticationRequiredError();
     }
     const refreshToken = refreshTokenCookie.split('=')[1];
@@ -211,14 +211,14 @@ export class UsersController {
   async logout(
     @Headers('cookie') cookieHeader: string,
   ): Promise<BaseRespondDto> {
-    if (cookieHeader == null) {
+    if (cookieHeader == undefined) {
       throw new AuthenticationRequiredError();
     }
     const cookies = cookieHeader.split(';').map((cookie) => cookie.trim());
     const refreshTokenCookie = cookies.find((cookie) =>
       cookie.startsWith('REFRESH_TOKEN='),
     );
-    if (refreshTokenCookie == null) {
+    if (refreshTokenCookie == undefined) {
       throw new AuthenticationRequiredError();
     }
     const refreshToken = refreshTokenCookie.split('=')[1];
@@ -299,7 +299,7 @@ export class UsersController {
       AuthorizedAction.modify,
       id,
       'users/profile',
-      null,
+      undefined,
     );
     await this.usersService.updateUserProfile(
       id,
@@ -324,7 +324,7 @@ export class UsersController {
       AuthorizedAction.create,
       userId,
       'users/following',
-      null,
+      undefined,
     );
     await this.usersService.addFollowRelationship(userId, id);
     return {
@@ -347,7 +347,7 @@ export class UsersController {
       AuthorizedAction.delete,
       userId,
       'users/following',
-      null,
+      undefined,
     );
     await this.usersService.deleteFollowRelationship(userId, id);
     return {
@@ -369,7 +369,7 @@ export class UsersController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetFollowersRespondDto> {
-    if (pageSize == null || pageSize == 0) pageSize = 20;
+    if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     let viewerId: number | undefined = undefined;
     try {
@@ -403,7 +403,7 @@ export class UsersController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetFollowersRespondDto> {
-    if (pageSize == null || pageSize == 0) pageSize = 20;
+    if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     let viewerId: number | undefined = undefined;
     try {

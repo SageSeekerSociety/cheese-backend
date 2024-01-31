@@ -41,7 +41,7 @@ export class SessionService {
       permissions: [
         {
           authorizedResource: {
-            ownedByUser: null,
+            ownedByUser: undefined,
             types: ['auth/session:refresh', 'auth/session:revoke'],
             resourceIds: [sessionId],
           },
@@ -64,10 +64,10 @@ export class SessionService {
     const session = new Session();
     session.userId = userId;
     session.authorization = JSON.stringify(authorization);
-    if (refreshTokenValidSeconds == null) {
+    if (refreshTokenValidSeconds == undefined) {
       refreshTokenValidSeconds = this.defaultRefreshTokenValidSeconds;
     }
-    if (sessionValidSeconds == null) {
+    if (sessionValidSeconds == undefined) {
       sessionValidSeconds = this.defaultSessionValidSeconds;
     }
     session.validUntil = new Date(Date.now() + sessionValidSeconds * 1000);
@@ -92,7 +92,7 @@ export class SessionService {
     const auth = this.authService.verify(oldRefreshToken);
     if (
       auth.permissions.length !== 1 ||
-      auth.permissions[0].authorizedResource.resourceIds == null ||
+      auth.permissions[0].authorizedResource.resourceIds == undefined ||
       auth.permissions[0].authorizedResource.resourceIds.length !== 1
     ) {
       throw new NotRefreshTokenError();
@@ -101,13 +101,13 @@ export class SessionService {
     this.authService.audit(
       oldRefreshToken,
       AuthorizedAction.other,
-      null,
+      undefined,
       'auth/session:refresh',
       sessionId,
     );
     const session = await this.sessionRepository.findOneBy({ id: sessionId });
     /* istanbul ignore if */
-    if (session == null) {
+    if (session == undefined) {
       throw new Error(
         `In an attempt to refresh session with id ${sessionId},\n` +
           `the refresh token is valid, but the session does not exist.\n` +
@@ -129,10 +129,10 @@ export class SessionService {
     if (oldRefreshTokenSignedAt < session.lastRefreshedAt) {
       throw new RefreshTokenAlreadyUsedError();
     }
-    if (refreshTokenValidSeconds == null) {
+    if (refreshTokenValidSeconds == undefined) {
       refreshTokenValidSeconds = this.defaultRefreshTokenValidSeconds;
     }
-    if (accessTokenValidSeconds == null) {
+    if (accessTokenValidSeconds == undefined) {
       accessTokenValidSeconds = this.defaultAccessTokenValidSeconds;
     }
     const authorization = JSON.parse(session.authorization) as Authorization;
@@ -172,7 +172,7 @@ export class SessionService {
     const auth = this.authService.verify(refreshToken);
     if (
       auth.permissions.length !== 1 ||
-      auth.permissions[0].authorizedResource.resourceIds == null ||
+      auth.permissions[0].authorizedResource.resourceIds == undefined ||
       auth.permissions[0].authorizedResource.resourceIds.length !== 1
     ) {
       throw new NotRefreshTokenError();
@@ -181,7 +181,7 @@ export class SessionService {
     this.authService.audit(
       refreshToken,
       AuthorizedAction.other,
-      null,
+      undefined,
       'auth/session:revoke',
       sessionId,
     );

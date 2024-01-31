@@ -59,13 +59,13 @@ export class QuestionsService {
     omitQuestionExistsCheck: boolean = false,
     questionTopicRelationRepository?: Repository<QuestionTopicRelation>,
   ): Promise<void> {
-    if (questionTopicRelationRepository == null)
+    if (questionTopicRelationRepository == undefined)
       questionTopicRelationRepository = this.questionTopicRelationRepository;
     if (omitQuestionExistsCheck == false) {
       const question = await this.questionRepository.findOneBy({
         id: questionId,
       });
-      if (question == null) throw new QuestionIdNotFoundError(questionId);
+      if (question == undefined) throw new QuestionIdNotFoundError(questionId);
     }
     const topicExists = await this.topicService.isTopicExists(topicId);
     if (topicExists == false) throw new TopicNotFoundError(topicId);
@@ -132,7 +132,7 @@ export class QuestionsService {
       followerId: userId,
       questionId,
     });
-    return relation != null;
+    return relation != undefined;
   }
 
   // returns: a list of topicId
@@ -164,7 +164,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
     const topicsPromise = this.getTopicDtosOfQuestion(questionId);
     const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
     const followCountPromise = this.getFollowCountOfQuestion(questionId);
@@ -176,7 +176,7 @@ export class QuestionsService {
       followCountPromise,
       viewCountPromise,
     ]);
-    let user: UserDto | null = null!;
+    let user: UserDto | undefined = undefined!;
     try {
       user = await this.userService.getUserDtoById(
         question.createdById,
@@ -185,11 +185,11 @@ export class QuestionsService {
         userAgent,
       );
     } catch (e) {
-      // If user is null, it means that one user created this question, but the user
+      // If user is undefined, it means that one user created this question, but the user
       // does not exist now. This is NOT a data integrity problem, since user can be
-      // deleted. So we just return a null and not throw an error.
+      // deleted. So we just return a undefined and not throw an error.
     }
-    if (viewerId != null || ip != null || userAgent != null) {
+    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.questionQueryLogRepository.create({
         viewerId,
         questionId,
@@ -214,8 +214,8 @@ export class QuestionsService {
       follow_count: followCount,
       like_count: 0, // TODO: Implement this.
       view_count: viewCount,
-      is_group: question.groupId != null,
-      group: null!, // TODO: Implement this.
+      is_group: question.groupId != undefined,
+      group: undefined!, // TODO: Implement this.
     };
   }
 
@@ -255,7 +255,7 @@ export class QuestionsService {
         this.getQuestionDto(questionId.id, searcherId, ip, userAgent),
       ),
     );
-    if (searcherId != null || ip != null || userAgent != null) {
+    if (searcherId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.questionSearchLogRepository.create({
         keywords,
         firstQuestionId: firstQuestionId,
@@ -281,7 +281,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
     await this.entityManager.transaction(
       async (entityManager: EntityManager) => {
         const questionRepository = entityManager.getRepository(Question);
@@ -312,7 +312,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
     return question.createdById;
   }
 
@@ -320,7 +320,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
     await this.questionRepository.softDelete({ id: questionId });
   }
 
@@ -328,7 +328,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
 
@@ -336,7 +336,7 @@ export class QuestionsService {
       followerId,
       questionId,
     });
-    if (relationOld != null) throw new QuestionAlreadyFollowedError(questionId);
+    if (relationOld != undefined) throw new QuestionAlreadyFollowedError(questionId);
 
     const relation = this.questionFollowRelationRepository.create({
       followerId,
@@ -352,7 +352,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == null) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
 
@@ -360,7 +360,7 @@ export class QuestionsService {
       followerId,
       questionId,
     });
-    if (relation == null) throw new QuestionNotFollowedYetError(questionId);
+    if (relation == undefined) throw new QuestionNotFollowedYetError(questionId);
     await this.questionFollowRelationRepository.softDelete({
       followerId,
       questionId,
@@ -375,7 +375,7 @@ export class QuestionsService {
     ip?: string, // optional
     userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
-    if (firstFollowerId == null) {
+    if (firstFollowerId == undefined) {
       const relations = await this.questionFollowRelationRepository.find({
         where: { questionId },
         take: pageSize + 1,

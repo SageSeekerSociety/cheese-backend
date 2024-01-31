@@ -41,7 +41,7 @@ export class TopicsService {
 
   async searchTopics(
     keywords: string,
-    pageStart: number, // null if from start
+    pageStart: number, // undefined if from start
     pageSize: number,
     searcherId?: number, // optional
     ip?: string, // optional
@@ -69,7 +69,7 @@ export class TopicsService {
         throw new TopicNotFoundError(pageStart);
       },
     );
-    if (searcherId != null || ip != null || userAgent != null) {
+    if (searcherId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.topicSearchLogRepository.create({
         keywords: keywords,
         firstTopicId: pageStart,
@@ -92,7 +92,7 @@ export class TopicsService {
     userAgent?: string,
   ): Promise<TopicDto> {
     const topic = await this.topicRepository.findOneBy({ id: topicId });
-    if (topic == null) throw new TopicNotFoundError(topicId);
+    if (topic == undefined) throw new TopicNotFoundError(topicId);
     return {
       id: topic.id,
       name: topic.name,
@@ -100,6 +100,6 @@ export class TopicsService {
   }
 
   async isTopicExists(topicId: number): Promise<boolean> {
-    return (await this.topicRepository.findOneBy({ id: topicId })) != null;
+    return (await this.topicRepository.findOneBy({ id: topicId })) != undefined;
   }
 }

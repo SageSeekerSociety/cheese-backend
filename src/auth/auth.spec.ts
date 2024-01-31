@@ -192,8 +192,8 @@ describe('AuthService', () => {
           authorizedActions: [AuthorizedAction.query],
           authorizedResource: {
             ownedByUser: 1,
-            types: null,
-            resourceIds: null,
+            types: undefined,
+            resourceIds: undefined,
           },
         },
       ],
@@ -207,8 +207,8 @@ describe('AuthService', () => {
         {
           authorizedActions: [AuthorizedAction.delete],
           authorizedResource: {
-            ownedByUser: null,
-            types: null,
+            ownedByUser: undefined,
+            types: undefined,
             resourceIds: [1, 2, 3],
           },
         },

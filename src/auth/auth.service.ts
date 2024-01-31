@@ -63,7 +63,7 @@ export function authorizedActionToString(action: AuthorizedAction): string {
 
 // This class is used as a filter.
 //
-// If all the conditions are null, it matches everything.
+// If all the conditions are undefined, it matches everything.
 // This is DANGEROUS as you can imagine, and you should avoid
 // such a powerful authorization.
 //
@@ -73,21 +73,21 @@ export function authorizedActionToString(action: AuthorizedAction): string {
 // The data field is reserved for future use.
 //
 // Examples:
-// { ownedByUser: null, types: null, resourceId: null }
+// { ownedByUser: undefined, types: undefined, resourceId: undefined }
 //      matches every resource, including the resources that are not owned by any user.
-// { ownedByUser: 123, types: null, resourceId: null }
+// { ownedByUser: 123, types: undefined, resourceId: undefined }
 //      matches all the resources owned by user whose user id is 123.
-// { ownedByUser: 123, types: ["users/profile"], resourceId: null }
+// { ownedByUser: 123, types: ["users/profile"], resourceId: undefined }
 //      matches the profile of user whose id is 123.
-// { ownedByUser: null, types: ["blog"], resourceId: [42, 95, 928] }
+// { ownedByUser: undefined, types: ["blog"], resourceId: [42, 95, 928] }
 //      matches blogs whose IDs are 42, 95 and 928.
-// { ownedByUser: null, types: [], resourceId: null }
+// { ownedByUser: undefined, types: [], resourceId: undefined }
 //      matches nothing and is meaningless.
 //
 export class AuthorizedResource {
-  ownedByUser: number | null; // owner's user id
-  types: string[] | null; // resource type
-  resourceIds: number[] | null;
+  ownedByUser: number | undefined; // owner's user id
+  types: string[] | undefined; // resource type
+  resourceIds: number[] | undefined;
   data?: any; // additional data
 }
 
@@ -125,7 +125,7 @@ export class AuthService {
 
   private decodePayload(data: any): TokenPayload {
     const payload = data.payload;
-    if (payload == null || !this.isTokenPayloadValidate(payload)) {
+    if (payload == undefined || !this.isTokenPayloadValidate(payload)) {
       throw new Error(
         'The token is valid, but the payload of the token is' +
           ' not a TokenPayload object. This is ether a bug or a malicious attack.',
@@ -160,7 +160,7 @@ export class AuthService {
   // Parameters:
   //    token: both the pure jwt token and the one with "Bearer " or "bearer " are supported.
   verify(token: string): Authorization {
-    if (token == null || token == undefined || token == '')
+    if (token == undefined || token == undefined || token == '')
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
@@ -181,16 +181,16 @@ export class AuthService {
 
   // If the toke is invalid, or the operation is not permitted, an exception is thrown.
   //
-  // If resourceOwnerId, resourceType or resourceId is null, it means the resource has
+  // If resourceOwnerId, resourceType or resourceId is undefined, it means the resource has
   // no owner, type or id. Only the AuthorizedResource object whose ownedByUser, types
-  // or resourceIds is null or contains a null can matches such a resource which has
+  // or resourceIds is undefined or contains a undefined can matches such a resource which has
   // no owner, type or id.
   audit(
     token: string,
     action: AuthorizedAction,
-    resourceOwnerId: number | null,
-    resourceType: string | null,
-    resourceId: number | null,
+    resourceOwnerId: number | undefined,
+    resourceType: string | undefined,
+    resourceId: number | undefined,
   ): void {
     const authorization = this.verify(token);
     // In many situations, the coders may forget to convert the string to number.
@@ -200,11 +200,11 @@ export class AuthService {
     //  resourceOwnerId = Number.parseInt(resourceOwnerId as any as string);
     //if (typeof resourceId == "string")
     //  resourceId = Number.parseInt(resourceId as any as string);
-    if (resourceOwnerId !== null && typeof resourceOwnerId != 'number') {
+    if (resourceOwnerId !== undefined && typeof resourceOwnerId != 'number') {
       //Logger.error(typeof resourceOwnerId);
       throw new Error('resourceOwnerId must be a number.');
     }
-    if (resourceId !== null && typeof resourceId != 'number') {
+    if (resourceId !== undefined && typeof resourceId != 'number') {
       //Logger.error(typeof resourceId);
       throw new Error('resourceId must be a number.');
     }
@@ -219,7 +219,7 @@ export class AuthService {
       // Now, action matches.
 
       if (
-        (permission.authorizedResource.ownedByUser === null ||
+        (permission.authorizedResource.ownedByUser === undefined ||
           permission.authorizedResource.ownedByUser === resourceOwnerId) !==
         true
       )
@@ -227,8 +227,8 @@ export class AuthService {
       // Now, owner matches.
 
       let typeMatches =
-        permission.authorizedResource.types === null ? true : false;
-      if (permission.authorizedResource.types !== null) {
+        permission.authorizedResource.types === undefined ? true : false;
+      if (permission.authorizedResource.types !== undefined) {
         for (const authorizedType of permission.authorizedResource.types) {
           if (authorizedType === resourceType) {
             typeMatches = true;
@@ -239,8 +239,8 @@ export class AuthService {
       // Now, type matches.
 
       let idMatches =
-        permission.authorizedResource.resourceIds === null ? true : false;
-      if (permission.authorizedResource.resourceIds !== null) {
+        permission.authorizedResource.resourceIds === undefined ? true : false;
+      if (permission.authorizedResource.resourceIds !== undefined) {
         for (const authorizedId of permission.authorizedResource.resourceIds) {
           if (authorizedId === resourceId) {
             idMatches = true;
@@ -263,7 +263,7 @@ export class AuthService {
 
   // Decode a token, WITHOUT verifying it.
   decode(token: string): TokenPayload {
-    if (token == null || token == undefined || token == '')
+    if (token == undefined || token == undefined || token == '')
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
