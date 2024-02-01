@@ -18,7 +18,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:e2e:cov": "jest --config ./test/jest-e2e-cov.json"
+    "test:e2e:cov": "jest --config ./test/jest-e2e-cov.json",
+    "prepare": "husky",
+    "commitlint": "commitlint --edit"
   },
   "dependencies": {
     "@nestjs/common": "^10.2.10",
@@ -32,14 +34,16 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "dayjs": "^1.11.10",
-    "mysql2": "^3.6.5",
+    "mysql2": "^3.9.0",
     "nestjs-request-context": "^3.0.0",
     "pg": "^8.11.3",
     "reflect-metadata": "^0.1.14",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.17"
+    "typeorm": "^0.3.20"
   },
   "devDependencies": {
+    "@commitlint/cli": "^18.6.0",
+    "@commitlint/config-conventional": "^18.6.0",
     "@nestjs/cli": "^10.2.1",
     "@nestjs/schematics": "^10.0.3",
     "@nestjs/testing": "^10.2.10",
@@ -53,8 +57,9 @@
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.0.1",
+    "husky": "^9.0.7",
     "jest": "^29.7.0",
-    "prettier": "^3.1.1",
+    "prettier": "^3.2.4",
     "source-map-support": "^0.5.21",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.1",
