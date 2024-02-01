@@ -26,7 +26,7 @@ jobs:
       DB_SYNCHRONIZE: true
       DB_AUTO_LOAD_ENTITIES: true
       DB_CONNECT_TIMEOUT: 60000
-      DB_LOGGING: true
+      DB_LOGGING: false
       JWT_SECRET: Test JWT Secret
       TEST_REPEAT: 10 # Tests will be repeated
 
