@@ -176,7 +176,7 @@ export class QuestionsService {
       followCountPromise,
       viewCountPromise,
     ]);
-    let user: UserDto = undefined!;
+    let user: UserDto = undefined!; // For case that user is deleted.
     try {
       user = await this.userService.getUserDtoById(
         question.createdById,
