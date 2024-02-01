@@ -22,7 +22,7 @@ import { GroupQuestionRelationship } from '../groups/group.entity';
 import { Topic } from '../topics/topics.entity';
 import { User } from '../users/users.entity';
 
-import { isMySql } from '../common/helper/db.helper';
+import { isMySQL } from '../common/helper/db.helper';
 
 @Entity()
 // Use fulltext index to support fulltext search.
@@ -46,7 +46,7 @@ export class Question {
   title: string;
 
   // Use column type 'mediumtext' to support string with a maximum length of 16M.
-  @Column({ type: isMySql() ? 'mediumtext' : 'text' })
+  @Column({ type: isMySQL() ? 'mediumtext' : 'text' })
   content: string;
 
   @Column()
