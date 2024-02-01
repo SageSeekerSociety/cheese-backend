@@ -143,10 +143,12 @@ export class GroupsController {
   @Get('/:id/members')
   async getGroupMembers(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start') page_start?: number,
-    @Query('page_size') page_size: number = 20,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    page_start?: number,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    page_size: number = 20,
   ): Promise<GetGroupMembersRespondDto> {
-    const getGroupMembersResult = await this.groupsService.getGroupMembers(
+    const [members, page] = await this.groupsService.getGroupMembers(
       id,
       page_start,
       page_size,
@@ -154,7 +156,10 @@ export class GroupsController {
     return {
       code: 200,
       message: 'Group members fetched successfully.',
-      data: getGroupMembersResult,
+      data: {
+        members,
+        page,
+      },
     };
   }
 

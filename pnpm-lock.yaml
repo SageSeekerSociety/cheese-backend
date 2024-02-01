@@ -35,11 +35,8 @@ dependencies:
   class-validator:
     specifier: ^0.14.0
     version: 0.14.1
-  dayjs:
-    specifier: ^1.11.10
-    version: 1.11.10
   mysql2:
-    specifier: ^3.9.0
+    specifier: ^3.6.5
     version: 3.9.0
   nestjs-request-context:
     specifier: ^3.0.0
