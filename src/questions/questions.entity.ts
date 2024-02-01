@@ -55,9 +55,9 @@ export class Question {
   @OneToOne(() => GroupQuestionRelationship, (gqr) => gqr.question)
   groupQuestionRelationship: GroupQuestionRelationship;
 
-  @Column({ nullable: true })
+  @Column('int', { nullable: true })
   @Index('idx_group', { unique: false })
-  groupId?: number;
+  groupId?: number | null;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -137,9 +137,9 @@ export class QuestionQueryLog {
   @ManyToOne(() => User)
   viewer: User;
 
-  @Column({ nullable: true })
+  @Column('int', { nullable: true })
   @Index('idx_user', { unique: false })
-  viewerId: number;
+  viewerId?: number | null;
 
   @ManyToOne(() => Question)
   question: Question;
@@ -171,9 +171,9 @@ export class QuestionSearchLog {
   @Index('idx_keywords', { fulltext: true, parser: 'ngram' })
   keywords: string;
 
-  @Column({ nullable: true })
+  @Column('int', { nullable: true })
   // A paging argument.
-  firstQuestionId: number;
+  firstQuestionId?: number | null;
 
   @Column()
   // A paging argument.
@@ -198,8 +198,8 @@ export class QuestionSearchLog {
   // This property is used for accessing the user id without joining the user table.
   //
   // undefined if the searcher is not logged in.
-  @Column({ nullable: true })
-  searcherId: number;
+  @Column('int', { nullable: true })
+  searcherId?: number | null;
 
   @Column()
   ip: string;

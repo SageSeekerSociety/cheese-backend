@@ -229,8 +229,8 @@ export class UserProfileQueryLog {
   // generated automatically according to the @ManyToOne decorator by TypeORM engine.
   //
   // This property is used for accessing the user id without joining the user table.
-  @Column({ type: 'int', nullable: true })
-  viewerId: number | undefined;
+  @Column('int', { nullable: true })
+  viewerId?: number | null;
 
   @ManyToOne(() => User)
   @Index()
@@ -279,8 +279,8 @@ export class UserRegisterLog {
   @Column()
   type: UserRegisterLogType;
 
-  @Column({ type: 'int', nullable: true })
-  registerRequestId: number | undefined;
+  @Column('int', { nullable: true })
+  registerRequestId?: number | null;
 
   @Column()
   ip: string;
@@ -307,8 +307,8 @@ export class UserResetPasswordLog {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'int', nullable: true })
-  userId: number | undefined;
+  @Column('int', { nullable: true })
+  userId?: number | null;
 
   @Column()
   type: UserResetPasswordLogType;

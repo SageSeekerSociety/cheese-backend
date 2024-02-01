@@ -60,9 +60,9 @@ export class TopicSearchLog {
   @Index({ fulltext: true, parser: 'ngram' })
   keywords: string;
 
-  @Column({ nullable: true })
+  @Column('int', { nullable: true })
   // A paging argument.
-  firstTopicId: number;
+  firstTopicId?: number | null;
 
   @Column()
   // A paging argument.
@@ -87,8 +87,8 @@ export class TopicSearchLog {
   // This property is used for accessing the user id without joining the user table.
   //
   // undefined if the searcher is not logged in.
-  @Column({ nullable: true })
-  searcherId: number;
+  @Column('int', { nullable: true })
+  searcherId?: number | null;
 
   @Column()
   ip: string;
