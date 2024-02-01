@@ -160,7 +160,7 @@ export class AuthService {
   // Parameters:
   //    token: both the pure jwt token and the one with "Bearer " or "bearer " are supported.
   verify(token: string): Authorization {
-    if (token == undefined || token == undefined || token == '')
+    if (token == undefined || token == '')
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
