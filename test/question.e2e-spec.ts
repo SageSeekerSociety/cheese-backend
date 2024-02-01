@@ -8,7 +8,7 @@
 
 import { INestApplication, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');

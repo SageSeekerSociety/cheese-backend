@@ -9,7 +9,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import { In, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
