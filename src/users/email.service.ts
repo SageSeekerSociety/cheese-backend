@@ -12,6 +12,7 @@ import { isEmail } from 'class-validator';
 export class EmailService {
   constructor() {}
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   sendPasswordResetEmail(email: string, token: string): Promise<void> {
     if (isEmail(email) === false)
       throw new Error('Invalid email address: ' + email);

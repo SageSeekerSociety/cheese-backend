@@ -274,7 +274,9 @@ export class UsersController {
     let viewerId: number = null;
     try {
       viewerId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      // the user is not logged in
+    }
     const user = await this.usersService.getUserDtoById(
       id,
       viewerId,
@@ -374,7 +376,9 @@ export class UsersController {
     let viewerId: number = null;
     try {
       viewerId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      // the user is not logged in
+    }
     const [followers, page] = await this.usersService.getFollowers(
       id,
       pageStart,
@@ -408,7 +412,9 @@ export class UsersController {
     let viewerId: number = null;
     try {
       viewerId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      // the user is not logged in
+    }
     const [followees, page] = await this.usersService.getFollowees(
       id,
       pageStart,

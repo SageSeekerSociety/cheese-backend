@@ -26,8 +26,8 @@ describe('Topic Module', () => {
   const TestQuestionPrefix = `[Test(${TestQuestionCode}) Question]`;
   let TestToken: string;
   let TestUserId: number;
-  let TopicIds: number[] = [];
-  let questionIds: number[] = [];
+  const TopicIds: number[] = [];
+  const questionIds: number[] = [];
   let auxAccessToken: string;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {

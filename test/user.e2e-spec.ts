@@ -23,7 +23,6 @@ describe('User Module', () => {
   let TestUserId: number;
   let TestRefreshTokenOld: string;
   let TestRefreshToken: string;
-  let TestTokenOld: string;
   let TestToken: string;
 
   beforeAll(async () => {
@@ -389,7 +388,6 @@ describe('User Module', () => {
       expect(respond2.body.code).toBe(201);
       expect(respond2.body.data.accessToken).toBeDefined();
       TestRefreshTokenOld = TestRefreshToken;
-      TestTokenOld = TestToken;
       TestRefreshToken = respond2.header['set-cookie'][0]
         .split(';')[0]
         .split('=')[1];
@@ -422,7 +420,6 @@ describe('User Module', () => {
       expect(respond2.body.code).toBe(201);
       expect(respond2.body.data.accessToken).toBeDefined();
       TestRefreshTokenOld = TestRefreshToken;
-      TestTokenOld = TestToken;
       TestRefreshToken = respond2.header['set-cookie'][0]
         .split(';')[0]
         .split('=')[1];
@@ -666,7 +663,7 @@ describe('User Module', () => {
   });
 
   describe('follow logic', () => {
-    let tempUserIds: number[] = [];
+    const tempUserIds: number[] = [];
     it('should successfully create some auxiliary users first', async () => {
       const server = app.getHttpServer();
       async function createAuxiliaryUser(
@@ -798,20 +795,20 @@ describe('User Module', () => {
           .get(`/users/${id}/followers?page_start=${TestUserId}&page_size=1`)
           //.set('User-Agent', 'PostmanRuntime/7.26.8')
           .set('authorization', 'Bearer ' + TestToken);
-        expect(respond.body.message).toBe('Query followers successfully.');
-        expect(respond.status).toBe(200);
-        expect(respond.body.code).toBe(200);
-        expect(respond.body.data.users.length).toBe(1);
-        expect(respond.body.data.users[0].id).toBe(TestUserId);
-        expect(respond.body.data.users[0].avatar).toBe(
+        expect(respond2.body.message).toBe('Query followers successfully.');
+        expect(respond2.status).toBe(200);
+        expect(respond2.body.code).toBe(200);
+        expect(respond2.body.data.users.length).toBe(1);
+        expect(respond2.body.data.users[0].id).toBe(TestUserId);
+        expect(respond2.body.data.users[0].avatar).toBe(
           'https://avatars.githubusercontent.com/u/10000000?s=460&u=1f6b6f0b9b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5&v=4',
         );
-        expect(respond.body.data.page.page_start).toBe(TestUserId);
-        expect(respond.body.data.page.page_size).toBe(1);
-        expect(respond.body.data.page.has_prev).toBe(false);
-        expect(respond.body.data.page.prev_start).toBe(0);
-        expect(respond.body.data.page.has_more).toBe(false);
-        expect(respond.body.data.page.next_start).toBe(0);
+        expect(respond2.body.data.page.page_start).toBe(TestUserId);
+        expect(respond2.body.data.page.page_size).toBe(1);
+        expect(respond2.body.data.page.has_prev).toBe(false);
+        expect(respond2.body.data.page.prev_start).toBe(0);
+        expect(respond2.body.data.page.has_more).toBe(false);
+        expect(respond2.body.data.page.next_start).toBe(0);
       }
     });
 
