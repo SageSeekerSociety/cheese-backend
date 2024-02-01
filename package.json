@@ -13,10 +13,10 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest --config ./test/jest.json --testTimeout=60000",
-    "test:watch": "jest --config ./test/jest.json --testTimeout=60000 --watch",
-    "test:cov": "jest --config ./test/jest.json --testTimeout=60000 --coverage",
-    "test:debug": "node  --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand --config ./test/jest.json --testTimeout=60000"
+    "test": "jest --config ./test/jest.config.json --testTimeout=60000",
+    "test:watch": "jest --config ./test/jest.config.json --testTimeout=60000 --watch",
+    "test:cov": "jest --config ./test/jest.config.json --testTimeout=60000 --coverage",
+    "test:debug": "node  --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand --config ./test/jest.config.json --testTimeout=60000"
   },
   "dependencies": {
     "@nestjs/common": "^10.2.10",
