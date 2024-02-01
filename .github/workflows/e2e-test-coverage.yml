@@ -23,9 +23,11 @@ jobs:
       DB_USERNAME: testuser
       DB_PASSWORD: mysql-test-password
       DB_NAME: cheese
-      DB_SYNCHRONIZE: 'true'
-      DB_LOGGING: 'true'
-      JWT_SECRET: 'Test JWT Secret'
+      DB_SYNCHRONIZE: true
+      DB_AUTO_LOAD_ENTITIES: true
+      DB_CONNECT_TIMEOUT: 60000
+      DB_LOGGING: true
+      JWT_SECRET: Test JWT Secret
       TEST_REPEAT: 10 # Tests will be repeated
 
     services:
