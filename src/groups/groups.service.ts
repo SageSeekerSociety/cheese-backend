@@ -119,7 +119,7 @@ export class GroupsService {
 
   async getGroups(
     userId: number,
-    keyword: string,
+    keyword: string | undefined,
     page_start_id: number | undefined,
     page_size: number,
     order_type: GroupQueryType,

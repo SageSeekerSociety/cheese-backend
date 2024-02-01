@@ -79,7 +79,7 @@ export class GroupsController {
     const userId = this.authService.verify(auth).userId;
     const [groups, page] = await this.groupsService.getGroups(
       userId,
-      unescape(key ?? ''),
+      key ? unescape(key) : key,
       page_start ?? undefined,
       page_size,
       type,
