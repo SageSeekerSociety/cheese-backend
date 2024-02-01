@@ -1,4 +1,4 @@
-import { isMySQL } from '../src/common/helper/db.helper';
+import { isMySQL } from '../helper/db.helper';
 
 export default () => ({
   port: parseInt(process.env.PORT, 10) || 3000,

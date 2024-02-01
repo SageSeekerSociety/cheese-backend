@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
-import configuration from '../config/configuration';
+import configuration from './common/config/configuration';
 import { GroupsModule } from './groups/groups.module';
 import { QuestionsModule } from './questions/questions.module';
 import { UsersModule } from './users/users.module';
