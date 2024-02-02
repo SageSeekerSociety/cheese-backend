@@ -58,18 +58,12 @@ export class SessionService {
     authorization: Authorization,
     // The refresh token is valid for refreshTokenValidSeconds seconds.
     // By default, it is valid for defaultRefreshTokenValidSeconds seconds.
-    refreshTokenValidSeconds?: number,
-    sessionValidSeconds?: number,
+    refreshTokenValidSeconds: number = this.defaultRefreshTokenValidSeconds,
+    sessionValidSeconds: number = this.defaultSessionValidSeconds,
   ): Promise<string> {
     const session = new Session();
     session.userId = userId;
     session.authorization = JSON.stringify(authorization);
-    if (refreshTokenValidSeconds == undefined) {
-      refreshTokenValidSeconds = this.defaultRefreshTokenValidSeconds;
-    }
-    if (sessionValidSeconds == undefined) {
-      sessionValidSeconds = this.defaultSessionValidSeconds;
-    }
     session.validUntil = new Date(Date.now() + sessionValidSeconds * 1000);
     session.revoked = false;
     session.lastRefreshedAt = new Date().getTime();
@@ -86,8 +80,8 @@ export class SessionService {
   //     item2: The access token of the session.
   async refreshSession(
     oldRefreshToken: string,
-    refreshTokenValidSeconds?: number,
-    accessTokenValidSeconds?: number,
+    refreshTokenValidSeconds: number = this.defaultRefreshTokenValidSeconds,
+    accessTokenValidSeconds: number = this.defaultAccessTokenValidSeconds,
   ): Promise<[string, string]> {
     const auth = this.authService.verify(oldRefreshToken);
     if (
@@ -128,12 +122,6 @@ export class SessionService {
       this.authService.decode(oldRefreshToken).signedAt;
     if (oldRefreshTokenSignedAt < session.lastRefreshedAt) {
       throw new RefreshTokenAlreadyUsedError();
-    }
-    if (refreshTokenValidSeconds == undefined) {
-      refreshTokenValidSeconds = this.defaultRefreshTokenValidSeconds;
-    }
-    if (accessTokenValidSeconds == undefined) {
-      accessTokenValidSeconds = this.defaultAccessTokenValidSeconds;
     }
     const authorization = JSON.parse(session.authorization) as Authorization;
     const refreshAuthorization = this.getRefreshAuthorization(
