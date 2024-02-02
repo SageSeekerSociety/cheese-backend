@@ -35,7 +35,7 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# Secrets
-.secret/
+# Node.js
+.env
 
 .pnpm-store/

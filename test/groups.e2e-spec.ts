@@ -8,7 +8,7 @@
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -25,10 +25,13 @@ describe('Groups Module', () => {
   let TestUserDto: any;
   let auxAccessToken: string;
   let auxUserDto: any;
+  // for future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let auxAdminAccessToken: string;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let auxAdminUserDto: any;
 
-  let GroupIds: number[] = [];
+  const GroupIds: number[] = [];
   const TestGroupPrefix = `G${Math.floor(Math.random() * 1000000)}`;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {

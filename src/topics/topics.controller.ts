@@ -49,10 +49,12 @@ export class TopicsController {
   ): Promise<SearchTopicResponseDto> {
     if (pageSize == null || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var searcherId: number = null;
+    let searcherId: number = null;
     try {
       searcherId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      // the user is not logged in
+    }
     const [topics, pageRespond] = await this.topicsService.searchTopics(
       unescape(q),
       pageStart,

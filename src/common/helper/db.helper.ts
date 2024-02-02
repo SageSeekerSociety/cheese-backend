@@ -1,5 +1,3 @@
-import { DB_TYPE } from '../../../.secret/database.config';
-
-export function isMySql(): boolean {
-  return DB_TYPE === ('mysql' as string);
+export function isMySQL() {
+  return true; // todo: can not read dotenv here unless implement as a service.
 }

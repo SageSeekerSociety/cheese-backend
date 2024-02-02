@@ -1,6 +1,4 @@
 import { IsString } from 'class-validator';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-import { UserDto } from './user.dto';
 import { LoginRespondDto } from './login.dto';
 
 export class RegisterRequestDto {

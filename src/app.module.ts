@@ -1,31 +1,19 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import {
-  DB_DATABASE,
-  DB_HOST,
-  DB_PASSWORD,
-  DB_PORT,
-  DB_TYPE,
-  DB_USERNAME,
-} from '../.secret/database.config';
-import { isMySql } from './common/helper/db.helper';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import configuration from './common/config/configuration';
 import { GroupsModule } from './groups/groups.module';
 import { QuestionsModule } from './questions/questions.module';
-import { TopicsModule } from './topics/topics.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forRoot({
-      type: DB_TYPE,
-      host: DB_HOST,
-      port: DB_PORT,
-      username: DB_USERNAME,
-      password: DB_PASSWORD,
-      database: DB_DATABASE,
-      autoLoadEntities: true,
-      synchronize: true,
-      ...(isMySql() ? { connectTimeout: 60000 } : { ConnectTimeoutMS: 60000 }),
+    ConfigModule.forRoot({ load: [configuration] }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) =>
+        configService.get<TypeOrmModuleOptions>('database'),
+      inject: [ConfigService],
     }),
     UsersModule,
     QuestionsModule,

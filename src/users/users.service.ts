@@ -10,7 +10,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TokenExpiredError } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PermissionDeniedError } from '../auth/auth.error';
@@ -190,6 +190,9 @@ export class UsersService {
   private isValidPassword(password: string): boolean {
     // Password should contains at least one letter, one special character and one number.
     // It should contain at least 8 chars.
+    // ? should \x00 be used in password?
+    // todo: we should only use visible special characters
+    // eslint-disable-next-line no-control-regex
     return /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[\x00-\x2F\x3A-\x40\x5B-\x60\x7B-\x7F]).{8,}$/.test(
       password,
     );
