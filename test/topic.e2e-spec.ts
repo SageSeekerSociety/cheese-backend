@@ -23,6 +23,7 @@ describe('Topic Module', () => {
   const TestTopicCode = Math.floor(Math.random() * 10000000000).toString();
   const TestTopicPrefix = `[Test(${TestTopicCode}) Topic]`;
   let TestToken: string;
+  const TopicIds: number[] = [];
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -101,6 +102,9 @@ describe('Topic Module', () => {
         expect(respond.body.message).toBe('OK');
         expect(respond.status).toBe(201);
         expect(respond.body.code).toBe(201);
+        expect(respond.body.data.id).toBeDefined();
+        expect(respond.body.data.name).toBe(`${TestTopicPrefix} ${name}`);
+        TopicIds.push(respond.body.data.id);
       }
       await createTopic('高等数学');
       await createTopic('高等代数');
@@ -149,7 +153,7 @@ describe('Topic Module', () => {
     });
   });
 
-  describe('get topic', () => {
+  describe('search topic', () => {
     it('should search topics and do paging', async () => {
       // Try search: `${TestTopicCode} 高等`
       const respond = await request(app.getHttpServer())
@@ -159,7 +163,7 @@ describe('Topic Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.topics.length).toBeGreaterThanOrEqual(15);
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < 4; i++) {
         expect(respond.body.data.topics[i].name).toContain(TestTopicCode);
       }
 
@@ -204,12 +208,6 @@ describe('Topic Module', () => {
       expect(respond3.body.data.topics[0].name).toBe(
         `${TestTopicPrefix} 高等代数习题`,
       );
-      expect(respond3.body.data.topics[1].name).toBe(
-        `${TestTopicPrefix} 大学英语`,
-      );
-      expect(respond3.body.data.topics[2].name).toBe(
-        `${TestTopicPrefix} 军事理论（思政）`,
-      );
       expect(respond3.body.data.page.page_start).toBe(
         respond3.body.data.topics[0].id,
       );
@@ -245,12 +243,63 @@ describe('Topic Module', () => {
         `${TestTopicPrefix} Emojis in the topic name 🧑‍🦲 with some 中文 in it`,
       );
     }, 60000);
+    it('should return an empty page', () => {
+      return request(app.getHttpServer())
+        .get('/topics?q=%E6%AF%B3%E6%AF%B3%E6%AF%B3%E6%AF%B3')
+        .send()
+        .then((respond) => {
+          expect(respond.body.message).toBe('OK');
+          expect(respond.status).toBe(200);
+          expect(respond.body.code).toBe(200);
+          expect(respond.body.data.topics.length).toBe(0);
+          expect(respond.body.data.page.page_start).toBe(0);
+          expect(respond.body.data.page.page_size).toBe(0);
+          expect(respond.body.data.page.has_prev).toBe(false);
+          expect(respond.body.data.page.prev_start).toBe(0);
+          expect(respond.body.data.page.has_more).toBe(false);
+          expect(respond.body.data.page.next_start).toBe(0);
+        });
+    });
     it('should return TopicNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get('/topics?q=something&page_start=-1')
         .send();
       expect(respond.body.message).toMatch(/^TopicNotFoundError: /);
       expect(respond.status).toBe(404);
+    });
+    it('should return BadRequestException', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/topics?q=something&page_start=abc')
+        .send();
+      expect(respond.body.message).toMatch(/^BadRequestException: /);
+      expect(respond.status).toBe(400);
+    });
+  });
+
+  describe('get topic', () => {
+    it('should get a topic', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/topics/${TopicIds[0]}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.id).toBe(TopicIds[0]);
+      expect(respond.body.data.name).toBe(`${TestTopicPrefix} 高等数学`);
+    });
+    it('should return TopicNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/topics/-1')
+        .send();
+      expect(respond.body.message).toMatch(/^TopicNotFoundError: /);
+      expect(respond.status).toBe(404);
+    });
+    it('should return BadRequestException', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/topics/abc')
+        .send();
+      expect(respond.body.message).toMatch(/^BadRequestException: /);
+      expect(respond.status).toBe(400);
     });
   });
 

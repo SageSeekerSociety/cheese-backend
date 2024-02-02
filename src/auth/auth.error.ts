@@ -22,16 +22,6 @@ export class InvalidTokenError extends BaseError {
   }
 }
 
-export class TokenFormatError extends BaseError {
-  constructor(public readonly token: string) {
-    super(
-      'TokenFormatError',
-      `The token is valid, but AuthService could not understand its payload. Token: ${token}`,
-      401,
-    );
-  }
-}
-
 export class TokenExpiredError extends BaseError {
   constructor() {
     super('TokenExpiredError', 'Token expired', 401);
@@ -49,13 +39,7 @@ export class PermissionDeniedError extends BaseError {
       'PermissionDeniedError',
       `The attempt to perform action '${authorizedActionToString(
         action,
-      )}' on resource (resourceOwnerId: ${
-        resourceOwnerId === null ? 'null' : resourceOwnerId
-      }, resourceType: ${
-        resourceType === null ? 'null' : resourceType
-      }, resourceId: ${
-        resourceId === null ? 'null' : resourceId
-      }) is not permitted by the given token.`,
+      )}' on resource (resourceOwnerId: ${resourceOwnerId}, resourceType: ${resourceType}, resourceId: ${resourceId}) is not permitted by the given token.`,
       403,
     );
   }
@@ -78,6 +62,16 @@ export class RefreshTokenAlreadyUsedError extends BaseError {
     super(
       'RefreshTokenAlreadyUsedError',
       'The refresh token has already been used. A refresh token can only be used once.',
+      401,
+    );
+  }
+}
+
+export class NotRefreshTokenError extends BaseError {
+  constructor() {
+    super(
+      'NotRefreshTokenError',
+      'The token is not a refresh token. A refresh token is required.',
       401,
     );
   }

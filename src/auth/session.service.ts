@@ -10,6 +10,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  NotRefreshTokenError,
   RefreshTokenAlreadyUsedError,
   SessionExpiredError,
   SessionRevokedError,
@@ -27,6 +28,7 @@ export class SessionService {
     private readonly sessionRefreshLogRepository: Repository<SessionRefreshLog>,
   ) {}
 
+  private readonly defaultSessionValidSeconds = 60 * 60 * 24 * 30 * 12;
   private readonly defaultRefreshTokenValidSeconds = 60 * 60 * 24 * 30;
   private readonly defaultAccessTokenValidSeconds = 15 * 60;
 
@@ -39,7 +41,7 @@ export class SessionService {
       permissions: [
         {
           authorizedResource: {
-            ownedByUser: null,
+            ownedByUser: undefined,
             types: ['auth/session:refresh', 'auth/session:revoke'],
             resourceIds: [sessionId],
           },
@@ -56,15 +58,13 @@ export class SessionService {
     authorization: Authorization,
     // The refresh token is valid for refreshTokenValidSeconds seconds.
     // By default, it is valid for defaultRefreshTokenValidSeconds seconds.
-    refreshTokenValidSeconds?: number,
+    refreshTokenValidSeconds: number = this.defaultRefreshTokenValidSeconds,
+    sessionValidSeconds: number = this.defaultSessionValidSeconds,
   ): Promise<string> {
     const session = new Session();
     session.userId = userId;
     session.authorization = JSON.stringify(authorization);
-    if (refreshTokenValidSeconds == null) {
-      refreshTokenValidSeconds = this.defaultRefreshTokenValidSeconds;
-    }
-    session.validUntil = new Date(Date.now() + refreshTokenValidSeconds * 1000);
+    session.validUntil = new Date(Date.now() + sessionValidSeconds * 1000);
     session.revoked = false;
     session.lastRefreshedAt = new Date().getTime();
     await this.sessionRepository.save(session);
@@ -80,19 +80,38 @@ export class SessionService {
   //     item2: The access token of the session.
   async refreshSession(
     oldRefreshToken: string,
-    refreshTokenValidSeconds?: number,
-    accessTokenValidSeconds?: number,
+    refreshTokenValidSeconds: number = this.defaultRefreshTokenValidSeconds,
+    accessTokenValidSeconds: number = this.defaultAccessTokenValidSeconds,
   ): Promise<[string, string]> {
     const auth = this.authService.verify(oldRefreshToken);
+    if (
+      auth.permissions.length !== 1 ||
+      auth.permissions[0].authorizedResource.resourceIds == undefined ||
+      auth.permissions[0].authorizedResource.resourceIds.length !== 1
+    ) {
+      throw new NotRefreshTokenError();
+    }
     const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
     this.authService.audit(
       oldRefreshToken,
       AuthorizedAction.other,
-      null,
+      undefined,
       'auth/session:refresh',
       sessionId,
     );
     const session = await this.sessionRepository.findOneBy({ id: sessionId });
+    /* istanbul ignore if */
+    if (session == undefined) {
+      throw new Error(
+        `In an attempt to refresh session with id ${sessionId},\n` +
+          `the refresh token is valid, but the session does not exist.\n` +
+          `Here are three possible reasons:\n` +
+          `1. There is a bug in the code.\n` +
+          `2. The database is corrupted.\n` +
+          `3. We are under attack.\n` +
+          `token: ${oldRefreshToken}`,
+      );
+    }
     if (new Date() > session.validUntil) {
       throw new SessionExpiredError();
     }
@@ -103,12 +122,6 @@ export class SessionService {
       this.authService.decode(oldRefreshToken).signedAt;
     if (oldRefreshTokenSignedAt < session.lastRefreshedAt) {
       throw new RefreshTokenAlreadyUsedError();
-    }
-    if (refreshTokenValidSeconds == null) {
-      refreshTokenValidSeconds = this.defaultRefreshTokenValidSeconds;
-    }
-    if (accessTokenValidSeconds == null) {
-      accessTokenValidSeconds = this.defaultAccessTokenValidSeconds;
     }
     const authorization = JSON.parse(session.authorization) as Authorization;
     const refreshAuthorization = this.getRefreshAuthorization(
@@ -145,14 +158,36 @@ export class SessionService {
 
   async revokeSession(refreshToken: string): Promise<void> {
     const auth = this.authService.verify(refreshToken);
+    if (
+      auth.permissions.length !== 1 ||
+      auth.permissions[0].authorizedResource.resourceIds == undefined ||
+      auth.permissions[0].authorizedResource.resourceIds.length !== 1
+    ) {
+      throw new NotRefreshTokenError();
+    }
     const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
     this.authService.audit(
       refreshToken,
       AuthorizedAction.other,
-      null,
+      undefined,
       'auth/session:revoke',
       sessionId,
     );
-    await this.sessionRepository.update({ id: sessionId }, { revoked: true });
+    const ret = await this.sessionRepository.update(
+      { id: sessionId },
+      { revoked: true },
+    );
+    /* istanbul ignore if */
+    if (ret.affected !== 1) {
+      throw new Error(
+        `In an attempt to revoke session with id ${sessionId},\n` +
+          `the refresh token is valid, but the session does not exist.\n` +
+          `Here are three possible reasons:\n` +
+          `1. There is a bug in the code.\n` +
+          `2. The database is corrupted.\n` +
+          `3. We are under attack.\n` +
+          `token: ${refreshToken}`,
+      );
+    }
   }
 }

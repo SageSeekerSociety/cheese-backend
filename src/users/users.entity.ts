@@ -229,8 +229,8 @@ export class UserProfileQueryLog {
   // generated automatically according to the @ManyToOne decorator by TypeORM engine.
   //
   // This property is used for accessing the user id without joining the user table.
-  @Column({ nullable: true })
-  viewerId: number;
+  @Column('int', { nullable: true })
+  viewerId?: number | null;
 
   @ManyToOne(() => User)
   @Index()
@@ -254,16 +254,16 @@ export class UserProfileQueryLog {
 }
 
 export enum UserRegisterLogType {
-  RequestSuccess = 1, // registerRequestId is not null for this type
+  RequestSuccess = 1, // registerRequestId is not undefined for this type
   RequestFailDueToAlreadyRegistered = 2,
   RequestFailDueToInvalidEmail = 3,
   RequestFailDueToNotSupportedEmail = 4,
   RequestFailDurToSecurity = 5, // Too many requests
   RequestFailDueToSendEmailFailure = 6,
   Success = 1001,
-  FailDueToExpired = 1002, // registerRequestId is not null for this type
-  FailDueToUserExistence = 1003, // registerRequestId is not null for this type
-  FailDueToEmailExistence = 1004, // registerRequestId is not null for this type
+  FailDueToExpired = 1002, // registerRequestId is not undefined for this type
+  FailDueToUserExistence = 1003, // registerRequestId is not undefined for this type
+  FailDueToEmailExistence = 1004, // registerRequestId is not undefined for this type
   FailDueToWrongCode = 1005,
 }
 
@@ -279,8 +279,8 @@ export class UserRegisterLog {
   @Column()
   type: UserRegisterLogType;
 
-  @Column({ nullable: true })
-  registerRequestId?: number = null;
+  @Column('int', { nullable: true })
+  registerRequestId?: number | null;
 
   @Column()
   ip: string;
@@ -307,8 +307,8 @@ export class UserResetPasswordLog {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ nullable: true })
-  userId: number = null;
+  @Column('int', { nullable: true })
+  userId?: number | null;
 
   @Column()
   type: UserResetPasswordLogType;

@@ -1,6 +1,4 @@
-# This file is a modified version of .github/workflows/e2e-test.yml
-
-name: Automatic E2E Test Coverage
+name: Automatic Test
 
 on: [push, pull_request, workflow_dispatch]
 
@@ -9,12 +7,14 @@ jobs:
     runs-on: ubuntu-latest
 
     strategy:
-      # only one run
+      # We conduct tests on a combination of so many platforms,
+      # not only to test compatibility,
+      # but also to identify bugs that may not be detected without extensive repetition.
       matrix:
         # See supported MySQL versions at https://hub.docker.com/_/mysql
-        mysql-version: [latest]
-        node-version: [18.x]
-        pnpm-version: [8]
+        mysql-version: [8.0, 8.0-debian, innovation, latest]
+        node-version: [16.x, 18.x]
+        pnpm-version: [6, 8]
 
     env:
       DB_TYPE: mysql
@@ -26,7 +26,7 @@ jobs:
       DB_SYNCHRONIZE: true
       DB_AUTO_LOAD_ENTITIES: true
       DB_CONNECT_TIMEOUT: 60000
-      DB_LOGGING: false
+      DB_LOGGING: true
       JWT_SECRET: Test JWT Secret
       TEST_REPEAT: 10 # Tests will be repeated
 
@@ -78,9 +78,9 @@ jobs:
               sleep 1
           done
 
-      - name: Run E2E Tests
+      - name: Run Tests
         run: |
           for i in {1..${{ env.TEST_REPEAT }}}; do
             echo "Repeating Test [$i]"
-            pnpm test:e2e:cov --verbose
+            pnpm test --verbose
           done

@@ -11,12 +11,10 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "test:e2e:cov": "jest --config ./test/jest-e2e-cov.json",
+    "test": "jest --config ./test/jest.config.json --testTimeout=60000",
+    "test:watch": "jest --config ./test/jest.config.json --testTimeout=60000 --watch",
+    "test:cov": "jest --config ./test/jest.config.json --testTimeout=60000 --coverage",
+    "test:debug": "node  --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand --config ./test/jest.config.json --testTimeout=60000",
     "format": "prettier --write \"{src,test}/**/*.ts\"",
     "lint": "eslint --fix \"{src,test}/**/*.ts\"",
     "prepare": "husky",
@@ -30,6 +28,7 @@
     "@nestjs/platform-express": "^10.2.10",
     "@nestjs/typeorm": "^10.0.1",
     "@types/bcrypt": "^5.0.2",
+    "ajv": "^8.12.0",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
@@ -38,6 +37,7 @@
     "pg": "^8.11.3",
     "reflect-metadata": "^0.1.14",
     "rxjs": "^7.8.1",
+    "ts-json-schema-generator": "^1.5.0",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
@@ -66,22 +66,5 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": "src",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
   }
 }

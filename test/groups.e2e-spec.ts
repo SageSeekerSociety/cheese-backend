@@ -701,16 +701,23 @@ describe('Groups Module', () => {
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
-    it('should return BadRequestError when page_size is not positive', async () => {
+    it('should return empty list when page_size is not positive', async () => {
       const TestGroupId = GroupIds[1];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${TestToken}`)
         .query({ page_size: -1 })
         .send();
-      expect(respond.body.message).toMatch(/^BadRequestError: /);
-      expect(respond.status).toBe(400);
-      expect(respond.body.code).toBe(400);
+      expect(respond.body.message).toBe('Group members fetched successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.members.length).toBe(0);
+      expect(respond.body.data.page.page_start).toBeFalsy();
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBeFalsy();
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBeFalsy();
     });
   });
 

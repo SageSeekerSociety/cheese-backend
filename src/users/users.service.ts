@@ -7,13 +7,12 @@
  *
  */
 
-import { Injectable, Logger } from '@nestjs/common';
-import { TokenExpiredError } from '@nestjs/jwt';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
-import { PermissionDeniedError } from '../auth/auth.error';
+import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
   Authorization,
@@ -37,7 +36,6 @@ import {
   UserResetPasswordLogType,
 } from './users.entity';
 import {
-  BadRequestError,
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
   EmailNotFoundError,
@@ -51,7 +49,6 @@ import {
   PasswordNotMatchError,
   UserAlreadyFollowedError,
   UserIdNotFoundError,
-  UserNoProfileError,
   UserNotFollowedYetError,
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
@@ -80,6 +77,9 @@ export class UsersService {
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
   ) {}
+
+  private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
+  private readonly passwordResetEmailValidSeconds = 10 * 60; // 10 minutes
 
   private generateVerifyCode(): string {
     let code: string = '';
@@ -130,7 +130,7 @@ export class UsersService {
     // TODO: Add logic to determain whether code is sent too frequently.
 
     // Determine whether the email is registered.
-    if ((await this.userRepository.findOneBy({ email })) != null) {
+    if ((await this.userRepository.findOneBy({ email })) != undefined) {
       const log = this.userRegisterLogRepository.create({
         type: UserRegisterLogType.RequestFailDueToAlreadyRegistered,
         email: email,
@@ -203,11 +203,10 @@ export class UsersService {
   }
 
   private isCodeExpired(createdAt: Date): boolean {
-    return new Date().getTime() - createdAt.getTime() > 10 * 60 * 1000;
-  }
-
-  get codeExpiredRule(): string {
-    return 'Code expires after 10 minutes.';
+    return (
+      new Date().getTime() - createdAt.getTime() >
+      this.registerCodeValidSeconds * 1000
+    );
   }
 
   get defaultAvatar(): string {
@@ -274,7 +273,8 @@ export class UsersService {
         await this.userRegisterRequestRepository.delete(record.id);
 
         // Verify whether the email is registered.
-        if ((await this.userRepository.findOneBy({ email })) != null) {
+        /* istanbul ignore if */
+        if ((await this.userRepository.findOneBy({ email })) != undefined) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToEmailExistence,
             email: email,
@@ -283,11 +283,18 @@ export class UsersService {
             userAgent: userAgent,
           });
           await this.userRegisterLogRepository.save(log);
-          throw new EmailAlreadyRegisteredError(email);
+          throw new Error(
+            `In a register attempt, the email is verified, but the email is already registered!` +
+              `There are 4 possible reasons:\n` +
+              `1. The user send two register email and verified them after that.\n` +
+              `2. There is a bug in the code.\n` +
+              `3. The database is corrupted.\n` +
+              `4. We are under attack!`,
+          );
         }
 
         // Verify whether the username is registered.
-        if ((await this.userRepository.findOneBy({ username })) != null) {
+        if ((await this.userRepository.findOneBy({ username })) != undefined) {
           const log = this.userRegisterLogRepository.create({
             type: UserRegisterLogType.FailDueToUserExistence,
             email: email,
@@ -350,16 +357,17 @@ export class UsersService {
     userAgent?: string, // optional
   ): Promise<UserDto> {
     const user = await this.userRepository.findOneBy({ id: userId });
-    if (user == null) {
+    if (user == undefined) {
       throw new UserIdNotFoundError(userId);
     }
 
     const profile = await this.userProfileRepository.findOneBy({ userId });
-    if (profile == null) {
-      Logger.error(`User '${user.username}' DO NOT has a profile!`);
-      throw new UserNoProfileError(userId);
+    /* istanbul ignore if */
+    // Above is a hint for istanbul to ignore the following line.
+    if (profile == undefined) {
+      throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
-    if (viewerId != null || ip != null || userAgent != null) {
+    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.userProfileQueryLogRepository.create({
         viewerId: viewerId,
         vieweeId: userId,
@@ -386,7 +394,7 @@ export class UsersService {
     userAgent: string,
   ): Promise<[UserDto, string]> {
     const user = await this.userRepository.findOneBy({ username });
-    if (user == null) {
+    if (user == undefined) {
       throw new UsernameNotFoundError(username);
     }
     if (bcrypt.compareSync(password, user.hashedPassword) == false) {
@@ -396,18 +404,10 @@ export class UsersService {
     const profile = await this.userProfileRepository.findOneBy({
       userId: user.id,
     });
-    if (profile == null) {
-      Logger.error(`User '${user.username}' DO NOT has a profile!`);
-      return [
-        {
-          id: user.id,
-          username: user.username,
-          nickname: '',
-          avatar: '',
-          intro: '',
-        },
-        await this.createSession(user.id),
-      ];
+    /* istanbul ignore if */
+    // Above is a hint for istanbul to ignore the following line.
+    if (profile == undefined) {
+      throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
     const log = this.userLoginLogRepository.create({
       user: user,
@@ -435,8 +435,8 @@ export class UsersService {
           authorizedActions: [AuthorizedAction.query],
           authorizedResource: {
             ownedByUser: userId,
-            types: null,
-            resourceIds: null,
+            types: undefined,
+            resourceIds: undefined,
           },
         },
         {
@@ -444,7 +444,7 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: userId,
             types: ['users/profile'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
         {
@@ -452,7 +452,7 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: userId,
             types: ['users/following'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
         {
@@ -467,7 +467,7 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: userId,
             types: ['questions'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
         {
@@ -475,25 +475,21 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: userId,
             types: ['questions/following'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
         {
           // Everyone can create a topic.
           authorizedActions: [AuthorizedAction.create],
           authorizedResource: {
-            ownedByUser: null,
+            ownedByUser: undefined,
             types: ['topics'],
-            resourceIds: null,
+            resourceIds: undefined,
           },
         },
       ],
     };
     return this.sessionService.createSession(userId, authorization);
-  }
-
-  get passwordResetEmailValidSeconds(): number {
-    return 60 * 10; // 10 minutes
   }
 
   async sendResetPasswordEmail(
@@ -514,7 +510,7 @@ export class UsersService {
 
     // Find email.
     const user = await this.userRepository.findOneBy({ email });
-    if (user == null) {
+    if (user == undefined) {
       const log = this.userResetPasswordLogRepository.create({
         type: UserResetPasswordLogType.RequestFailDueToNoneExistentEmail,
         ip: ip,
@@ -538,7 +534,7 @@ export class UsersService {
             authorizedResource: {
               ownedByUser: user.id,
               types: ['users/password:reset'],
-              resourceIds: null,
+              resourceIds: undefined,
               data: Date.now(),
             },
           },
@@ -565,15 +561,16 @@ export class UsersService {
     ip: string,
     userAgent: string,
   ): Promise<void> {
-    const decoded = this.authService.verify(token);
-    const userId = decoded.userId;
+    // Here, we do not need to check whether the token is valid.
+    // If we check, then, if the token is invalid, it won't be logged.
+    const userId = this.authService.decode(token).authorization.userId;
     try {
       this.authService.audit(
         token,
         AuthorizedAction.modify,
         userId,
         'users/password:reset',
-        null,
+        undefined,
       );
     } catch (e) {
       if (e instanceof PermissionDeniedError) {
@@ -603,7 +600,8 @@ export class UsersService {
     }
 
     const user = await this.userRepository.findOneBy({ id: userId });
-    if (user == null) {
+    /* istanbul ignore if */
+    if (user == undefined) {
       const log = this.userResetPasswordLogRepository.create({
         type: UserResetPasswordLogType.FailDueToNoUser,
         userId: userId,
@@ -611,7 +609,14 @@ export class UsersService {
         userAgent: userAgent,
       });
       await this.userResetPasswordLogRepository.save(log);
-      throw new UserIdNotFoundError(userId);
+      throw new Error(
+        `In an password reset attempt, the operation ` +
+          `is permitted, but the user is not found! There are 4 possible reasons:\n` +
+          `1. The user is deleted right after a password reset request.\n` +
+          `2. There is a bug in the code.\n` +
+          `3. The database is corrupted.\n` +
+          `4. We are under attack!`,
+      );
     }
     const salt = bcrypt.genSaltSync(10);
     user.hashedPassword = bcrypt.hashSync(newPassword, salt);
@@ -632,17 +637,13 @@ export class UsersService {
     intro: string,
   ): Promise<void> {
     const profile = await this.userProfileRepository.findOneBy({ userId });
-    if (profile == null) {
+    if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
     }
     profile.nickname = nickname;
     profile.avatar = avatar;
     profile.intro = intro;
     await this.userProfileRepository.save(profile);
-  }
-
-  async getFollowerCount(userId: number): Promise<number> {
-    return await this.userFollowingRepository.countBy({ followeeId: userId });
   }
 
   async getFolloweeCount(userId: number): Promise<number> {
@@ -654,11 +655,11 @@ export class UsersService {
     followeeId: number,
   ): Promise<void> {
     const follower = await this.userRepository.findOneBy({ id: followerId });
-    if (follower == null) {
+    if (follower == undefined) {
       throw new UserIdNotFoundError(followerId);
     }
     const followee = await this.userRepository.findOneBy({ id: followeeId });
-    if (followee == null) {
+    if (followee == undefined) {
       throw new UserIdNotFoundError(followeeId);
     }
     if (followerId == followeeId) {
@@ -668,7 +669,7 @@ export class UsersService {
       (await this.userFollowingRepository.findOneBy({
         followerId,
         followeeId,
-      })) != null
+      })) != undefined
     ) {
       throw new UserAlreadyFollowedError(followeeId);
     }
@@ -687,7 +688,7 @@ export class UsersService {
       followerId,
       followeeId,
     });
-    if (relationship == null) {
+    if (relationship == undefined) {
       throw new UserNotFollowedYetError(followeeId);
     }
     await this.userFollowingRepository.softRemove(relationship);
@@ -695,16 +696,13 @@ export class UsersService {
 
   async getFollowers(
     followeeId: number,
-    firstFollowerId: number, // null if from start
+    firstFollowerId: number, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
-    if (pageSize <= 0) {
-      throw new BadRequestError('pageSize should be positive number');
-    }
-    if (firstFollowerId == null) {
+    if (firstFollowerId == undefined) {
       const relations = await this.userFollowingRepository.find({
         where: { followeeId: followeeId },
         take: pageSize + 1,
@@ -751,16 +749,13 @@ export class UsersService {
 
   async getFollowees(
     followerId: number,
-    firstFolloweeId: number, // null if from start
+    firstFolloweeId: number, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
   ): Promise<[UserDto[], PageRespondDto]> {
-    if (pageSize <= 0) {
-      throw new BadRequestError('pageSize should be positive number');
-    }
-    if (firstFolloweeId == null) {
+    if (firstFolloweeId == undefined) {
       const relations = await this.userFollowingRepository.find({
         where: { followerId: followerId },
         take: pageSize + 1,
@@ -806,6 +801,6 @@ export class UsersService {
   }
 
   async isUserExists(userId: number): Promise<boolean> {
-    return (await this.userRepository.findOneBy({ id: userId })) != null;
+    return (await this.userRepository.findOneBy({ id: userId })) != undefined;
   }
 }

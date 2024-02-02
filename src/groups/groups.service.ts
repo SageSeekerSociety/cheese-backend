@@ -15,7 +15,7 @@ import { PageHelper } from '../common/helper/page.helper';
 import { QuestionIdNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from '../users/DTO/user.dto';
-import { BadRequestError, UserIdNotFoundError } from '../users/users.error';
+import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { GetGroupQuestionsResultDto } from './DTO/get-group-questions.dto';
 import { GroupDto } from './DTO/group.dto';
@@ -76,7 +76,7 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if ((await this.groupsRepository.findOneBy({ name })) != null) {
+    if ((await this.groupsRepository.findOneBy({ name })) != undefined) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
@@ -119,15 +119,11 @@ export class GroupsService {
 
   async getGroups(
     userId: number,
-    keyword: string,
-    page_start_id: number | null,
+    keyword: string | undefined,
+    page_start_id: number | undefined,
     page_size: number,
     order_type: GroupQueryType,
   ): Promise<[GroupDto[], PageRespondDto]> {
-    if (page_size <= 0) {
-      throw new BadRequestError('pageSize should be positive number');
-    }
-
     let queryBuilder = this.groupsRepository.createQueryBuilder('group');
 
     if (keyword) {
@@ -136,8 +132,8 @@ export class GroupsService {
       });
     }
 
-    let prevEntity = null,
-      currEntity = null;
+    let prevEntity = undefined,
+      currEntity = undefined;
     if (!page_start_id) {
       switch (order_type) {
         case GroupQueryType.Recommend:
@@ -252,7 +248,7 @@ export class GroupsService {
       where: { id: groupId },
       relations: ['profile'],
     });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -260,7 +256,7 @@ export class GroupsService {
       groupId,
       role: 'owner',
     });
-    if (ownership == null) {
+    if (ownership == undefined) {
       throw new Error(`Group ${groupId} has no owner.`);
     }
     const ownerId = ownership.memberId;
@@ -287,7 +283,7 @@ export class GroupsService {
       (await this.groupMembershipsRepository.findOneBy({
         groupId,
         memberId: userId,
-      })) != null;
+      })) != undefined;
     const is_owner = ownerId == userId;
 
     return {
@@ -318,7 +314,7 @@ export class GroupsService {
       where: { id: groupId },
       relations: ['profile'],
     });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -327,14 +323,14 @@ export class GroupsService {
       memberId: userId,
       role: In(['owner', 'admin']),
     });
-    if (userMembership == null) {
+    if (userMembership == undefined) {
       throw new CannotDeleteGroupError(groupId);
     }
 
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if ((await this.groupsRepository.findOneBy({ name })) != null) {
+    if ((await this.groupsRepository.findOneBy({ name })) != undefined) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
@@ -350,7 +346,7 @@ export class GroupsService {
       where: { id: groupId },
       relations: ['profile'],
     });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -359,7 +355,7 @@ export class GroupsService {
       memberId: userId,
       role: 'owner',
     });
-    if (owner == null) {
+    if (owner == undefined) {
       throw new CannotDeleteGroupError(groupId);
     }
 
@@ -375,7 +371,7 @@ export class GroupsService {
     intro: string,
   ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -383,7 +379,7 @@ export class GroupsService {
       (await this.groupMembershipsRepository.findOneBy({
         groupId,
         memberId: userId,
-      })) != null
+      })) != undefined
     ) {
       throw new GroupAlreadyJoinedError(groupId);
     }
@@ -404,7 +400,7 @@ export class GroupsService {
 
   async quitGroup(userId: number, groupId: number): Promise<number> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
-    if (group == null) {
+    if (group == undefined) {
       throw new GroupIdNotFoundError(groupId);
     }
 
@@ -412,7 +408,7 @@ export class GroupsService {
       groupId,
       memberId: userId,
     });
-    if (membership == null) {
+    if (membership == undefined) {
       throw new GroupNotJoinedError(groupId);
     }
 
@@ -432,11 +428,8 @@ export class GroupsService {
     firstMemberId: number | undefined,
     page_size: number,
   ): Promise<[UserDto[], PageRespondDto]> {
-    if ((await this.groupsRepository.findOneBy({ id: groupId })) == null) {
+    if ((await this.groupsRepository.findOneBy({ id: groupId })) == undefined) {
       throw new GroupIdNotFoundError(groupId);
-    }
-    if (page_size <= 0) {
-      throw new BadRequestError('pageSize should be positive number');
     }
 
     if (!firstMemberId) {
@@ -452,7 +445,7 @@ export class GroupsService {
       );
       return PageHelper.PageStart(DTOs, page_size, (user) => user.id);
     }
-    // firstMemberId is not null
+    // firstMemberId is not undefined
     const firstMember = await this.groupMembershipsRepository.findOne({
       where: { groupId, memberId: firstMemberId },
       withDeleted: true,
@@ -460,7 +453,7 @@ export class GroupsService {
     // ! so we need to include deleted members to get the correct reference value
     // ! i.e. member joined time(id) here
 
-    if (firstMember == null) {
+    if (firstMember == undefined) {
       throw new UserIdNotFoundError(firstMemberId);
     }
     const firstMemberJoinedId = firstMember.id;
@@ -500,13 +493,6 @@ export class GroupsService {
     page_start_id: number | undefined,
     page_size: number,
   ): Promise<GetGroupQuestionsResultDto> {
-    let queryBuilder = this.groupQuestionRelationshipsRepository
-      .createQueryBuilder('relationship')
-      .where('relationship.groupId = :groupId', { groupId });
-    queryBuilder = queryBuilder.orderBy('relationship.createdAt', 'DESC');
-
-    let prevDTOs = null,
-      currDTOs = null;
     if (page_start_id) {
       const referenceRelationship =
         await this.groupQuestionRelationshipsRepository.findOneBy({
@@ -516,43 +502,62 @@ export class GroupsService {
         throw new QuestionIdNotFoundError(page_start_id);
       }
       const referenceValue = referenceRelationship.createdAt;
-      prevDTOs = await queryBuilder
+      const prev = await this.groupQuestionRelationshipsRepository
+        .createQueryBuilder('relationship')
+        .where('relationship.groupId = :groupId', { groupId })
         .andWhere('relationship.createdAt > :referenceValue', {
           referenceValue,
         })
+        .orderBy('relationship.createdAt', 'DESC')
         .limit(page_size)
         .getMany();
-      currDTOs = await queryBuilder
+      const curr = await this.groupQuestionRelationshipsRepository
+        .createQueryBuilder('relationship')
+        .where('relationship.groupId = :groupId', { groupId })
         .andWhere('relationship.createdAt <= :referenceValue', {
           referenceValue,
         })
+        .orderBy('relationship.createdAt', 'DESC')
         .limit(page_size + 1)
         .getMany();
+      const DTOs = await Promise.all(
+        curr.map((relationship) =>
+          this.questionsService.getQuestionDto(relationship.questionId),
+        ),
+      );
+      const [retDTOs, page] = PageHelper.PageMiddle(
+        prev,
+        DTOs,
+        page_size,
+        (relationship) => relationship.questionId,
+        (questionDto) => questionDto.id,
+      );
+      return {
+        questions: retDTOs,
+        page,
+      };
     } else {
-      prevDTOs = null;
-      currDTOs = await queryBuilder.limit(page_size + 1).getMany();
+      const curr = await this.groupQuestionRelationshipsRepository
+        .createQueryBuilder('relationship')
+        .where('relationship.groupId = :groupId', { groupId })
+        .orderBy('relationship.createdAt', 'DESC')
+        .limit(page_size + 1)
+        .getMany();
+      const DTOs = await Promise.all(
+        curr.map((relationship) =>
+          this.questionsService.getQuestionDto(relationship.questionId),
+        ),
+      );
+      const [retDTOs, page] = PageHelper.PageStart(
+        DTOs,
+        page_size,
+        (questionDto) => questionDto.id,
+      );
+      return {
+        questions: retDTOs,
+        page,
+      };
     }
-    const has_prev = prevDTOs && prevDTOs.length > 0;
-    const has_more = currDTOs && currDTOs.length > page_size;
-    const page_start = currDTOs[0].questionId;
-    const real_page_size =
-      currDTOs.length > page_size ? page_size : currDTOs.length;
-    const questions = await Promise.all(
-      currDTOs.map((relationship) =>
-        this.questionsService.getQuestionDto(relationship.questionId),
-      ),
-    );
-    return {
-      questions,
-      page: {
-        page_start,
-        page_size: real_page_size,
-        has_prev,
-        prev_start: has_prev ? prevDTOs[0].questionId : null,
-        has_more,
-        next_start: has_more ? currDTOs[page_size - 1].questionId : null,
-      },
-    };
   }
 }
 
