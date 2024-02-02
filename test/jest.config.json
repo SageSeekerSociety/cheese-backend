@@ -15,6 +15,7 @@
   },
   "collectCoverageFrom": [
     "src/*/**/*.ts",
-    "!src/*/**/*.dto.ts"
+    "!src/*/**/*.dto.ts",
+    "!src/common/config/configuration.ts"
   ]
 }

@@ -64,10 +64,12 @@ export class QuestionsController {
   ): Promise<SearchQuestionResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var searcherId: number | undefined;
+    let searcherId: number | undefined;
     try {
       searcherId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      // the user is not logged in
+    }
     const [questions, pageRespond] =
       await this.questionsService.searchQuestions(
         unescape(q),
@@ -127,7 +129,9 @@ export class QuestionsController {
     let userId: number | undefined;
     try {
       userId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      // the user is not logged in
+    }
     const questionDto = await this.questionsService.getQuestionDto(
       id,
       userId,
@@ -200,7 +204,9 @@ export class QuestionsController {
     let userId: number | undefined;
     try {
       userId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      // the user is not logged in
+    }
     const [followers, pageRespond] =
       await this.questionsService.getQuestionFollowers(
         id,

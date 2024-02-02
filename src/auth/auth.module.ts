@@ -8,22 +8,27 @@
  */
 
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { JWT_SECRET } from '../../.secret/jwt.config';
-import { AuthService } from './auth.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthService } from './auth.service';
 import { Session, SessionRefreshLog } from './session.entity';
 import { SessionService } from './session.service';
 
 @Module({
   imports: [
-    JwtModule.register({
-      secret: JWT_SECRET,
-      // This expire date is meaningless, as we use
-      // a field in token payload to determine whether
-      // the token is expired. Thus, we set it to a
-      // very large value.
-      signOptions: { expiresIn: '361 days' },
+    ConfigModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get<string>('jwt.secret'),
+        // This expire date is meaningless, as we use
+        // a field in token payload to determine whether
+        // the token is expired. Thus, we set it to a
+        // very large value.
+        signOptions: { expiresIn: '361 days' },
+      }),
+      inject: [ConfigService],
     }),
     TypeOrmModule.forFeature([Session, SessionRefreshLog]),
   ],

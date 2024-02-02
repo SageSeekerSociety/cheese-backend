@@ -8,7 +8,7 @@
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -20,10 +20,8 @@ describe('User Module', () => {
   const TestEmail = `test-${Math.floor(
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
-  let TestUserId: number;
   let TestRefreshTokenOld: string;
   let TestRefreshToken: string;
-  let TestTokenOld: string;
   let TestToken: string;
 
   beforeAll(async () => {
@@ -445,7 +443,6 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
-      TestUserId = respond.body.data.user.id;
       expect(respond.header['set-cookie'][0]).toMatch(
         /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
       );
@@ -468,7 +465,6 @@ describe('User Module', () => {
       expect(respond2.body.code).toBe(201);
       expect(respond2.body.data.accessToken).toBeDefined();
       TestRefreshTokenOld = TestRefreshToken;
-      TestTokenOld = TestToken;
       TestRefreshToken = respond2.header['set-cookie'][0]
         .split(';')[0]
         .split('=')[1];
@@ -550,7 +546,6 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
-      TestUserId = respond.body.data.user.id;
       expect(respond.header['set-cookie'][0]).toMatch(
         /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
       );
@@ -608,7 +603,6 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
-      TestUserId = respond.body.data.user.id;
       expect(respond.header['set-cookie'][0]).toMatch(
         /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
       );
@@ -631,7 +625,6 @@ describe('User Module', () => {
       expect(respond2.body.code).toBe(201);
       expect(respond2.body.data.accessToken).toBeDefined();
       TestRefreshTokenOld = TestRefreshToken;
-      TestTokenOld = TestToken;
       TestRefreshToken = respond2.header['set-cookie'][0]
         .split(';')[0]
         .split('=')[1];

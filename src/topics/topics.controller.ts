@@ -50,10 +50,12 @@ export class TopicsController {
   ): Promise<SearchTopicResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
-    var searcherId: number | undefined;
+    let searcherId: number | undefined;
     try {
       searcherId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      // the user is not logged in
+    }
     const [topics, pageRespond] = await this.topicsService.searchTopics(
       unescape(q),
       pageStart,
@@ -103,7 +105,9 @@ export class TopicsController {
     let userId: number | undefined;
     try {
       userId = this.authService.verify(auth).userId;
-    } catch {}
+    } catch {
+      /* eslint-disable-line no-empty */
+    }
     const topic = await this.topicsService.getTopicDtoById(
       id,
       userId,

@@ -8,7 +8,7 @@
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -22,7 +22,7 @@ describe('Topic Module', () => {
   )}@ruc.edu.cn`;
   const TestTopicCode = Math.floor(Math.random() * 10000000000).toString();
   const TestTopicPrefix = `[Test(${TestTopicCode}) Topic]`;
-  var TestToken: string;
+  let TestToken: string;
   const TopicIds: number[] = [];
 
   beforeAll(async () => {
@@ -163,7 +163,7 @@ describe('Topic Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.topics.length).toBeGreaterThanOrEqual(15);
-      for (var i = 0; i < 4; i++) {
+      for (let i = 0; i < 4; i++) {
         expect(respond.body.data.topics[i].name).toContain(TestTopicCode);
       }
 

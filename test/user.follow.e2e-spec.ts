@@ -8,7 +8,7 @@
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -20,11 +20,8 @@ describe('Following Submodule of User Module', () => {
   const TestEmail = `test-${Math.floor(
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
-  const TestTopicCode = Math.floor(Math.random() * 10000000000).toString();
-  const TestTopicPrefix = `[Test(${TestTopicCode}) Topic]`;
-  var TestToken: string;
-  const TopicIds: number[] = [];
-  var TestUserId: number;
+  let TestToken: string;
+  let TestUserId: number;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     // returns [userId, accessToken]
@@ -118,10 +115,9 @@ describe('Following Submodule of User Module', () => {
   });
 
   describe('follow logic', () => {
-    let tempUserIds: number[] = [];
-    let tempUserTokens: string[] = [];
+    const tempUserIds: number[] = [];
+    const tempUserTokens: string[] = [];
     it('should successfully create some auxiliary users first', async () => {
-      const server = app.getHttpServer();
       for (let i = 0; i < 10; i++) {
         const [id, token] = await createAuxiliaryUser();
         tempUserIds.push(id);
@@ -240,18 +236,18 @@ describe('Following Submodule of User Module', () => {
           .get(`/users/${id}/followers?page_start=${TestUserId}&page_size=1`)
           //.set('User-Agent', 'PostmanRuntime/7.26.8')
           .set('authorization', 'Bearer ' + TestToken);
-        expect(respond.body.message).toBe('Query followers successfully.');
-        expect(respond.status).toBe(200);
-        expect(respond.body.code).toBe(200);
-        expect(respond.body.data.users.length).toBe(1);
-        expect(respond.body.data.users[0].id).toBe(TestUserId);
-        expect(respond.body.data.users[0].avatar).toBe('default.jpg');
-        expect(respond.body.data.page.page_start).toBe(TestUserId);
-        expect(respond.body.data.page.page_size).toBe(1);
-        expect(respond.body.data.page.has_prev).toBe(false);
-        expect(respond.body.data.page.prev_start).toBe(0);
-        expect(respond.body.data.page.has_more).toBe(false);
-        expect(respond.body.data.page.next_start).toBe(0);
+        expect(respond2.body.message).toBe('Query followers successfully.');
+        expect(respond2.status).toBe(200);
+        expect(respond2.body.code).toBe(200);
+        expect(respond2.body.data.users.length).toBe(1);
+        expect(respond2.body.data.users[0].id).toBe(TestUserId);
+        expect(respond2.body.data.users[0].avatar).toBe('default.jpg');
+        expect(respond2.body.data.page.page_start).toBe(TestUserId);
+        expect(respond2.body.data.page.page_size).toBe(1);
+        expect(respond2.body.data.page.has_prev).toBe(false);
+        expect(respond2.body.data.page.prev_start).toBe(0);
+        expect(respond2.body.data.page.has_more).toBe(false);
+        expect(respond2.body.data.page.next_start).toBe(0);
       }
       const respond3 = await request(app.getHttpServer())
         .get(`/users/${TestUserId}/followers`)

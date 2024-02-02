@@ -8,7 +8,7 @@
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -20,11 +20,8 @@ describe('Profile Submodule of User Module', () => {
   const TestEmail = `test-${Math.floor(
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
-  const TestTopicCode = Math.floor(Math.random() * 10000000000).toString();
-  const TestTopicPrefix = `[Test(${TestTopicCode}) Topic]`;
-  var TestToken: string;
-  const TopicIds: number[] = [];
-  var TestUserId: number;
+  let TestToken: string;
+  let TestUserId: number;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({

@@ -8,7 +8,7 @@
 
 import { INestApplication, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import * as request from 'supertest';
+import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -26,8 +26,8 @@ describe('Questions Module', () => {
   const TestQuestionPrefix = `[Test(${TestQuestionCode}) Question]`;
   let TestToken: string;
   let TestUserId: number;
-  let TopicIds: number[] = [];
-  let questionIds: number[] = [];
+  const TopicIds: number[] = [];
+  const questionIds: number[] = [];
   let auxUserId: number;
   let auxAccessToken: string;
 

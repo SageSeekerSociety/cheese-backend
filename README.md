@@ -1,4 +1,5 @@
 # cheese-backend
+
 芝士后端
 
 <p align="center">
@@ -14,11 +15,13 @@ The backend of the cheese Q&A system.
 
 Before installing this backend, please make sure that you have installed the pnpm package
 manager. If you haven't installed it, you can install it with the following command:
+
 ```bash
 $ npm install -g pnpm
 ```
 
 After this repo is cloned, you should install the dependencies with the following command:
+
 ```bash
 $ pnpm install
 ```
@@ -29,25 +32,22 @@ MySQL 5.6, and the in-built Chinese word segmentation feature, which is added in
 MySQL 5.7.6. However, we recommend that you use MySQL 8.0, since we have tested
 the app with MySQL 8.0, and it works very well.
 
-Create a .secret directory in the repo directory, and create the following files:
+Create `.env` file in the root directory of the repo, and write your configuration based on the following template:
 
-### .secret/database.config.ts
+```Dotenv
+DB_TYPE=mysql
 
-```typescript
-export const DB_TYPE = 'mysql';
-export const DB_HOST = 'Your database host';
-export const DB_PORT = 3306; // Your database port
-export const DB_USERNAME = 'Your database username';
-export const DB_PASSWORD = 'Your database password';
-export const DB_DATABASE = 'Your database name';
-```
+DB_HOST=localhost
+DB_PORT=3306
+DB_USERNAME=root
+DB_PASSWORD=mysql
+DB_NAME=cheesedb
+DB_SYNCHRONIZE=true
+DB_AUTO_LOAD_ENTITIES=true
+DB_CONNECT_TIMEOUT=60000
 
-### .secret/jwt.config.ts
-
-```typescript
-// You MUST change this secret to your own secret!
-// Otherwise, your app will be as insecure as with an empty admin password!
-export const JWT_SECRET = 'Your JWT secret';
+JWT_SECRET=JWT_SECRET # You MUST change this secret to your own secret!
+# Otherwise, your app will be as insecure as with an empty admin password!
 ```
 
 ## Running the app

@@ -87,8 +87,11 @@ export class TopicsService {
 
   async getTopicDtoById(
     topicId: number,
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     viewerId?: number,
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     ip?: string,
+    /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
     userAgent?: string,
   ): Promise<TopicDto> {
     const topic = await this.topicRepository.findOneBy({ id: topicId });

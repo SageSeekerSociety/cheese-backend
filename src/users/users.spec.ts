@@ -25,6 +25,7 @@ describe('Users Module', () => {
   });
 
   it('should wait until user with id 1 exists', async () => {
+    /* eslint-disable no-constant-condition */
     while (true) {
       try {
         await usersService.getUserDtoById(1);

@@ -214,7 +214,7 @@ export class GroupsService {
             .getMany();
           break;
         case GroupQueryType.New: {
-          let queryBuilderCopy = queryBuilder.clone();
+          const queryBuilderCopy = queryBuilder.clone();
 
           prevEntity = await queryBuilder
             .orderBy('id', 'ASC')
@@ -367,6 +367,7 @@ export class GroupsService {
   async joinGroup(
     userId: number,
     groupId: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     intro: string,
   ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
@@ -560,10 +561,12 @@ export class GroupsService {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getRecommendationScore(referenceGroup: Group): number {
   throw new Error('Function getRecommendationScore not implemented.');
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function getGroupHotness(referenceGroup: Group): number {
   throw new Error('Function getGroupHotness not implemented.');
 }

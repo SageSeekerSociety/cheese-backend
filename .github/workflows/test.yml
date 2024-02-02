@@ -1,37 +1,43 @@
 name: Automatic Test
 
-on: [ push, pull_request, workflow_dispatch ]
+on: [push, pull_request, workflow_dispatch]
 
 jobs:
   test:
-  
     runs-on: ubuntu-latest
-    
+
     strategy:
       # We conduct tests on a combination of so many platforms,
       # not only to test compatibility,
       # but also to identify bugs that may not be detected without extensive repetition.
       matrix:
         # See supported MySQL versions at https://hub.docker.com/_/mysql
-        mysql-version: [ 8.0, 8.0-debian, innovation, latest ]
+        mysql-version: [8.0, 8.0-debian, innovation, latest]
         node-version: [16.x, 18.x]
         pnpm-version: [6, 8]
-    
+
     env:
-      MYSQL_USER: testuser
-      MYSQL_DB: cheese
-      MYSQL_PASSWORD: mysql-test-password
-      MYSQL_ROOT_PASSWORD: mysql-test-root-password
+      DB_TYPE: mysql
+      DB_HOST: localhost
+      DB_PORT: 3306
+      DB_USERNAME: testuser
+      DB_PASSWORD: mysql-test-password
+      DB_NAME: cheese
+      DB_SYNCHRONIZE: true
+      DB_AUTO_LOAD_ENTITIES: true
+      DB_CONNECT_TIMEOUT: 60000
+      DB_LOGGING: true
+      JWT_SECRET: Test JWT Secret
       TEST_REPEAT: 10 # Tests will be repeated
-    
+
     services:
       mysql: # See: https://joshi-aparna.github.io/blog/github-actions-mysql/
         image: mysql:${{ matrix.mysql-version }}
         env:
-          MYSQL_ROOT_PASSWORD: ${{ env.MYSQL_ROOT_PASSWORD }}
-          MYSQL_DATABASE: ${{ env.MYSQL_DB }}
-          MYSQL_USER: ${{ env.MYSQL_USER }}
-          MYSQL_PASSWORD: ${{ env.MYSQL_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ env.DB_PASSWORD }}
+          MYSQL_DATABASE: ${{ env.DB_NAME }}
+          MYSQL_USER: ${{ env.DB_USERNAME }}
+          MYSQL_PASSWORD: ${{ env.DB_PASSWORD }}
         ports:
           - 3306:3306
         options: >-
@@ -39,58 +45,42 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-          
+
     steps:
-    
-    - name: Checkout Repository
-      uses: actions/checkout@v3
-        
-    - name: Install Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
-      with:
-        node-version: ${{ matrix.node-version }}
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Install pnpm
-      uses: pnpm/action-setup@v2
-      with:
-        version: ${{ matrix.pnpm-version }}
-        run_install: false
+      - name: Install Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
 
-    - name: Install Dependencies
-      run: pnpm install
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: ${{ matrix.pnpm-version }}
+          run_install: false
 
-    - name: Create Configuration Files
-      run: |
-        mkdir .secret
-        cat > .secret/database.config.ts <<EOF
-        export const DB_TYPE = 'mysql';
-        export const DB_HOST = 'localhost';
-        export const DB_PORT = 3306;
-        export const DB_USERNAME = '${{ env.MYSQL_USER }}';
-        export const DB_PASSWORD = '${{ env.MYSQL_PASSWORD }}';
-        export const DB_DATABASE = '${{ env.MYSQL_DB }}';
-        EOF
-        cat > .secret/jwt.config.ts <<EOF
-        export const JWT_SECRET = 'Test JWT Secret';
-        EOF
+      - name: Install Dependencies
+        run: pnpm install
 
-    - name: Start Application to Create Tables
-      run: |
-        port=7777
-        pnpm start | tee output &
-        while true; do
-            if grep -q "Nest application successfully started" output; then
-                echo "Detected 'Nest application successfully started'. Stopping pnpm..."
-                pid=$(netstat -nlp | grep :$port | awk '{print $7}' | awk -F'/' '{print $1}')
-                kill $pid
-                break
-            fi
-            sleep 1
-        done
+      - name: Start Application to Create Tables
+        run: |
+          PORT=7777
+          pnpm start | tee output &
+          while true; do
+              if grep -q "Nest application successfully started" output; then
+                  echo "Detected 'Nest application successfully started'. Stopping pnpm..."
+                  pid=$(netstat -nlp | grep :$PORT | awk '{print $7}' | awk -F'/' '{print $1}')
+                  kill $pid
+                  break
+              fi
+              sleep 1
+          done
 
-    - name: Run Tests
-      run: |
-        for i in {1..${{ env.TEST_REPEAT }}}; do
-          echo "Repeating Test [$i]"
-          pnpm test --verbose
-        done
+      - name: Run Tests
+        run: |
+          for i in {1..${{ env.TEST_REPEAT }}}; do
+            echo "Repeating Test [$i]"
+            pnpm test --verbose
+          done
