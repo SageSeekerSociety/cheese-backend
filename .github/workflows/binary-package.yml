@@ -1,11 +1,11 @@
 name: Build Binary Package
 
 on:
-  # Triggers the workflow on push or pull request events
+  workflow_dispatch: # run workflow manually from the Actions tab
   push:
-  pull_request:
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+    branches:
+      - main
+      - dev
 
 jobs:
   build-package:
