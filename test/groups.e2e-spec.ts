@@ -229,6 +229,34 @@ describe('Groups Module', () => {
       expect(respond.body.data.page.has_more).toBeDefined();
       expect(respond.body.data.page.next_start).toBeDefined();
     });
+    it('should get groups by name without login', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/groups')
+        .query({ q: '数学', page_size: 2, type: 'new' })
+        //.set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('Groups fetched successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.groups[0].id).toBeDefined();
+      expect(respond.body.data.groups[0].name).toContain('数学之神膜膜喵');
+      expect(respond.body.data.groups[0].intro).toBe('不如原神');
+      expect(respond.body.data.groups[0].avatar).toBe('🥸');
+      expect(respond.body.data.groups[0].owner).toStrictEqual(TestUserDto);
+      expect(respond.body.data.groups[0].created_at).toBeDefined();
+      expect(respond.body.data.groups[0].updated_at).toBeDefined();
+      expect(respond.body.data.groups[0].member_count).toBe(1);
+      expect(respond.body.data.groups[0].question_count).toBe(0);
+      expect(respond.body.data.groups[0].answer_count).toBe(0);
+      expect(respond.body.data.groups[0].is_member).toBe(false);
+      expect(respond.body.data.groups[0].is_owner).toBe(false);
+      expect(respond.body.data.page.page_start).toBe(GroupIds[0]);
+      expect(respond.body.data.page.page_size).toBeLessThanOrEqual(2); // ! since tests are run multiple times
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBeFalsy();
+      expect(respond.body.data.page.has_more).toBeDefined();
+      expect(respond.body.data.page.next_start).toBeDefined();
+    });
     it('should get groups from half of the groups', async () => {
       const respond = await request(app.getHttpServer())
         .get('/groups')

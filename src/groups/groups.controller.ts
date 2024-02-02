@@ -76,7 +76,12 @@ export class GroupsController {
     @Query('type', new ParseEnumPipe(GroupQueryType))
     type: GroupQueryType = GroupQueryType.Recommend,
   ): Promise<GetGroupsRespondDto> {
-    const userId = this.authService.verify(auth).userId;
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const [groups, page] = await this.groupsService.getGroups(
       userId,
       key ? unescape(key) : key,
