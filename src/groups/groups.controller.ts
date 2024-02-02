@@ -49,7 +49,7 @@ export class GroupsController {
   @Post('/')
   async createGroup(
     @Body() req: CreateGroupDto,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<GroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const groupDto = await this.groupsService.createGroup(
@@ -67,7 +67,7 @@ export class GroupsController {
 
   @Get('/')
   async getGroups(
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Query('q') key?: string,
     @Query('page_start', new ParseIntPipe({ optional: true }))
     page_start?: number,
@@ -97,7 +97,7 @@ export class GroupsController {
   @Get('/:id')
   async getGroupDetail(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<GroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const groupDto = await this.groupsService.getGroupDtoById(userId, id);
@@ -111,7 +111,7 @@ export class GroupsController {
   @Put('/:id')
   async updateGroup(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Body() req: UpdateGroupDto,
   ): Promise<UpdateGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -130,7 +130,7 @@ export class GroupsController {
 
   @Delete('/:id')
   async deleteGroup(
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -167,7 +167,7 @@ export class GroupsController {
   @Post('/:id/members')
   async joinGroup(
     @Param('id', ParseIntPipe) groupId: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Body() joinGroupDto: JoinGroupDto,
   ): Promise<JoinGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -186,7 +186,7 @@ export class GroupsController {
   @Delete('/:id/members')
   async quitGroup(
     @Param('id', ParseIntPipe) groupId: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<QuitGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const member_count = await this.groupsService.quitGroup(userId, groupId);

@@ -159,7 +159,7 @@ export class AuthService {
   //
   // Parameters:
   //    token: both the pure jwt token and the one with "Bearer " or "bearer " are supported.
-  verify(token: string): Authorization {
+  verify(token: string | undefined): Authorization {
     if (token == undefined || token == '')
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
@@ -186,7 +186,7 @@ export class AuthService {
   // or resourceIds is undefined or contains a undefined can matches such a resource which has
   // no owner, type or id.
   audit(
-    token: string,
+    token: string | undefined,
     action: AuthorizedAction,
     resourceOwnerId?: number,
     resourceType?: string,
@@ -262,8 +262,8 @@ export class AuthService {
   }
 
   // Decode a token, WITHOUT verifying it.
-  decode(token: string): TokenPayload {
-    if (token == undefined || token == undefined || token == '')
+  decode(token: string | undefined): TokenPayload {
+    if (token == undefined || token == '')
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);

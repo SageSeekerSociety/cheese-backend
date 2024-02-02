@@ -58,7 +58,7 @@ export class QuestionsController {
     pageStart: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
     pageSize: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchQuestionResponseDto> {
@@ -92,7 +92,7 @@ export class QuestionsController {
   @Post('/')
   async addQuestion(
     @Body() body: AddQuestionRequestDto,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<AddQuestionResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -122,7 +122,7 @@ export class QuestionsController {
   @Get('/:id')
   async getQuestion(
     @Param('id') id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionResponseDto> {
@@ -149,7 +149,7 @@ export class QuestionsController {
   async updateQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: UpdateQuestionRequestDto,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     this.authService.audit(
       auth,
@@ -174,7 +174,7 @@ export class QuestionsController {
   @Delete('/:id')
   async deleteQuestion(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     this.authService.audit(
       auth,
@@ -196,7 +196,7 @@ export class QuestionsController {
     @Query('page_start', new ParseIntPipe({ optional: true }))
     pageStart: number,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionFollowerResponseDto> {
@@ -229,7 +229,7 @@ export class QuestionsController {
   @Put('/:id/followers')
   async followQuestion(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<FollowQuestionResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -252,7 +252,7 @@ export class QuestionsController {
   @Delete('/:id/followers')
   async unfollowQuestion(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<UnfollowQuestionResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(

@@ -267,7 +267,7 @@ export class UsersController {
   @Get('/:id')
   async getUser(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetUserRespondDto> {
@@ -294,7 +294,7 @@ export class UsersController {
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
     @Body() request: UpdateUserRequestDto,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateUserRespondDto> {
     this.authService.audit(
       auth,
@@ -318,7 +318,7 @@ export class UsersController {
   @Post('/:id/followers')
   async followUser(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<FollowUserRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -341,7 +341,7 @@ export class UsersController {
   @Delete('/:id/followers')
   async unfollowUser(
     @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<UnfollowUserRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -367,7 +367,7 @@ export class UsersController {
     @Query('page_start', new ParseIntPipe({ optional: true }))
     pageStart: number,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetFollowersRespondDto> {
@@ -403,7 +403,7 @@ export class UsersController {
     @Query('page_start', new ParseIntPipe({ optional: true }))
     pageStart: number,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetFollowersRespondDto> {

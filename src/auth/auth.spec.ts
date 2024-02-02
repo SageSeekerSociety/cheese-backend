@@ -169,18 +169,12 @@ describe('AuthService', () => {
       authService.audit('', AuthorizedAction.other, 1, 'type', 1),
     ).toThrow(new AuthenticationRequiredError());
     expect(() =>
-      authService.audit(null!, AuthorizedAction.other, 1, 'type', 1),
-    ).toThrow(new AuthenticationRequiredError());
-    expect(() =>
-      authService.audit(undefined!, AuthorizedAction.other, 1, 'type', 1),
+      authService.audit(undefined, AuthorizedAction.other, 1, 'type', 1),
     ).toThrow(new AuthenticationRequiredError());
     expect(() => authService.decode('')).toThrow(
       new AuthenticationRequiredError(),
     );
-    expect(() => authService.decode(null!)).toThrow(
-      new AuthenticationRequiredError(),
-    );
-    expect(() => authService.decode(undefined!)).toThrow(
+    expect(() => authService.decode(undefined)).toThrow(
       new AuthenticationRequiredError(),
     );
   });

@@ -44,7 +44,7 @@ export class TopicsController {
     pageStart: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
     pageSize: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchTopicResponseDto> {
@@ -77,7 +77,7 @@ export class TopicsController {
   @Post('/')
   async addTopic(
     @Body() request: AddTopicRequestDto,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<AddTopicResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -98,7 +98,7 @@ export class TopicsController {
   @Get('/:id')
   async getTopic(
     @Param('id', new ParseIntPipe()) id: number,
-    @Headers('Authorization') auth: string,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ) {
