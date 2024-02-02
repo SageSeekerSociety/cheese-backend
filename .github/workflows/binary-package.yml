@@ -20,14 +20,8 @@ jobs:
         with:
           node-version: 18.x
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
-
       - name: Install Dependencies
-        run: pnpm install
+        run: npm install
 
       - name: Package into Node Binary
         uses: lando/pkg-action@v4
