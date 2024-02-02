@@ -36,7 +36,7 @@ jobs:
         uses: lando/pkg-action@v4
         with:
           entrypoint: dist/main.js
-          os: windows
+          os: win
 
       - name: Package into Node Binary for Linux
         uses: lando/pkg-action@v4
