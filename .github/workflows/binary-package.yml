@@ -23,7 +23,16 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+          run_install: false
+
+      - name: Compile Typescript
+        run: pnpm build
+
       - name: Package into Node Binary
         uses: lando/pkg-action@v4
         with:
-          entrypoint: src/main.ts
+          entrypoint: dist/main.js
