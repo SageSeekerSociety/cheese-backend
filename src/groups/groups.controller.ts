@@ -73,7 +73,7 @@ export class GroupsController {
     page_start?: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
     page_size: number = 20,
-    @Query('type', new ParseEnumPipe(GroupQueryType))
+    @Query('type', new ParseEnumPipe(GroupQueryType, { optional: true }))
     type: GroupQueryType = GroupQueryType.Recommend,
   ): Promise<GetGroupsRespondDto> {
     let userId: number | undefined;
