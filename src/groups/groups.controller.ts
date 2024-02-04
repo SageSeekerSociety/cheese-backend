@@ -73,10 +73,15 @@ export class GroupsController {
     page_start?: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
     page_size: number = 20,
-    @Query('type', new ParseEnumPipe(GroupQueryType))
+    @Query('type', new ParseEnumPipe(GroupQueryType, { optional: true }))
     type: GroupQueryType = GroupQueryType.Recommend,
   ): Promise<GetGroupsRespondDto> {
-    const userId = this.authService.verify(auth).userId;
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const [groups, page] = await this.groupsService.getGroups(
       userId,
       key ? unescape(key) : key,

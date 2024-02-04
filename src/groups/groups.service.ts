@@ -118,7 +118,7 @@ export class GroupsService {
   }
 
   async getGroups(
-    userId: number,
+    userId: number | undefined,
     keyword: string | undefined,
     page_start_id: number | undefined,
     page_size: number,
@@ -243,7 +243,10 @@ export class GroupsService {
     }
   }
 
-  async getGroupDtoById(userId: number, groupId: number): Promise<GroupDto> {
+  async getGroupDtoById(
+    userId: number | undefined,
+    groupId: number,
+  ): Promise<GroupDto> {
     const group = await this.groupsRepository.findOne({
       where: { id: groupId },
       relations: ['profile'],
@@ -279,12 +282,13 @@ export class GroupsService {
       0,
     );
 
-    const is_member =
-      (await this.groupMembershipsRepository.findOneBy({
-        groupId,
-        memberId: userId,
-      })) != undefined;
-    const is_owner = ownerId == userId;
+    const is_member = userId
+      ? (await this.groupMembershipsRepository.findOneBy({
+          groupId,
+          memberId: userId,
+        })) != undefined
+      : false;
+    const is_owner = userId ? ownerId == userId : false;
 
     return {
       id: group.id,
