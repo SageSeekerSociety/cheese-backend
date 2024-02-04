@@ -21,7 +21,6 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { unescape } from 'querystring';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { AddTopicRequestDto, AddTopicResponseDto } from './DTO/add-topic.dto';
@@ -57,7 +56,7 @@ export class TopicsController {
       // the user is not logged in
     }
     const [topics, pageRespond] = await this.topicsService.searchTopics(
-      unescape(q),
+      q,
       pageStart,
       pageSize,
       searcherId,

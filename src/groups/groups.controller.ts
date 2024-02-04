@@ -35,7 +35,6 @@ import { JoinGroupDto, JoinGroupRespondDto } from './DTO/join-group.dto';
 import { QuitGroupRespondDto } from './DTO/quit-group.dto';
 import { UpdateGroupDto, UpdateGroupRespondDto } from './DTO/update-group.dto';
 import { GroupQueryType, GroupsService } from './groups.service';
-import { unescape } from 'querystring';
 
 @Controller('/groups')
 @UsePipes(new ValidationPipe())
@@ -84,7 +83,7 @@ export class GroupsController {
     }
     const [groups, page] = await this.groupsService.getGroups(
       userId,
-      key ? unescape(key) : key,
+      key,
       page_start ?? undefined,
       page_size,
       type,

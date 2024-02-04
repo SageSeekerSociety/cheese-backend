@@ -24,7 +24,6 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { unescape } from 'querystring';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
@@ -72,7 +71,7 @@ export class QuestionsController {
     }
     const [questions, pageRespond] =
       await this.questionsService.searchQuestions(
-        unescape(q),
+        q,
         pageStart,
         pageSize,
         searcherId,

@@ -169,7 +169,7 @@ export class QuestionSearchLog {
   // In the future, we may want to use the search history to recommend topics to users.
   // So we use fulltext index here, although it is not necessary for now.
   @Index('idx_keywords', { fulltext: true, parser: 'ngram' })
-  keywords: string;
+  keywords: string = '';
 
   @Column('int', { nullable: true })
   // A paging argument.
