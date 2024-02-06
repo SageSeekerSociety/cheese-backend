@@ -18,7 +18,7 @@
     "format": "prettier --write {src,test}/**/*.ts && git status",
     "lint": "eslint {src,test}/**/*.ts",
     "lint:fix": "eslint --fix {src,test}/**/*.ts",
-    "prepare": "husky"
+    "prepare": "node .husky/install.mjs"
   },
   "lint-staged": {
     "{src,test}/**/*.ts": [
