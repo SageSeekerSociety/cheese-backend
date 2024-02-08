@@ -2,9 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 //mport { AnswerModule } from './answer.module';
-import { Answer } from './answer.entity';
 import { CreateAnswerDto } from './DTO/create-answer.dto';
 import { UpdateAnswerDto } from './DTO/update-answer.dto';
+import { Answer } from './answer.entity';
+import { AnswerAlreadyAgreeError, AnswerAlreadyFavoriteError, AnswerNotFoundError } from './answer.error';
 
 @Injectable()
 export class AnswerService {
@@ -33,11 +34,11 @@ export class AnswerService {
     }
     
     
-    async updateAnswer(id: string, updateAnswerDto: UpdateAnswerDto): Promise<Answer> {
+    async updateAnswer(id: number, updateAnswerDto: UpdateAnswerDto): Promise<Answer> {
         const answer = await this.answerRepository.findOne({ where: { id } });
 
         if (!answer) {
-          throw new Error('Answer not found');
+          throw new AnswerNotFoundError(id);
         }
     
         // Update the answer with the data from the DTO
@@ -47,48 +48,53 @@ export class AnswerService {
         return this.answerRepository.save(answer);
     }
 
-    async deleteAnswer(id: string): Promise<void> {
+    async deleteAnswer(id: number): Promise<void> {
         await this.answerRepository.delete(id);
     }
 
-    async likeAnswer(id: string, userId: string): Promise<Answer> {
+    async agreeAnswer(id: number, userId: string): Promise<Answer> {
         // 查找要点赞的答案
         const answer = await this.answerRepository.findOne({ where: { id }});
 
         if (!answer) {
-            throw new Error('Answer not found');
+            throw new AnswerNotFoundError(id);
         }
 
         // 检查用户是否已经点过赞
-        if (answer.likes && answer.likes.includes(userId)) {
-            throw new Error('User already liked this answer');
+        if (answer.agrees && answer.agrees.includes(userId)) {
+            throw new AnswerAlreadyAgreeError(id);
         }
 
         // 更新点赞信息
-        if (!answer.likes) {
-        answer.likes = [userId];
-        } else {
-        answer.likes.push(userId);
+        if (!answer.agrees) {
+            answer.agrees = [userId];
+        } 
+        else {
+            if(answer.agree_type == 1){
+                answer.agrees.push(userId);
+                // 更新点赞计数
+                answer.agree_count = (answer.agree_count || 0) + 1;
+            }  
+            else{
+                answer.disagrees.push(userId);
+                answer.disagree_count = (answer.disagree_count || 0) + 1;
+            }
         }
-
-        // 更新点赞计数
-        answer.likesCount = (answer.likesCount || 0) + 1;
-
         // 保存更新后的答案
         return this.answerRepository.save(answer);        
     }
     
-    async favoriteAnswer(id: string, userId: string): Promise<Answer> {
+    async favoriteAnswer(id: number, userId: string): Promise<Answer> {
         // 使用提供的 answerId 查询数据库中的特定答案实体
         const answer = await this.answerRepository.findOne({ where: { id }});
 
         // 检查答案是否存在
         if (!answer) {
-            throw new Error('Answer not found');
+            throw new AnswerNotFoundError(id);
         }
 
-        if (answer.isFavorited && answer.favoritedBy.includes(userId)) {
-            throw new Error('User already favorited this answer');
+        if (answer.is_favorite&& answer.favoritedBy.includes(userId)) {
+            throw new AnswerAlreadyFavoriteError(id);
         }
         // 更新答案信息，例如将其标记为用户喜欢的答案
         if (!answer.favoritedBy) {
@@ -98,14 +104,14 @@ export class AnswerService {
               answer.favoritedBy.push(userId); // 如果用户ID不在列表中，添加用户ID
             }
           }
-        answer.isFavorited = true;
+        answer.is_favorite = true;
 
-        answer.favoriteCount = (answer.favoriteCount || 0) + 1;
+        answer.favorite_count = (answer.favorite_count || 0) + 1;
 
         return this.answerRepository.save(answer);
     }
     
-    async commentOnAnswer(id: string, comment: string, userId: string): Promise<Answer> {
+    async commentOnAnswer(id: number, comment: string, userId: string): Promise<Answer> {
         const answer = await this.answerRepository.findOne({ where: { id }});
         
         if (answer) {
@@ -123,11 +129,11 @@ export class AnswerService {
             answer.comments.push(newComment); // 如果评论列表不为空，直接添加评论
             }
 
-            answer.commentCount = (answer.commentCount || 0) + 1;
+            answer.comment_count = (answer.comment_count || 0) + 1;
 
             return this.answerRepository.save(answer); // 返回更新后的答案对象
         } else {
-            throw new Error('Answer not found');
+            throw new AnswerNotFoundError(id);
         }
     }
     
