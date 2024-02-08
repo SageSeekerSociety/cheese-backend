@@ -1,0 +1,28 @@
+services:
+  backend:
+    image: cheese_backend_prod
+    build:
+      context: .
+      target: dev
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+    
+  database:
+    image: mysql:8.0.36
+    env_file: .env
+    volumes:
+      - type: volume
+        source: cheese_db
+        target: /var/lib/mysql
+    healthcheck:
+      test: /bin/mysql ${MYSQL_DATABASE} -h localhost -u ${MYSQL_USER} -p${MYSQL_PASSWORD} --silent --execute "SELECT 1;"
+      start_period: 5s
+      start_interval: 3s
+      interval: 5m
+      timeout: 10s
+      retries: 5
+
+volumes:
+  cheese_db:
