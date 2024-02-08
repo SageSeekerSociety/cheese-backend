@@ -7,14 +7,30 @@
  *
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+/*
+
+IMPORTANT NOTICE:
+
+If you have modified this file, please run the following linux command:
+
+./node_modules/.bin/ts-json-schema-generator \
+  --path 'src/auth/auth.service.ts'          \
+  --type 'TokenPayload'                      \
+  > src/auth/token-payload.schema.json
+
+to update the schema file, which is used in validating the token payload.
+
+*/
+
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import Ajv from 'ajv';
+import { readFileSync } from 'fs';
 import {
   AuthenticationRequiredError,
   InvalidTokenError,
   PermissionDeniedError,
   TokenExpiredError,
-  TokenFormatError,
 } from './auth.error';
 
 export enum AuthorizedAction {
@@ -47,7 +63,7 @@ export function authorizedActionToString(action: AuthorizedAction): string {
 
 // This class is used as a filter.
 //
-// If all the conditions are null, it matches everything.
+// If all the conditions are undefined, it matches everything.
 // This is DANGEROUS as you can imagine, and you should avoid
 // such a powerful authorization.
 //
@@ -57,21 +73,21 @@ export function authorizedActionToString(action: AuthorizedAction): string {
 // The data field is reserved for future use.
 //
 // Examples:
-// { ownedByUser: null, types: null, resourceId: null }
+// { ownedByUser: undefined, types: undefined, resourceId: undefined }
 //      matches every resource, including the resources that are not owned by any user.
-// { ownedByUser: 123, types: null, resourceId: null }
+// { ownedByUser: 123, types: undefined, resourceId: undefined }
 //      matches all the resources owned by user whose user id is 123.
-// { ownedByUser: 123, types: ["users/profile"], resourceId: null }
+// { ownedByUser: 123, types: ["users/profile"], resourceId: undefined }
 //      matches the profile of user whose id is 123.
-// { ownedByUser: null, types: ["blog"], resourceId: [42, 95, 928] }
+// { ownedByUser: undefined, types: ["blog"], resourceId: [42, 95, 928] }
 //      matches blogs whose IDs are 42, 95 and 928.
-// { ownedByUser: null, types: [], resourceId: null }
+// { ownedByUser: undefined, types: [], resourceId: undefined }
 //      matches nothing and is meaningless.
 //
 export class AuthorizedResource {
-  ownedByUser: number; // owner's user id
-  types: string[]; // resource type
-  resourceIds: number[];
+  ownedByUser?: number; // owner's user id
+  types?: string[]; // resource type
+  resourceIds?: number[];
   data?: any; // additional data
 }
 
@@ -88,22 +104,49 @@ export class Authorization {
   permissions: Permission[];
 }
 
-class TokenPayload {
+export class TokenPayload {
   authorization: Authorization;
+  signedAt: number; // timestamp in milliseconds
   validUntil: number; // timestamp in milliseconds
 }
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(private readonly jwtService: JwtService) {
+    const tokenPayloadSchemaRaw = readFileSync(
+      'src/auth/token-payload.schema.json',
+      'utf8',
+    );
+    const tokenPayloadSchema = JSON.parse(tokenPayloadSchemaRaw);
+    this.isTokenPayloadValidate = new Ajv().compile(tokenPayloadSchema);
+  }
+
+  private isTokenPayloadValidate: (payload: any) => boolean;
+
+  private decodePayload(data: any): TokenPayload {
+    const payload = data.payload;
+    if (payload == undefined || !this.isTokenPayloadValidate(payload)) {
+      throw new Error(
+        'The token is valid, but the payload of the token is' +
+          ' not a TokenPayload object. This is ether a bug or a malicious attack.',
+      );
+    }
+    return payload as TokenPayload;
+  }
+
+  private encodePayload(payload: TokenPayload): any {
+    return { payload: payload };
+  }
 
   // Sign a token for an authorization.
   sign(authorization: Authorization, validSeconds: number = 60): string {
+    const now = Date.now();
     const payload: TokenPayload = {
       authorization: authorization,
-      validUntil: Date.now() + validSeconds * 1000,
+      signedAt: now,
+      validUntil: now + validSeconds * 1000,
     };
-    return this.jwtService.sign(payload);
+    return this.jwtService.sign(this.encodePayload(payload));
   }
 
   // Verify a token and decodes its payload.
@@ -116,33 +159,34 @@ export class AuthService {
   //
   // Parameters:
   //    token: both the pure jwt token and the one with "Bearer " or "bearer " are supported.
-  verify(token: string): Authorization {
-    if (token == null || token == undefined || token == '')
+  verify(token: string | undefined): Authorization {
+    if (token == undefined || token == '')
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
+
+    let result: any;
     try {
-      const result = this.jwtService.verify(token);
-      try {
-        const payload = result as TokenPayload;
-        if (Date.now() > payload.validUntil) throw new TokenExpiredError();
-        return payload.authorization;
-      } catch {
-        throw new TokenFormatError(token);
-      }
+      result = this.jwtService.verify(token);
     } catch {
       throw new InvalidTokenError();
     }
+
+    const payload = this.decodePayload(result);
+
+    if (Date.now() > payload.validUntil) throw new TokenExpiredError();
+
+    return payload.authorization;
   }
 
   // If the toke is invalid, or the operation is not permitted, an exception is thrown.
   //
-  // If resourceOwnerId, resourceType or resourceId is null, it means the resource has
+  // If resourceOwnerId, resourceType or resourceId is undefined, it means the resource has
   // no owner, type or id. Only the AuthorizedResource object whose ownedByUser, types
-  // or resourceIds is null or contains a null can matches such a resource which has
+  // or resourceIds is undefined or contains a undefined can matches such a resource which has
   // no owner, type or id.
   audit(
-    token: string,
+    token: string | undefined,
     action: AuthorizedAction,
     resourceOwnerId?: number,
     resourceType?: string,
@@ -156,16 +200,16 @@ export class AuthService {
     //  resourceOwnerId = Number.parseInt(resourceOwnerId as any as string);
     //if (typeof resourceId == "string")
     //  resourceId = Number.parseInt(resourceId as any as string);
-    if (resourceOwnerId !== null && typeof resourceOwnerId != 'number') {
+    if (resourceOwnerId !== undefined && typeof resourceOwnerId != 'number') {
       //Logger.error(typeof resourceOwnerId);
       throw new Error('resourceOwnerId must be a number.');
     }
-    if (resourceId !== null && typeof resourceId != 'number') {
+    if (resourceId !== undefined && typeof resourceId != 'number') {
       //Logger.error(typeof resourceId);
       throw new Error('resourceId must be a number.');
     }
     for (const permission of authorization.permissions) {
-      var actionMatches = false;
+      let actionMatches = false;
       for (const authorizedAction of permission.authorizedActions) {
         if (authorizedAction === action) {
           actionMatches = true;
@@ -175,16 +219,16 @@ export class AuthService {
       // Now, action matches.
 
       if (
-        (permission.authorizedResource.ownedByUser === null ||
+        (permission.authorizedResource.ownedByUser === undefined ||
           permission.authorizedResource.ownedByUser === resourceOwnerId) !==
         true
       )
         continue;
       // Now, owner matches.
 
-      var typeMatches =
-        permission.authorizedResource.types === null ? true : false;
-      if (permission.authorizedResource.types !== null) {
+      let typeMatches =
+        permission.authorizedResource.types === undefined ? true : false;
+      if (permission.authorizedResource.types !== undefined) {
         for (const authorizedType of permission.authorizedResource.types) {
           if (authorizedType === resourceType) {
             typeMatches = true;
@@ -194,9 +238,9 @@ export class AuthService {
       if (typeMatches == false) continue;
       // Now, type matches.
 
-      var idMatches =
-        permission.authorizedResource.resourceIds === null ? true : false;
-      if (permission.authorizedResource.resourceIds !== null) {
+      let idMatches =
+        permission.authorizedResource.resourceIds === undefined ? true : false;
+      if (permission.authorizedResource.resourceIds !== undefined) {
         for (const authorizedId of permission.authorizedResource.resourceIds) {
           if (authorizedId === resourceId) {
             idMatches = true;
@@ -215,5 +259,15 @@ export class AuthService {
       resourceType,
       resourceId,
     );
+  }
+
+  // Decode a token, WITHOUT verifying it.
+  decode(token: string | undefined): TokenPayload {
+    if (token == undefined || token == '')
+      throw new AuthenticationRequiredError();
+    if (token.indexOf('Bearer ') == 0) token = token.slice(7);
+    else if (token.indexOf('bearer ') == 0) token = token.slice(7);
+    const result = this.jwtService.decode(token);
+    return this.decodePayload(result);
   }
 }

@@ -39,8 +39,16 @@ export class Session {
   @Column('text')
   authorization: string;
 
-  @Column()
-  lastRefreshedAt: Date = new Date(0);
+  // If the sign time of a refreshToken < lastRefreshedAt,
+  // the refreshToken is invalid.
+  //
+  // This means that a refreshToken can only be used once.
+  //
+  // This column is stored as integer timestamp, because
+  // database does not support millisecond precision.
+  // int32 is not enough, so we use int64.
+  @Column('bigint')
+  lastRefreshedAt: number;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -55,7 +63,10 @@ export class SessionRefreshLog {
   sessionId: number;
 
   @Column('text')
-  refreshToken: string;
+  oldRefreshToken: string;
+
+  @Column('text')
+  newRefreshToken: string;
 
   @Column('text')
   accessToken: string;

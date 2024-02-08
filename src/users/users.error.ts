@@ -1,6 +1,6 @@
 /*
  *  Description: This file defines the errors related to users service.
- *               All the errors should extend BaseError.
+ *               All the errors in this file should extend BaseError.
  *
  *  Author(s):
  *      Nictheboy Li    <nictheboy@outlook.com>
@@ -134,19 +134,13 @@ export class EmailNotFoundError extends BaseError {
   }
 }
 
-export class NotFollowedYetError extends BaseError {
+export class UserNotFollowedYetError extends BaseError {
   constructor(public readonly followeeId: number) {
     super(
-      'NotFollowedYetError',
+      'UserNotFollowedYetError',
       `User with id ${followeeId} is not followed yet.`,
       422,
     );
-  }
-}
-
-export class BadRequestError extends BaseError {
-  constructor(public readonly message: string) {
-    super('BadRequestError', message, 400);
   }
 }
 
@@ -156,10 +150,10 @@ export class FollowYourselfError extends BaseError {
   }
 }
 
-export class AlreadyFollowedError extends BaseError {
+export class UserAlreadyFollowedError extends BaseError {
   constructor(public readonly followeeId: number) {
     super(
-      'AlreadyFollowedError',
+      'UserAlreadyFollowedError',
       `User with id ${followeeId} already followed.`,
       422,
     );

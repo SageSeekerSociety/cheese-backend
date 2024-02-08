@@ -1,8 +1,8 @@
 {
-    "editor.indentSize": "tabSize",
-    "editor.tabSize": 2,
-    "editor.codeActionsOnSave": {
-        "source.organizeImports": "always"
-    },
-    "typescript.preferences.importModuleSpecifier": "relative"
+  "editor.indentSize": "tabSize",
+  "editor.tabSize": 2,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always"
+  },
+  "typescript.preferences.importModuleSpecifier": "relative"
 }
