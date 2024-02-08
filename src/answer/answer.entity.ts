@@ -1,22 +1,26 @@
 import {
-    Column,
-    CreateDateColumn,
-    DeleteDateColumn,
-    Entity,
-    Index,
-    PrimaryGeneratedColumn,
-    UpdateDateColumn,
-  } from 'typeorm';
-import { ColumnMetadata } from 'typeorm/metadata/ColumnMetadata';
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  Index,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn
+} from 'typeorm';
+import { User } from '../users/users.entity';
   
   @Entity()
   export class Answer {
     @PrimaryGeneratedColumn()
-    id: string;
+    id: number;
   
+    @ManyToOne(() => User)
+    author: User;
+
     @Column()
     @Index({ unique: false })
-    askerUserId: number;
+    question_Id: number; //askeruser_Id
   
     // Use column type 'text' to support arbitrary length of string.
     @Column('text')
@@ -31,8 +35,11 @@ import { ColumnMetadata } from 'typeorm/metadata/ColumnMetadata';
     content: string;
   
     @Column()
-    type: number;
+    type: Answer;
   
+    @Column()
+    is_group: boolean;
+    
     @Column({ nullable: true })
     @Index({ unique: false })
     groupId?: number;
@@ -46,16 +53,25 @@ import { ColumnMetadata } from 'typeorm/metadata/ColumnMetadata';
     @DeleteDateColumn()
     deletedAt: Date;
 
-    //likes
+    //agree
     @Column('text', {array: true, nullable: true})
-    likes: string[];
+    agrees: string[];
+
+    @Column('text', {array: true, nullable: true})
+    disagrees: string[];
 
     @Column({default: 0})
-    likesCount: number;
+    agree_count: number;
 
+    @Column({default: 0})
+    disagree_count: number;
+
+    @Column({default: 0})
+    agree_type: number
+    
     //favorite
     @Column({default: false})
-    isFavorited: boolean;
+    is_favorite: boolean; // isFavorited
 
     @Column({
         type: 'simple-array',
@@ -68,13 +84,13 @@ import { ColumnMetadata } from 'typeorm/metadata/ColumnMetadata';
     favoritedBy: string[];
 
     @Column({default: 0})
-    favoriteCount: number;
+    favorite_count: number;
 
     //comment
     @Column({ type: 'simple-json', nullable: true }) 
     comments: { userId: string, comment: string, createdAt: Date }[]; 
 
     @Column({default: 0})
-    commentCount: number;
+    comment_count: number;
   
   }

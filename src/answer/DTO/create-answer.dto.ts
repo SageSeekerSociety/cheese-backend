@@ -1,4 +1,5 @@
 import { IsArray, IsInt, IsString } from 'class-validator';
+import { Answer } from '../answer.entity';
 
 export class  CreateAnswerDto {
   @IsString()
@@ -8,7 +9,7 @@ export class  CreateAnswerDto {
   content: string;
 
   @IsInt()
-  type: number;
+  type: Answer;
 
   @IsArray()
   topics: number[];
@@ -16,3 +17,4 @@ export class  CreateAnswerDto {
   @IsInt()
   groupId: number;
 }
+
