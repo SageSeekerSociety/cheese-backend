@@ -1,4 +1,4 @@
-FROM node:20-slim AS base
+FROM node:20 AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:$PATH"
@@ -32,7 +32,7 @@ WORKDIR /app
 COPY . ./
 RUN pnpm run build
 
-FROM base AS prod
+FROM node:20-slim AS prod
 ENV NODE_ENV="production"
 WORKDIR /app
 COPY . ./
@@ -40,4 +40,4 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-build /app/dist ./dist
 
 EXPOSE 8000
-CMD ["pnpm", "start:prod"]
+CMD ["node", "dist/main"]

@@ -1,10 +1,17 @@
 services:
   backend:
-    image: cheese_backend_prod
+    image: cheese_backend_dev
     build:
       context: .
       target: dev
     env_file: .env
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+        - action: rebuild
+          path: pnpm-lock.yaml
     depends_on:
       database:
         condition: service_healthy
