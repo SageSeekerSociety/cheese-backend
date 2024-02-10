@@ -2,11 +2,7 @@ import { BaseError } from '../common/error/base-error';
 
 export class AnswerNotFoundError extends BaseError {
   constructor(id: number) {
-    super(
-      'AnswerNotFoundError',
-      `Answer with id ${id} is not found.`,
-      404,
-    );
+    super('AnswerNotFoundError', `Answer with id ${id} is not found.`, 404);
   }
 }
 

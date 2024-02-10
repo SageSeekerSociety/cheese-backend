@@ -6,7 +6,7 @@ import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
 @Entity()
 @Module({
   providers: [AnswerService],
-  controllers: [AnswerController]
+  controllers: [AnswerController],
 })
 export class AnswerModule {
   @PrimaryGeneratedColumn()
@@ -17,7 +17,7 @@ export class AnswerModule {
 
   @Column()
   authorId: number;
-  
+
   @Column()
   CreateTime: Date;
 
