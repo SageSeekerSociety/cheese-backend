@@ -19,11 +19,11 @@ export class PageRespondDto {
   has_prev: boolean;
 
   @IsNumber()
-  prev_start: number;
+  prev_start?: number;
 
   @IsNumber()
   has_more: boolean;
 
   @IsNumber()
-  next_start: number;
+  next_start?: number;
 }

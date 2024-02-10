@@ -1,0 +1,96 @@
+{
+  "$ref": "#/definitions/TokenPayload",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Authorization": {
+      "additionalProperties": false,
+      "properties": {
+        "permissions": {
+          "items": {
+            "$ref": "#/definitions/Permission"
+          },
+          "type": "array"
+        },
+        "userId": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "userId",
+        "permissions"
+      ],
+      "type": "object"
+    },
+    "AuthorizedAction": {
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "type": "number"
+    },
+    "AuthorizedResource": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {},
+        "ownedByUser": {
+          "type": "number"
+        },
+        "resourceIds": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Permission": {
+      "additionalProperties": false,
+      "properties": {
+        "authorizedActions": {
+          "items": {
+            "$ref": "#/definitions/AuthorizedAction"
+          },
+          "type": "array"
+        },
+        "authorizedResource": {
+          "$ref": "#/definitions/AuthorizedResource"
+        }
+      },
+      "required": [
+        "authorizedActions",
+        "authorizedResource"
+      ],
+      "type": "object"
+    },
+    "TokenPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization": {
+          "$ref": "#/definitions/Authorization"
+        },
+        "signedAt": {
+          "type": "number"
+        },
+        "validUntil": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "authorization",
+        "signedAt",
+        "validUntil"
+      ],
+      "type": "object"
+    }
+  }
+}

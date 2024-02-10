@@ -110,7 +110,7 @@ components:
         content:
           type: string
           description: 问题详情
-        user:
+        author:
           $ref: "#/components/schemas/User"
         type:
           type: integer
@@ -270,6 +270,9 @@ components:
         created_at:
           type: integer
           format: int64
+        updated_at:
+          type: integer
+          format: int64
         member_count:
           type: integer
           format: int64
@@ -343,12 +346,13 @@ components:
             data:
               type: object
               properties:
-                refreshToken:
+                accessToken:
                   type: string
                 user:
                   $ref: "#/components/schemas/User"
               required:
-                - token
+                - accessToken
+                - user
           required:
             - data
     RegisterRequest:
@@ -378,12 +382,12 @@ components:
             data:
               type: object
               properties:
-                refreshToken:
+                accessToken:
                   type: string
                 user:
                   $ref: "#/components/schemas/User"
               required:
-                - token
+                - accessToken
                 - user
           required:
             - data
@@ -401,6 +405,12 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            Set-Cookie:
+              description: "refresh token"
+              schema:
+                type: string
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
@@ -417,12 +427,18 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            Set-Cookie:
+              description: "refresh token"
+              schema:
+                type: string
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
-  /users/auth/access-token:
-    get:
+  /users/auth/refresh-token:
+    post:
       summary: 用户刷新 token
       operationId: refresh-access-token
       security:
@@ -430,6 +446,12 @@ paths:
       responses:
         "200":
           description: OK
+          headers:
+            Set-Cookie:
+              description: "refresh token"
+              schema:
+                type: string
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
@@ -437,10 +459,15 @@ paths:
                   - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
-                      accessToken:
-                        type: string
+                      data:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
+                        required:
+                          - accessToken
                     required:
-                      - accessToken
+                      - data
   
   /users/auth/logout:
     post:
@@ -1809,6 +1836,32 @@ paths:
                         $ref: "#/components/schemas/Topic"
                     required:
                       - data
+  /topics/{id}:
+    get:
+      summary: 获取话题详情
+      operationId: getTopicDetail
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Topic"
+                    required:
+                      - data
   /groups:
     get:
       summary: 获取圈子列表
@@ -1886,7 +1939,7 @@ paths:
                 - intro
                 - avatar
       responses:
-        "200":
+        "201":
           description: OK
           content:
             application/json:
@@ -2019,7 +2072,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          users:
+                          members:
                             type: array
                             items:
                               $ref: "#/components/schemas/User"
@@ -2143,11 +2196,14 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Question"
-                      page:
-                        $ref: "#/components/schemas/Page"
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
+                          page:
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /groups/{id}/targets:

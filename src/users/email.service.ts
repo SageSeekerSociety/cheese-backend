@@ -9,9 +9,12 @@
 import { Logger } from '@nestjs/common';
 import { isEmail } from 'class-validator';
 
+/* istanbul ignore next */
+// This class cannot be tested, because it uses external service.
 export class EmailService {
   constructor() {}
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   sendPasswordResetEmail(email: string, token: string): Promise<void> {
     if (isEmail(email) === false)
       throw new Error('Invalid email address: ' + email);
