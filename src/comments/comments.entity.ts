@@ -5,6 +5,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 
 @Entity()
@@ -12,21 +14,31 @@ export class Comment {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ name: 'answer_id' })
+  answerId: number;
+
+  @Column({ name: 'user_id' })
+  userId: number;
+
+  @ManyToOne(() => Comment, { nullable: true })
+  @JoinColumn({ name: 'quote_id' })
+  quote: Comment;
+
   @Column()
   content: string;
 
-  @Column()
-  authorId: number;
+  @Column({ name: 'agree_type' })
+  agreeType: number;
 
-  @Column()
+  @Column({ name: 'agree_count' })
   agreeCount: number;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updatedAt: Date;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date;
 }

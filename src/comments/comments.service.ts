@@ -13,29 +13,25 @@ export class CommentService {
   ) {}
 
   async createComment(createCommentDto: CreateCommentDto): Promise<Comment> {
-    const { content, authorId, agreeCount } = createCommentDto;
+    const { content, answerId, agreeCount, userId } = createCommentDto;
+  
     const comment = this.commentRepository.create({
       content,
-      authorId,
+      answerId,
       agreeCount: agreeCount || 0,
+      userId,
     });
   
     const savedComment = await this.commentRepository.save(comment);
   
-    // Fetch the comment by ID after saving
-    const createdComment = await this.commentRepository.findOne(savedComment.id as FindOneOptions);
-  
-    if (!createdComment) {
-      // Handle the case where the comment is not found
-      throw new Error('Failed to retrieve the created comment.');
+    if (!savedComment) {
+      throw new Error('Failed to save the comment.');
     }
   
-    return createdComment;
+    return savedComment;
   }
   
   
-  
-
   async getCommentById(id: string | number): Promise<Comment> {
     const comment = await this.commentRepository.findOne({
       where: { id: +id },
@@ -51,7 +47,7 @@ export class CommentService {
   async getCommentDetail(id: string | number): Promise<Comment> {
     const comment = await this.commentRepository.findOne({
       where: { id: +id },
-      relations: ['relatedEntities'],
+      relations: ['quote'],
     });
 
     if (!comment) {
@@ -74,18 +70,17 @@ export class CommentService {
     await this.commentRepository.save(comment);
   }
 
-  async commentAnswer(id: number, createCommentDto: CreateCommentDto): Promise<Comment> {
-    const parentComment = await this.getCommentById(id);
+  async commentAnswer(parentCommentId: number, createCommentDto: CreateCommentDto): Promise<Comment> {
+    const parentComment = await this.getCommentById(parentCommentId);
 
-    const { DeepPartial } = require('typeorm');
-
-    const { content, authorId, agreeCount } = createCommentDto;
+    const { content, answerId, agreeCount, userId } = createCommentDto;
 
     const answerComment: DeepPartial<Comment> = {
       content,
-      authorId,
+      answerId,
       agreeCount: agreeCount || 0,
-      ...(parentComment ? { parentComment } : {}),
+      userId,
+      quote: parentComment,
     };
 
     const createdAnswer = this.commentRepository.create(answerComment);
