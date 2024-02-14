@@ -83,22 +83,14 @@ export class CommentsController {
     @Param('comment_id', ParseIntPipe) commentId: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<void> {
-    try {
-      // 根据用户验证授权信息获取用户 ID
-      const userId = this.authService.verify(auth).userId;
+    const userId = this.authService.verify(auth).userId;
 
-      if (!userId) {
-        throw new NotFoundException('Unauthorized');
-      }
-      // 调用删除评论的服务方法
-      await this.commentsService.deleteComment(commentId);
-
-      // 返回空内容表示删除成功
-      return; //默认返回204
-    } catch (error) {
-      // 处理错误并抛出异常
-      throw new Error('Error while deleting comment');
+    if (!userId) {
+      throw new NotFoundException('Unauthorized');
     }
+    await this.commentsService.deleteComment(commentId);
+
+    return;
   }
 
   @Put('/id:')
@@ -109,31 +101,22 @@ export class CommentsController {
     @Body() requestBody: { agree_type: number },
     @Headers('Authorization') auth: string | undefined,
   ): Promise<AgreeCommentResponseDto> {
-    try {
-      // 根据用户验证授权信息获取用户 ID
-      const userId = this.authService.verify(auth).userId;
+    const userId = this.authService.verify(auth).userId;
 
-      // 从请求体中获取赞同类型
-      const { agree_type } = requestBody;
+    const { agree_type } = requestBody;
 
-      // 调用赞同评论的服务方法
-      await this.commentsService.agreeComment(
-        userId,
-        answerId,
-        commentId,
-        agree_type,
-      );
+    await this.commentsService.agreeComment(
+      userId,
+      answerId,
+      commentId,
+      agree_type,
+    );
 
-      // 返回空内容表示操作成功
-      return {
-        code: 200,
-        message: '操作成功',
-        agree_type: agree_type,
-      };
-    } catch (error) {
-      // 处理错误并抛出异常
-      throw new Error('Error while agreeing to comment');
-    }
+    return {
+      code: 200,
+      message: '操作成功',
+      agree_type: agree_type,
+    };
   }
 
   @Get('/')
@@ -154,7 +137,6 @@ export class CommentsController {
         pageSize,
       );
 
-    // 返回包含评论详情、子评论和分页信息的对象
     return {
       code: 200,
       comment,

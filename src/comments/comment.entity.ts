@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
 } from 'typeorm';
-import { Answer } from '../answer/answer.entity'; // 假设您有一个名为 Question 的实体用于表示问题
+import { Answer } from '../answer/answer.entity';
 import { User } from '../users/users.entity';
 import { UserDto } from '../users/DTO/user.dto';
 import { QuestionDto } from '../questions/DTO/question.dto';
@@ -19,25 +19,25 @@ import { Question } from '../questions/questions.entity';
 @Entity()
 export class Comment {
   @PrimaryGeneratedColumn()
-  id: number; //自己的id
+  id: number;
 
   @Column()
-  content: string; //内容
+  content: string;
 
   @Column()
-  commentableId: number; //评论对象的id
+  commentableId: number;
 
   @Column()
-  commentableType: string; //评论对象的类型
+  commentableType: string;
 
   @Column()
-  agreecount: number; //认同数目
+  agreecount: number;
 
   @Column()
-  disagreecount: number; //不认同数目
+  disagreecount: number;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' }) // 假设您在 Comment 表中有一个名为 user_id 的外键列
+  @JoinColumn({ name: 'user_id' })
   user: UserDto;
 
   @OneToMany(() => Comment, (comment) => comment.parentComment)
@@ -72,7 +72,7 @@ export class Comment {
 @Entity()
 export class CommentMemberShip {
   @PrimaryGeneratedColumn()
-  id: number; //这个关系的id
+  id: number;
 
   @OneToOne(() => User)
   @JoinColumn({ name: 'member_id' })
@@ -120,11 +120,11 @@ export class CommentQuestionShip {
   id: number;
 
   @OneToMany(() => Comment, (comment) => comment.QuestionShips)
-  @JoinColumn({ name: 'comment_id' }) // 假设您在 CommentQuestionShip 表中有一个名为 question_id 的外键列
+  @JoinColumn({ name: 'comment_id' })
   comments: Comment[];
 
   @ManyToOne(() => Question)
-  @JoinColumn({ name: 'question_id' }) // 假设您在 CommentQuestionShip 表中有一个名为 question_id 的外键列
+  @JoinColumn({ name: 'question_id' })
   question: QuestionDto;
 
   @CreateDateColumn()

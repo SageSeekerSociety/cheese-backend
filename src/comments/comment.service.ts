@@ -34,12 +34,12 @@ export class CommentsService {
   ) {}
 
   async createComment(
-    userId: number, //用户ID
-    content: string, //评论内容
-    quoteId = null, //引用的Id
-    quoteUserId = null, //引用的用户的id
-    targetType: string, //评论目标的类型
-    targetId: number, //评论目标的Id
+    userId: number,
+    content: string,
+    quoteId = null,
+    quoteUserId = null,
+    targetType: string,
+    targetId: number,
   ): Promise<CommentDto> {
     const comment = this.commentsRepository.create({
       content,
@@ -92,7 +92,7 @@ export class CommentsService {
     const user = await this.usersService.getUserDtoById(userId);
     if (!user) {
       throw new NotFoundException(userId);
-    } //没找到这么个用户
+    }
     if (quoteUserId) {
       const quoteUser = await this.usersService.getUserDtoById(quoteUserId);
       if (!quoteUser) {
@@ -153,48 +153,40 @@ export class CommentsService {
         quote_id: null,
         quote_user: null,
       },
-      // 其他字段根据需要添加
     };
 
     return commentDto;
   }
 
   async deleteComment(commentId: number): Promise<void> {
-    // 从数据库中查找要删除的评论
     const comment = await this.commentsRepository.findOneBy({ id: commentId });
 
-    // 如果找不到评论，则抛出 NotFoundException
     if (!comment) {
       throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
 
-    // 执行删除操作
     await this.commentsRepository.remove(comment);
   }
 
   async commentAnswer(answerId: number, content: string): Promise<CommentDto> {
-    // 查找要评论的答案
-    // 假设您有一个名为 Answer 的实体用于表示答案
     const answer = await this.answersRepository.findOneBy({ id: answerId });
 
     if (!answer) {
       throw new Error('Answer not found');
     }
 
-    // 创建评论
     const comment = new Comment();
     comment.content = content;
-    comment.commentableType = 'answer'; // 关联评论和答案
+    comment.commentableType = 'answer';
     comment.commentableId = answer.id;
-    // 保存评论到数据库
+
     const createdComment = await this.commentsRepository.save(comment);
 
-    // 将创建的评论转换为 DTO
     const commentDto: CommentDto = {
       id: createdComment.id,
       content: createdComment.content,
-      commentableId: comment.commentableId, // 答案的 ID
-      commentableType: comment.commentableType, // 答案的类型
+      commentableId: comment.commentableId,
+      commentableType: comment.commentableType,
       user: comment.user,
       quote: {
         quote_id: null,
@@ -204,10 +196,8 @@ export class CommentsService {
       disagree_count: 0,
       agree_type: 0,
       created_at: comment.createdAt.getTime(),
-      // 其他字段赋值
     };
 
-    // 返回创建的评论 DTO
     return commentDto;
   }
 
@@ -215,8 +205,6 @@ export class CommentsService {
     questionId: number,
     content: string,
   ): Promise<CommentDto> {
-    // 查找要评论的答案
-    // 假设您有一个名为 Answer 的实体用于表示答案
     const question = await this.questionsRepository.findOneBy({
       id: questionId,
     });
@@ -228,17 +216,14 @@ export class CommentsService {
     // 创建评论
     const comment = new Comment();
     comment.content = content;
-    comment.commentableType = 'question'; // 关联评论和答案
+    comment.commentableType = 'question';
     comment.commentableId = question.id;
-    // 保存评论到数据库
     const createdComment = await this.commentsRepository.save(comment);
-
-    // 将创建的评论转换为 DTO
     const commentDto: CommentDto = {
       id: createdComment.id,
       content: createdComment.content,
-      commentableId: comment.commentableId, // 答案的 ID
-      commentableType: comment.commentableType, // 答案的类型
+      commentableId: comment.commentableId,
+      commentableType: comment.commentableType,
       user: comment.user,
       quote: {
         quote_id: null,
@@ -248,9 +233,7 @@ export class CommentsService {
       disagree_count: 0,
       agree_type: 0,
       created_at: comment.createdAt.getDate(),
-      // 其他字段赋值
     };
-    // 返回创建的评论 DTO
     return commentDto;
   }
 
@@ -258,8 +241,6 @@ export class CommentsService {
     commentId: number,
     content: string,
   ): Promise<CommentDto> {
-    // 查找要评论的答案
-    // 假设您有一个名为 Answer 的实体用于表示答案
     const Comments = await this.questionsRepository.findOneBy({
       id: commentId,
     });
@@ -268,20 +249,18 @@ export class CommentsService {
       throw new Error('Answer not found');
     }
 
-    // 创建评论
     const comment = new Comment();
     comment.content = content;
-    comment.commentableType = 'question'; // 关联评论和答案
+    comment.commentableType = 'question';
     comment.commentableId = Comments.id;
-    // 保存评论到数据库
+
     const createdComment = await this.commentsRepository.save(comment);
 
-    // 将创建的评论转换为 DTO
     const commentDto: CommentDto = {
       id: createdComment.id,
       content: createdComment.content,
-      commentableId: comment.commentableId, // 答案的 ID
-      commentableType: comment.commentableType, // 答案的类型
+      commentableId: comment.commentableId,
+      commentableType: comment.commentableType,
       user: comment.user,
       quote: {
         quote_id: null,
@@ -291,9 +270,8 @@ export class CommentsService {
       disagree_count: 0,
       agree_type: 0,
       created_at: comment.createdAt.getDate(),
-      // 其他字段赋值
     };
-    // 返回创建的评论 DTO
+
     return commentDto;
   }
 
@@ -303,39 +281,30 @@ export class CommentsService {
     pageStart: number = 0,
     pageSize: number = 20,
   ) {
-    try {
-      // 查找评论
-      const comment = await this.commentsRepository.findOneBy({
-        id: commentId,
-      });
-      if (!comment) {
-        throw new NotFoundException('Comment not found');
-      }
-
-      // 查找子评论
-      const subComments = await this.commentsRepository.find({
-        where: {
-          parentComment: { id: commentId },
-        },
-        order: {
-          id: 'ASC',
-        },
-        skip: pageStart,
-        take: pageSize,
-      });
-
-      // 返回评论详情
-      return {
-        comment,
-        subComments,
-        page: {
-          pageStart,
-          pageSize,
-        },
-      };
-    } catch (error) {
-      throw new Error('Error while fetching comment detail');
+    const comment = await this.commentsRepository.findOneBy({
+      id: commentId,
+    });
+    if (!comment) {
+      throw new NotFoundException('Comment not found');
     }
+    const subComments = await this.commentsRepository.find({
+      where: {
+        parentComment: { id: commentId },
+      },
+      order: {
+        id: 'ASC',
+      },
+      skip: pageStart,
+      take: pageSize,
+    });
+    return {
+      comment,
+      subComments,
+      page: {
+        pageStart,
+        pageSize,
+      },
+    };
   }
   async agreeComment(
     id: number,
@@ -343,35 +312,25 @@ export class CommentsService {
     commentId: number,
     agreeType: number,
   ) {
-    try {
-      // 根据 agreeType 的值执行不同的操作
-      const comment = await this.commentsRepository.findOneBy({
-        id: commentId,
-      });
-      if (!comment) {
-        throw new NotFoundException(`Comment with id ${commentId} not found`);
-      }
-      switch (agreeType) {
-        case 0:
-          break;
-        case 1:
-          // 赞同，可以执行增加赞同数等操作
-          comment.agreecount = comment.agreecount + 1;
-          break;
-        case 2:
-          // 反对，可以执行增加反对数等操作
-          comment.disagreecount = comment.disagreecount + 1;
-          break;
-        default:
-          // 其他情况，可能需要处理错误或者返回错误信息
-          throw new Error('Invalid agreeType value');
-      }
-
-      // 操作成功后返回空内容
-      return;
-    } catch (error) {
-      throw new Error('Error while agreeing comment');
+    const comment = await this.commentsRepository.findOneBy({
+      id: commentId,
+    });
+    if (!comment) {
+      throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
+    switch (agreeType) {
+      case 0:
+        break;
+      case 1:
+        comment.agreecount = comment.agreecount + 1;
+        break;
+      case 2:
+        comment.disagreecount = comment.disagreecount + 1;
+        break;
+      default:
+        throw new Error('Invalid agreeType value');
+    }
+    return;
   }
 
   async getAnswerComments(
@@ -380,19 +339,16 @@ export class CommentsService {
     pageSize: number = 20,
   ) {
     try {
-      // 假设这里是从数据库中获取评论的逻辑，这里只是一个示例
       const comments = await this.commentsRepository.find({
         where: { commentableId: answerId, commentableType: 'answer' },
         skip: pageStart,
         take: pageSize,
       });
 
-      // 假设这里是获取评论总数的逻辑，这里只是一个示例
       const totalComments = await this.commentsRepository.count({
         where: { commentableId: answerId, commentableType: 'answer' },
       });
 
-      // 返回获取的评论以及评论总数
       return {
         sub_comment_count: totalComments,
         sub_comments: comments,
