@@ -213,13 +213,13 @@ components:
           type: integer
           format: int64
           description: 评论 ID
-        answer_id:
-          type: integer
-          format: int64
-          description: 评论所属的回答 ID
-        quote:
+        commentable_id:
+          type: string
+          description: 评论对象 ID
+          example: "answer:1"
+        reply:
           type: object
-          description: 引用的评论
+          description: 回复的评论
           properties:
             id:
               type: integer
@@ -328,6 +328,171 @@ components:
         - id
         - name
         - intro
+    Insight:
+      type: object
+      description: 灵感
+      properties:
+        id:
+          type: integer
+          description: ID
+          format: int64
+        content:
+          type: string
+          description: 内容
+        author:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          description: 创建时间
+          format: int64
+        updated_at:
+          type: integer
+          description: 最后更新时间
+          format: int64
+        is_like:
+          type: boolean
+          description: 当前用户是否点赞
+        like_count:
+          type: integer
+          description: 点赞数量
+        comment_count:
+          type: integer
+          description: 评论数量
+        view_count:
+          type: integer
+          description: 浏览数量
+        medias:
+          type: array
+          description: 媒体文件，如果没有则为空数组
+          items:
+            $ref: "#/components/schemas/Media"
+        attachment:
+          $ref: "#/components/schemas/Attachment"
+      required:
+        - id
+        - content
+        - author
+        - created_at
+        - updated_at
+        - is_like
+        - like_count
+        - comment_count
+        - view_count
+        - medias
+    Attachment:
+      type: object
+      description: 附件
+      properties:
+        type:
+          type: string
+          description: 类型
+          enum:
+            - file
+            - link
+        url:
+          type: string
+          description: URL
+        title:
+          type: string
+          description: 标题
+        description:
+          type: string
+          description: 描述
+    Media:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID
+          format: int64
+        type:
+          type: string
+          description: 类型
+          enum:
+            - image
+            - video
+        url:
+          type: string
+          description: URL
+        meta:
+          oneOf:
+            - $ref: "#/components/schemas/ImageMeta"
+            - $ref: "#/components/schemas/VideoMeta"
+    ImageMeta:
+      type: object
+      description: 图片元数据
+      properties:
+        width:
+          type: integer
+          description: 宽度
+        height:
+          type: integer
+          description: 高度
+        size:
+          type: integer
+          description: 大小
+        thumbnail:
+          type: string
+          description: 缩略图 URL
+    VideoMeta:
+      type: object
+      description: 视频元数据
+      properties:
+        width:
+          type: integer
+          description: 宽度
+        height:
+          type: integer
+          description: 高度
+        size:
+          type: integer
+          description: 大小
+        duration:
+          type: integer
+          description: 时长
+        thumbnail:
+          type: string
+          description: 缩略图 URL
+    FileMeta:
+      type: object
+      description: 文件元数据
+      properties:
+        size:
+          type: integer
+          description: 大小
+          format: int64
+        name:
+          type: string
+          description: 文件名称
+        type:
+          type: string
+          description: 文件类型
+          enum:
+            - image
+            - video
+            - audio
+            - document
+            - executable
+            - other
+        expires:
+          type: integer
+          description: 过期时间，如果为 0 表示永不过期
+          format: int64
+        user:
+          $ref: "#/components/schemas/User"
+    LinkMeta:
+      type: object
+      description: 链接元数据
+      properties:
+        title:
+          type: string
+          description: 页面标题
+        abstract:
+          type: string
+          description: 页面摘要
+        image:
+          type: string
+          description: 图片 URL
     LoginRequest:
       type: object
       properties:
@@ -1595,7 +1760,7 @@ paths:
               properties:
                 content:
                   type: string
-                quote_id:
+                reply_id:
                   type: integer
                   format: int64
               required:
@@ -2629,3 +2794,519 @@ paths:
                   id:
                     type: string
                     description: 图片 ID
+  /insights:
+    post:
+      summary: 创建灵感
+      operationId: createInsight
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+                - content
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                        required:
+                          - id
+                    required:
+                      - data
+  /insights/{id}:
+    get:
+      summary: 获取灵感详情
+      operationId: getInsightDetail
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Insight"
+                    required:
+                      - data
+    put:
+      summary: 更新灵感
+      operationId: updateInsight
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+                - content
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除灵感
+      operationId: deleteInsight
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /insights/{id}/likes:
+    get:
+      summary: 获取点赞用户列表
+      operationId: getInsightLikes
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_start
+          in: query
+          description: 该页第一个点赞用户的 ID，留空即为从头开始
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页点赞用户数量
+          schema:
+            type: integer
+            format: int64
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          likes:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    put:
+      summary: 点赞灵感
+      operationId: likeInsight
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 取消点赞灵感
+      operationId: unlikeInsight
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /insights/{id}/comments:
+    get:
+      summary: 获取灵感评论列表
+      operationId: getInsightComments
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_start
+          in: query
+          description: 该页第一个评论的 ID，留空即为从头开始
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页评论数量
+          schema:
+            type: integer
+            format: int64
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          comments:
+                            type: array
+                            items:
+                              type: object
+                              allOf:
+                                - $ref: "#/components/schemas/Comment"
+                                - type: object
+                                  properties:
+                                    sub_comment_count:
+                                      type: integer
+                                      description: 子评论数量
+                                    sub_comments:
+                                      type: array
+                                      items:
+                                        $ref: "#/components/schemas/Comment"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 评论灵感
+      operationId: commentInsight
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                reply_id:
+                  type: integer
+                  format: int64
+              required:
+                - content
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                        required:
+                          - id
+                    required:
+                      - data
+  /insights/{id}/comments/{comment_id}:
+    get:
+      summary: 获取评论详情
+      operationId: getInsightCommentDetail
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: comment_id
+          in: path
+          description: 评论 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_start
+          in: query
+          description: 该页第一个子评论的 ID，留空即为从头开始
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页子评论数量
+          schema:
+            type: integer
+            format: int64
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          comment:
+                            $ref: "#/components/schemas/Comment"
+                          sub_comments:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Comment"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 回复评论
+      operationId: replyInsightComment
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: comment_id
+          in: path
+          description: 评论 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+                - content
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                        required:
+                          - id
+                    required:
+                      - data
+    delete:
+      summary: 删除评论
+      operationId: deleteInsightComment
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: comment_id
+          in: path
+          description: 评论 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /insights/{id}/comments/{comment_id}/agrees:
+    get:
+      summary: 获取赞同用户列表
+      operationId: getInsightCommentAgrees
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: comment_id
+          in: path
+          description: 评论 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_start
+          in: query
+          description: 该页第一个赞同用户的 ID，留空即为从头开始
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页赞同用户数量
+          schema:
+            type: integer
+            format: int64
+            default: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          agrees:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    put:
+      summary: 赞同评论
+      operationId: agreeInsightComment
+      parameters:
+        - name: id
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: comment_id
+          in: path
+          description: 评论 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agree_type:
+                  type: integer
+                  description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
+                  enum:
+                    - 0
+                    - 1
+                    - 2
+              required:
+                - agree_type
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
