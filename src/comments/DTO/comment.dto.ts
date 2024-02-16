@@ -3,10 +3,10 @@ import { UserDto } from '../../users/DTO/user.dto';
 export class CommentDto {
   id: number;
   commentableId: number;
-  commentableType: string;
+  commentableType: 'answer' | 'comment' | 'question';
   quote: {
-    quote_id: number | null;
-    quote_user: UserDto | null;
+    quote_id: number | undefined;
+    quote_user: UserDto | undefined;
   };
   content: string;
   user: UserDto;

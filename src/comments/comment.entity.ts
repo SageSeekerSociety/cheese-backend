@@ -13,7 +13,6 @@ import {
 import { Answer } from '../answer/answer.entity';
 import { User } from '../users/users.entity';
 import { UserDto } from '../users/DTO/user.dto';
-import { QuestionDto } from '../questions/DTO/question.dto';
 import { Question } from '../questions/questions.entity';
 
 @Entity()
@@ -22,13 +21,25 @@ export class Comment {
   id: number;
 
   @Column()
+  userId;
+
+  @Column()
   content: string;
 
   @Column()
   commentableId: number;
 
   @Column()
-  commentableType: string;
+  commentableType: 'answer' | 'comment' | 'question';
+
+  @Column()
+  quote_id: number | undefined;
+
+  @Column()
+  quote_user: UserDto | undefined;
+
+  @Column()
+  agreeType: number;
 
   @Column()
   agreecount: number;
@@ -46,11 +57,8 @@ export class Comment {
   @ManyToOne(() => Comment, (comment) => comment.subComments)
   parentComment: Comment;
 
-  @ManyToOne(() => CommentAnswerShip, (AnswerShip) => AnswerShip.comments)
-  AnswerShips: CommentAnswerShip;
-
-  @ManyToOne(() => CommentQuestionShip, (QuestionShip) => QuestionShip.comments)
-  QuestionShips: CommentQuestionShip;
+  @OneToOne(() => CommentRelationship, (relationship) => relationship.comments)
+  relationship: CommentRelationship;
 
   @OneToOne(() => CommentMemberShip, (membership) => membership.comment)
   membership: CommentMemberShip;
@@ -93,15 +101,25 @@ export class CommentMemberShip {
 }
 
 @Entity()
-export class CommentAnswerShip {
+export class CommentRelationship {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToMany(() => Comment, (comment) => comment.AnswerShips)
-  @JoinColumn({ name: 'comment_id' })
-  comments: Comment[];
+  @Column()
+  commentableId: number;
 
-  @ManyToOne(() => Answer)
+  @Column()
+  commentableType: 'answer' | 'comment' | 'question';
+
+  @ManyToOne(() => Comment, { nullable: true })
+  @JoinColumn({ name: 'comment_id' })
+  comment: Comment;
+
+  @ManyToOne(() => Question, { nullable: true })
+  @JoinColumn({ name: 'question_id' })
+  question: Question;
+
+  @ManyToOne(() => Answer, { nullable: true })
   @JoinColumn({ name: 'answer_id' })
   answer: Answer;
 
@@ -113,36 +131,4 @@ export class CommentAnswerShip {
 
   @DeleteDateColumn()
   deletedAt?: Date;
-}
-
-export class CommentQuestionShip {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @OneToMany(() => Comment, (comment) => comment.QuestionShips)
-  @JoinColumn({ name: 'comment_id' })
-  comments: Comment[];
-
-  @ManyToOne(() => Question)
-  @JoinColumn({ name: 'question_id' })
-  question: QuestionDto;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @DeleteDateColumn()
-  deletedAt?: Date;
-}
-
-@Entity()
-export class Quote {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @OneToOne(() => User)
-  @JoinColumn()
-  user: User;
 }
