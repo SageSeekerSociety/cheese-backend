@@ -48,6 +48,14 @@ DB_CONNECT_TIMEOUT=60000
 
 JWT_SECRET=JWT_SECRET # You MUST change this secret to your own secret!
 # Otherwise, your app will be as insecure as with an empty admin password!
+
+# additionally setup the following if you want to use docker-compose 
+# to setup environment
+
+MYSQL_DATABASE=${DB_NAME}
+MYSQL_ROOT_PASSWORD=root_password_for_db
+MYSQL_USER=${DB_USERNAME}
+MYSQL_PASSWORD=${DB_PASSWORD}
 ```
 
 ## Running the app
