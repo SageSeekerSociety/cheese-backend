@@ -213,11 +213,11 @@ components:
           type: integer
           format: int64
           description: 评论 ID
-        commentable_id:
-          type: string
-          description: 评论对象 ID
-          example: "answer:1"
-        reply:
+        answer_id:
+          type: integer
+          format: int64
+          description: 评论所属的回答 ID
+        quote:
           type: object
           description: 回复的评论
           properties:
