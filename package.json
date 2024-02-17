@@ -18,7 +18,7 @@
     "format": "prettier --write {src,test}/**/*.ts && git status",
     "lint": "eslint {src,test}/**/*.ts",
     "lint:fix": "eslint --fix {src,test}/**/*.ts",
-    "prepare": "husky"
+    "prepare": "node .husky/install.mjs"
   },
   "lint-staged": {
     "{src,test}/**/*.ts": [
@@ -34,10 +34,13 @@
     "@nestjs/platform-express": "^10.2.10",
     "@nestjs/typeorm": "^10.0.1",
     "@types/bcrypt": "^5.0.2",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/express": "^4.17.21",
     "ajv": "^8.12.0",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
+    "express": "^4.18.2",
     "mysql2": "^3.6.5",
     "nestjs-request-context": "^3.0.0",
     "pg": "^8.11.3",
@@ -52,8 +55,6 @@
     "@nestjs/cli": "^10.2.1",
     "@nestjs/schematics": "^10.0.3",
     "@nestjs/testing": "^10.2.10",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/express": "^4.17.21",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.10.4",
     "@types/supertest": "^2.0.16",
