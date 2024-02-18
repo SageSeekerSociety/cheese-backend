@@ -1,55 +1,177 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  UseFilters,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { AuthService } from '../auth/auth.service';
+import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { AgreeAnswerDto, AgreeAnswerRespondDto } from './DTO/agree-answer.dto';
+import { AnswerRespondDto } from './DTO/answer.dto';
 import { CreateAnswerDto } from './DTO/create-answer.dto';
-import { UpdateAnswerDto } from './DTO/update-answer.dto';
+import { FavoriteAnswersRespondDto } from './DTO/favorite-answer.dto';
+import { GetAnswersRespondDto } from './DTO/get-answers.dto';
+import { UpdateAnswerDto, UpdateRespondAnswerDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
-
-@Controller('answers')
+@Controller('/answers')
 @UsePipes(new ValidationPipe())
+@UseFilters(new BaseErrorExceptionFilter())
 export class AnswerController {
-    constructor(private readonly answerService: AnswerService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly answerService: AnswerService,
+  ) {}
 
-  @Post()
-  create(@Body() createAnswerDto: CreateAnswerDto) {
-    return this.answerService.create(createAnswerDto);
+  @Get('/question/:id/answers')
+  async getQuestionAnswers(
+    @Headers('Authorization') auth: string | undefined,
+    @Param('id', ParseIntPipe) questionId: number,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    page_start?: number,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    page_size: number = 20,
+  ): Promise<GetAnswersRespondDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
+    const [answers, page] = await this.answerService.getQuestionAnswers(
+      questionId,
+      page_start ?? undefined,
+      page_size,
+    );
+    return {
+      code: 200,
+      message: 'Answers fetched successfully.',
+      data: {
+        answers,
+        page,
+      },
+    };
   }
 
-  @Get('question/:questionId/answers')
-  getAnswersByQuestionId(
-    @Param('questionId') questionId: string,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-    @Query('sortBy') sortBy: string
-  ) {
-        return this.answerService.getAnswersByQuestionId(questionId, page, limit, sortBy);
+  @Post('/question/:id/answers')
+  async answerQuestion(
+    @Body() req: CreateAnswerDto,
+    @Headers('Authorization') auth: string | undefined,
+    @Param('id', ParseIntPipe) questionId: number,
+  ):Promise<AnswerRespondDto>{
+    const userId = this.authService.verify(auth).userId;
+    const answerDto = await this.answerService.createAnswer(
+      userId,
+      req.content,
+    );
+    return {
+      code: 200,
+      message: 'Answer created successfully.',
+      data: answerDto,
+    };
+  }
+  
+  @Get('/questions/:id/answers/:answer_id')
+  async getAnswerDetail(
+    @Headers('Authorization') auth: string | undefined,
+    @Param('id', ParseIntPipe) questionId: number,
+    @Param('answer_id', ParseIntPipe) answerId: number,
+  ): Promise<AnswerRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    const  answerDto = await this.answerService.getAnswerById(userId, questionId, answerId);
+    return {
+      code: 200,
+      message: 'Answer fetched successfully.',
+      data: answerDto,
+    };
   }
 
-  @Post(':answerId/agree')
-  likeAnswer(@Param('answerId') answerId: number, @Body('userId') userId: string) {
-    return this.answerService.agreeAnswer(answerId, userId);
+  @Put('/questions/:id/answers/:answer_id')
+  async updateAnswer(
+    @Param('id', ParseIntPipe) questionId: number,
+    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body() req: UpdateAnswerDto,
+  ): Promise<UpdateRespondAnswerDto> {
+    const userId = this.authService.verify(auth).userId;
+    await this.answerService.updateAnswer(
+      userId,
+      answerId,
+      req.content,
+    );
+    return {
+      code: 200,
+      message: 'Answer updated successfully.',
+    };
   }
 
-  @Post(':answerId/favorite')
-  favoriteAnswer(@Param('answerId') answerId: number, @Body('userId') userId: string) {
-    return this.answerService.favoriteAnswer(answerId, userId);
+  @Delete('/questions/:id/answers/:answer_id')
+  async deleteAnswer(
+    @Param('id', ParseIntPipe) questionId: number,
+    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<BaseRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    await this.answerService.deleteAnswer(userId, questionId, answerId);
+    return {
+      code: 200,
+      message: 'Answer deleted successfully.',
+    }
   }
 
-//   @Post(':answerId/comment')
-//   commentOnAnswer(
-//     @Param('answerId') answerId: string,
-//     @Body('comment') comment: string,
-//     @Body('userId') userId: string
-//   ) {
-//     return this.answerService.commentOnAnswer(answerId, comment, userId);
-//   }
+  @Put('/questions/:id/answers/:answer_id/agree')
+  async agreeAnswer(
+    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Param('id', ParseIntPipe) questionId: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body() req: AgreeAnswerDto,
+  ): Promise<AgreeAnswerRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    const agreedAnswer =  await this.answerService.agreeAnswer(answerId, userId, req.agree_type);
+    return {
+      code: 200,
+      message: 'Answer agreed successfully.',
+      data: agreedAnswer,
+    };
+  }
+  
 
-  @Put(':id')
-  updateAnswer(@Param('id') id: number, @Body() updateAnswerDto: UpdateAnswerDto) {
-        return this.answerService.updateAnswer(id, updateAnswerDto);
+  @Put('/questions/:id/answers/:answer_id/favorite')
+  async favoriteAnswer(
+    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Param('id', ParseIntPipe) questionId: number,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<FavoriteAnswersRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    const answer = await this.answerService.favoriteAnswer(answerId, userId);
+    
+    return {
+      code: 200,
+      message: 'Answer favorited successfully.',
+      data: { answer },
+    };
   }
 
-  @Delete(':id')
-  deleteAnswer(@Param('id') id: number) {
-        return this.answerService.deleteAnswer(id);
+  @Delete('/questions/:id/answers/:answer_id/favorite')
+  async unfavoriteAnswer(
+    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Param('id', ParseIntPipe) questionId: number,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<BaseRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    await this.answerService.unfavoriteAnswer(answerId, userId);
+    return {
+      code: 204,
+      message: 'No content.',
+    };
   }
-
 }

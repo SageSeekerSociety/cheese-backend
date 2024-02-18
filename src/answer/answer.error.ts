@@ -29,3 +29,13 @@ export class AnswerAlreadyFavoriteError extends BaseError {
     );
   }
 }
+
+export class AnswerAlreadyUnfavoriteError extends BaseError {
+  constructor(id: number) {
+    super(
+      'AnswerAlreadyUnfavoriteError',
+      `Answer with id ${id} is already unfavorited.`,
+      400,
+    );
+  }
+}
