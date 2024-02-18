@@ -328,4 +328,8 @@ describe('Answers Module', () => {
   afterAll(async () => {
     await app.close();
   });
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> dev/dev-hmx

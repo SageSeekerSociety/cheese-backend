@@ -1,7 +1,7 @@
 import { IsArray, IsInt, IsString } from 'class-validator';
 import { Answer } from '../answer.entity';
 
-export class  CreateAnswerDto {
+export class CreateAnswerDto {
   @IsString()
   readonly title: string;
 
@@ -17,4 +17,3 @@ export class  CreateAnswerDto {
   @IsInt()
   readonly groupId: number;
 }
-
