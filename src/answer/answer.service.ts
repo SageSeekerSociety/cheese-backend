@@ -50,12 +50,11 @@ export class AnswerService {
         .orderBy('answer.createdAt');
         let prevPage = undefined, currPage = undefined;
         if(!page_start){
-            //排序？
             currPage = await queryBuilder.limit(page_size + 1).getMany();
             const currDto = await Promise.all(currPage.map(async (entity) => {
-                const userId = await this.getUserByAnswer(entity.id);
+                const userId = entity.id; 
                 return this.getAnswerById(userId, questionId, entity.id);
-            }));
+            }));            
             return PageHelper.PageStart(
                 currDto,
                 page_size,
@@ -79,8 +78,12 @@ export class AnswerService {
                 .limit(page_size + 1)
                 .getMany();
 
+            // const currDto = await Promise.all(currPage.map(async (entity) => {
+            //     const userId = await this.getUserByAnswer(entity.id);
+            //     return this.getAnswerById(userId, questionId, entity.id);
+            // }));
             const currDto = await Promise.all(currPage.map(async (entity) => {
-                const userId = await this.getUserByAnswer(entity.id);
+                const userId = entity.id; 
                 return this.getAnswerById(userId, questionId, entity.id);
             }));
             return PageHelper.PageMiddle(
@@ -93,16 +96,6 @@ export class AnswerService {
 
         }
         
-    }
-    
-    async getUserByAnswer(answerId: number){
-        const answer = await this.answerRepository.findOne({
-            where: {id: answerId},
-        });
-        if(!answer){
-            throw new AnswerNotFoundError(answerId)
-        }
-        return answer.id;
     }
 
     async getAnswerById(
@@ -161,26 +154,22 @@ export class AnswerService {
     }
 
     async agreeAnswer(id: number, userId: number, agree_type: number): Promise<AgreeAnswerDto> {
-        // 查找要点赞的答案
         const answer = await this.answerRepository.findOne({ where: { id }});
 
         if (!answer) {
             throw new AnswerNotFoundError(id);
         }
 
-        // 检查用户是否已经点过赞
         if (answer.agrees && answer.agrees.includes(userId)) {
             throw new AnswerAlreadyAgreeError(id);
         }
 
-        // 更新点赞信息
         if (!answer.agrees) {
             answer.agrees = [userId];
         } 
         else {
             if(agree_type == 1){
                 answer.agrees.push(userId);
-                // 更新点赞计数
                 answer.agree_count = (answer.agree_count || 0) + 1;
             }  
             else{
@@ -188,7 +177,6 @@ export class AnswerService {
                 answer.disagree_count = (answer.disagree_count || 0) + 1;
             }
         }
-        // 保存更新后的答案
         await this.answerRepository.save(answer);   
         const userDto = await this.usersService.getUserDtoById(userId);
         return {
@@ -202,10 +190,7 @@ export class AnswerService {
     }
     
     async favoriteAnswer(id: number, userId: number): Promise<AnswerDto> {
-        // 使用提供的 answerId 查询数据库中的特定答案实体
         const answer = await this.answerRepository.findOne({ where: { id }});
-
-        // 检查答案是否存在
         if (!answer) {
             throw new AnswerNotFoundError(id);
         }
@@ -213,12 +198,11 @@ export class AnswerService {
         if (answer.is_favorite&& answer.favoritedBy.includes(userId)) {
             throw new AnswerAlreadyFavoriteError(id);
         }
-        // 更新答案信息
         if (!answer.favoritedBy) {
-            answer.favoritedBy = [userId]; // 如果favoritedBy为空，创建一个新的列表并添加用户ID
+            answer.favoritedBy = [userId]; 
           } else {
             if (!answer.favoritedBy.includes(userId)) {
-              answer.favoritedBy.push(userId); // 如果用户ID不在列表中，添加用户ID
+              answer.favoritedBy.push(userId); 
             }
           }
         answer.is_favorite = true;
@@ -240,7 +224,6 @@ export class AnswerService {
         if(!answer){
             throw new AnswerNotFoundError(answerId);
         }
-        //更新答案信息
         if (answer.is_favorite&& answer.favoritedBy.includes(userId)) {
             answer.favorite_count -= 1;
             answer.is_favorite = false;
