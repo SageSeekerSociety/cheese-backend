@@ -3,17 +3,17 @@ import { Answer } from '../answer.entity';
 
 export class CreateAnswerDto {
   @IsString()
-  title: string;
+  readonly title: string;
 
   @IsString()
-  content: string;
+  readonly content: string;
 
   @IsInt()
-  type: Answer;
+  readonly type: Answer;
 
   @IsArray()
-  topics: number[];
+  readonly topics: number[];
 
   @IsInt()
-  groupId: number;
+  readonly groupId: number;
 }

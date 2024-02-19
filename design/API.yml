@@ -579,7 +579,7 @@ paths:
                         $ref: "#/components/schemas/User"
                     required:
                       - data
-    put:
+    put: 
       summary: 更新用户信息
       operationId: updateUserInfo
       parameters:

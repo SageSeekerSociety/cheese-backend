@@ -63,15 +63,12 @@ export class Answer {
   @Column({ default: 0 })
   agree_count: number;
 
-  @Column({ default: 0 })
-  disagree_count: number;
-
-  @Column({ default: 0 })
-  agree_type: number;
-
-  //favorite
-  @Column({ default: false })
-  is_favorite: boolean; // isFavorited
+    @Column({default: 0})
+    disagree_count: number;
+    
+    //favorite
+    @Column({default: false})
+    is_favorite: boolean; // isFavorited
 
   @Column({
     type: 'simple-array',
@@ -81,15 +78,9 @@ export class Answer {
       from: (value: string) => JSON.parse(value),
     },
   })
-  favoritedBy: string[];
+  favoritedBy: number[];
 
-  @Column({ default: 0 })
-  favorite_count: number;
-
-  //comment
-  @Column({ type: 'simple-json', nullable: true })
-  comments: { userId: string; comment: string; createdAt: Date }[];
-
-  @Column({ default: 0 })
-  comment_count: number;
-}
+    @Column({default: 0})
+    favorite_count: number;
+  
+  }
