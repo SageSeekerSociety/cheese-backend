@@ -2,17 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Answer } from '../answer/answer.entity';
+import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { Question } from '../questions/questions.entity';
 import { UsersService } from '../users/users.service';
+import { AgreeCommentDto } from './DTO/agreeComment.dto';
 import { CommentResponseDto } from './DTO/comment.dto';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { GetCommentsResponseDto } from './DTO/getComments.dto';
 import {
   Comment,
-  CommentRelationship,
   CommentMemberShip,
+  CommentRelationship,
 } from './comment.entity';
-import { GetCommentsResponseDto } from './DTO/getComments.dto';
-import { AgreeCommentDto } from './DTO/agreeComment.dto';
 
 @Injectable()
 export class CommentsService {
@@ -22,9 +22,9 @@ export class CommentsService {
     private commentsRepository: Repository<Comment>,
     @InjectRepository(CommentMemberShip)
     private commentMembershipsRepository: Repository<CommentMemberShip>,
-    @InjectRepository(CommentAnswerShip)
-    private commentRelationshipRepository: Repository<CommentRelationship>,
     @InjectRepository(CommentRelationship)
+    private commentRelationshipRepository: Repository<CommentRelationship>,
+    @InjectRepository(Answer)
     private answersRepository: Repository<Answer>,
     @InjectRepository(Question)
     private questionsRepository: Repository<Question>,

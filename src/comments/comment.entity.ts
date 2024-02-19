@@ -1,19 +1,19 @@
 import {
   Column,
   CreateDateColumn,
+  DeleteDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   OneToOne,
-  JoinColumn,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  DeleteDateColumn,
 } from 'typeorm';
 import { Answer } from '../answer/answer.entity';
-import { User } from '../users/users.entity';
-import { UserDto } from '../users/DTO/user.dto';
 import { Question } from '../questions/questions.entity';
+import { UserDto } from '../users/DTO/user.dto';
+import { User } from '../users/users.entity';
 
 @Entity()
 export class Comment {
@@ -56,9 +56,6 @@ export class Comment {
 
   @ManyToOne(() => Comment, (comment) => comment.subComments)
   parentComment: Comment;
-
-  @OneToOne(() => CommentRelationship, (relationship) => relationship.comments)
-  relationship: CommentRelationship;
 
   @OneToOne(() => CommentMemberShip, (membership) => membership.comment)
   membership: CommentMemberShip;

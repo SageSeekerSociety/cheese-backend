@@ -1,16 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
-import { UsersModule } from '../users/users.module';
 import { QuestionsModule } from '../questions/questions.module';
-import { Comment } from './comment.entity';
-import { CommentMemberShip, CommentAnswerShip } from './comment.entity';
+import { UsersModule } from '../users/users.module';
 import { CommentsController } from './comment.controller';
+import { Comment, CommentMemberShip } from './comment.entity';
 import { CommentsService } from './comment.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Comment, CommentMemberShip, CommentAnswerShip]),
+    TypeOrmModule.forFeature([Comment, CommentMemberShip]),
     AuthModule,
     UsersModule,
     QuestionsModule,
