@@ -1,5 +1,6 @@
 import {
   Body,
+  Controller,
   Delete,
   Get,
   Headers,
@@ -8,17 +9,21 @@ import {
   ParseIntPipe,
   Post,
   Put,
+  Query,
+  UseFilters,
+  UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { Controller, UsePipes, UseFilters } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { AgreeCommentResponseDto } from './DTO/agreeComment.dto';
-import { DeleteCommentRespondDto } from './DTO/deleteComment.dto';
-import { CommentsService } from './comment.service';
+import {
+  AgreeCommentDto,
+  AgreeCommentResponseDto,
+} from './DTO/agreeComment.dto';
 import { CommentResponseDto } from './DTO/comment.dto';
+import { DeleteCommentRespondDto } from './DTO/deleteComment.dto';
 import { GetCommentsResponseDto } from './DTO/getComments.dto';
-import { AgreeCommentDto } from './DTO/agreeComment.dto';
+import { CommentsService } from './comment.service';
 @Controller('/comments')
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
@@ -28,7 +33,7 @@ export class CommentsController {
     private readonly authService: AuthService,
   ) {}
 
-  @Get('/:comment_Id')
+  @Get('/commentType/commentId')
   async getComments(
     @Param('comment_Id', ParseIntPipe) commentId: number,
     @Query('page_start', new ParseIntPipe({ optional: true }))
@@ -52,7 +57,7 @@ export class CommentsController {
     };
   }
 
-  @Post('/commentableType/commentableId')
+  @Post('/')
   async createComment(
     @Param('CommentableType')
     CommentableType: 'answer' | 'comment' | 'question',
@@ -74,7 +79,7 @@ export class CommentsController {
     ).data;
     return {
       code: 200,
-      message: 'Create comment successfully',
+      message: 'Comment created successfully',
       data: data,
     };
   }

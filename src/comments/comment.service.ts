@@ -98,7 +98,7 @@ export class CommentsService {
       }
       return {
         code: 200,
-        message: 'comment successfully',
+        message: 'Comment created successfully',
         data: {
           id: comment.id,
           commentableId: CommentableId,
