@@ -9,6 +9,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { PrismaService } from '../common/prisma.service';
 import { EmailService } from './email.service';
 import { UsersController } from './users.controller';
 import {
@@ -38,7 +39,7 @@ import { UsersService } from './users.service';
     AuthModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService, EmailService],
+  providers: [UsersService, EmailService, PrismaService],
   exports: [UsersService],
 })
 export class UsersModule {}

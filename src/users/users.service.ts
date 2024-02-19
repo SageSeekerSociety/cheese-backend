@@ -21,6 +21,7 @@ import {
 import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { PrismaService } from '../common/prisma.service';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import {
@@ -76,6 +77,7 @@ export class UsersService {
     private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
+    private readonly prismaService: PrismaService,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -801,6 +803,6 @@ export class UsersService {
   }
 
   async isUserExists(userId: number): Promise<boolean> {
-    return (await this.userRepository.findOneBy({ id: userId })) != undefined;
+    return (await this.prismaService.user.count({ where: { id: userId } })) > 0;
   }
 }
