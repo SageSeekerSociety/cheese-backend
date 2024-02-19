@@ -568,8 +568,8 @@ paths:
             schema:
               $ref: "#/components/schemas/RegisterRequest"
       responses:
-        "200":
-          description: OK
+        "201":
+          description: User registered successfully
           headers:
             Set-Cookie:
               description: "refresh token"
@@ -1994,8 +1994,8 @@ paths:
               required:
                 - name
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Topic created successfully
           content:
             application/json:
               schema:
@@ -2118,7 +2118,7 @@ paths:
                 - avatar
       responses:
         "201":
-          description: OK
+          description: Group created successfully
           content:
             application/json:
               schema:
@@ -2881,7 +2881,7 @@ paths:
                 - content
       responses:
         "201":
-          description: Created
+          description: Insight created successfully
           content:
             application/json:
               schema:
@@ -3141,7 +3141,7 @@ paths:
                 - content
       responses:
         "201":
-          description: Created
+          description: Comment for insight created successfully
           content:
             application/json:
               schema:
@@ -3246,7 +3246,7 @@ paths:
                 - content
       responses:
         "201":
-          description: Created
+          description: Reply for insight comment created successfully
           content:
             application/json:
               schema:
