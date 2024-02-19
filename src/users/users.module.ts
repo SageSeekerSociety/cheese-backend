@@ -20,7 +20,7 @@ import {
   UserRegisterLog,
   UserRegisterRequest,
   UserResetPasswordLog,
-} from './users.entity';
+} from './users.legacy.entity';
 import { UsersService } from './users.service';
 
 @Module({

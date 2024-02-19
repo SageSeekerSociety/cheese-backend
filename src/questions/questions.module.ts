@@ -18,7 +18,7 @@ import {
   QuestionQueryLog,
   QuestionSearchLog,
   QuestionTopicRelation,
-} from './questions.entity';
+} from './questions.legacy.entity';
 import { QuestionsService } from './questions.service';
 
 @Module({

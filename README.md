@@ -45,6 +45,7 @@ DB_NAME=cheesedb
 DB_SYNCHRONIZE=true
 DB_AUTO_LOAD_ENTITIES=true
 DB_CONNECT_TIMEOUT=60000
+TYPEORM_DB_LOGGING=false
 
 JWT_SECRET=JWT_SECRET # You MUST change this secret to your own secret!
 # Otherwise, your app will be as insecure as with an empty admin password!

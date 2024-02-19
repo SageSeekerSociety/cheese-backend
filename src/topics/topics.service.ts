@@ -13,8 +13,8 @@ import { Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { TopicDto } from './DTO/topic.dto';
-import { Topic, TopicSearchLog } from './topics.entity';
 import { TopicAlreadyExistsError, TopicNotFoundError } from './topics.error';
+import { Topic, TopicSearchLog } from './topics.legacy.entity';
 
 @Injectable()
 export class TopicsService {

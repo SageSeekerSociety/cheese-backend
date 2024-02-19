@@ -5,25 +5,25 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 export default () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   database: {
-    type: process.env.DB_TYPE,
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || '3306', 10),
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    synchronize: process.env.DB_SYNCHRONIZE === 'true',
-    logging: process.env.DB_LOGGING === 'true',
-    autoLoadEntities: process.env.DB_AUTO_LOAD_ENTITIES === 'true',
+    type: process.env.TYPEORM_DB_TYPE,
+    host: process.env.TYPEORM_DB_HOST,
+    port: parseInt(process.env.TYPEORM_DB_PORT || '3306', 10),
+    username: process.env.TYPEORM_DB_USERNAME,
+    password: process.env.TYPEORM_DB_PASSWORD,
+    database: process.env.TYPEORM_DB_NAME,
+    synchronize: process.env.TYPEORM_DB_SYNCHRONIZE === 'true',
+    logging: process.env.TYPEORM_DB_LOGGING === 'true',
+    autoLoadEntities: process.env.TYPEORM_DB_AUTO_LOAD_ENTITIES === 'true',
     ...(isMySQL()
       ? {
           connectTimeout: parseInt(
-            process.env.DB_CONNECT_TIMEOUT || '60000',
+            process.env.TYPEORM_DB_CONNECT_TIMEOUT || '60000',
             10,
           ),
         }
       : {
           ConnectTimeoutMS: parseInt(
-            process.env.DB_CONNECT_TIMEOUT || '60000',
+            process.env.TYPEORM_DB_CONNECT_TIMEOUT || '60000',
             10,
           ),
         }),

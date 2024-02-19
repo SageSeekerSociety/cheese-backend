@@ -24,18 +24,6 @@ import { PageHelper } from '../common/helper/page.helper';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import {
-  User,
-  UserFollowingRelationship,
-  UserLoginLog,
-  UserProfile,
-  UserProfileQueryLog,
-  UserRegisterLog,
-  UserRegisterLogType,
-  UserRegisterRequest,
-  UserResetPasswordLog,
-  UserResetPasswordLogType,
-} from './users.entity';
-import {
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
   EmailNotFoundError,
@@ -53,6 +41,18 @@ import {
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
 } from './users.error';
+import {
+  User,
+  UserFollowingRelationship,
+  UserLoginLog,
+  UserProfile,
+  UserProfileQueryLog,
+  UserRegisterLog,
+  UserRegisterLogType,
+  UserRegisterRequest,
+  UserResetPasswordLog,
+  UserResetPasswordLogType,
+} from './users.legacy.entity';
 
 @Injectable()
 export class UsersService {
