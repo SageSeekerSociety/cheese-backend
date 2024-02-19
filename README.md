@@ -26,29 +26,52 @@ After this repo is cloned, you should install the dependencies with the followin
 $ pnpm install
 ```
 
-You need to create a database for this backend. We require that you must use MySQL,
-version >= 5.7.6, since we have used the fulltext index feature, which is added in
-MySQL 5.6, and the in-built Chinese word segmentation feature, which is added in
-MySQL 5.7.6. However, we recommend that you use MySQL 8.0, since we have tested
-the app with MySQL 8.0, and it works very well.
+You need to create a database for this backend. We recommend you to use PostgreSQL,
+because we have tested the app with PostgreSQL, and it works very well.
 
-Create `.env` file in the root directory of the repo, and write your configuration based on the following template:
+If you want to use other database, you need to modify src/app.prisma. Replace
+```prisma
+provider = "postgresql"
+```
+with what you want to use, such as
+```prisma
+provider = "mysql"
+```
+and recompile the prisma client with the following command:
+```bash
+pnpm build-prisma
+```
+
+Create `.env` file in the root directory of the repo, and write your configuration based
+on the following template:
 
 ```Dotenv
-DB_TYPE=mysql
+# The port that the app will listen to
+PORT=3000
 
-DB_HOST=localhost
-DB_PORT=3306
-DB_USERNAME=root
-DB_PASSWORD=mysql
-DB_NAME=cheesedb
-DB_SYNCHRONIZE=true
-DB_AUTO_LOAD_ENTITIES=true
-DB_CONNECT_TIMEOUT=60000
-TYPEORM_DB_LOGGING=false
-
-JWT_SECRET=JWT_SECRET # You MUST change this secret to your own secret!
+# The secret used to sign the JWT token
+# You MUST change this secret to your own secret!
 # Otherwise, your app will be as insecure as with an empty admin password!
+JWT_SECRET="test-secret"
+
+# The connection URL of the database for Prisma
+# See https://www.prisma.io/docs/orm/reference/connection-urls for more information
+PRISMA_DATABASE_URL="postgresql://username:mypassword@localhost:5432/mydb?schema=sample"
+
+# TypeORM configuration for the database
+# In our legacy code, we use TypeORM to connect to the database
+# We plan to remove TypeORM in the future, but you still need to provide the configuration now.
+TYPEORM_DB_TYPE=postgres
+TYPEORM_DB_HOST=localhost
+TYPEORM_DB_PORT=5432
+TYPEORM_DB_USERNAME=username
+TYPEORM_DB_PASSWORD=mypassword
+TYPEORM_DB_NAME=mydb
+TYPEORM_DB_SYNCHRONIZE=true # This option is used to synchronize the database schema with the entities
+                            # Set it to false in production.
+TYPEORM_DB_AUTO_LOAD_ENTITIES=true
+TYPEORM_DB_CONNECT_TIMEOUT=60000
+TYPEORM_DB_LOGGING=false
 ```
 
 ## Running the app
@@ -64,6 +87,20 @@ $ pnpm run start:dev
 $ pnpm run start:prod
 ```
 
+## Build
+
+Nest.js is a framework that can be run directly without building, but you can still build the app with the following command:
+
+```bash
+$ pnpm build
+```
+
+If you add of modify .prisma files, you need to recompile the prisma client with the following command:
+
+```bash
+$ pnpm build-prisma
+```
+
 ## Test
 
 We mainly use e2e tests to test the app, because the app is mainly responsible for CRUD operations, and the e2e tests can test the app more comprehensively.
@@ -76,16 +113,3 @@ $ pnpm run test
 $ pnpm run test:cov
 ```
 With the commands above, all tests, including e2e tests and unit tests, will be run.
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](LICENSE).
