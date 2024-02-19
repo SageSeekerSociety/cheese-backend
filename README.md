@@ -72,6 +72,14 @@ TYPEORM_DB_SYNCHRONIZE=true # This option is used to synchronize the database sc
 TYPEORM_DB_AUTO_LOAD_ENTITIES=true
 TYPEORM_DB_CONNECT_TIMEOUT=60000
 TYPEORM_DB_LOGGING=false
+
+# additionally setup the following if you want to use docker-compose 
+# to setup environment
+
+MYSQL_DATABASE=${DB_NAME}
+MYSQL_ROOT_PASSWORD=root_password_for_db
+MYSQL_USER=${DB_USERNAME}
+MYSQL_PASSWORD=${DB_PASSWORD}
 ```
 
 ## Running the app
