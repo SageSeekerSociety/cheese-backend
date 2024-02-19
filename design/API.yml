@@ -737,7 +737,10 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/User"
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
                     required:
                       - data
     put:
@@ -1198,7 +1201,10 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/Question"
+                        type: object
+                        properties:
+                          question:
+                            $ref: "#/components/schemas/Question"
                     required:
                       - data
     put:
@@ -1998,7 +2004,11 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/Topic"
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
                     required:
                       - data
   /topics/{id}:
@@ -2024,7 +2034,10 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/Topic"
+                        type: object
+                        properties:
+                          topic:
+                            $ref: "#/components/schemas/Topic"
                     required:
                       - data
   /groups:
@@ -2114,7 +2127,11 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/Group"
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
                     required:
                       - data
   /groups/{id}:
@@ -2140,7 +2157,10 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/Group"
+                        type: object
+                        properties:
+                          group:
+                            $ref: "#/components/schemas/Group"
                     required:
                       - data
     put:
@@ -2418,11 +2438,14 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/GroupTarget"
-                      page:
-                        $ref: "#/components/schemas/Page"
+                        type: object
+                        properties:
+                          targets:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/GroupTarget"
+                          page:
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -2470,7 +2493,11 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/GroupTarget"
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
                     required:
                       - data
   /groups/{id}/targets/{target_id}:
@@ -2640,54 +2667,56 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                              description: 动态 ID
-                            from:
-                              type: string
-                              description: 动态来源
-                              enum:
-                                - follow_question
-                                - follow_user
-                                - follow_topic
-                                - hot
-                                - personalized
-                            type:
-                              type: string
-                              description: 动态类型
-                              enum:
-                                - question
-                                - answer
-                            data:
-                              type: object
-                              description: 动态数据
-                              oneOf:
-                                - $ref: "#/components/schemas/Question"
-                                - $ref: "#/components/schemas/Answer"
-                          required:
-                            - from
-                            - type
-                            - data
-                      page:
                         type: object
                         properties:
-                          page_size:
-                            type: integer
-                            format: int64
-                            description: 每页动态数量
-                          next_start:
-                            type: string
-                            description: 下一页第一条动态的 ID
-                          has_more:
-                            type: boolean
-                            description: 是否还有更多动态
+                          feeds:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  description: 动态 ID
+                                from:
+                                  type: string
+                                  description: 动态来源
+                                  enum:
+                                    - follow_question
+                                    - follow_user
+                                    - follow_topic
+                                    - hot
+                                    - personalized
+                                type:
+                                  type: string
+                                  description: 动态类型
+                                  enum:
+                                    - question
+                                    - answer
+                                data:
+                                  type: object
+                                  description: 动态数据
+                                  oneOf:
+                                    - $ref: "#/components/schemas/Question"
+                                    - $ref: "#/components/schemas/Answer"
+                              required:
+                                - from
+                                - type
+                                - data
+                          page:
+                            type: object
+                            properties:
+                              page_size:
+                                type: integer
+                                format: int64
+                                description: 每页动态数量
+                              next_start:
+                                type: string
+                                description: 下一页第一条动态的 ID
+                              has_more:
+                                type: boolean
+                                description: 是否还有更多动态
                     required:
                       - data
-                      - page
   /hot:
     get:
       summary: 获取热门问题列表
@@ -2703,9 +2732,12 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: array
-                        items:
-                          $ref: "#/components/schemas/Question"
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
                     required:
                       - data
   /search:
@@ -2890,7 +2922,10 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: "#/components/schemas/Insight"
+                        type: object
+                        properties:
+                          insight:
+                            $ref: "#/components/schemas/Insight"
                     required:
                       - data
     put:
