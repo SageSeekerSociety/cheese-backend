@@ -44,7 +44,7 @@ export class AnswerService {
         page_start: number | undefined, 
         page_size: number
     ): Promise<[AnswerDto[], PageRespondDto]> {
-        let queryBuilder = this.answerRepository
+        const queryBuilder = this.answerRepository
         .createQueryBuilder('answer')
         .where('answer.questionId = :questionId', { questionId })
         .orderBy('answer.createdAt');
@@ -160,20 +160,20 @@ export class AnswerService {
             throw new AnswerNotFoundError(id);
         }
 
-        if (answer.agrees && answer.agrees.includes(userId)) {
+        if (answer.agrees && answer.agrees.includes(`${userId}`)) {
             throw new AnswerAlreadyAgreeError(id);
         }
 
         if (!answer.agrees) {
-            answer.agrees = [userId];
+            answer.agrees = [`${userId}`];
         } 
         else {
             if(agree_type == 1){
-                answer.agrees.push(userId);
+                answer.agrees.push(`${userId}`);
                 answer.agree_count = (answer.agree_count || 0) + 1;
             }  
             else{
-                answer.disagrees.push(userId);
+                answer.disagrees.push(`${userId}`);
                 answer.disagree_count = (answer.disagree_count || 0) + 1;
             }
         }
@@ -195,14 +195,14 @@ export class AnswerService {
             throw new AnswerNotFoundError(id);
         }
 
-        if (answer.is_favorite&& answer.favoritedBy.includes(userId)) {
+        if (answer.is_favorite&& answer.favoritedBy.includes(`${userId}`)) {
             throw new AnswerAlreadyFavoriteError(id);
         }
         if (!answer.favoritedBy) {
-            answer.favoritedBy = [userId]; 
+            answer.favoritedBy = [`${userId}`]; 
           } else {
-            if (!answer.favoritedBy.includes(userId)) {
-              answer.favoritedBy.push(userId); 
+            if (!answer.favoritedBy.includes(`${userId}`)) {
+              answer.favoritedBy.push(`${userId}`); 
             }
           }
         answer.is_favorite = true;
@@ -224,10 +224,10 @@ export class AnswerService {
         if(!answer){
             throw new AnswerNotFoundError(answerId);
         }
-        if (answer.is_favorite&& answer.favoritedBy.includes(userId)) {
+        if (answer.is_favorite&& answer.favoritedBy.includes(`${userId}`)) {
             answer.favorite_count -= 1;
             answer.is_favorite = false;
-            let index = answer.favoritedBy.indexOf(userId);
+            const index = answer.favoritedBy.indexOf(`${userId}`);
             answer.favoritedBy.splice(index);
         }
         else{
