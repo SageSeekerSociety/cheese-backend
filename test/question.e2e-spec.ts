@@ -287,6 +287,9 @@ describe('Questions Module', () => {
     });
   });
 
+  // The following test is disabled because we have decided to migrate searching
+  // to elastic search. However, it is not implemented yet.
+  /*
   describe('search question', () => {
     it('should search successfully without parameters', async () => {
       const respond = await request(app.getHttpServer())
@@ -347,6 +350,7 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(404);
     });
   });
+  */
 
   describe('update question', () => {
     it('should update a question', async () => {

@@ -20,17 +20,17 @@ import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { QuestionDto } from './DTO/question.dto';
 import {
+  QuestionAlreadyFollowedError,
+  QuestionIdNotFoundError,
+  QuestionNotFollowedYetError,
+} from './questions.error';
+import {
   Question,
   QuestionFollowerRelation,
   QuestionQueryLog,
   QuestionSearchLog,
   QuestionTopicRelation,
-} from './questions.entity';
-import {
-  QuestionAlreadyFollowedError,
-  QuestionIdNotFoundError,
-  QuestionNotFollowedYetError,
-} from './questions.error';
+} from './questions.legacy.entity';
 
 @Injectable()
 export class QuestionsService {
