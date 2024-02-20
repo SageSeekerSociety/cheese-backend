@@ -18,5 +18,7 @@ export class GroupDto {
 }
 
 export class GroupRespondDto extends BaseRespondDto {
-  data: GroupDto;
+  data: {
+    group: GroupDto;
+  };
 }
