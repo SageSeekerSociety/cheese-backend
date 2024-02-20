@@ -569,7 +569,7 @@ paths:
               $ref: "#/components/schemas/RegisterRequest"
       responses:
         "201":
-          description: User successfully registered
+          description: User registered successfully
           headers:
             Set-Cookie:
               description: "refresh token"
@@ -1995,7 +1995,7 @@ paths:
                 - name
       responses:
         "201":
-          description: The topic was successfully created
+          description: Topic created successfully
           content:
             application/json:
               schema:
@@ -2073,6 +2073,16 @@ paths:
               - hot
               - new
             default: recommend
+        - name: joined
+          in: query
+          description: 是否为我参与的小组
+          schema:
+            type: boolean
+        - name: managed
+          in: query
+          description: 是否为我管理的小组
+          schema:
+            type: boolean
       responses:
         "200":
           description: OK
@@ -2118,7 +2128,7 @@ paths:
                 - avatar
       responses:
         "201":
-          description: Successfully created a new group
+          description: Group created successfully
           content:
             application/json:
               schema:
@@ -2881,7 +2891,7 @@ paths:
                 - content
       responses:
         "201":
-          description: Successfully created a new insight
+          description: Insight created successfully
           content:
             application/json:
               schema:
@@ -3141,7 +3151,7 @@ paths:
                 - content
       responses:
         "201":
-          description: Successfully created a new comment for insight
+          description: Comment for insight created successfully
           content:
             application/json:
               schema:
@@ -3246,7 +3256,7 @@ paths:
                 - content
       responses:
         "201":
-          description: Successfully created a new sub comment for insight
+          description: Reply for insight comment created successfully
           content:
             application/json:
               schema:
