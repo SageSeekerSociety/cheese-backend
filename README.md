@@ -1,7 +1,5 @@
 # cheese-backend
 
-芝士后端
-
 <p align="center">
   <img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
 </p>
@@ -13,8 +11,7 @@ The backend of the cheese Q&A system.
 
 ## Installation
 
-Before installing this backend, please make sure that you have installed the pnpm package
-manager. If you haven't installed it, you can install it with the following command:
+Before installing this backend, please make sure that you have installed the pnpm package manager. If you haven't installed it, you can install it with the following command:
 
 ```bash
 $ npm install -g pnpm
@@ -26,8 +23,7 @@ After this repo is cloned, you should install the dependencies with the followin
 $ pnpm install
 ```
 
-You need to create a database for this backend. We recommend you to use PostgreSQL,
-because we have tested the app with PostgreSQL, and it works very well.
+You need to create a database for this backend. We recommend you to use PostgreSQL, because we have tested the app with PostgreSQL, and it works very well.
 
 If you want to use other database, you need to modify src/app.prisma. Replace
 ```prisma
@@ -42,8 +38,7 @@ and recompile the prisma client with the following command:
 pnpm build-prisma
 ```
 
-Create `.env` file in the root directory of the repo, and write your configuration based
-on the following template:
+Create `.env` file in the root directory of the repo, and write your configuration based on the following template:
 
 ```Dotenv
 # The port that the app will listen to
@@ -121,3 +116,17 @@ $ pnpm run test
 $ pnpm run test:cov
 ```
 With the commands above, all tests, including e2e tests and unit tests, will be run.
+
+## VSCode Environment
+
+We recommend you to use VSCode to develop this app. We strongly recommend you to install the following extensions as a bisic development environment:
+
+[Prisma Import](https://marketplace.visualstudio.com/items?itemName=ajmnz.prisma-import) to help you view and edit the Prisma schema file. Do not use the official Prisma extension, because it does not support the prisma-import syntax, which is used in our project.
+
+In addition, you can install the following extensions for better development experience. However, they are not necessary, and you can choose alternatives if you like.
+
+[Git Extension Pack](https://marketplace.visualstudio.com/items?itemName=donjayamanne.git-extension-pack) to help you manage the git repository.
+
+[JavaScript and TypeScript Nightly](https://marketplace.visualstudio.com/items?itemName=ms-vscode.vscode-typescript-next&ssr=false#qna) for better TypeScript language support.
+
+[vscode-openapi-viewer](https://marketplace.visualstudio.com/items?itemName=AndrewButson.vscode-openapi-viewer) to help you view the OpenAPI document.
