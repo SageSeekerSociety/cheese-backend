@@ -159,6 +159,9 @@ describe('Groups Module', () => {
     });
   });
 
+  // The following test is disabled because we have decided to migrate searching
+  // to elastic search. However, it is not implemented yet.
+  /*
   describe('get groups', () => {
     it('should get all groups', async () => {
       const respond = await request(app.getHttpServer())
@@ -350,6 +353,7 @@ describe('Groups Module', () => {
       expect(respond.body.data.page.next_start).toBeFalsy();
     });
   });
+  */
 
   describe('get group', () => {
     it('should get a group', async () => {

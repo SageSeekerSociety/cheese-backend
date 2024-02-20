@@ -17,34 +17,39 @@ jobs:
         pnpm-version: [6, 8]
 
     env:
-      DB_TYPE: mysql
-      DB_HOST: localhost
-      DB_PORT: 3306
-      DB_USERNAME: testuser
-      DB_PASSWORD: mysql-test-password
-      DB_NAME: cheese
-      DB_SYNCHRONIZE: true
-      DB_AUTO_LOAD_ENTITIES: true
-      DB_CONNECT_TIMEOUT: 60000
-      DB_LOGGING: true
-      JWT_SECRET: Test JWT Secret
       TEST_REPEAT: 10 # Tests will be repeated
+      PORT: 7777
+      JWT_SECRET: Test JWT Secret
+      PRISMA_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      TYPEORM_DB_TYPE: postgres
+      TYPEORM_DB_HOST: localhost
+      TYPEORM_DB_PORT: 5432
+      TYPEORM_DB_USERNAME: postgres
+      TYPEORM_DB_PASSWORD: postgres
+      TYPEORM_DB_NAME: postgres
+      TYPEORM_DB_SYNCHRONIZE: true
+      TYPEORM_DB_AUTO_LOAD_ENTITIES: true
+      TYPEORM_DB_CONNECT_TIMEOUT: 60000
+      TYPEORM_DB_LOGGING: true
 
     services:
-      mysql: # See: https://joshi-aparna.github.io/blog/github-actions-mysql/
-        image: mysql:${{ matrix.mysql-version }}
+      # See: https://docs.github.com/en/actions/using-containerized-services/creating-postgresql-service-containers
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
         env:
-          MYSQL_ROOT_PASSWORD: ${{ env.DB_PASSWORD }}
-          MYSQL_DATABASE: ${{ env.DB_NAME }}
-          MYSQL_USER: ${{ env.DB_USERNAME }}
-          MYSQL_PASSWORD: ${{ env.DB_PASSWORD }}
-        ports:
-          - 3306:3306
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
         options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
 
     steps:
       - name: Checkout Repository
@@ -66,7 +71,6 @@ jobs:
 
       - name: Start Application to Create Tables
         run: |
-          PORT=7777
           pnpm start | tee output &
           while true; do
               if grep -q "Nest application successfully started" output; then

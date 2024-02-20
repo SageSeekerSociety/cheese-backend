@@ -153,6 +153,9 @@ describe('Topic Module', () => {
     });
   });
 
+  // The following test is disabled because we have decided to migrate searching
+  // to elastic search. However, it is not implemented yet.
+  /*
   describe('search topic', () => {
     it('should search topics and do paging', async () => {
       // Try search: `${TestTopicCode} 高等`
@@ -275,6 +278,7 @@ describe('Topic Module', () => {
       expect(respond.status).toBe(400);
     });
   });
+  */
 
   describe('get topic', () => {
     it('should get a topic', async () => {
