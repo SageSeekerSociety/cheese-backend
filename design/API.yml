@@ -2063,9 +2063,9 @@ paths:
             type: integer
             format: int64
             default: 20
-        - name: type
+        - name: sort
           in: query
-          description: 圈子类型
+          description: 排序方式
           schema:
             type: string
             enum:
