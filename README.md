@@ -38,6 +38,8 @@ and recompile the prisma client with the following command:
 pnpm build-prisma
 ```
 
+Also, you need to setup an elasticsearch instance. It is used to provide full-text search feature.
+
 Create `.env` file in the root directory of the repo, and write your configuration based on the following template:
 
 ```Dotenv
@@ -67,6 +69,15 @@ TYPEORM_DB_SYNCHRONIZE=true # This option is used to synchronize the database sc
 TYPEORM_DB_AUTO_LOAD_ENTITIES=true
 TYPEORM_DB_CONNECT_TIMEOUT=60000
 TYPEORM_DB_LOGGING=false
+
+# The configuration for Elasticsearch
+ELASTICSEARCH_NODE=http://127.0.0.1:9200/
+ELASTICSEARCH_MAX_RETRIES=10
+ELASTICSEARCH_REQUEST_TIMEOUT=60000
+ELASTICSEARCH_PING_TIMEOUT=60000
+ELASTICSEARCH_SNIFF_ON_START=true
+ELASTICSEARCH_AUTH_USERNAME=elastic
+ELASTICSEARCH_AUTH_PASSWORD=your-elasticsearch-password
 
 # additionally setup the following if you want to use docker-compose 
 # to setup environment
