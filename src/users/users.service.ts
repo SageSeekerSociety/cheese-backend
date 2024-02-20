@@ -201,7 +201,7 @@ export class UsersService {
   }
 
   get passwordRule(): string {
-    return 'Password must be 8 characters long and must contain at least one letter, one special character and one number.';
+    return 'Password must be at least 8 characters long and must contain at least one letter, one special character and one number.';
   }
 
   private isCodeExpired(createdAt: Date): boolean {
