@@ -220,16 +220,6 @@ components:
         commentableType:
           type: string
           description: 评论对象
-        quote:
-          type: object
-          description: 引用的评论
-          properties:
-            id:
-              type: integer
-              format: int64
-              description: 评论 ID
-            user:
-              $ref: "#/components/schemas/User"
         content:
           type: string
           description: 评论内容
