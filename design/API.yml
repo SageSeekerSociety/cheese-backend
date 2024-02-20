@@ -12,8 +12,6 @@ components:
   securitySchemes:
     bearerAuth:
       description: The access token is used in this way.
-      name: Authorization
-      in: header
       type: http
       scheme: bearer
       bearerFormat: JWT
@@ -2122,10 +2120,13 @@ paths:
                   type: string
                 avatar:
                   type: string
+                public:
+                  type: boolean
               required:
                 - name
                 - intro
                 - avatar
+                - public
       responses:
         "201":
           description: Group created successfully
