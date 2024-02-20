@@ -6,8 +6,6 @@ export class GetCommentsResponseDto extends BaseRespondDto {
   data: {
     comments: {
       comment: CommentDto;
-      sub_comment_count: number;
-      sub_comments: CommentDto[];
     }[];
     page: PageRespondDto;
   };

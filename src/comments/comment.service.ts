@@ -1,29 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Answer } from '../answer/answer.entity';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { Question } from '../questions/questions.entity';
-import { UsersService } from '../users/users.service';
 import { AgreeCommentDto } from './DTO/agreeComment.dto';
-import { CommentResponseDto } from './DTO/comment.dto';
+import { GetCommentDetailDto } from './DTO/getCommentDetail.dto';
 import { GetCommentsResponseDto } from './DTO/getComments.dto';
-import {
-  Comment,
-  CommentMemberShip,
-  CommentRelationship,
-} from './comment.entity';
-
+import { Comment, } from './comment.entity';
+import { CommentNotFoundByUserError, CommentNotFoundError, CommentableIdNotFoundError, InvalidAgreeTypeError } from './comment.error';
 @Injectable()
 export class CommentsService {
   constructor(
-    private usersService: UsersService,
+
     @InjectRepository(Comment)
     private commentsRepository: Repository<Comment>,
-    @InjectRepository(CommentMemberShip)
-    private commentMembershipsRepository: Repository<CommentMemberShip>,
-    @InjectRepository(CommentRelationship)
-    private commentRelationshipRepository: Repository<CommentRelationship>,
     @InjectRepository(Answer)
     private answersRepository: Repository<Answer>,
     @InjectRepository(Question)
@@ -33,123 +24,47 @@ export class CommentsService {
   async createComment(
     userId: number,
     content: string,
-    CommentableType: 'answer' | 'comment' | 'question',
-    CommentableId: number,
-    quoteId?: number | undefined,
-    quoteUserId?: number | undefined,
-  ): Promise<CommentResponseDto> {
+    commentableType: 'answer' | 'comment' | 'question',
+    commentableId: number,
+  ): Promise<number> {
+    let commentableRepository;
+    switch (commentableType) {
+      case 'answer':
+        commentableRepository = this.answersRepository;
+        break;
+      case 'comment':
+        commentableRepository = this.commentsRepository;
+        break;
+      case 'question':
+        commentableRepository = this.questionsRepository;
+        break;
+    }
+    const commentable = await commentableRepository.findOneBy({id : commentableId});
+    if (!commentable) {
+      throw new CommentableIdNotFoundError(commentableId);
+    }
+
     const comment = this.commentsRepository.create({
+      userId,
       content,
+      commentableType,
+      commentableId,
     });
-    await this.commentsRepository.save(comment);
-    const users = await this.usersService.getUserDtoById(userId);
-    if (users) {
-      const CommentMemberShip = this.commentMembershipsRepository.create({
-        comment: comment,
-        member: users,
-      });
-      await this.commentMembershipsRepository.save(CommentMemberShip);
-    } else {
-      throw new NotFoundException('User not found');
-    }
+    const savedComment = await this.commentsRepository.save(comment); // 保存评论到数据库
 
-    if (CommentableType == 'answer') {
-      const answer = await this.answersRepository.findOne({
-        where: { id: CommentableId },
-      });
-      if (!answer) {
-        throw new NotFoundException('Answer not found');
-      }
-      const CommentAnswerShip = this.commentRelationshipRepository.create({
-        answer: answer,
-        comment: comment,
-      });
-      await this.commentRelationshipRepository.save(CommentAnswerShip);
-    } else if (CommentableType == 'question') {
-      const question = await this.questionsRepository.findOne({
-        where: { id: CommentableId },
-      });
-      if (!question) {
-        throw new NotFoundException('Question not found');
-      }
-      const CommentQuestionShip = this.commentRelationshipRepository.create({
-        question: question,
-        comment: comment,
-      });
-      await this.commentRelationshipRepository.save(CommentQuestionShip);
-    } else if (CommentableType == 'comment') {
-      const comment = await this.commentsRepository.findOneBy({
-        id: CommentableId,
-      });
-      if (!comment) {
-        throw new NotFoundException('Comment not found');
-      }
-      const subComment = [comment];
-      const CommentCommentShip = this.commentsRepository.create({
-        subComments: subComment,
-      });
-      await this.commentsRepository.save(CommentCommentShip);
-    }
-
-    if (quoteUserId) {
-      const quoteUser = await this.usersService.getUserDtoById(quoteUserId);
-      if (!quoteUser) {
-        throw new NotFoundException(quoteUserId);
-      }
-      return {
-        code: 200,
-        message: 'Comment created successfully',
-        data: {
-          id: comment.id,
-          commentableId: CommentableId,
-          commentableType: CommentableType,
-          content: content,
-          user: users,
-          created_at: comment.createdAt.getTime(),
-          agree_type: 0,
-          agree_count: 0,
-          disagree_count: 0,
-          quote: {
-            quote_id: quoteId,
-            quote_user: quoteUser,
-          },
-        },
-      };
-    } else {
-      return {
-        code: 200,
-        message: 'comment successfully',
-        data: {
-          id: comment.id,
-          commentableId: CommentableId,
-          commentableType: CommentableType,
-          content: content,
-          user: users,
-          created_at: comment.createdAt.getTime(),
-          agree_type: 0,
-          agree_count: 0,
-          disagree_count: 0,
-          quote: {
-            quote_id: undefined,
-            quote_user: undefined,
-          },
-        },
-      };
-    }
+    return savedComment.id;
   }
 
-  async deleteComment(UserId: number, commentId: number): Promise<void> {
+  async deleteComment(userId: number, commentId: number): Promise<void> {
     const comment = await this.commentsRepository.findOne({
-      where: { id: commentId, userId: UserId },
+      where: { id: commentId, userId },
     });
 
     if (!comment) {
-      throw new NotFoundException(`Comment with id ${commentId} not found`);
+      throw new CommentNotFoundByUserError(userId);
     }
 
     await this.commentsRepository.softRemove(comment);
-    await this.commentRelationshipRepository.softRemove(comment);
-    await this.commentMembershipsRepository.softRemove(comment);
   }
 
   async getComments(
@@ -159,31 +74,15 @@ export class CommentsService {
   ): Promise<GetCommentsResponseDto> {
     const comment = await this.commentsRepository.findOneBy({ id: commentId });
     if (!comment) {
-      throw new NotFoundException('Comment not found');
+      throw new CommentNotFoundError(commentId);
     }
 
-    const subComments = await this.commentsRepository.find({
-      where: {
-        parentComment: { id: commentId },
-      },
-      order: {
-        id: 'ASC',
-      },
-      skip: pageStart,
-      take: pageSize,
-    });
-
     const hasPrev = pageStart > 0;
-    const hasMore = subComments.length === pageSize;
+    const hasMore = false;
 
     let prevStart: number | undefined;
     if (hasPrev) {
       prevStart = Math.max(0, pageStart - pageSize);
-    }
-
-    let nextStart: number | undefined;
-    if (hasMore) {
-      nextStart = pageStart + pageSize;
     }
 
     const page: PageRespondDto = {
@@ -192,42 +91,24 @@ export class CommentsService {
       has_prev: hasPrev,
       prev_start: prevStart,
       has_more: hasMore,
-      next_start: nextStart,
+      next_start: undefined,
     };
 
-    const commentsData = subComments.map((subComment) => ({
+    const commentsData = [{
       comment: {
-        id: subComment.id,
-        commentableId: subComment.commentableId,
-        commentableType: subComment.commentableType,
-        quote: {
-          quote_id: subComment.quote_id,
-          quote_user: subComment.quote_user,
-        },
-        content: subComment.content,
-        user: subComment.user,
-        created_at: subComment.createdAt.getTime(),
-        agree_type: subComment.agreeType,
-        agree_count: subComment.agreecount,
-        disagree_count: subComment.disagreecount,
+        id: comment.id,
+        commentableId: comment.commentableId,
+        commentableType: comment.commentableType,
+        content: comment.content,
+        user: comment.user,
+        created_at: comment.createdAt.getTime(),
+        agree_type: comment.agreeType,
+        agree_count: comment.agreeCount,
+        disagree_count: comment.disagreeCount,
       },
-      sub_comment_count: subComments.length,
-      sub_comments: subComments.map((subComment) => ({
-        id: subComment.id,
-        commentableId: subComment.commentableId,
-        commentableType: subComment.commentableType,
-        quote: {
-          quote_id: subComment.quote_id,
-          quote_user: subComment.quote_user,
-        },
-        content: subComment.content,
-        user: subComment.user,
-        created_at: subComment.createdAt.getTime(),
-        agree_type: subComment.agreeType,
-        agree_count: subComment.agreecount,
-        disagree_count: subComment.disagreecount,
-      })),
-    }));
+      sub_comment_count: 0,
+      sub_comments: [],
+    }];
 
     return {
       code: 200,
@@ -244,48 +125,42 @@ export class CommentsService {
       id: commentId,
     });
     if (!comment) {
-      throw new NotFoundException(`Comment with id ${commentId} not found`);
+      throw new CommentNotFoundError(commentId);
     }
     switch (agreeType.agree_type) {
       case 0:
         break;
       case 1:
-        comment.agreecount = comment.agreecount + 1;
+        comment.agreeCount = comment.agreeCount + 1;
         break;
       case 2:
-        comment.disagreecount = comment.disagreecount + 1;
+        comment.disagreeCount = comment.disagreeCount + 1;
         break;
       default:
-        throw new Error('Invalid agreeType value');
+        throw new InvalidAgreeTypeError(agreeType.agree_type);
     }
     return;
   }
 
-  async getCommentDetail(commentId: number): Promise<CommentResponseDto> {
+  async getCommentDetail(commentId: number): Promise<GetCommentDetailDto> {
     const comment = await this.commentsRepository.findOneBy({
       id: commentId,
     });
     if (!comment) {
-      throw new NotFoundException(`Comment with id ${commentId} not found`);
+      throw new CommentNotFoundError(commentId);
     }
-    const commentDto: CommentResponseDto = {
+    const commentDto:GetCommentDetailDto = {
       code: 200,
       message: 'Get comment details successfully',
-      data: {
-        id: comment.id,
-        content: comment.content,
-        commentableId: comment.commentableId,
-        commentableType: comment.commentableType,
-        quote: {
-          quote_id: comment.quote_id,
-          quote_user: comment.quote_user,
-        },
-        user: comment.user,
-        disagree_count: comment.disagreecount,
-        agree_count: comment.agreecount,
-        agree_type: 0,
-        created_at: comment.createdAt.getDate(),
-      },
+      id: comment.id,
+      content: comment.content,
+      commentableId: comment.commentableId,
+      commentableType: comment.commentableType,
+      user: comment.user,
+      disagree_count: comment.disagreeCount,
+      agree_count: comment.agreeCount,
+      agree_type: 0,
+      created_at: comment.createdAt.getDate(),
     };
     return commentDto;
   }
