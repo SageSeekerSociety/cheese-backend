@@ -39,15 +39,20 @@ export class CommentsController {
     @Param('commentableType') commentableType: 'answer'|'question'|'comment',
     @Param('commentableId', ParseIntPipe) commentableId: number,
     @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart?: number,
+    pageStart: number=1,
     @Query('page_size', new ParseIntPipe({ optional: true }))
     pageSize: number = 20,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<GetCommentsResponseDto> {
+    const userId = this.authService.verify(auth).userId;
+    if (!userId) {
+      throw new UserIdNotFoundError(userId);
+    }
     const commentData = (
-      await this.commentsService.getComments(commentableId, pageStart, pageSize)
+      await this.commentsService.getComments(userId,commentableId, pageStart, pageSize)
     ).data.comments;
     const page = (
-      await this.commentsService.getComments(commentableId, pageStart, pageSize)
+      await this.commentsService.getComments(userId,commentableId, pageStart, pageSize)
     ).data.page;
     return {
       code: 200,
@@ -119,7 +124,7 @@ export class CommentsController {
     }
     const agree_type = requestBody;
 
-    await this.commentsService.agreeComment(commentId, agree_type);
+    await this.commentsService.agreeComment(userId, commentId, agree_type);
 
     return {
       code: 200,
@@ -131,8 +136,13 @@ export class CommentsController {
   @Get('/:commentId')
   async getCommentDetail(
     @Param('commentId', ParseIntPipe) commentId: number,
+    @Headers('Authorization') auth:string|undefined,
   ): Promise<CreateCommentResponseDto> {
-    const comment = (await this.commentsService.getCommentDetail(commentId))
+    const userId = this.authService.verify(auth).userId;
+    if (!userId) {
+      throw new UserIdNotFoundError(userId);
+    }
+    const comment = (await this.commentsService.getCommentDetail(userId, commentId))
     return {
       code: 200,
       message: 'Details are as follows',

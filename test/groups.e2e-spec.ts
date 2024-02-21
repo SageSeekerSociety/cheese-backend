@@ -157,6 +157,7 @@ describe('Groups Module', () => {
       [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
       [auxAdminUserDto, auxAdminAccessToken] = await createAuxiliaryUser();
     });
+    
   });
 
   describe('get groups', () => {

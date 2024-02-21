@@ -25,16 +25,13 @@ export class Comment {
   commentableType: 'answer' | 'comment' | 'question';
 
   @Column()
-  agreeType: number;
-
-  @Column()
   agreeCount: number;
 
   @Column()
   disagreeCount: number;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'user_id' })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @Column()
@@ -48,4 +45,30 @@ export class Comment {
 
   @DeleteDateColumn()
   deletedAt?: Date;
+}
+
+@Entity()
+export class UserAttitudeOnComments {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @Column()
+  userId:number;
+  
+  @ManyToOne(() => Comment)
+  @JoinColumn({ name: 'commentId' })
+  comment: Comment;
+
+  @Column()
+  agreeType: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

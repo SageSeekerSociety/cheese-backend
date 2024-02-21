@@ -6,10 +6,10 @@ export class CommentDto {
   commentableType: 'answer' | 'comment' | 'question';
   content: string;
   user: User;
-  created_at: number;
-  agree_type: number;
-  agree_count: number;
-  disagree_count: number;
+  createdAt: number;
+  agreeCount: number;
+  disagreeCount: number;
+  agreeType:number;
 }
 
 export class CreateCommentResponseDto extends BaseRespondDto {

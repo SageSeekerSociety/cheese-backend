@@ -4,15 +4,20 @@ import { Repository } from 'typeorm';
 import { Answer } from '../answer/answer.entity';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { Question } from '../questions/questions.entity';
+import { User } from '../users/users.entity';
+import { UserIdNotFoundError } from '../users/users.error';
 import { AgreeCommentDto } from './DTO/agreeComment.dto';
 import { GetCommentDetailDto } from './DTO/getCommentDetail.dto';
 import { GetCommentsResponseDto } from './DTO/getComments.dto';
-import { Comment, } from './comment.entity';
+import { Comment, UserAttitudeOnComments } from './comment.entity';
 import { CommentNotFoundByUserError, CommentNotFoundError, CommentableIdNotFoundError, InvalidAgreeTypeError } from './comment.error';
 @Injectable()
 export class CommentsService {
   constructor(
-
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
+    @InjectRepository(UserAttitudeOnComments)
+    private userAttitudeOnCommentsRepository: Repository<UserAttitudeOnComments>,
     @InjectRepository(Comment)
     private commentsRepository: Repository<Comment>,
     @InjectRepository(Answer)
@@ -50,8 +55,14 @@ export class CommentsService {
       commentableType,
       commentableId,
     });
+    const userAttitudeOnComment = this.userAttitudeOnCommentsRepository.create({
+      agreeType:0,
+      userId:userId,
+    });
+    comment.agreeCount=0;
+    comment.disagreeCount=0;
     const savedComment = await this.commentsRepository.save(comment); // 保存评论到数据库
-
+    await this.userAttitudeOnCommentsRepository.save(userAttitudeOnComment)
     return savedComment.id;
   }
 
@@ -68,13 +79,18 @@ export class CommentsService {
   }
 
   async getComments(
-    commentId: number,
+    userId:number,
+    commentableId: number,
     pageStart: number = 0,
     pageSize: number = 20,
   ): Promise<GetCommentsResponseDto> {
-    const comment = await this.commentsRepository.findOneBy({ id: commentId });
+    const comment = await this.commentsRepository.findOneBy({ id: commentableId });
+    const user=await this.usersRepository.findOneBy({id:userId})  
+    const userAttitudeOnComment = await this.userAttitudeOnCommentsRepository.findOne({
+      where: { id:commentableId, userId },
+    });
     if (!comment) {
-      throw new CommentNotFoundError(commentId);
+      throw new CommentNotFoundError(commentableId);
     }
 
     const hasPrev = pageStart > 0;
@@ -101,15 +117,13 @@ export class CommentsService {
         commentableType: comment.commentableType,
         content: comment.content,
         user: comment.user,
-        created_at: comment.createdAt.getTime(),
-        agree_type: comment.agreeType,
-        agree_count: comment.agreeCount,
-        disagree_count: comment.disagreeCount,
+        createdAt: comment.createdAt.getTime(),
+        agreeCount: comment.agreeCount,
+        disagreeCount: comment.disagreeCount,
+        agreeType:user?userAttitudeOnComment?userAttitudeOnComment.agreeType:0:0,
       },
-      sub_comment_count: 0,
-      sub_comments: [],
     }];
-
+    
     return {
       code: 200,
       message: 'get comment',
@@ -120,9 +134,19 @@ export class CommentsService {
     };
   }
 
-  async agreeComment(commentId: number, agreeType: AgreeCommentDto) {
+  async agreeComment(userId:number, commentId: number, agreeType: AgreeCommentDto) {
+    const user = await this.usersRepository.findOneBy({
+      id: userId,
+    })
+    if(!user)  {
+      throw new UserIdNotFoundError(userId);
+      return;
+    }
     const comment = await this.commentsRepository.findOneBy({
       id: commentId,
+    });
+    const userAttitudeOnComment = await this.userAttitudeOnCommentsRepository.findOne({
+      where: { id:commentId, userId },
     });
     if (!comment) {
       throw new CommentNotFoundError(commentId);
@@ -131,10 +155,24 @@ export class CommentsService {
       case 0:
         break;
       case 1:
-        comment.agreeCount = comment.agreeCount + 1;
+        if(userAttitudeOnComment?.agreeType==1){
+          break;
+        }else{
+          if(userAttitudeOnComment?.agreeType==2) {
+            comment.disagreeCount = comment.disagreeCount - 1;
+          }
+          comment.agreeCount = comment.agreeCount + 1;
+        }
         break;
       case 2:
-        comment.disagreeCount = comment.disagreeCount + 1;
+        if(userAttitudeOnComment?.agreeType==2){
+          break;
+        }else{
+          if(userAttitudeOnComment?.agreeType==1) {
+            comment.agreeCount = comment.agreeCount - 1;
+          }
+          comment.disagreeCount = comment.disagreeCount + 1;
+        }
         break;
       default:
         throw new InvalidAgreeTypeError(agreeType.agree_type);
@@ -142,9 +180,13 @@ export class CommentsService {
     return;
   }
 
-  async getCommentDetail(commentId: number): Promise<GetCommentDetailDto> {
+  async getCommentDetail(userId:number, commentId: number): Promise<GetCommentDetailDto> {
     const comment = await this.commentsRepository.findOneBy({
       id: commentId,
+    });
+    const user= await this.usersRepository.findOneBy({id:userId})
+    const userAttitudeOnComment = await this.userAttitudeOnCommentsRepository.findOne({
+      where: { id:commentId, userId },
     });
     if (!comment) {
       throw new CommentNotFoundError(commentId);
@@ -157,10 +199,10 @@ export class CommentsService {
       commentableId: comment.commentableId,
       commentableType: comment.commentableType,
       user: comment.user,
-      disagree_count: comment.disagreeCount,
-      agree_count: comment.agreeCount,
-      agree_type: 0,
-      created_at: comment.createdAt.getDate(),
+      disagreeCount: comment.disagreeCount,
+      agreeCount: comment.agreeCount,
+      createdAt: comment.createdAt.getDate(),
+      agreeType:user?userAttitudeOnComment?userAttitudeOnComment.agreeType:0:0,
     };
     return commentDto;
   }
