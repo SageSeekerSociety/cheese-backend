@@ -16,7 +16,7 @@ import {
   SessionRevokedError,
 } from './auth.error';
 import { AuthService, Authorization, AuthorizedAction } from './auth.service';
-import { Session, SessionRefreshLog } from './session.entity';
+import { Session, SessionRefreshLog } from './session.legacy.entity';
 
 @Injectable()
 export class SessionService {

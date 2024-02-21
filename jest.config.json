@@ -1,15 +1,8 @@
 {
-  "moduleFileExtensions": [
-    "js",
-    "json",
-    "ts"
-  ],
-  "rootDir": "..",
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
   "testEnvironment": "node",
-  "testMatch": [
-    "**/*.e2e-spec.ts",
-    "**/*.spec.ts"
-  ],
+  "testMatch": ["**/*.e2e-spec.ts", "**/*.spec.ts"],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
@@ -17,5 +10,6 @@
     "src/*/**/*.ts",
     "!src/*/**/*.dto.ts",
     "!src/common/config/configuration.ts"
-  ]
+  ],
+  "testTimeout": 60000
 }

@@ -12,13 +12,13 @@ import { AuthModule } from '../auth/auth.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { UsersModule } from '../users/users.module';
 import { GroupProfile } from './group-profile.entity';
+import { GroupsController } from './groups.controller';
 import {
   Group,
   GroupMembership,
   GroupQuestionRelationship,
   GroupTarget,
-} from './group.entity';
-import { GroupsController } from './groups.controller';
+} from './groups.legacy.entity';
 import { GroupsService } from './groups.service';
 
 @Module({
