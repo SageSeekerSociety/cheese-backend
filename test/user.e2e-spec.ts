@@ -382,7 +382,7 @@ describe('User Module', () => {
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
-        `InvalidPasswordError: Invalid password. Password must be 8 characters long and must contain at least one letter, one special character and one number.`,
+        `InvalidPasswordError: Invalid password. Password must be at least 8 characters long and must contain at least one letter, one special character and one number.`,
       );
       expect(respond.body.code).toEqual(422);
       req.expect(422);
