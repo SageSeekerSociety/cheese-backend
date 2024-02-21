@@ -286,7 +286,9 @@ export class UsersController {
     return {
       code: 200,
       message: 'Query user successfully.',
-      data: user,
+      data: {
+        user: user,
+      },
     };
   }
 

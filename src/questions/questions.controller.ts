@@ -140,7 +140,9 @@ export class QuestionsController {
     return {
       code: 200,
       message: 'OK',
-      data: questionDto,
+      data: {
+        question: questionDto,
+      },
     };
   }
 
