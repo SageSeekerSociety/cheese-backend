@@ -154,6 +154,9 @@ describe('Topic Module', () => {
   });
 
   describe('search topic', () => {
+    it('should wait some time for elasticsearch to refresh', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    });
     it('should search topics and do paging', async () => {
       // Try search: `${TestTopicCode} 高等`
       const respond = await request(app.getHttpServer())
