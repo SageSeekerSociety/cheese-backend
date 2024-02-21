@@ -153,6 +153,31 @@ components:
           description: 是否为小组问题
         group:
           $ref: "#/components/schemas/Group"
+    QuestionInvition:
+      type: object
+      description: 问题邀请
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 邀请 ID
+        question_id:
+          type: integer
+          format: int64
+          description: 问题 ID
+        user:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          format: int64
+          description: 创建时间（时间戳）
+        updated_at:
+          type: integer
+          format: int64
+          description: 最后修改时间（时间戳）
+        is_answered:
+          type: boolean
+          description: 是否已回答
     Answer:
       type: object
       description: 回答详情
@@ -1372,6 +1397,157 @@ paths:
                           - follow_count
                     required:
                       - data
+  /questions/{id}/invitions:
+    get:
+      summary: 获取该问题下被邀请回答的用户
+      operationId: getQuestionInvitions
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_start
+          in: query
+          description: 该页第一个用户的 ID，留空即为从头开始
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页用户数量
+          schema:
+            type: integer
+            format: int64
+            default: 20
+        - name: sort
+          in: query
+          description: 排序方式字符串，例如 "+created_at" 表示按创建时间升序，"-created_at" 表示按创建时间降序，使用逗号来分隔先后多个排序字段
+          schema:
+            type: string
+            example: "+created_at"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/QuestionInvition"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 邀请用户回答问题
+      operationId: inviteUserAnswerQuestion
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_ids:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+              required:
+                - user_ids
+      responses:
+        "201":
+          description: Successfully invited
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitions:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                user_id:
+                                  type: integer
+                                  format: int64
+                                success:
+                                  type: boolean
+                                  description: 是否邀请成功
+                                invition_id:
+                                  type: integer
+                                  description: 邀请 ID（如果邀请成功）
+                                  format: int64
+                                reason:
+                                  type: string
+                                  description: 失败原因（如果邀请失败）
+                                  enum:
+                                    - user_not_found
+                                    - user_invited
+                                    - user_answered
+                                    - user_banned
+                                    - user_blacklisted
+                              required:
+                                - user_id
+                                - success
+                        required:
+                          - invitions
+                    required:
+                      - data
+    delete:
+      summary: 取消邀请
+      operationId: cancelInvition
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                invition_ids:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+              required:
+                - invition_ids
+      responses:
+        "204":
+          description: No Content
   /questions/{id}/answers:
     get:
       summary: 获取问题回答列表
