@@ -62,6 +62,7 @@ export class QuestionsController {
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchQuestionResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
+    if (q == undefined) q = '';
     // try get viewer id
     let searcherId: number | undefined;
     try {
@@ -165,6 +166,7 @@ export class QuestionsController {
       body.content,
       body.type,
       body.topics,
+      this.authService.decode(auth).authorization.userId,
     );
     return {
       code: 200,
