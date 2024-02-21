@@ -9,9 +9,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
-import { User } from '../users/users.entity';
+import { User } from '../users/users.legacy.entity';
 import { TopicsController } from './topics.controller';
-import { Topic, TopicSearchLog } from './topics.entity';
+import { Topic, TopicSearchLog } from './topics.legacy.entity';
 import { TopicsService } from './topics.service';
 
 @Module({

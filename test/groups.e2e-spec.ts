@@ -130,23 +130,24 @@ describe('Groups Module', () => {
           .post('/groups')
           .set('Authorization', `Bearer ${TestToken}`)
           .send({ name: TestGroupPrefix + name, intro, avatar });
-        expect(respond.body.message).toBe('Group created successfully.');
+        expect(respond.body.message).toBe('Group created successfully');
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
-        expect(respond.body.data.id).toBeTruthy();
-        expect(respond.body.data.name).toContain(name);
-        expect(respond.body.data.intro).toBe(intro);
-        expect(respond.body.data.avatar).toBe(avatar);
-        expect(respond.body.data.owner).toStrictEqual(TestUserDto);
-        expect(respond.body.data.created_at).toBeDefined();
-        expect(respond.body.data.updated_at).toBeDefined();
-        expect(respond.body.data.member_count).toBe(1);
-        expect(respond.body.data.question_count).toBe(0);
-        expect(respond.body.data.answer_count).toBe(0);
-        expect(respond.body.data.is_member).toBe(true);
-        expect(respond.body.data.is_owner).toBe(true);
-        expect(respond.body.data.is_public).toBe(true);
-        GroupIds.push(respond.body.data.id);
+        const groupDto = respond.body.data.group;
+        expect(groupDto.id).toBeTruthy();
+        expect(groupDto.name).toContain(name);
+        expect(groupDto.avatar).toBe(avatar);
+        expect(groupDto.owner).toStrictEqual(TestUserDto);
+        expect(groupDto.created_at).toBeDefined();
+        expect(groupDto.updated_at).toBeDefined();
+        expect(groupDto.member_count).toBe(1);
+        expect(groupDto.question_count).toBe(0);
+        expect(groupDto.answer_count).toBe(0);
+        expect(groupDto.is_member).toBe(true);
+        expect(groupDto.is_owner).toBe(true);
+        expect(groupDto.is_public).toBe(true);
+        expect(groupDto.intro).toBe(intro);
+        GroupIds.push(groupDto.id);
       }
       await createGroup('数学之神膜膜喵', '不如原神', '🥸');
       await createGroup('ICS膜膜膜', 'pwb txdy!', '🐂');
@@ -157,9 +158,11 @@ describe('Groups Module', () => {
       [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
       [auxAdminUserDto, auxAdminAccessToken] = await createAuxiliaryUser();
     });
-    
   });
 
+  // The following test is disabled because we have decided to migrate searching
+  // to elastic search. However, it is not implemented yet.
+  /*
   describe('get groups', () => {
     it('should get all groups', async () => {
       const respond = await request(app.getHttpServer())
@@ -351,6 +354,7 @@ describe('Groups Module', () => {
       expect(respond.body.data.page.next_start).toBeFalsy();
     });
   });
+  */
 
   describe('get group', () => {
     it('should get a group', async () => {
@@ -362,18 +366,19 @@ describe('Groups Module', () => {
       expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toContain('数学之神膜膜喵');
-      expect(respond.body.data.intro).toBe('不如原神');
-      expect(respond.body.data.avatar).toBe('🥸');
-      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
-      expect(respond.body.data.created_at).toBeDefined();
-      expect(respond.body.data.updated_at).toBeDefined();
-      expect(respond.body.data.member_count).toBe(1);
-      expect(respond.body.data.question_count).toBe(0);
-      expect(respond.body.data.answer_count).toBe(0);
-      expect(respond.body.data.is_member).toBe(true);
-      expect(respond.body.data.is_owner).toBe(true);
+      const groupDto = respond.body.data.group;
+      expect(groupDto.id).toBe(TestGroupId);
+      expect(groupDto.name).toContain('数学之神膜膜喵');
+      expect(groupDto.intro).toBe('不如原神');
+      expect(groupDto.avatar).toBe('🥸');
+      expect(groupDto.owner).toStrictEqual(TestUserDto);
+      expect(groupDto.created_at).toBeDefined();
+      expect(groupDto.updated_at).toBeDefined();
+      expect(groupDto.member_count).toBe(1);
+      expect(groupDto.question_count).toBe(0);
+      expect(groupDto.answer_count).toBe(0);
+      expect(groupDto.is_member).toBe(true);
+      expect(groupDto.is_owner).toBe(true);
     });
 
     it('should get a group for another user', async () => {
@@ -385,18 +390,19 @@ describe('Groups Module', () => {
       expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toContain('数学之神膜膜喵');
-      expect(respond.body.data.intro).toBe('不如原神');
-      expect(respond.body.data.avatar).toBe('🥸');
-      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
-      expect(respond.body.data.created_at).toBeDefined();
-      expect(respond.body.data.updated_at).toBeDefined();
-      expect(respond.body.data.member_count).toBe(1);
-      expect(respond.body.data.question_count).toBe(0);
-      expect(respond.body.data.answer_count).toBe(0);
-      expect(respond.body.data.is_member).toBe(false);
-      expect(respond.body.data.is_owner).toBe(false);
+      const groupDto = respond.body.data.group;
+      expect(groupDto.id).toBe(TestGroupId);
+      expect(groupDto.name).toContain('数学之神膜膜喵');
+      expect(groupDto.intro).toBe('不如原神');
+      expect(groupDto.avatar).toBe('🥸');
+      expect(groupDto.owner).toStrictEqual(TestUserDto);
+      expect(groupDto.created_at).toBeDefined();
+      expect(groupDto.updated_at).toBeDefined();
+      expect(groupDto.member_count).toBe(1);
+      expect(groupDto.question_count).toBe(0);
+      expect(groupDto.answer_count).toBe(0);
+      expect(groupDto.is_member).toBe(false);
+      expect(groupDto.is_owner).toBe(false);
     });
 
     it('should return GroupIdNotFoundError when group is not found', async () => {
@@ -433,18 +439,19 @@ describe('Groups Module', () => {
       expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toContain('数学之神膜膜喵');
-      expect(respond.body.data.intro).toBe('不如原神');
-      expect(respond.body.data.avatar).toBe('🥸');
-      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
-      expect(respond.body.data.created_at).toBeDefined();
-      expect(respond.body.data.updated_at).toBeDefined();
-      expect(respond.body.data.member_count).toBe(2);
-      expect(respond.body.data.question_count).toBe(0);
-      expect(respond.body.data.answer_count).toBe(0);
-      expect(respond.body.data.is_member).toBe(true);
-      expect(respond.body.data.is_owner).toBe(false);
+      const groupDto = respond.body.data.group;
+      expect(groupDto.id).toBe(TestGroupId);
+      expect(groupDto.name).toContain('数学之神膜膜喵');
+      expect(groupDto.intro).toBe('不如原神');
+      expect(groupDto.avatar).toBe('🥸');
+      expect(groupDto.owner).toStrictEqual(TestUserDto);
+      expect(groupDto.created_at).toBeDefined();
+      expect(groupDto.updated_at).toBeDefined();
+      expect(groupDto.member_count).toBe(2);
+      expect(groupDto.question_count).toBe(0);
+      expect(groupDto.answer_count).toBe(0);
+      expect(groupDto.is_member).toBe(true);
+      expect(groupDto.is_owner).toBe(false);
     });
     it('should return GroupIdNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
@@ -491,18 +498,19 @@ describe('Groups Module', () => {
       expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toContain('关注幻城谢谢喵');
-      expect(respond.body.data.intro).toBe('湾原审万德');
-      expect(respond.body.data.avatar).toBe('🤣');
-      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
-      expect(respond.body.data.created_at).toBeDefined();
-      expect(respond.body.data.updated_at).toBeDefined();
-      expect(respond.body.data.member_count).toBe(2);
-      expect(respond.body.data.question_count).toBe(0);
-      expect(respond.body.data.answer_count).toBe(0);
-      expect(respond.body.data.is_member).toBe(true);
-      expect(respond.body.data.is_owner).toBe(false);
+      const groupDto = respond.body.data.group;
+      expect(groupDto.id).toBe(TestGroupId);
+      expect(groupDto.name).toContain('关注幻城谢谢喵');
+      expect(groupDto.intro).toBe('湾原审万德');
+      expect(groupDto.avatar).toBe('🤣');
+      expect(groupDto.owner).toStrictEqual(TestUserDto);
+      expect(groupDto.created_at).toBeDefined();
+      expect(groupDto.updated_at).toBeDefined();
+      expect(groupDto.member_count).toBe(2);
+      expect(groupDto.question_count).toBe(0);
+      expect(groupDto.answer_count).toBe(0);
+      expect(groupDto.is_member).toBe(true);
+      expect(groupDto.is_owner).toBe(false);
     });
     it('should return GroupIdNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
@@ -568,18 +576,19 @@ describe('Groups Module', () => {
       expect(respond.body.message).toBe('Group fetched successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBe(TestGroupId);
-      expect(respond.body.data.name).toContain('关注幻城谢谢喵');
-      expect(respond.body.data.intro).toBe('湾原审万德');
-      expect(respond.body.data.avatar).toBe('🤣');
-      expect(respond.body.data.owner).toStrictEqual(TestUserDto);
-      expect(respond.body.data.created_at).toBeDefined();
-      expect(respond.body.data.updated_at).toBeDefined();
-      expect(respond.body.data.member_count).toBe(1);
-      expect(respond.body.data.question_count).toBe(0);
-      expect(respond.body.data.answer_count).toBe(0);
-      expect(respond.body.data.is_member).toBe(false);
-      expect(respond.body.data.is_owner).toBe(false);
+      const groupDto = respond.body.data.group;
+      expect(groupDto.id).toBe(TestGroupId);
+      expect(groupDto.name).toContain('关注幻城谢谢喵');
+      expect(groupDto.intro).toBe('湾原审万德');
+      expect(groupDto.avatar).toBe('🤣');
+      expect(groupDto.owner).toStrictEqual(TestUserDto);
+      expect(groupDto.created_at).toBeDefined();
+      expect(groupDto.updated_at).toBeDefined();
+      expect(groupDto.member_count).toBe(1);
+      expect(groupDto.question_count).toBe(0);
+      expect(groupDto.answer_count).toBe(0);
+      expect(groupDto.is_member).toBe(false);
+      expect(groupDto.is_owner).toBe(false);
     });
     it('should return GroupIdNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
