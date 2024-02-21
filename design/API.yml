@@ -45,20 +45,60 @@ components:
         id:
           type: integer
           format: int64
+          description: 用户 ID
+          minimum: 1
         username:
           type: string
+          description: 用户名
+          example: "cheese"
         nickname:
           type: string
+          description: 昵称
+          example: "芝士"
         avatar:
           type: string
+          description: 头像 URL
         intro:
           type: string
-          default: ""
+          description: 个人简介
+          default: "This user has not set an introduction yet."
+        follow_count:
+          type: integer
+          format: int64
+          description: 关注用户的数量
+          minimum: 0
+          example: 114
+        fans_count:
+          type: integer
+          format: int64
+          description: 粉丝数量
+          minimum: 0
+          example: 514
+        question_count:
+          type: integer
+          format: int64
+          description: 提问数量
+          minimum: 0
+          example: 1919
+        answer_count:
+          type: integer
+          format: int64
+          description: 回答数量
+          minimum: 0
+          example: 810
+        is_follow:
+          type: boolean
+          description: 当前登录用户是否关注该用户
       required:
         - id
         - username
         - nickname
         - avatar
+        - intro
+        - follow_count
+        - fans_count
+        - question_count
+        - answer_count
     Page:
       type: object
       description: 分页信息
