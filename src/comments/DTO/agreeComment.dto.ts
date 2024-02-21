@@ -1,12 +1,8 @@
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-enum AgreeType {
-  Neither = 0,
-  Agreed = 1,
-  Disagreed = 2,
+export class AttitudeCommentDto {
+  attitudeType: '1' | '2' | '3';
 }
-export class AgreeCommentDto {
-  agree_type: AgreeType;
-}
-export class AgreeCommentResponseDto extends BaseRespondDto {
-  data: AgreeCommentDto;
+
+export class AttitudeCommentResponseDto extends BaseRespondDto {
+  data: { attitudeType: '1' | '2' | '3' };
 }

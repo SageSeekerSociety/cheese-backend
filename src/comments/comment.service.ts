@@ -2,13 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Answer } from '../answer/answer.entity';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { Question } from '../questions/questions.legacy.entity';
-import { UserIdNotFoundError } from '../users/users.error';
 import { User } from '../users/users.legacy.entity';
-import { AgreeCommentDto } from './DTO/agreeComment.dto';
+import { CommentDto } from './DTO/comment.dto';
 import { GetCommentDetailDto } from './DTO/getCommentDetail.dto';
-import { GetCommentsResponseDto } from './DTO/getComments.dto';
 import { Comment, UserAttitudeOnComments } from './comment.entity';
 import {
   CommentNotFoundByUserError,
@@ -49,9 +46,10 @@ export class CommentsService {
         commentableRepository = this.questionsRepository;
         break;
     }
-    const commentable = await commentableRepository.findOneBy({
-      id: commentableId,
+    const commentable = await commentableRepository.findOne({
+      where: { id: commentableId },
     });
+
     if (!commentable) {
       throw new CommentableIdNotFoundError(commentableId);
     }
@@ -63,7 +61,7 @@ export class CommentsService {
       commentableId,
     });
     const userAttitudeOnComment = this.userAttitudeOnCommentsRepository.create({
-      agreeType: 0,
+      agreeType: '3',
       userId: userId,
     });
     comment.agreeCount = 0;
@@ -79,7 +77,11 @@ export class CommentsService {
     });
 
     if (!comment) {
-      throw new CommentNotFoundByUserError(userId);
+      const Comment = await this.commentsRepository.findOne({
+        where: { id: commentId },
+      });
+      if (!Comment) throw new CommentNotFoundError(commentId);
+      else throw new CommentNotFoundByUserError(userId);
     }
 
     await this.commentsRepository.softRemove(comment);
@@ -87,41 +89,62 @@ export class CommentsService {
 
   async getComments(
     userId: number,
+    commentableType: 'answer' | 'question' | 'comment',
     commentableId: number,
-    pageStart: number = 0,
-    pageSize: number = 20,
-  ): Promise<GetCommentsResponseDto> {
-    const comment = await this.commentsRepository.findOneBy({
-      id: commentableId,
-    });
-    const user = await this.usersRepository.findOneBy({ id: userId });
-    const userAttitudeOnComment =
-      await this.userAttitudeOnCommentsRepository.findOne({
-        where: { id: commentableId, userId },
-      });
-    if (!comment) {
+    // pageStart: number,
+    // pageSize: number = 20,
+  ): Promise<
+    [
+      {
+        comment: CommentDto;
+      }[],
+      // PageRespondDto,
+    ]
+  > {
+    let commentableRepository;
+    switch (commentableType) {
+      case 'answer':
+        commentableRepository = this.answersRepository;
+        break;
+      case 'question':
+        commentableRepository = this.questionsRepository;
+        break;
+      case 'comment':
+        commentableRepository = this.commentsRepository;
+        break;
+    }
+
+    const comments = (await commentableRepository.find({
+      where: { id: commentableId },
+      // skip: pageStart,
+      // take: pageSize,
+    })) as Comment[];
+    if (!comments) {
       throw new CommentNotFoundError(commentableId);
     }
+    // const hasPrev = pageStart > 0;
+    // const hasMore = comments.length === pageSize;
 
-    const hasPrev = pageStart > 0;
-    const hasMore = false;
+    // let prevStart: number | undefined;
+    // if (hasPrev) {
+    //   prevStart = Math.max(0, pageStart - pageSize);
+    // }
 
-    let prevStart: number | undefined;
-    if (hasPrev) {
-      prevStart = Math.max(0, pageStart - pageSize);
-    }
+    // const page: PageRespondDto = {
+    //   page_start: pageStart,
+    //   page_size: pageSize,
+    //   has_prev: hasPrev,
+    //   prev_start: prevStart,
+    //   has_more: hasMore,
+    //   next_start: hasMore ? pageStart + pageSize : undefined,
+    // };
 
-    const page: PageRespondDto = {
-      page_start: pageStart,
-      page_size: pageSize,
-      has_prev: hasPrev,
-      prev_start: prevStart,
-      has_more: hasMore,
-      next_start: undefined,
-    };
-
-    const commentsData = [
-      {
+    const commentsData = comments.map(async (comment) => {
+      const userAttitudeOnComments =
+        await this.userAttitudeOnCommentsRepository.findOne({
+          where: { id: comment.id, userId },
+        });
+      return {
         comment: {
           id: comment.id,
           commentableId: comment.commentableId,
@@ -131,39 +154,27 @@ export class CommentsService {
           createdAt: comment.createdAt.getTime(),
           agreeCount: comment.agreeCount,
           disagreeCount: comment.disagreeCount,
-          agreeType: user
-            ? userAttitudeOnComment
-              ? userAttitudeOnComment.agreeType
-              : 0
-            : 0,
+          agreeType: userAttitudeOnComments
+            ? userAttitudeOnComments.agreeType
+            : '3',
         },
-      },
-    ];
+      };
+    });
 
-    return {
-      code: 200,
-      message: 'get comment',
-      data: {
-        comments: commentsData,
-        page,
-      },
-    };
+    // 注意：上述代码中的commentsData是一个Promise数组，你可能需要使用Promise.all来等待所有的评论对象都被处理完毕
+    const resolvedCommentsData = await Promise.all(commentsData);
+
+    // return a tuple
+    return [resolvedCommentsData];
   }
 
-  async agreeComment(
+  async altitudeToComment(
     userId: number,
     commentId: number,
-    agreeType: AgreeCommentDto,
+    attitudeType: '1' | '2',
   ) {
-    const user = await this.usersRepository.findOneBy({
-      id: userId,
-    });
-    if (!user) {
-      throw new UserIdNotFoundError(userId);
-      return;
-    }
-    const comment = await this.commentsRepository.findOneBy({
-      id: commentId,
+    const comment = await this.commentsRepository.findOne({
+      where: { id: commentId },
     });
     const userAttitudeOnComment =
       await this.userAttitudeOnCommentsRepository.findOne({
@@ -172,32 +183,31 @@ export class CommentsService {
     if (!comment) {
       throw new CommentNotFoundError(commentId);
     }
-    switch (agreeType.agree_type) {
-      case 0:
-        break;
-      case 1:
-        if (userAttitudeOnComment?.agreeType == 1) {
-          break;
-        } else {
-          if (userAttitudeOnComment?.agreeType == 2) {
+    switch (attitudeType) {
+      case '1':
+        if (userAttitudeOnComment?.agreeType != '1') {
+          if (userAttitudeOnComment?.agreeType == '2') {
             comment.disagreeCount = comment.disagreeCount - 1;
           }
           comment.agreeCount = comment.agreeCount + 1;
         }
         break;
-      case 2:
-        if (userAttitudeOnComment?.agreeType == 2) {
-          break;
-        } else {
-          if (userAttitudeOnComment?.agreeType == 1) {
+      case '2':
+        if (userAttitudeOnComment?.agreeType != '2') {
+          if (userAttitudeOnComment?.agreeType == '1') {
             comment.agreeCount = comment.agreeCount - 1;
           }
           comment.disagreeCount = comment.disagreeCount + 1;
         }
         break;
       default:
-        throw new InvalidAgreeTypeError(agreeType.agree_type);
+        throw new InvalidAgreeTypeError(attitudeType);
     }
+    if (userAttitudeOnComment) {
+      userAttitudeOnComment.agreeType = attitudeType;
+      await this.userAttitudeOnCommentsRepository.save(userAttitudeOnComment);
+    }
+    await this.commentsRepository.save(comment);
     return;
   }
 
@@ -223,15 +233,14 @@ export class CommentsService {
       content: comment.content,
       commentableId: comment.commentableId,
       commentableType: comment.commentableType,
-      user: comment.user,
       disagreeCount: comment.disagreeCount,
       agreeCount: comment.agreeCount,
-      createdAt: comment.createdAt.getDate(),
+      createdAt: comment.createdAt.getTime(),
       agreeType: user
         ? userAttitudeOnComment
           ? userAttitudeOnComment.agreeType
-          : 0
-        : 0,
+          : '3'
+        : '3',
     };
     return commentDto;
   }

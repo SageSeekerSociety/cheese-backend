@@ -7,24 +7,19 @@ import {
   Param,
   ParseIntPipe,
   Post,
-  Put,
-  Query,
   UseFilters,
   UsePipes,
-  ValidationPipe
+  ValidationPipe,
 } from '@nestjs/common';
+import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { UserIdNotFoundError } from '../users/users.error';
-import {
-  AgreeCommentDto,
-  AgreeCommentResponseDto,
-} from './DTO/agreeComment.dto';
+import { AttitudeCommentResponseDto } from './DTO/agreeComment.dto';
 import { CreateCommentResponseDto } from './DTO/comment.dto';
 import { DeleteCommentRespondDto } from './DTO/deleteComment.dto';
 import { GetCommentsResponseDto } from './DTO/getComments.dto';
 import { CommentsService } from './comment.service';
-
 @Controller('/comments')
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
@@ -36,37 +31,39 @@ export class CommentsController {
 
   @Get('/:commentableType/:commentableId')
   async getComments(
-    @Param('commentableType') commentableType: 'answer'|'question'|'comment',
+    @Param('commentableType')
+    commentableType: 'answer' | 'question' | 'comment',
     @Param('commentableId', ParseIntPipe) commentableId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number=1,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number = 20,
+    // @Query('page_start', new ParseIntPipe({ optional: true }))
+    // pageStart: number = 1,
+    // @Query('page_size', new ParseIntPipe({ optional: true }))
+    // pageSize: number = 20,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<GetCommentsResponseDto> {
     const userId = this.authService.verify(auth).userId;
     if (!userId) {
       throw new UserIdNotFoundError(userId);
     }
-    const commentData = (
-      await this.commentsService.getComments(userId,commentableId, pageStart, pageSize)
-    ).data.comments;
-    const page = (
-      await this.commentsService.getComments(userId,commentableId, pageStart, pageSize)
-    ).data.page;
+    const [comments] = await this.commentsService.getComments(
+      userId,
+      commentableType,
+      commentableId,
+      // pageStart,
+      // pageSize,
+    );
     return {
       code: 200,
       message: 'Get comments successfully',
       data: {
-        comments: commentData,
-        page,
+        comments,
+        //page,
       },
     };
   }
 
   // 咋成body了 应该是/:commentableType/:commentableId啊
   // 然后@Params('commentableType')
-  @Post('/:commentableType/:commentableId')
+  @Post('/:commentableType/:commentableId/create')
   async createComment(
     @Param('commentableId', ParseIntPipe) commentableId: number,
     @Param('commentableType')
@@ -74,23 +71,22 @@ export class CommentsController {
     @Body('content') content: string,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<CreateCommentResponseDto> {
-    const userId = this.authService.verify(auth).userId;
-    if (!userId) {
-      throw new UserIdNotFoundError(userId);
+    if (!auth) {
+      throw new AuthenticationRequiredError();
     }
-
+    const userId = this.authService.verify(auth).userId;
     const commentId = await this.commentsService.createComment(
-        userId,
-        content,
-        commentableType,
-        commentableId,
-      );
-    
+      userId,
+      content,
+      commentableType,
+      commentableId,
+    );
+
     return {
       code: 201,
       message: 'Comment created successfully',
       data: {
-        id: commentId
+        id: commentId,
       },
     };
   }
@@ -100,10 +96,10 @@ export class CommentsController {
     @Param('commentId', ParseIntPipe) commentId: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<DeleteCommentRespondDto> {
-    const userId = this.authService.verify(auth).userId;
-    if (!userId) {
-      throw new UserIdNotFoundError(userId)
+    if (!auth) {
+      throw new AuthenticationRequiredError();
     }
+    const userId = this.authService.verify(auth).userId;
     await this.commentsService.deleteComment(userId, commentId);
     return {
       code: 204,
@@ -112,37 +108,39 @@ export class CommentsController {
     };
   }
 
-  @Put('/:commentId/agree:')
-  async agreeComment(
+  @Post('/:commentId/attitude')
+  async altitudeToComment(
     @Param('commentId', ParseIntPipe) commentId: number,
-    @Body() requestBody: AgreeCommentDto,
+    @Body('attitudeType') attitude: '1' | '2',
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<AgreeCommentResponseDto> {
-    const userId = this.authService.verify(auth).userId;
-    if (!userId) {
-      throw new UserIdNotFoundError(userId)
+  ): Promise<AttitudeCommentResponseDto> {
+    if (!auth) {
+      throw new AuthenticationRequiredError();
     }
-    const agree_type = requestBody;
+    const userId = this.authService.verify(auth).userId;
 
-    await this.commentsService.agreeComment(userId, commentId, agree_type);
+    await this.commentsService.altitudeToComment(userId, commentId, attitude);
 
     return {
-      code: 200,
+      code: 201,
       message: 'You have expressed your attitude towards the comment',
-      data: { agree_type: agree_type.agree_type },
+      data: { attitudeType: attitude },
     };
   }
 
   @Get('/:commentId')
   async getCommentDetail(
     @Param('commentId', ParseIntPipe) commentId: number,
-    @Headers('Authorization') auth:string|undefined,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<CreateCommentResponseDto> {
-    const userId = this.authService.verify(auth).userId;
-    if (!userId) {
-      throw new UserIdNotFoundError(userId);
+    if (!auth) {
+      throw new AuthenticationRequiredError();
     }
-    const comment = (await this.commentsService.getCommentDetail(userId, commentId))
+    const userId = this.authService.verify(auth).userId;
+    const comment = await this.commentsService.getCommentDetail(
+      userId,
+      commentId,
+    );
     return {
       code: 200,
       message: 'Details are as follows',

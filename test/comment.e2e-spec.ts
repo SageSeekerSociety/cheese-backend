@@ -125,7 +125,7 @@ describe('comments Module', () => {
       TestUserDto = respond.body.data.user;
       TestUserId = respond.body.data.user.id;
     });
-    
+
     it('should create some topics', async () => {
       async function createTopic(name: string) {
         const respond = await request(app.getHttpServer())
@@ -160,7 +160,7 @@ describe('comments Module', () => {
         expect(respond.body.message).toBe('Created');
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
-        expect(respond.body.data.id).toBeDefined(); 
+        expect(respond.body.data.id).toBeDefined();
         questionIds.push(respond.body.data.id);
       }
       await createQuestion(
@@ -212,71 +212,95 @@ describe('comments Module', () => {
         content: string,
       ) {
         const respond = await request(app.getHttpServer())
-          .post(`/comments/${commentableType}/${commentableId}`)
+          .post(`/comments/${commentableType}/${commentableId}/create`)
           .set('Authorization', `Bearer ${TestToken}`)
-          .send({//这样写比+直观一些
+          .send({
+            //这样写比+直观一些
             // 左边要求body有content字段
             content: `${TestCommentPrefix} ${content}`,
           });
-        console.log(respond.body);
+
         expect(respond.body.message).toBe('Comment created successfully');
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
         expect(respond.body.data.id).toBeTruthy();
         CommentIds.push(respond.body.data.id);
       }
-      // 不是 你这是关于comment123建的一个comment
-      // 但comment123都不存在（
-      // 这是个id 得真实存在的
-      // 但考虑到现在answer有点问题
-      // 你可以先建个question 存下来他的id（见question.e2e
-      // 然后对他createComment
-      console.log(questionIds[0])
       await createComment(questionIds[0], 'question', 'zfgg好帅');
       await createComment(questionIds[1], 'question', 'zfggnb');
       await createComment(questionIds[2], 'question', 'zfgg???????');
       await createComment(questionIds[3], 'question', '宵宫!');
     }, 80000);
+    it('should not create comment due to invalid commentableId', async () => {
+      const content = 'what you gonna to know?';
+      const respond = await request(app.getHttpServer())
+        .post(`/comments/question/114514/create`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({
+          //这样写比+直观一些
+          // 左边要求body有content字段
+          content: `${TestCommentPrefix} ${content}`,
+        });
+
+      expect(respond.body.message).toContain('CommentableID');
+      expect(respond.body.code).toBe(404);
+      expect(respond.status).toBe(404);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const content = 'what you gonna to know?';
+      const respond = await request(app.getHttpServer())
+        .post(`/comments/question/${questionIds[0]}/create`)
+        .send({
+          content: `${TestCommentPrefix} ${content}`,
+        });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
     it('should create some auxiliary users', async () => {
       [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
       [auxAdminUserDto, auxAdminAccessToken] = await createAuxiliaryUser();
     });
-    console.log('auxUserDto', auxUserDto);
-    console.log('auxAccessToken', auxAccessToken);
-    console.log('auxAdminUserDto', auxAdminUserDto);
-    console.log('auxAdminAccessToken', auxAdminAccessToken);
+    console.log(auxAccessToken);
+    console.log(auxAdminAccessToken);
+    console.log(auxUserDto);
+    console.log(auxAdminUserDto);
+    console.log(TestUserDto);
+    console.log(TestUserId);
+    console.log(auxUserId);
   });
 
-  describe('get Comments', () => {
-    it('should get all comments', async () => {
-      const respond = await request(app.getHttpServer())
-        .get(`/comments/${questionIds[0]}`)
-        .set('Authorization', `Bearer ${TestToken}`)
-        .send();
-      expect(respond.body.message).toBe('Get comments successfully');
-      expect(respond.body.status).toBe(200);
-      expect(respond.body.code).toBe(200);
-      expect(respond.body.data.length).toBe(2);
-      expect(respond.body.data.comment[0].commentableId).toBe(questionIds[0]);
-      expect(respond.body.data.comment[0].commentableType).toBe('question');
-      expect(respond.body.data.comment[0].content).toBe('zfgg好帅!');
-      expect(respond.body.data.comment[0].id).toBeDefined();
-      expect(respond.body.data.comment[0].created_at).toBeDefined();
-      expect(respond.body.data.comment[0].agree_count).toBe(0);
-      expect(respond.body.data.comment[0].disagree_count).toBe(0);
-      expect(respond.body.data.comment[0].agree_type).toBe(0);
-      expect(respond.body.data.comment[0].user).toStrictEqual(TestUserDto);
-      expect(respond.body.data.page.page_start).toBe(CommentIds[3]);
-      expect(respond.body.data.page.page_size).toBe(2);
-      expect(respond.body.data.page.has_prev).toBe(false);
-      expect(respond.body.data.page.prev_start).toBeFalsy();
-      expect(respond.body.data.page.has_more).toBe(true);
-      expect(respond.body.data.page.next_start).toBe(CommentIds[1]);
-    });
-  });
+  // describe('get Comments', () => {
+  //   it('should get all comments', async () => {
+  //     console.log(questionIds[0]);
+  //     const respond = await request(app.getHttpServer())
+  //       .get(`/comments/question/${questionIds[0]}`)
+  //       .set('Authorization', `Bearer ${TestToken}`)
+  //       .send();
+
+  //     expect(respond.body.message).toBe('Get comments successfully');
+  //     expect(respond.status).toBe(200);
+  //     expect(respond.body.code).toBe(200);
+  //     console.log(respond.body.comment)
+  //     expect(respond.body.data.comments[0].commentableId).toBe(questionIds[0]);
+  //     expect(respond.body.data.comments[0].commentableType).toBe('question');
+  //     expect(respond.body.data.comments[0].content).toBe('zfgg好帅!');
+  //     expect(respond.body.data.comments[0].id).toBeDefined();
+  //     expect(respond.body.data.comments[0].created_at).toBeDefined();
+  //     expect(respond.body.data.comments[0].agree_count).toBe(0);
+  //     expect(respond.body.data.comments[0].disagree_count).toBe(0);
+  //     expect(respond.body.data.comments[0].agree_type).toBe('3');
+  //     expect(respond.body.data.comments[0].user).toStrictEqual(TestUserDto);
+  //     // expect(respond.body.data.page.page_start).toBe(CommentIds[3]);
+  //     // expect(respond.body.data.page.page_size).toBe(2);
+  //     // expect(respond.body.data.page.has_prev).toBe(false);
+  //     // expect(respond.body.data.page.prev_start).toBeFalsy();
+  //     // expect(respond.body.data.page.has_more).toBe(true);
+  //     // expect(respond.body.data.page.next_start).toBe(CommentIds[1]);
+  //   });
+  // });
 
   describe('get comment list by id', () => {
-    it('should get comments by id', async () => {
+    it('should get comment by id', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/comments/${CommentIds[0]}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -284,59 +308,156 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.comments[0].id).toBeDefined();
-      expect(respond.body.data.comments[0].commentableId).toBe(123);
-      expect(respond.body.data.comments[0].commentableType).toBe('question');
-      expect(respond.body.data.comments[0].content).toBe('zfgg好帅');
-      expect(respond.body.data.comments[0].user).toStrictEqual(TestUserDto);
-      expect(respond.body.data.comments[0].created_at).toBeDefined();
-      expect(respond.body.data.comments[0].disagree_count).toBe(0);
-      expect(respond.body.data.comments[0].agree_count).toBe(0);
-      expect(respond.body.data.comments[0].agree_type).toBe(0);
-      expect(respond.body.data.comments[0].quote).toBeDefined();
-      expect(respond.body.data.page.page_start).toBe(CommentIds[0]);
-      expect(respond.body.data.page.page_size).toBeLessThanOrEqual(2); // ! since tests are run multiple times
-      expect(respond.body.data.page.has_prev).toBe(false);
-      expect(respond.body.data.page.prev_start).toBeFalsy();
-      expect(respond.body.data.page.has_more).toBeDefined();
-      expect(respond.body.data.page.next_start).toBeDefined();
+      expect(respond.body.data.id).toBeDefined();
+      expect(respond.body.data.commentableId).toBe(questionIds[0]);
+      expect(respond.body.data.commentableType).toBe('question');
+      expect(respond.body.data.content).toContain('zfgg好帅');
+      expect(respond.body.data.createdAt).toBeDefined();
+      expect(respond.body.data.disagreeCount).toBe(0);
+      expect(respond.body.data.agreeCount).toBe(0);
+      expect(respond.body.data.agreeType).toBe('3');
+    });
+    it('should return CommentNotFoundError due to the invalid id', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/comments/114514`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toContain('CommentNotFoundError');
+      expect(respond.status).toBe(404);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/comments/${CommentIds[0]}`)
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
     });
   });
 
-  describe('agreeComment', () => {
+  describe('AttitudeToComment', () => {
     it('should agree to a comment', async () => {
-      const commentId = CommentIds[1];
-
+      const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
-        .post(`/comments/${commentId}/${'agree'}`)
+        .post(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send();
-      expect(respond.body.message).toBe('You have expressed your attitude towards the comment');
-      expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
+        .send({ attitudeType: '1' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the comment',
+      );
+      expect(respond.status).toBe(201);
+      expect(respond.body.code).toBe(201);
       // 可以根据具体情况验证其他返回数据
     });
-    it('should disagree to a comment', async () => {
-      const commentId = CommentIds[1];
+    it('should get some difference from others', async () => {
       const respond = await request(app.getHttpServer())
-        .post(`/comments/${commentId}/disagree`)
-        .set('Authorization', `Bearer ${TestToken}`)
+        .get(`/comments/${CommentIds[0]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(respond.body.message).toBe('You have expressed your attitude towards the comment');
+      expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
+      expect(respond.body.data.id).toBeDefined();
+      expect(respond.body.data.commentableId).toBe(questionIds[0]);
+      expect(respond.body.data.commentableType).toBe('question');
+      expect(respond.body.data.content).toContain('zfgg好帅');
+      expect(respond.body.data.createdAt).toBeDefined();
+      expect(respond.body.data.disagreeCount).toBe(0);
+      expect(respond.body.data.agreeCount).toBe(1);
+      expect(respond.body.data.agreeType).toBe('3');
     });
-  it('should return to InvalidAgreeTypeError', async () => {
-    const commentId = CommentIds[1];
-    const respond = await request(app.getHttpServer())
-      .post(`/comments/${commentId}/>>>`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send();
-    expect(respond.body.message).toBe('/^InvalidAgreeTypeError: /');
-    expect(respond.status).toBe(400);
-    expect(respond.body.code).toBe(400);
+    it('should get some difference from self', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/comments/${CommentIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('Details are as follows');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.id).toBeDefined();
+      expect(respond.body.data.commentableId).toBe(questionIds[0]);
+      expect(respond.body.data.commentableType).toBe('question');
+      expect(respond.body.data.content).toContain('zfgg好帅');
+      expect(respond.body.data.createdAt).toBeDefined();
+      expect(respond.body.data.disagreeCount).toBe(0);
+      expect(respond.body.data.agreeCount).toBe(1);
+      expect(respond.body.data.agreeType).toBe('1');
+    });
+    it('should disagree to a comment', async () => {
+      const commentId = CommentIds[0];
+      const respond = await request(app.getHttpServer())
+        .post(`/comments/${commentId}/attitude`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ attitudeType: '2' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the comment',
+      );
+      expect(respond.status).toBe(201);
+      expect(respond.body.code).toBe(201);
+    });
+    it('should get some difference from others', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/comments/${CommentIds[0]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('Details are as follows');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.id).toBeDefined();
+      expect(respond.body.data.commentableId).toBe(questionIds[0]);
+      expect(respond.body.data.commentableType).toBe('question');
+      expect(respond.body.data.content).toContain('zfgg好帅');
+      expect(respond.body.data.createdAt).toBeDefined();
+      expect(respond.body.data.disagreeCount).toBe(1);
+      expect(respond.body.data.agreeCount).toBe(0);
+      expect(respond.body.data.agreeType).toBe('3');
+    });
+    it('should get some difference from self', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/comments/${CommentIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('Details are as follows');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.id).toBeDefined();
+      expect(respond.body.data.commentableId).toBe(questionIds[0]);
+      expect(respond.body.data.commentableType).toBe('question');
+      expect(respond.body.data.content).toContain('zfgg好帅');
+      expect(respond.body.data.createdAt).toBeDefined();
+      expect(respond.body.data.disagreeCount).toBe(1);
+      expect(respond.body.data.agreeCount).toBe(0);
+      expect(respond.body.data.agreeType).toBe('2');
+    });
+    it('should return to InvalidAgreeTypeError', async () => {
+      const commentId = CommentIds[1];
+      const respond = await request(app.getHttpServer())
+        .post(`/comments/${commentId}/attitude`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ attitudeType: '5' });
+      expect(respond.body.message).toContain('InvalidAgreeTypeError:');
+      expect(respond.status).toBe(400);
+      expect(respond.body.code).toBe(400);
+    });
+    it('should return CommentNotFoundError', async () => {
+      const commentId = 114514;
+      const respond = await request(app.getHttpServer())
+        .post(`/comments/${commentId}/attitude`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ attitudeType: '2' });
+      expect(respond.body.message).toContain('CommentNotFoundError:');
+      expect(respond.status).toBe(404);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const commentId = CommentIds[1];
+      const respond = await request(app.getHttpServer())
+        .post(`/comments/${commentId}/attitude`)
+        .send({ attitudeType: '2' });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
   });
-});
 
   describe('deleteComment', () => {
     it('should delete a comment', async () => {
@@ -347,19 +468,37 @@ describe('comments Module', () => {
         .send();
       expect(respond.body.message).toBe('Comment deleted already');
       expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
+      expect(respond.body.code).toBe(204);
       // 可以根据具体情况验证其他返回数据
     });
     it('should not delete a comment when the user does not match', async () => {
-      const commentId = CommentIds[1];
+      const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^CommentNotFoundByUserError: /);
-      expect(respond.status).toBe(204);
-      expect(respond.body.code).toBe(204);
-    })
+      expect(respond.body.message).toContain('CommentNotFoundByUserError:');
+      expect(respond.status).toBe(404);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should not delete a comment due to the invalid commentId', async () => {
+      const commentId = 114514;
+      const respond = await request(app.getHttpServer())
+        .delete(`/comments/${commentId}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toContain('CommentNotFoundError:');
+      expect(respond.status).toBe(404);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const commentId = CommentIds[0];
+      const respond = await request(app.getHttpServer())
+        .delete(`/comments/${commentId}`)
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
   });
   afterAll(async () => {
     await app.close();

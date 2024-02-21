@@ -4,38 +4,30 @@ export class CommentableIdNotFoundError extends BaseError {
   constructor(public readonly commentableId: number) {
     super(
       'CommentableIdNotFoundError',
-      `Commentable ID ${commentableId} not found`,
-      404
+      `CommentableID ${commentableId} not found`,
+      404,
     );
   }
 }
 
 export class InvalidAgreeTypeError extends BaseError {
-  constructor(public readonly agreeType: number) {
-    super(
-      'InvalidAgreeTypeError',
-      `Invalid agree type: ${agreeType}`,
-      400
-    );
+  constructor(public readonly agreeType: string) {
+    super('InvalidAgreeTypeError', `Invalid agree type: ${agreeType}`, 400);
   }
 }
 
 export class CommentNotFoundError extends BaseError {
   constructor(public readonly commentId: number) {
-    super(
-      'commentNotFoundError',
-      `Comment ID ${commentId} not found`,
-      404
-    );
+    super('CommentNotFoundError', `Comment ID ${commentId} not found`, 404);
   }
 }
 
 export class CommentNotFoundByUserError extends BaseError {
   constructor(public readonly userId: number) {
     super(
-      'commentNotFoundByUserError',
+      'CommentNotFoundByUserError',
       `Comment ID not found by user ID: ${userId}`,
-      404
+      404,
     );
   }
 }
