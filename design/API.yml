@@ -1306,7 +1306,7 @@ paths:
                             $ref: "#/components/schemas/Page"
                     required:
                       - data
-    put:
+    post:
       summary: 关注问题
       operationId: followQuestion
       parameters:
