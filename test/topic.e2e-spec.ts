@@ -157,6 +157,19 @@ describe('Topic Module', () => {
     it('should wait some time for elasticsearch to refresh', async () => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
     });
+    it('should return empty page without parameters', async () => {
+      const respond = await request(app.getHttpServer()).get('/topics').send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.topics.length).toBe(0);
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.page_start).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
+    });
     it('should search topics and do paging', async () => {
       // Try search: `${TestTopicCode} 高等`
       const respond = await request(app.getHttpServer())

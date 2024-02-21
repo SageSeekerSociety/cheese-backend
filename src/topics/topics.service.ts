@@ -36,13 +36,12 @@ export class TopicsService {
       createdById: userId,
     });
     const topicSaved = await this.topicRepository.save(topic);
-    const topicEsDoc: TopicElasticsearchDocument = {
-      id: topicSaved.id,
-      name: topicSaved.name,
-    };
-    await this.elasticsearchService.index({
+    await this.elasticsearchService.index<TopicElasticsearchDocument>({
       index: 'topics',
-      document: topicEsDoc,
+      document: {
+        id: topicSaved.id,
+        name: topicSaved.name,
+      },
     });
     return {
       id: topicSaved.id,
@@ -59,16 +58,17 @@ export class TopicsService {
     userAgent?: string, // optional
   ): Promise<[TopicDto[], PageRespondDto]> {
     const timeBegin = Date.now();
-    const result =
-      await this.elasticsearchService.search<TopicElasticsearchDocument>({
-        index: 'topics',
-        size: 1000,
-        body: {
-          query: {
-            match: { name: keywords },
+    const result = !keywords
+      ? { hits: { hits: [] } }
+      : await this.elasticsearchService.search<TopicElasticsearchDocument>({
+          index: 'topics',
+          size: 1000,
+          body: {
+            query: {
+              match: { name: keywords },
+            },
           },
-        },
-      });
+        });
     const allData = result.hits.hits
       .filter((h) => h._source != undefined)
       .map((h) => h._source) as TopicElasticsearchDocument[];
