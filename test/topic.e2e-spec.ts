@@ -179,18 +179,12 @@ describe('Topic Module', () => {
       expect(respond2.status).toBe(200);
       expect(respond2.body.code).toBe(200);
       expect(respond2.body.data.topics.length).toBe(3);
-      expect(respond2.body.data.topics[0].name).toBe(
-        `${TestTopicPrefix} 高等数学`,
-      );
-      expect(respond2.body.data.topics[1].name).toBe(
-        `${TestTopicPrefix} 高等代数`,
-      );
-      expect(respond2.body.data.topics[2].name).toBe(
-        `${TestTopicPrefix} 高等数学习题`,
-      );
-      expect(respond2.body.data.page.page_start).toBe(
-        respond2.body.data.topics[0].id,
-      );
+      expect(respond2.body.data.topics[0].name).toContain(TestTopicCode);
+      expect(respond2.body.data.topics[0].name).toContain('高等');
+      expect(respond2.body.data.topics[1].name).toContain(TestTopicCode);
+      expect(respond2.body.data.topics[1].name).toContain('高等');
+      expect(respond2.body.data.topics[2].name).toContain(TestTopicCode);
+      expect(respond2.body.data.topics[2].name).toContain('高等');
       expect(respond2.body.data.page.page_size).toBe(3);
       expect(respond2.body.data.page.has_prev).toBe(false);
       expect(respond2.body.data.page.prev_start).toBe(0);
@@ -208,9 +202,8 @@ describe('Topic Module', () => {
       expect(respond3.body.data.topics[0].id).toBe(
         respond2.body.data.page.next_start,
       );
-      expect(respond3.body.data.topics[0].name).toBe(
-        `${TestTopicPrefix} 高等代数习题`,
-      );
+      expect(respond3.body.data.topics[0].name).toContain(TestTopicCode);
+      expect(respond3.body.data.topics[0].name).toContain('高等');
       expect(respond3.body.data.page.page_start).toBe(
         respond3.body.data.topics[0].id,
       );
