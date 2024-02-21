@@ -7,6 +7,7 @@ import configuration, {
 import { GroupsModule } from './groups/groups.module';
 import { QuestionsModule } from './questions/questions.module';
 import { UsersModule } from './users/users.module';
+import { AvatarsModule } from './avatars/avatars.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     QuestionsModule,
     GroupsModule,
+    AvatarsModule,
   ],
   controllers: [],
   providers: [],
