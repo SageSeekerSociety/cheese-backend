@@ -45,13 +45,13 @@ dependencies:
     specifier: ^0.5.1
     version: 0.5.1
   class-validator:
-    specifier: ^0.14.1
+    specifier: ^0.14.0
     version: 0.14.1
   express:
     specifier: ^4.18.2
     version: 4.18.2
   mysql2:
-    specifier: ^3.7.1
+    specifier: ^3.6.5
     version: 3.9.0
   nestjs-request-context:
     specifier: ^3.0.0
@@ -131,7 +131,7 @@ devDependencies:
     specifier: ^0.5.21
     version: 0.5.21
   supertest:
-    specifier: ^6.3.4
+    specifier: ^6.3.3
     version: 6.3.4
   ts-jest:
     specifier: ^29.1.2

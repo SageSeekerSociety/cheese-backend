@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../users/users.entity';
+import { User } from '../users/users.legacy.entity';
 
 @Entity()
 export class Answer {
@@ -60,11 +60,11 @@ export class Answer {
   @Column({ default: 0 })
   agree_count: number;
 
-  @Column({default: 0})
+  @Column({ default: 0 })
   disagree_count: number;
-  
+
   //favorite
-  @Column({default: false})
+  @Column({ default: false })
   is_favorite: boolean; // isFavorited
 
   // @Column({
@@ -80,6 +80,6 @@ export class Answer {
   @Column('simple-array')
   favoritedBy: string[];
 
-  @Column({default: 0})
+  @Column({ default: 0 })
   favorite_count: number;
 }

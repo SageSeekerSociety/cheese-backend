@@ -6,9 +6,9 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn
+  UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../users/users.entity';
+import { User } from '../users/users.legacy.entity';
 
 @Entity()
 export class Comment {
@@ -57,8 +57,8 @@ export class UserAttitudeOnComments {
   user: User;
 
   @Column()
-  userId:number;
-  
+  userId: number;
+
   @ManyToOne(() => Comment)
   @JoinColumn({ name: 'commentId' })
   comment: Comment;

@@ -1,5 +1,5 @@
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-import { User } from '../../users/users.entity';
+import { User } from '../../users/users.legacy.entity';
 export class CommentDto {
   id: number;
   commentableId: number;
@@ -9,11 +9,11 @@ export class CommentDto {
   createdAt: number;
   agreeCount: number;
   disagreeCount: number;
-  agreeType:number;
+  agreeType: number;
 }
 
 export class CreateCommentResponseDto extends BaseRespondDto {
   data: {
-    id: number
+    id: number;
   };
 }
