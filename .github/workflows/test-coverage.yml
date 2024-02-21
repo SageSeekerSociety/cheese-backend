@@ -90,8 +90,11 @@ jobs:
 
       - name: Install Dependencies
         run: pnpm install
+      
+      - name: Initialize Database Structures with Prisma
+        run: pnpm prisma push
 
-      - name: Start Application to Create Tables
+      - name: Try to Start Application
         run: |
           pnpm start | tee output &
           while true; do
