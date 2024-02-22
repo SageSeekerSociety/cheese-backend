@@ -1,5 +1,6 @@
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-export class GetCommentDetailDto extends BaseRespondDto {
+
+export class GetCommentDetailDto {
   id: number;
   commentableId: number;
   commentableType: 'answer' | 'comment' | 'question';
@@ -7,5 +8,8 @@ export class GetCommentDetailDto extends BaseRespondDto {
   createdAt: number;
   agreeCount: number;
   disagreeCount: number;
-  agreeType: '3' | '1' | '2';
+  agreeType: 'Indifferent' | 'Agreed' | 'Disagreed';
+}
+export class GetCommentDetailResponseDto extends BaseRespondDto {
+  data: GetCommentDetailDto;
 }

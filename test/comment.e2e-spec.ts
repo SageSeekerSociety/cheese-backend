@@ -315,7 +315,7 @@ describe('comments Module', () => {
       expect(respond.body.data.createdAt).toBeDefined();
       expect(respond.body.data.disagreeCount).toBe(0);
       expect(respond.body.data.agreeCount).toBe(0);
-      expect(respond.body.data.agreeType).toBe('3');
+      expect(respond.body.data.agreeType).toBe('Indifferent');
     });
     it('should return CommentNotFoundError due to the invalid id', async () => {
       const respond = await request(app.getHttpServer())
@@ -341,7 +341,7 @@ describe('comments Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitudeType: '1' });
+        .send({ attitudeType: 'Agreed' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
@@ -364,7 +364,7 @@ describe('comments Module', () => {
       expect(respond.body.data.createdAt).toBeDefined();
       expect(respond.body.data.disagreeCount).toBe(0);
       expect(respond.body.data.agreeCount).toBe(1);
-      expect(respond.body.data.agreeType).toBe('3');
+      expect(respond.body.data.agreeType).toBe('Indifferent');
     });
     it('should get some difference from self', async () => {
       const respond = await request(app.getHttpServer())
@@ -381,14 +381,14 @@ describe('comments Module', () => {
       expect(respond.body.data.createdAt).toBeDefined();
       expect(respond.body.data.disagreeCount).toBe(0);
       expect(respond.body.data.agreeCount).toBe(1);
-      expect(respond.body.data.agreeType).toBe('1');
+      expect(respond.body.data.agreeType).toBe('Agreed');
     });
     it('should disagree to a comment', async () => {
       const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
         .post(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitudeType: '2' });
+        .send({ attitudeType: 'Disagreed' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
@@ -410,7 +410,7 @@ describe('comments Module', () => {
       expect(respond.body.data.createdAt).toBeDefined();
       expect(respond.body.data.disagreeCount).toBe(1);
       expect(respond.body.data.agreeCount).toBe(0);
-      expect(respond.body.data.agreeType).toBe('3');
+      expect(respond.body.data.agreeType).toBe('Indifferent');
     });
     it('should get some difference from self', async () => {
       const respond = await request(app.getHttpServer())
@@ -427,7 +427,7 @@ describe('comments Module', () => {
       expect(respond.body.data.createdAt).toBeDefined();
       expect(respond.body.data.disagreeCount).toBe(1);
       expect(respond.body.data.agreeCount).toBe(0);
-      expect(respond.body.data.agreeType).toBe('2');
+      expect(respond.body.data.agreeType).toBe('Disagreed');
     });
     it('should return to InvalidAgreeTypeError', async () => {
       const commentId = CommentIds[1];

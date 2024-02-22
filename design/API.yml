@@ -231,11 +231,11 @@ components:
           description: 创建时间（时间戳）
         agree_type:
           type: integer
-          description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
+          description: 赞同类型，Indifferent表示未赞同，Agreed表示赞同，Disagreed表示反对
           enum:
-            - 0
-            - 1
-            - 2
+            - Agreed
+            - Disagreed
+            - Indifferent
         agree_count:
           type: integer
           description: 赞同数量

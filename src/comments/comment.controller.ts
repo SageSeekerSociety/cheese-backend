@@ -11,13 +11,13 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { UserIdNotFoundError } from '../users/users.error';
 import { AttitudeCommentResponseDto } from './DTO/agreeComment.dto';
 import { CreateCommentResponseDto } from './DTO/comment.dto';
 import { DeleteCommentRespondDto } from './DTO/deleteComment.dto';
+import { GetCommentDetailResponseDto } from './DTO/getCommentDetail.dto';
 import { GetCommentsResponseDto } from './DTO/getComments.dto';
 import { CommentsService } from './comment.service';
 @Controller('/comments')
@@ -61,8 +61,6 @@ export class CommentsController {
     };
   }
 
-  // 咋成body了 应该是/:commentableType/:commentableId啊
-  // 然后@Params('commentableType')
   @Post('/:commentableType/:commentableId/create')
   async createComment(
     @Param('commentableId', ParseIntPipe) commentableId: number,
@@ -71,9 +69,6 @@ export class CommentsController {
     @Body('content') content: string,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<CreateCommentResponseDto> {
-    if (!auth) {
-      throw new AuthenticationRequiredError();
-    }
     const userId = this.authService.verify(auth).userId;
     const commentId = await this.commentsService.createComment(
       userId,
@@ -96,9 +91,6 @@ export class CommentsController {
     @Param('commentId', ParseIntPipe) commentId: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<DeleteCommentRespondDto> {
-    if (!auth) {
-      throw new AuthenticationRequiredError();
-    }
     const userId = this.authService.verify(auth).userId;
     await this.commentsService.deleteComment(userId, commentId);
     return {
@@ -109,17 +101,14 @@ export class CommentsController {
   }
 
   @Post('/:commentId/attitude')
-  async altitudeToComment(
+  async attitudeToComment(
     @Param('commentId', ParseIntPipe) commentId: number,
-    @Body('attitudeType') attitude: '1' | '2',
+    @Body('attitudeType') attitude: 'Agreed' | 'Disagreed',
     @Headers('Authorization') auth: string | undefined,
   ): Promise<AttitudeCommentResponseDto> {
-    if (!auth) {
-      throw new AuthenticationRequiredError();
-    }
     const userId = this.authService.verify(auth).userId;
 
-    await this.commentsService.altitudeToComment(userId, commentId, attitude);
+    await this.commentsService.attitudeToComment(userId, commentId, attitude);
 
     return {
       code: 201,
@@ -132,10 +121,7 @@ export class CommentsController {
   async getCommentDetail(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<CreateCommentResponseDto> {
-    if (!auth) {
-      throw new AuthenticationRequiredError();
-    }
+  ): Promise<GetCommentDetailResponseDto> {
     const userId = this.authService.verify(auth).userId;
     const comment = await this.commentsService.getCommentDetail(
       userId,

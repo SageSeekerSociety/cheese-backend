@@ -1,8 +1,8 @@
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 export class AttitudeCommentDto {
-  attitudeType: '1' | '2' | '3';
+  attitudeType: 'Agreed' | 'Disagreed' | 'Indifferent';
 }
 
 export class AttitudeCommentResponseDto extends BaseRespondDto {
-  data: { attitudeType: '1' | '2' | '3' };
+  data: { attitudeType: 'Agreed' | 'Disagreed' | 'Indifferent' };
 }

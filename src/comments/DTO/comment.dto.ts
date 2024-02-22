@@ -9,7 +9,7 @@ export class CommentDto {
   createdAt: number;
   agreeCount: number;
   disagreeCount: number;
-  agreeType: '3' | '1' | '2';
+  agreeType: 'Indifferent' | 'Agreed' | 'Disagreed';
 }
 
 export class CreateCommentResponseDto extends BaseRespondDto {

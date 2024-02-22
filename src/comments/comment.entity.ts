@@ -64,7 +64,7 @@ export class UserAttitudeOnComments {
   comment: Comment;
 
   @Column()
-  agreeType: '3' | '1' | '2';
+  agreeType: 'Indifferent' | 'Agreed' | 'Disagreed';
 
   @CreateDateColumn()
   createdAt: Date;

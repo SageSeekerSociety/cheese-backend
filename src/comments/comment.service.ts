@@ -61,7 +61,7 @@ export class CommentsService {
       commentableId,
     });
     const userAttitudeOnComment = this.userAttitudeOnCommentsRepository.create({
-      agreeType: '3',
+      agreeType: 'Indifferent',
       userId: userId,
     });
     comment.agreeCount = 0;
@@ -156,7 +156,7 @@ export class CommentsService {
           disagreeCount: comment.disagreeCount,
           agreeType: userAttitudeOnComments
             ? userAttitudeOnComments.agreeType
-            : '3',
+            : 'Indifferent',
         },
       };
     });
@@ -168,10 +168,10 @@ export class CommentsService {
     return [resolvedCommentsData];
   }
 
-  async altitudeToComment(
+  async attitudeToComment(
     userId: number,
     commentId: number,
-    attitudeType: '1' | '2',
+    attitudeType: 'Agreed' | 'Disagreed',
   ) {
     const comment = await this.commentsRepository.findOne({
       where: { id: commentId },
@@ -184,17 +184,17 @@ export class CommentsService {
       throw new CommentNotFoundError(commentId);
     }
     switch (attitudeType) {
-      case '1':
-        if (userAttitudeOnComment?.agreeType != '1') {
-          if (userAttitudeOnComment?.agreeType == '2') {
+      case 'Agreed':
+        if (userAttitudeOnComment?.agreeType != 'Agreed') {
+          if (userAttitudeOnComment?.agreeType == 'Disagreed') {
             comment.disagreeCount = comment.disagreeCount - 1;
           }
           comment.agreeCount = comment.agreeCount + 1;
         }
         break;
-      case '2':
-        if (userAttitudeOnComment?.agreeType != '2') {
-          if (userAttitudeOnComment?.agreeType == '1') {
+      case 'Disagreed':
+        if (userAttitudeOnComment?.agreeType != 'Disagreed') {
+          if (userAttitudeOnComment?.agreeType == 'Agreed') {
             comment.agreeCount = comment.agreeCount - 1;
           }
           comment.disagreeCount = comment.disagreeCount + 1;
@@ -226,9 +226,7 @@ export class CommentsService {
     if (!comment) {
       throw new CommentNotFoundError(commentId);
     }
-    const commentDto: GetCommentDetailDto = {
-      code: 200,
-      message: 'Get comment details successfully',
+    const commentDto = {
       id: comment.id,
       content: comment.content,
       commentableId: comment.commentableId,
@@ -239,8 +237,8 @@ export class CommentsService {
       agreeType: user
         ? userAttitudeOnComment
           ? userAttitudeOnComment.agreeType
-          : '3'
-        : '3',
+          : 'Indifferent'
+        : 'Indifferent',
     };
     return commentDto;
   }
