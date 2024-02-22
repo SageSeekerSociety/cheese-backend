@@ -43,14 +43,14 @@ export class AvatarsController {
     @Param('id') id: number,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const filename = await this.avatarsService.findOne(id);
-    const path = __dirname + '\\images\\' + filename;
+    const avatar = await this.avatarsService.findOne(id);
+    const path = __dirname + '\\images\\' + avatar.name;
     const file = fs.createReadStream(path);
     console.log(path);
     if (fs.existsSync(path)) {
       res.set({
-        'Content-Type': 'octet-stream',
-        'Content-Disposition': 'attachment; filename=' + filename,
+        'Content-Type': 'image',
+        'Content-Disposition': 'attachment; filename=' + avatar.name,
       });
       return new StreamableFile(file);
     } else {

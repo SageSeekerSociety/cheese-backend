@@ -20,6 +20,7 @@ import {
   GroupTarget,
 } from './groups.legacy.entity';
 import { GroupsService } from './groups.service';
+import { AvatarsModule } from '../avatars/avatars.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { GroupsService } from './groups.service';
       GroupTarget,
     ]),
     AuthModule,
+    AvatarsModule,
     UsersModule,
     QuestionsModule,
   ],

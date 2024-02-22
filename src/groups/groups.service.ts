@@ -28,6 +28,7 @@ import {
   GroupNameAlreadyUsedError,
   GroupNotJoinedError,
   InvalidGroupNameError,
+  UpdateAvatarError,
 } from './groups.error';
 import {
   Group,
@@ -35,6 +36,7 @@ import {
   GroupQuestionRelationship,
   GroupTarget,
 } from './groups.legacy.entity';
+import { AvatarsService } from '../avatars/avatars.service';
 
 export enum GroupQueryType {
   Recommend = 'recommend',
@@ -47,6 +49,7 @@ export class GroupsService {
   constructor(
     private usersService: UsersService,
     private questionsService: QuestionsService,
+    private avatarService: AvatarsService,
     @InjectRepository(Group)
     private groupsRepository: Repository<Group>,
     @InjectRepository(GroupProfile)
@@ -338,9 +341,16 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
+    const avatar_owner = (await this.avatarService.findOne(parseInt(avatar)))
+      .userid;
+    if (avatar_owner == userId) {
+      group.profile.avatar = avatar;
+    } else {
+      throw new UpdateAvatarError();
+    }
     group.name = name;
     group.profile.intro = intro;
-    group.profile.avatar = avatar;
+    //group.profile.avatar = avatar;
     await this.groupsRepository.save(group);
     await this.groupProfilesRepository.save(group.profile);
   }

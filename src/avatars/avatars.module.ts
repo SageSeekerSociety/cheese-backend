@@ -23,5 +23,6 @@ import { AuthModule } from '../auth/auth.module';
   ],
   controllers: [AvatarsController],
   providers: [AvatarsService],
+  exports: [AvatarsService],
 })
 export class AvatarsModule {}

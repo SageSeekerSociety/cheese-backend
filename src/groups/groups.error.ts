@@ -55,3 +55,8 @@ export class GroupNotJoinedError extends BaseError {
     super('GroupNotJoinedError', `Group ${groupId} not joined`, 409);
   }
 }
+export class UpdateAvatarError extends BaseError {
+  constructor() {
+    super('UpdateAvatarError', `Can not use avatar loaded by others`, 403);
+  }
+}

@@ -36,6 +36,7 @@ import {
   InvalidPasswordError,
   InvalidUsernameError,
   PasswordNotMatchError,
+  UpdateAvatarError,
   UserAlreadyFollowedError,
   UserIdNotFoundError,
   UserNotFollowedYetError,
@@ -54,6 +55,7 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
+import { AvatarsService } from '../avatars/avatars.service';
 
 @Injectable()
 export class UsersService {
@@ -61,6 +63,7 @@ export class UsersService {
     private readonly emailService: EmailService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly avatarService: AvatarsService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)
@@ -641,6 +644,13 @@ export class UsersService {
     const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
+    }
+    const avatarOwner = (await this.avatarService.findOne(parseInt(avatar)))
+      .userid;
+    if (avatarOwner == userId) {
+      profile.avatar = avatar;
+    } else {
+      throw new UpdateAvatarError();
     }
     profile.nickname = nickname;
     profile.avatar = avatar;

@@ -8,7 +8,7 @@ import { error } from 'console';
 export class AvatarsService {
   constructor(
     @InjectRepository(Avatar)
-    private avatarRepository: Repository<Avatar>,
+    public avatarRepository: Repository<Avatar>,
   ) {}
   async save(filename: string, userid: number) {
     const topic = this.avatarRepository.create({
@@ -17,9 +17,9 @@ export class AvatarsService {
     });
     return this.avatarRepository.save(topic);
   }
-  async findOne(avatarId: number): Promise<string> {
-    const filename = await this.avatarRepository.findOneBy({ id: avatarId });
-    if (filename == undefined) throw error;
-    return filename?.name;
+  async findOne(avatarId: number): Promise<Avatar> {
+    const file = await this.avatarRepository.findOneBy({ id: avatarId });
+    if (file == undefined) throw error;
+    return file;
   }
 }
