@@ -215,8 +215,6 @@ describe('comments Module', () => {
           .post(`/comments/${commentableType}/${commentableId}/create`)
           .set('Authorization', `Bearer ${TestToken}`)
           .send({
-            //这样写比+直观一些
-            // 左边要求body有content字段
             content: `${TestCommentPrefix} ${content}`,
           });
 
@@ -230,6 +228,7 @@ describe('comments Module', () => {
       await createComment(questionIds[1], 'question', 'zfggnb');
       await createComment(questionIds[2], 'question', 'zfgg???????');
       await createComment(questionIds[3], 'question', '宵宫!');
+      await createComment(CommentIds[0], 'comment', '啦啦啦德玛西亚');
     }, 80000);
     it('should not create comment due to invalid commentableId', async () => {
       const content = 'what you gonna to know?';
@@ -237,8 +236,6 @@ describe('comments Module', () => {
         .post(`/comments/question/114514/create`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
-          //这样写比+直观一些
-          // 左边要求body有content字段
           content: `${TestCommentPrefix} ${content}`,
         });
 
@@ -317,6 +314,23 @@ describe('comments Module', () => {
       expect(respond.body.data.agreeCount).toBe(0);
       expect(respond.body.data.agreeType).toBe('Indifferent');
     });
+    it('should get comment by id', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/comments/${CommentIds[4]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('Details are as follows');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.id).toBeDefined();
+      expect(respond.body.data.commentableId).toBe(CommentIds[0]);
+      expect(respond.body.data.commentableType).toBe('comment');
+      expect(respond.body.data.content).toContain('啦啦啦德玛西亚');
+      expect(respond.body.data.createdAt).toBeDefined();
+      expect(respond.body.data.disagreeCount).toBe(0);
+      expect(respond.body.data.agreeCount).toBe(0);
+      expect(respond.body.data.agreeType).toBe('Indifferent');
+    });
     it('should return CommentNotFoundError due to the invalid id', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/comments/114514`)
@@ -338,6 +352,19 @@ describe('comments Module', () => {
   describe('AttitudeToComment', () => {
     it('should agree to a comment', async () => {
       const commentId = CommentIds[0];
+      const respond = await request(app.getHttpServer())
+        .post(`/comments/${commentId}/attitude`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ attitudeType: 'Agreed' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the comment',
+      );
+      expect(respond.status).toBe(201);
+      expect(respond.body.code).toBe(201);
+      // 可以根据具体情况验证其他返回数据
+    });
+    it('should agree to a comment', async () => {
+      const commentId = CommentIds[4];
       const respond = await request(app.getHttpServer())
         .post(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -469,7 +496,6 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Comment deleted already');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(204);
-      // 可以根据具体情况验证其他返回数据
     });
     it('should not delete a comment when the user does not match', async () => {
       const commentId = CommentIds[0];
@@ -498,6 +524,16 @@ describe('comments Module', () => {
         .send();
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
+    });
+    it('should delete a comment', async () => {
+      const commentId = CommentIds[4];
+      const respond = await request(app.getHttpServer())
+        .delete(`/comments/${commentId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('Comment deleted already');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(204);
     });
   });
   afterAll(async () => {
