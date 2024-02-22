@@ -9,7 +9,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
-import { PrismaService } from '../common/prisma.service';
+import { PrismaModule } from '../common/prisma/prisma.module';
 import { EmailService } from './email.service';
 import { UsersController } from './users.controller';
 import {
@@ -36,10 +36,11 @@ import { UsersService } from './users.service';
       UserRegisterLog,
       UserResetPasswordLog,
     ]),
+    PrismaModule,
     AuthModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService, EmailService, PrismaService],
+  providers: [UsersService, EmailService],
   exports: [UsersService],
 })
 export class UsersModule {}
