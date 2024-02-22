@@ -15,7 +15,7 @@ export class AvatarsService {
       name: filename,
       userid: userid,
     });
-    this.avatarRepository.save(topic);
+    return this.avatarRepository.save(topic);
   }
   async findOne(avatarId: number): Promise<string> {
     const filename = await this.avatarRepository.findOneBy({ id: avatarId });

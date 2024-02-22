@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Res,
+  StreamableFile,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -13,9 +14,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import * as fs from 'fs';
 import { AuthService } from '../auth/auth.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { AvatarsService } from './avatars.service';
-
+import { UploadVartarRespondDto } from './dto/upload-vartar-response.dto';
 @Controller('/avatars')
 export class AvatarsController {
   constructor(
@@ -27,24 +27,32 @@ export class AvatarsController {
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
     @Headers('Authorization') auth: string,
-  ): Promise<BaseRespondDto> {
+  ): Promise<UploadVartarRespondDto> {
     const userid = this.authService.verify(auth).userId;
     console.log(userid);
     console.log(file.filename);
-    await this.avatarsService.save(file.filename, userid);
+    const avatar = await this.avatarsService.save(file.filename, userid);
     return {
       code: 201,
       message: 'Upload avatar successfully',
+      avatarid: avatar.id,
     };
   }
   @Get('/:id')
-  async getAvatar(@Param('id') id: number, @Res() res: Response) {
+  async getAvatar(
+    @Param('id') id: number,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const filename = await this.avatarsService.findOne(id);
     const path = __dirname + '\\images\\' + filename;
-
+    const file = fs.createReadStream(path);
     console.log(path);
     if (fs.existsSync(path)) {
-      return res.sendFile(path);
+      res.set({
+        'Content-Type': 'octet-stream',
+        'Content-Disposition': 'attachment; filename=' + filename,
+      });
+      return new StreamableFile(file);
     } else {
       throw new NotFoundException('Avatar not found');
     }
