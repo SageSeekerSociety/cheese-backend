@@ -7,6 +7,7 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     strategy:
       # only one run
@@ -92,19 +93,23 @@ jobs:
         run: pnpm install
       
       - name: Initialize Database Structures with Prisma
-        run: pnpm prisma push
+        run: pnpm prisma db push
 
       - name: Try to Start Application
         run: |
           pnpm start | tee output &
           while true; do
+              sleep 10
               if grep -q "Nest application successfully started" output; then
                   echo "Detected 'Nest application successfully started'. Stopping pnpm..."
                   pid=$(netstat -nlp | grep :$PORT | awk '{print $7}' | awk -F'/' '{print $1}')
                   kill $pid
                   break
               fi
-              sleep 1
+              if [[ -z "$(netstat -nlp | grep :$PORT | awk '{print $7}' | awk -F'/' '{print $1}')" ]]; then
+                  echo "Nest application failed to start."
+                  exit -1
+              fi
           done
 
       - name: Run Tests

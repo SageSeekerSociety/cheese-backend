@@ -13,7 +13,7 @@ import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
-import { PrismaService } from '../common/prisma.service';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
