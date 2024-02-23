@@ -21,7 +21,7 @@ import {
 import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
-import { PrismaService } from '../common/prisma.service';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import {
@@ -204,7 +204,7 @@ export class UsersService {
   }
 
   get passwordRule(): string {
-    return 'Password must be 8 characters long and must contain at least one letter, one special character and one number.';
+    return 'Password must be at least 8 characters long and must contain at least one letter, one special character and one number.';
   }
 
   private isCodeExpired(createdAt: Date): boolean {
