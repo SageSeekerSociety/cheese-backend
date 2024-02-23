@@ -8,7 +8,7 @@ export class AnswerDto {
   author: UserDto;
   created_at: number; // timestamp
   updated_at: number; // timestamp
-  // agree_type: number;
+  favorite_count: number;
 }
 
 export class AnswerRespondDto extends BaseRespondDto {

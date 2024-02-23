@@ -8,6 +8,7 @@ export class AgreeAnswerDto {
   author: UserDto;
   agree_type: number;
   agree_count: number;
+  disagree_count: number;
 }
 
 export class AgreeAnswerRespondDto extends BaseRespondDto {
