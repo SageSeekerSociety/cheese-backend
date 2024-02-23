@@ -66,7 +66,7 @@ export class CommentsService {
     });
     comment.agreeCount = 0;
     comment.disagreeCount = 0;
-    const savedComment = await this.commentsRepository.save(comment); // 保存评论到数据库
+    const savedComment = await this.commentsRepository.save(comment); 
     await this.userAttitudeOnCommentsRepository.save(userAttitudeOnComment);
     return savedComment.id;
   }
@@ -161,7 +161,6 @@ export class CommentsService {
       };
     });
 
-    // 注意：上述代码中的commentsData是一个Promise数组，你可能需要使用Promise.all来等待所有的评论对象都被处理完毕
     const resolvedCommentsData = await Promise.all(commentsData);
 
     // return a tuple
