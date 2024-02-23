@@ -6,10 +6,12 @@ RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 COPY .husky/install.mjs ./.husky/
+COPY prisma ./prisma/
 
 FROM base AS dev-deps
 WORKDIR /app
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm prisma generate
 
 FROM dev-deps AS dev
 WORKDIR /app
