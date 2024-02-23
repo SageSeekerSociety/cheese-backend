@@ -3393,3 +3393,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
+  
+  /avatars:
+    post:
+      summary: Upload an avatar for a specific owner type and ID
+      operationId: uploadAvatar
+      requestBody:
+        content:
+          multipart/form-data:
+                schema:
+                  type: object
+                  properties:
+                    avatar:
+                    type: file
+                    format: binary
+                    description: The avatar image to upload
+      responses:
+        '201':
+          description: Upload avatar successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: number
+                    description: Unique identifier for the uploaded avatar
+    get:
+      summary:Ger an avatar by id
+      operationId: getAvatar
+      parameters:  
+        - name: id
+          in: path
+          required: true
+           description: Unique identifier for the uploaded avatar
+      responses:
+        '200':
+          description: get avatar successfully
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                    
+                          
+

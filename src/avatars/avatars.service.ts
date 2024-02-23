@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Avatar } from './avatars.legacy.entity';
 import { Repository } from 'typeorm';
-import { error } from 'console';
+import { AvatarNotFoundError } from './avatars.error';
 
 @Injectable()
 export class AvatarsService {
@@ -19,7 +19,7 @@ export class AvatarsService {
   }
   async findOne(avatarId: number): Promise<Avatar> {
     const file = await this.avatarRepository.findOneBy({ id: avatarId });
-    if (file == undefined) throw error;
+    if (file == undefined) throw new AvatarNotFoundError(avatarId);
     return file;
   }
 }

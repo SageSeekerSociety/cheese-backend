@@ -11,11 +11,11 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
+import { Response, Express } from 'express';
 import * as fs from 'fs';
 import { AuthService } from '../auth/auth.service';
 import { AvatarsService } from './avatars.service';
-import { UploadVartarRespondDto } from './dto/upload-vartar-response.dto';
+import { UploadVartarRespondDto } from './DTO/upload-vartar-response.dto';
 @Controller('/avatars')
 export class AvatarsController {
   constructor(
@@ -49,7 +49,7 @@ export class AvatarsController {
     console.log(path);
     if (fs.existsSync(path)) {
       res.set({
-        'Content-Type': 'image',
+        'Content-Type': 'application/octet-stream',
         'Content-Disposition': 'attachment; filename=' + avatar.name,
       });
       return new StreamableFile(file);

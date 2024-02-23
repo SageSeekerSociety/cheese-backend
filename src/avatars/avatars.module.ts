@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
-import { AvatarsController } from './avatars.controller';
-import { AvatarsService } from './avatars.service';
-import { diskStorage } from 'multer';
-import { join, extname } from 'path';
-import { Avatar } from './avatars.legacy.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
 import { AuthModule } from '../auth/auth.module';
+import { AvatarsController } from './avatars.controller';
+import { Avatar } from './avatars.legacy.entity';
+import { AvatarsService } from './avatars.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Avatar]),
@@ -18,6 +18,23 @@ import { AuthModule } from '../auth/auth.module';
           return callback(null, fileName);
         },
       }),
+      limits: {
+        // 限制文件大小为 2 MB
+        fileSize: 2 * 1024 * 1024,
+        // 限制文件名长度为 50 bytes
+        fieldNameSize: 50,
+      },
+      fileFilter: (_, file, callback) => {
+        // 检查文件类型
+        if (
+          extname(file.originalname.toLowerCase()) in
+          ['.jpg', '.jpeg', '.png', '.gif']
+        ) {
+          callback(null, true);
+        } else {
+          callback(new Error('Invalid file type'), false);
+        }
+      },
     }),
     AuthModule,
   ],
@@ -25,4 +42,10 @@ import { AuthModule } from '../auth/auth.module';
   providers: [AvatarsService],
   exports: [AvatarsService],
 })
-export class AvatarsModule {}
+export class AvatarsModule {
+  private isValidFileType(file: { originalname: string }): boolean {
+    const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif'];
+    const fileExt = extname(file.originalname).toLowerCase();
+    return allowedTypes.includes(fileExt);
+  }
+}
