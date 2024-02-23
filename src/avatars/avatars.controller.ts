@@ -11,11 +11,12 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response, Express } from 'express';
+import { Response } from 'express';
 import * as fs from 'fs';
 import { AuthService } from '../auth/auth.service';
 import { AvatarsService } from './avatars.service';
-import { UploadVartarRespondDto } from './DTO/upload-vartar-response.dto';
+import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
+
 @Controller('/avatars')
 export class AvatarsController {
   constructor(
@@ -27,7 +28,7 @@ export class AvatarsController {
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
     @Headers('Authorization') auth: string,
-  ): Promise<UploadVartarRespondDto> {
+  ): Promise<UploadAvatarRespondDto> {
     const userid = this.authService.verify(auth).userId;
     console.log(userid);
     console.log(file.filename);
@@ -35,7 +36,9 @@ export class AvatarsController {
     return {
       code: 201,
       message: 'Upload avatar successfully',
-      avatarid: avatar.id,
+      data: {
+        avatarid: avatar.id,
+      },
     };
   }
   @Get('/:id')
