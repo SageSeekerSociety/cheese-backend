@@ -166,7 +166,7 @@ export class QuestionsController {
       body.content,
       body.type,
       body.topics,
-      this.authService.decode(auth).authorization.userId,
+      this.authService.verify(auth).userId,
     );
     return {
       code: 200,
