@@ -17,13 +17,13 @@ import { AuthService } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { AgreeAnswerDto, AgreeAnswerRespondDto } from './DTO/agree-answer.dto';
-import { AnswerRespondDto } from './DTO/answer.dto';
+import { AnswerDetailRespondDto, AnswerRespondDto } from './DTO/answer.dto';
 import { CreateAnswerDto } from './DTO/create-answer.dto';
 import { FavoriteAnswersRespondDto } from './DTO/favorite-answer.dto';
 import { GetAnswersRespondDto } from './DTO/get-answers.dto';
 import { UpdateAnswerDto, UpdateRespondAnswerDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
-@Controller('/answers')
+@Controller('/question/:id/answers')
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
 export class AnswerController {
@@ -32,7 +32,7 @@ export class AnswerController {
     private readonly answerService: AnswerService,
   ) {}
 
-  @Get('/question/:id/answers')
+  @Get('/')
   async getQuestionAnswers(
     @Headers('Authorization') auth: string | undefined,
     @Param('id', ParseIntPipe) id: number,
@@ -62,7 +62,7 @@ export class AnswerController {
     };
   }
 
-  @Post('/question/:id/answers')
+  @Post('/')
   async answerQuestion(
     @Body() req: CreateAnswerDto,
     @Headers('Authorization') auth: string | undefined,
@@ -81,12 +81,12 @@ export class AnswerController {
     };
   }
   
-  @Get('/questions/:id/answers/:answer_id')
+  @Get('/:answer_id')
   async getAnswerDetail(
     @Headers('Authorization') auth: string | undefined,
     @Param('id', ParseIntPipe) id: number,
     @Param('answer_id', ParseIntPipe) answer_id: number,
-  ): Promise<AnswerRespondDto> {
+  ): Promise<AnswerDetailRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const  answerDto = await this.answerService.getAnswerById(userId, id, answer_id);
     return {
@@ -96,7 +96,7 @@ export class AnswerController {
     };
   }
 
-  @Put('/questions/:id/answers/:answer_id')
+  @Put('/:answer_id')
   async updateAnswer(
     @Param('id', ParseIntPipe) id: number,
     @Param('answer_id', ParseIntPipe) answer_id: number,
@@ -115,7 +115,7 @@ export class AnswerController {
     };
   }
 
-  @Delete('/questions/:id/answers/:answer_id')
+  @Delete('/:answer_id')
   async deleteAnswer(
     @Param('id', ParseIntPipe) id: number,
     @Param('answer_id', ParseIntPipe) answer_id: number,
@@ -129,7 +129,7 @@ export class AnswerController {
     }
   }
 
-  @Put('/questions/:id/answers/:answer_id/agree')
+  @Put('/:answer_id/agree')
   async agreeAnswer(
     @Param('answer_id', ParseIntPipe) answer_id: number,
     @Param('id', ParseIntPipe) id: number,
@@ -146,7 +146,7 @@ export class AnswerController {
   }
   
 
-  @Put('/questions/:id/answers/:answer_id/favorite')
+  @Put('/:answer_id/favorite')
   async favoriteAnswer(
     @Param('answer_id', ParseIntPipe) answer_id: number,
     @Param('id', ParseIntPipe) id: number,
@@ -162,7 +162,7 @@ export class AnswerController {
     };
   }
 
-  @Delete('/questions/:id/answers/:answer_id/favorite')
+  @Delete('/:answer_id/favorite')
   async unfavoriteAnswer(
     @Param('answer_id', ParseIntPipe) answer_id: number,
     @Param('id', ParseIntPipe) id: number,

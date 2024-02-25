@@ -14,3 +14,7 @@ export class AnswerDto {
 export class AnswerRespondDto extends BaseRespondDto {
   data: AnswerDto;
 }
+
+export class AnswerDetailRespondDto extends BaseRespondDto {
+  data: AnswerDto;
+}
