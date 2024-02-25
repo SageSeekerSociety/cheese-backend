@@ -27,7 +27,8 @@ export class AnswerService {
   ) {}
 
   async createAnswer(userId: number, content: string): Promise<AnswerDto> {
-    const createdAnswer = this.answerRepository.create({ content });
+    
+    const createdAnswer = this.answerRepository.create({ userId, content });
     await this.answerRepository.save(createdAnswer);
     const userDto = await this.usersService.getUserDtoById(userId);
     return {

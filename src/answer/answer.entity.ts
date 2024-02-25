@@ -20,7 +20,11 @@ export class Answer {
   id: number;
 
   @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId'})
   author: User;
+
+  @Column()
+  userId: number;
 
   @Column()
   @Index({ unique: false })
@@ -68,7 +72,10 @@ export class Answer {
 @Entity()
 export class UserAttitudeOnAnswer {
   @PrimaryGeneratedColumn()
-    userId: number;
+  id: number;
+
+  @Column()
+  userId: number;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })

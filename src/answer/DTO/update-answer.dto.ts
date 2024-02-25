@@ -1,6 +1,5 @@
 import { IsArray, IsInt, IsNotEmpty, IsString } from 'class-validator';
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-import { Answer } from '../answer.entity';
 
 export class UpdateAnswerDto {
   @IsString()
@@ -11,7 +10,7 @@ export class UpdateAnswerDto {
   content: string;
 
   @IsInt()
-  type: Answer;
+  type: number;
 
   @IsArray()
   topics: number[];

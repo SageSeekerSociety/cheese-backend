@@ -1,5 +1,4 @@
 import { IsArray, IsInt, IsString } from 'class-validator';
-import { Answer } from '../answer.entity';
 
 export class CreateAnswerDto {
   @IsString()
@@ -9,7 +8,7 @@ export class CreateAnswerDto {
   readonly content: string;
 
   @IsInt()
-  readonly type: Answer;
+  readonly type: number;
 
   @IsArray()
   readonly topics: number[];

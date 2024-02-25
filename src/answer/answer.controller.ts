@@ -35,7 +35,7 @@ export class AnswerController {
   @Get('/question/:id/answers')
   async getQuestionAnswers(
     @Headers('Authorization') auth: string | undefined,
-    @Param('id', ParseIntPipe) questionId: number,
+    @Param('id', ParseIntPipe) id: number,
     @Query('page_start', new ParseIntPipe({ optional: true }))
     page_start?: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
@@ -48,7 +48,7 @@ export class AnswerController {
       // The user is not logged in.
     }
     const [answers, page] = await this.answerService.getQuestionAnswers(
-      questionId,
+      id,
       page_start ?? undefined,
       page_size,
     );
@@ -66,7 +66,7 @@ export class AnswerController {
   async answerQuestion(
     @Body() req: CreateAnswerDto,
     @Headers('Authorization') auth: string | undefined,
-    @Param('id', ParseIntPipe) questionId: number,
+    @Param('id', ParseIntPipe) id: number,
   ):Promise<AnswerRespondDto>{
     const userId = this.authService.verify(auth).userId;
     const answerDto = await this.answerService.createAnswer(
@@ -83,11 +83,11 @@ export class AnswerController {
   @Get('/questions/:id/answers/:answer_id')
   async getAnswerDetail(
     @Headers('Authorization') auth: string | undefined,
-    @Param('id', ParseIntPipe) questionId: number,
-    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('answer_id', ParseIntPipe) answer_id: number,
   ): Promise<AnswerRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const  answerDto = await this.answerService.getAnswerById(userId, questionId, answerId);
+    const  answerDto = await this.answerService.getAnswerById(userId, id, answer_id);
     return {
       code: 200,
       message: 'Answer fetched successfully.',
@@ -97,15 +97,15 @@ export class AnswerController {
 
   @Put('/questions/:id/answers/:answer_id')
   async updateAnswer(
-    @Param('id', ParseIntPipe) questionId: number,
-    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('answer_id', ParseIntPipe) answer_id: number,
     @Headers('Authorization') auth: string | undefined,
     @Body() req: UpdateAnswerDto,
   ): Promise<UpdateRespondAnswerDto> {
     const userId = this.authService.verify(auth).userId;
     await this.answerService.updateAnswer(
       userId,
-      answerId,
+      answer_id,
       req.content,
     );
     return {
@@ -116,12 +116,12 @@ export class AnswerController {
 
   @Delete('/questions/:id/answers/:answer_id')
   async deleteAnswer(
-    @Param('id', ParseIntPipe) questionId: number,
-    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('answer_id', ParseIntPipe) answer_id: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    await this.answerService.deleteAnswer(userId, questionId, answerId);
+    await this.answerService.deleteAnswer(userId, id, answer_id);
     return {
       code: 200,
       message: 'Answer deleted successfully.',
@@ -130,13 +130,13 @@ export class AnswerController {
 
   @Put('/questions/:id/answers/:answer_id/agree')
   async agreeAnswer(
-    @Param('answer_id', ParseIntPipe) answerId: number,
-    @Param('id', ParseIntPipe) questionId: number,
+    @Param('answer_id', ParseIntPipe) answer_id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
     @Body() req: AgreeAnswerDto,
   ): Promise<AgreeAnswerRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const agreedAnswer =  await this.answerService.agreeAnswer(answerId, userId, req.agree_type);
+    const agreedAnswer =  await this.answerService.agreeAnswer(answer_id, userId, req.agree_type);
     return {
       code: 200,
       message: 'Answer agreed successfully.',
@@ -147,12 +147,12 @@ export class AnswerController {
 
   @Put('/questions/:id/answers/:answer_id/favorite')
   async favoriteAnswer(
-    @Param('answer_id', ParseIntPipe) answerId: number,
-    @Param('id', ParseIntPipe) questionId: number,
+    @Param('answer_id', ParseIntPipe) answer_id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<FavoriteAnswersRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const answer = await this.answerService.favoriteAnswer(answerId, userId);
+    const answer = await this.answerService.favoriteAnswer(answer_id, userId);
     
     return {
       code: 200,
@@ -163,12 +163,12 @@ export class AnswerController {
 
   @Delete('/questions/:id/answers/:answer_id/favorite')
   async unfavoriteAnswer(
-    @Param('answer_id', ParseIntPipe) answerId: number,
-    @Param('id', ParseIntPipe) questionId: number,
+    @Param('answer_id', ParseIntPipe) answer_id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    await this.answerService.unfavoriteAnswer(answerId, userId);
+    await this.answerService.unfavoriteAnswer(answer_id, userId);
     return {
       code: 204,
       message: 'No content.',
