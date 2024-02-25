@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Answer } from '../answer/answer.entity';
 import { Question } from '../questions/questions.legacy.entity';
 import { User } from '../users/users.legacy.entity';
+import { UsersService } from '../users/users.service';
 import { CommentDto } from './DTO/comment.dto';
 import { GetCommentDetailDto } from './DTO/getCommentDetail.dto';
 import { Comment, UserAttitudeOnComments } from './comment.entity';
@@ -16,6 +17,7 @@ import {
 @Injectable()
 export class CommentsService {
   constructor(
+    private usersService: UsersService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(UserAttitudeOnComments)
@@ -144,13 +146,14 @@ export class CommentsService {
         await this.userAttitudeOnCommentsRepository.findOne({
           where: { id: comment.id, userId },
         });
+      const userDto=await this.usersService.getUserDtoById(userId);
       return {
         comment: {
           id: comment.id,
           commentableId: comment.commentableId,
           commentableType: comment.commentableType,
           content: comment.content,
-          user: comment.user,
+          userdto: userDto,
           createdAt: comment.createdAt.getTime(),
           agreeCount: comment.agreeCount,
           disagreeCount: comment.disagreeCount,

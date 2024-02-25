@@ -4,7 +4,11 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -16,7 +20,11 @@ export class Answer {
   id: number;
 
   @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
   author: User;
+
+  @Column()
+  userId:number;
 
   @Column()
   @Index({ unique: false })
@@ -34,12 +42,22 @@ export class Answer {
   @Index({ fulltext: true, parser: 'ngram' })
   content: string;
 
+  // @Column()
+  // type: Answer;
+
   @Column()
   is_group: boolean;
 
   @Column({ nullable: true })
   @Index({ unique: false })
   groupId?: number;
+
+  @OneToMany(() => UserAttitudeOnAnswer, (attitude) => attitude.type)
+  attitudes: UserAttitudeOnAnswer[];
+
+  @ManyToMany(() => User)
+  @JoinTable()
+  favoritedBy: User[];
 
   @CreateDateColumn()
   createdAt: Date;
@@ -49,37 +67,28 @@ export class Answer {
 
   @DeleteDateColumn()
   deletedAt: Date;
+}
 
-  //agree
-  @Column('simple-array')
-  agrees: string[];
+@Entity()
+export class UserAttitudeOnAnswer {
+  @PrimaryGeneratedColumn()
+    userId: number;
 
-  @Column('simple-array')
-  disagrees: string[];
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
 
-  @Column({ default: 0 })
-  agree_count: number;
+  @JoinColumn()
+  answer: Answer;
 
-  @Column({ default: 0 })
-  disagree_count: number;
+  @Column()
+  answerId: number;
 
-  //favorite
-  @Column({ default: false })
-  is_favorite: boolean; // isFavorited
+  @Column()
+  type: AttitudeType;
+}
 
-  // @Column({
-  //   type: 'simple-array',
-  //   default: [],
-  //   transformer: {
-  //     to: (value: string[]) => JSON.stringify(value),
-  //     from: (value: string) => JSON.parse(value),
-  //   },
-  // })
-  // @Column()
-  // favoritedBy: number[];
-  @Column('simple-array')
-  favoritedBy: string[];
-
-  @Column({ default: 0 })
-  favorite_count: number;
+export enum AttitudeType {
+  Agree,
+  Disagree,
 }

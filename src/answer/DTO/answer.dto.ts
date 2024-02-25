@@ -1,14 +1,14 @@
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-import { UserDto } from '../../users/DTO/user.dto';
+import { User } from '../../users/users.legacy.entity';
 
 export class AnswerDto {
   id: number;
   question_id: number;
   content: string;
-  author: UserDto;
+  author: User;
   created_at: number; // timestamp
   updated_at: number; // timestamp
-  // agree_type: number;
+  favorite_count: number;
 }
 
 export class AnswerRespondDto extends BaseRespondDto {
