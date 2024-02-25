@@ -69,10 +69,11 @@ export class AnswerController {
     @Param('id', ParseIntPipe) id: number,
   ):Promise<AnswerRespondDto>{
     const userId = this.authService.verify(auth).userId;
-    const answerDto = await this.answerService.createAnswer(
+    const answerId = await this.answerService.createAnswer(
       userId,
       req.content,
     );
+    const answerDto = await this.answerService.getAnswerById(userId, id, answerId);
     return {
       code: 200,
       message: 'Answer created successfully.',

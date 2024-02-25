@@ -26,20 +26,21 @@ export class AnswerService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async createAnswer(userId: number, content: string): Promise<AnswerDto> {
+  async createAnswer(userId: number, content: string) {
     
     const createdAnswer = this.answerRepository.create({ userId, content });
     await this.answerRepository.save(createdAnswer);
-    const userDto = await this.usersService.getUserDtoById(userId);
-    return {
-      id: createdAnswer.id,
-      question_id: createdAnswer.question_Id,
-      content: createdAnswer.content,
-      author: userDto,
-      created_at: createdAnswer.createdAt.getTime(),
-      updated_at: createdAnswer.updatedAt.getTime(),
-      favorite_count: createdAnswer.favoritedBy.length,
-    };
+    // const userDto = await this.usersService.getUserDtoById(userId);
+    return createdAnswer.id;
+    // return {
+    //   id: createdAnswer.id,
+    //   question_id: createdAnswer.question_Id,
+    //   content: createdAnswer.content,
+    //   author: userDto,
+    //   created_at: createdAnswer.createdAt.getTime(),
+    //   updated_at: createdAnswer.updatedAt.getTime(),
+    //   favorite_count: createdAnswer.favoritedBy.length,
+    // };
   }
 
   async getQuestionAnswers(
