@@ -11,6 +11,7 @@ import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { AgreeAnswerDto } from './DTO/agree-answer.dto';
 import { AnswerDto } from './DTO/answer.dto';
+import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { Answer, UserAttitudeOnAnswer } from './answer.entity';
 import { AnswerNotFoundError } from './answer.error';
 @Injectable()
@@ -26,12 +27,14 @@ export class AnswerService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async createAnswer(userId: number, content: string) {
+  async createAnswer(userId: number, content: string): Promise<CreateAnswerRespondDto> {
     
     const createdAnswer = this.answerRepository.create({ userId, content });
     await this.answerRepository.save(createdAnswer);
     // const userDto = await this.usersService.getUserDtoById(userId);
-    return createdAnswer.id;
+    return {
+      answerId: createdAnswer.id,
+    };
     // return {
     //   id: createdAnswer.id,
     //   question_id: createdAnswer.question_Id,

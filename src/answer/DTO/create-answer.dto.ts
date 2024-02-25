@@ -16,3 +16,8 @@ export class CreateAnswerDto {
   @IsInt()
   readonly groupId: number;
 }
+
+export class CreateAnswerRespondDto{
+  @IsInt()
+  readonly answerId: number;
+}

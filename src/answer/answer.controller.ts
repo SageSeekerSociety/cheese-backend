@@ -73,7 +73,7 @@ export class AnswerController {
       userId,
       req.content,
     );
-    const answerDto = await this.answerService.getAnswerById(userId, id, answerId);
+    const answerDto = await this.answerService.getAnswerById(userId, id, answerId.answerId);
     return {
       code: 200,
       message: 'Answer created successfully.',
