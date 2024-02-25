@@ -5,7 +5,7 @@ export class CommentDto {
   commentableId: number;
   commentableType: 'answer' | 'comment' | 'question';
   content: string;
-  userdto: UserDto;
+  user: UserDto;
   createdAt: number;
   agreeCount: number;
   disagreeCount: number;
