@@ -20,7 +20,7 @@ export class Answer {
   id: number;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId'})
+  @JoinColumn({ name: 'userId' })
   author: User;
 
   @Column()
@@ -29,7 +29,6 @@ export class Answer {
   @Column()
   @Index({ unique: false })
   questionId: number; //askeruser_Id
-
 
   // Use column type 'text' to support arbitrary length of string.
   @Column('text')
@@ -70,20 +69,18 @@ export class UserAttitudeOnAnswer {
   id: number;
 
   @ManyToOne(() => User)
-  // @JoinColumn({ name: 'userId' })
   user: User;
 
   @Column()
   userId: number;
 
-  @ManyToOne( () => Answer)
-  // @JoinColumn({ name: 'answerId'})
+  @ManyToOne(() => Answer)
   answer: Answer;
 
   @Column()
   answerId: number;
 
-  @Column({default: 0})
+  @Column({ default: 0 })
   type: AttitudeType;
 }
 

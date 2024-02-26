@@ -2,11 +2,7 @@ import { BaseError } from '../common/error/base-error';
 
 export class AnswerNotFoundError extends BaseError {
   constructor(public readonly id: number) {
-    super(
-      'AnswerNotFoundError',
-     `Answer with id ${id} is not found.`, 
-     404
-     );
+    super('AnswerNotFoundError', `Answer with id ${id} is not found.`, 404);
   }
 }
 
@@ -30,7 +26,7 @@ export class AnswerAlreadyFavoriteError extends BaseError {
   }
 }
 
-export class AnswerAlreadyUnfavoriteError extends BaseError {
+export class AnswerNotFavoriteError extends BaseError {
   constructor(public readonly id: number) {
     super(
       'AnswerAlreadyUnfavoriteError',
@@ -40,12 +36,12 @@ export class AnswerAlreadyUnfavoriteError extends BaseError {
   }
 }
 
-export class AlreadyHasSameAttitudeError extends BaseError{
+export class AlreadyHasSameAttitudeError extends BaseError {
   constructor(
     public readonly userId: number,
     public readonly id: number,
     public readonly agree_type: number,
-  ){
+  ) {
     super(
       'AlreadyHasSameAttitudeError',
       `Already has attitude ${agree_type} on answer ${id}.`,

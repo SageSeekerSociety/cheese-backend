@@ -13,7 +13,11 @@ import { AgreeAnswerDto } from './DTO/agree-answer.dto';
 import { AnswerDto } from './DTO/answer.dto';
 import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { Answer, AttitudeType, UserAttitudeOnAnswer } from './answer.entity';
-import { AlreadyHasSameAttitudeError, AnswerNotFoundError } from './answer.error';
+import {
+  AlreadyHasSameAttitudeError,
+  AnswerNotFavoriteError,
+  AnswerNotFoundError,
+} from './answer.error';
 @Injectable()
 export class AnswerService {
   constructor(
@@ -27,10 +31,17 @@ export class AnswerService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async createAnswer(questionId:number,userId: number, content: string): Promise<CreateAnswerRespondDto> {
-    
-    const createdAnswer = this.answerRepository.create({questionId, userId, content });
-    createdAnswer.is_group=false;
+  async createAnswer(
+    questionId: number,
+    userId: number,
+    content: string,
+  ): Promise<CreateAnswerRespondDto> {
+    const createdAnswer = this.answerRepository.create({
+      questionId,
+      userId,
+      content,
+    });
+    createdAnswer.is_group = false;
     await this.answerRepository.save(createdAnswer);
     // const userDto = await this.usersService.getUserDtoById(userId);
     return {
@@ -116,7 +127,7 @@ export class AnswerService {
       throw new AnswerNotFoundError(answerId);
     }
     const userDto = await this.usersService.getUserDtoById(userId);
-   
+
     return {
       id: answer.id,
       question_id: answer.questionId,
@@ -124,7 +135,7 @@ export class AnswerService {
       author: userDto,
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
-      favorite_count: answer.favoritedBy?.length??0,
+      favorite_count: answer.favoritedBy?.length ?? 0,
     };
   }
 
@@ -173,70 +184,40 @@ export class AnswerService {
     if (!answer) {
       throw new AnswerNotFoundError(id);
     }
-    const userAttitude = await this.userAttitudeRepository.findOne(
-      {where: {userId, answerId: id},}
-    );
-    if(userAttitude){
-      if(userAttitude.type == agree_type){
+
+    // maybe need to check if the user has already agreed or disagreed
+    const userAttitude = await this.userAttitudeRepository.findOne({
+      where: { userId, answerId: id },
+    });
+    if (userAttitude) {
+      if (userAttitude.type === agree_type) {
         throw new AlreadyHasSameAttitudeError(userId, id, agree_type);
       }
       userAttitude.type = agree_type;
       await this.userAttitudeRepository.save(userAttitude);
-    }else{
+    } else {
       await this.userAttitudeRepository.save({
         userId,
         answerId: id,
         type: agree_type,
       });
     }
-    
+
     const agree_count = await this.userAttitudeRepository.count({
-      where: {answerId: id, type: AttitudeType.Agree},
+      where: { answerId: id, type: AttitudeType.Agree },
     });
     const disagree_count = await this.userAttitudeRepository.count({
-      where: {answerId: id, type: AttitudeType.Disagree},
+      where: { answerId: id, type: AttitudeType.Disagree },
     });
-    // const user = await this.userRepository.findOneBy({ id: userId });
-    // if (!user) {
-    //   throw new UserIdNotFoundError(userId);
-    // }
-    // userAttitude.answerId = id;
-    // userAttitude.type = agree_type;
-    // // userAttitude.user = user;
-    // userAttitude.userId = userId;
-    // userAttitude.answer = answer;
 
-    // if (!answer.attitudes) {
-    //   answer.attitudes = [userAttitude];
-    // } 
-    // else if(answer.attitudes.includes(userAttitude)){
-    //   throw new AnswerAlreadyAgreeError(id);
-    // }
-    // else {
-    //   answer.attitudes.push(userAttitude);
-    // }
-
-    
-    // await this.answerRepository.save(answer);
-
-    // const len = answer.attitudes.length;
-    // let agree_count = 0,
-    //   disagree_count = 0;
-    // for (let i = 0; i < len; i++) {
-    //   if (answer.attitudes[i].type == 1) {
-    //     agree_count += 1;
-    //   } else {
-    //     disagree_count += 1;
-    //   }
-    // }
     return {
       id: userId,
       question_id: answer.questionId,
       content: answer.content,
       author: userDto,
       agree_type: agree_type,
-      agree_count: agree_count,
-      disagree_count: disagree_count,
+      agree_count,
+      disagree_count,
     };
   }
 
@@ -259,10 +240,9 @@ export class AnswerService {
       }
     }
     let favoriteCount;
-    if(!answer.favoritedBy.length){
+    if (!answer.favoritedBy.length) {
       favoriteCount = 0;
-    }
-    else{
+    } else {
       favoriteCount = answer.favoritedBy.length;
     }
     // const favorite_count = answer.favoritedBy.length;
@@ -292,19 +272,13 @@ export class AnswerService {
       throw new UserIdNotFoundError(userId);
     }
 
-    // if(!answer.favoritedBy){
-      // throw new AnswerAlreadyUnfavoriteError(answerId);
-      // this.favoriteAnswer(answerId, userId);
-    // }
     if (answer.favoritedBy && answer.favoritedBy.includes(user)) {
       const index = answer.favoritedBy.indexOf(user);
       answer.favoritedBy.splice(index);
-    } //else {
-      // throw new AnswerAlreadyUnfavoriteError(answerId);
-      // this.favoriteAnswer(answerId, userId);
-    // }
+    } else {
+      throw new AnswerNotFavoriteError(answerId);
+    }
 
-    // const userDto = await this.usersService.getUserDtoById(userId);
     await this.answerRepository.save(answer);
   }
 }
