@@ -28,13 +28,8 @@ export class Answer {
 
   @Column()
   @Index({ unique: false })
-  question_Id: number; //askeruser_Id
+  questionId: number; //askeruser_Id
 
-  // Use column type 'text' to support arbitrary length of string.
-  @Column('text')
-  // Use fulltext index to support fulltext search.
-  @Index({ fulltext: true, parser: 'ngram' })
-  title: string;
 
   // Use column type 'text' to support arbitrary length of string.
   @Column('text')
@@ -81,7 +76,7 @@ export class UserAttitudeOnAnswer {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @JoinColumn()
+  @Column()
   answer: Answer;
 
   @Column()

@@ -1,19 +1,22 @@
-import { IsArray, IsInt, IsString } from 'class-validator';
+import { IsArray, IsInt, IsOptional, IsString } from 'class-validator';
 
 export class CreateAnswerDto {
   @IsString()
-  readonly title: string;
-
-  @IsString()
-  readonly content: string;
+  content: string;
 
   @IsInt()
+  questionId: number;
+
+  @IsInt()
+  @IsOptional()
   readonly type: number;
 
   @IsArray()
+  @IsOptional()
   readonly topics: number[];
 
   @IsInt()
+  @IsOptional()
   readonly groupId: number;
 }
 

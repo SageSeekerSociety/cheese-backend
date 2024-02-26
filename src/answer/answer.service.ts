@@ -13,7 +13,7 @@ import { AgreeAnswerDto } from './DTO/agree-answer.dto';
 import { AnswerDto } from './DTO/answer.dto';
 import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { Answer, UserAttitudeOnAnswer } from './answer.entity';
-import { AnswerNotFoundError } from './answer.error';
+import { AnswerAlreadyAgreeError, AnswerAlreadyUnfavoriteError, AnswerNotFoundError } from './answer.error';
 @Injectable()
 export class AnswerService {
   constructor(
@@ -27,9 +27,10 @@ export class AnswerService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async createAnswer(userId: number, content: string): Promise<CreateAnswerRespondDto> {
+  async createAnswer(questionId:number,userId: number, content: string): Promise<CreateAnswerRespondDto> {
     
-    const createdAnswer = this.answerRepository.create({ userId, content });
+    const createdAnswer = this.answerRepository.create({questionId, userId, content });
+    createdAnswer.is_group=false;
     await this.answerRepository.save(createdAnswer);
     // const userDto = await this.usersService.getUserDtoById(userId);
     return {
@@ -111,18 +112,19 @@ export class AnswerService {
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
     });
-    if (answer == undefined) {
+    if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
     const userDto = await this.usersService.getUserDtoById(userId);
+   
     return {
       id: answer.id,
-      question_id: answer.question_Id,
+      question_id: answer.questionId,
       content: answer.content,
       author: userDto,
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
-      favorite_count: answer.favoritedBy.length,
+      favorite_count: answer.favoritedBy?.length??0,
     };
   }
 
@@ -185,10 +187,15 @@ export class AnswerService {
 
     if (!answer.attitudes) {
       answer.attitudes = [userAttitude];
-    } else {
+    } 
+    else if(answer.attitudes.includes(userAttitude)){
+      throw new AnswerAlreadyAgreeError(id);
+    }
+    else {
       answer.attitudes.push(userAttitude);
     }
 
+    
     await this.answerRepository.save(answer);
 
     const len = answer.attitudes.length;
@@ -203,7 +210,7 @@ export class AnswerService {
     }
     return {
       id: userId,
-      question_id: answer.question_Id,
+      question_id: answer.questionId,
       content: answer.content,
       author: userDto,
       agree_type: agree_type,
@@ -230,18 +237,24 @@ export class AnswerService {
         answer.favoritedBy.push(user);
       }
     }
-
-    const favorite_count = answer.favoritedBy.length;
+    let favoriteCount;
+    if(!answer.favoritedBy.length){
+      favoriteCount = 0;
+    }
+    else{
+      favoriteCount = answer.favoritedBy.length;
+    }
+    // const favorite_count = answer.favoritedBy.length;
     const userDto = await this.usersService.getUserDtoById(userId);
     await this.answerRepository.save(answer);
     return {
       id: userId,
-      question_id: answer.question_Id,
+      question_id: answer.questionId,
       content: answer.content,
       author: userDto,
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
-      favorite_count: favorite_count,
+      favorite_count: favoriteCount,
     };
   }
 
@@ -258,13 +271,16 @@ export class AnswerService {
       throw new UserIdNotFoundError(userId);
     }
 
-    if (answer.favoritedBy.includes(user)) {
+    if(!answer.favoritedBy){
+      throw new AnswerAlreadyUnfavoriteError(answerId);
+    }
+    if (answer.favoritedBy && answer.favoritedBy.includes(user)) {
       const index = answer.favoritedBy.indexOf(user);
       answer.favoritedBy.splice(index);
-    } else {
+    } //else {
       // throw new AnswerAlreadyUnfavoriteError(answerId);
-      this.favoriteAnswer(answerId, userId);
-    }
+      // this.favoriteAnswer(answerId, userId);
+    // }
 
     // const userDto = await this.usersService.getUserDtoById(userId);
     await this.answerRepository.save(answer);

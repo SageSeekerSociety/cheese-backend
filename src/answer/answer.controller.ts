@@ -18,7 +18,6 @@ import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { AgreeAnswerDto, AgreeAnswerRespondDto } from './DTO/agree-answer.dto';
 import { AnswerDetailRespondDto, AnswerRespondDto } from './DTO/answer.dto';
-import { CreateAnswerDto } from './DTO/create-answer.dto';
 import { FavoriteAnswersRespondDto } from './DTO/favorite-answer.dto';
 import { GetAnswersRespondDto } from './DTO/get-answers.dto';
 import { UpdateAnswerDto, UpdateRespondAnswerDto } from './DTO/update-answer.dto';
@@ -64,16 +63,19 @@ export class AnswerController {
 
   @Post('/')
   async answerQuestion(
-    @Body() req: CreateAnswerDto,
+    @Body('content') content:string,
     @Headers('Authorization') auth: string | undefined,
     @Param('id', ParseIntPipe) id: number,
   ):Promise<AnswerRespondDto>{
     const userId = this.authService.verify(auth).userId;
     const answerId = await this.answerService.createAnswer(
+      id,
       userId,
-      req.content,
+      content,
     );
     const answerDto = await this.answerService.getAnswerById(userId, id, answerId.answerId);
+    //注意到一个比较抽象的问题，就你在service里面create的时候，你是没有用到questionId的对吧
+    //所以你存储的时候，也没有这个东西，但是你上面getAnwerById你还用上了id，那咋可能找得到
     return {
       code: 200,
       message: 'Answer created successfully.',
@@ -149,7 +151,7 @@ export class AnswerController {
   @Put('/:answer_id/favorite')
   async favoriteAnswer(
     @Param('answer_id', ParseIntPipe) answer_id: number,
-    @Param('id', ParseIntPipe) id: number,
+    // @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<FavoriteAnswersRespondDto> {
     const userId = this.authService.verify(auth).userId;
