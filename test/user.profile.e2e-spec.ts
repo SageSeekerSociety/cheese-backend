@@ -22,7 +22,7 @@ describe('Profile Submodule of User Module', () => {
   )}@ruc.edu.cn`;
   let TestToken: string;
   let TestUserId: number;
-
+  let AvatarId: number;
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -87,6 +87,17 @@ describe('Profile Submodule of User Module', () => {
       TestToken = respond.body.data.accessToken;
       TestUserId = respond.body.data.user.id;
     });
+    it('should upload an avatar', async () => {
+      const respond1 = await request(app.getHttpServer())
+        .post('/avatars')
+        .attach('avatar', 'resources/default.jpg')
+        .set('authorization', 'Bearer ' + TestToken);
+      //.set('User-Agent', 'PostmanRuntime/7.26.8');
+      expect(respond1.status).toBe(201);
+      expect(respond1.body.message).toBe('Upload avatar successfully');
+      expect(respond1.body.data).toHaveProperty('avatarid');
+      AvatarId = respond1.body.data.avatarid;
+    });
   });
 
   describe('update user profile', () => {
@@ -97,7 +108,7 @@ describe('Profile Submodule of User Module', () => {
         .set('authorization', 'Bearer ' + TestToken)
         .send({
           nickname: 'test_user_updated',
-          avatar: 'default.jpg',
+          avatar: AvatarId.toString(),
           intro: 'test user updated',
         });
       expect(respond.body.message).toBe('Update user successfully.');
@@ -111,7 +122,7 @@ describe('Profile Submodule of User Module', () => {
         .set('authorization', 'Bearer ' + TestToken + '1')
         .send({
           nickname: 'test_user_updated',
-          avatar: 'default.jpg',
+          avatar: AvatarId.toString(),
           intro: 'test user updated',
         });
       expect(respond.body.message).toMatch(/^InvalidTokenError: /);
@@ -124,7 +135,7 @@ describe('Profile Submodule of User Module', () => {
         //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           nickname: 'test_user_updated',
-          avatar: 'default.jpg',
+          avatar: AvatarId.toString(),
           intro: 'test user updated',
         });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
@@ -144,7 +155,7 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user_updated');
-      expect(respond.body.data.user.avatar).toBe('default.jpg');
+      expect(respond.body.data.user.avatar).toBe(AvatarId.toString());
       expect(respond.body.data.user.intro).toBe('test user updated');
     });
     it('should get modified user profile even without a token', async () => {
@@ -158,7 +169,7 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user_updated');
-      expect(respond.body.data.user.avatar).toBe('default.jpg');
+      expect(respond.body.data.user.avatar).toBe(AvatarId.toString());
       expect(respond.body.data.user.intro).toBe('test user updated');
     });
     it('should return UserIdNotFoundError', async () => {

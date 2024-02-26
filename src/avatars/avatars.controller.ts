@@ -30,8 +30,6 @@ export class AvatarsController {
     @Headers('Authorization') auth: string,
   ): Promise<UploadAvatarRespondDto> {
     const userid = this.authService.verify(auth).userId;
-    console.log(userid);
-    console.log(file.filename);
     const avatar = await this.avatarsService.save(file.filename, userid);
     return {
       code: 201,
@@ -49,7 +47,6 @@ export class AvatarsController {
     const avatar = await this.avatarsService.findOne(id);
     const path = __dirname + '\\images\\' + avatar.name;
     const file = fs.createReadStream(path);
-    console.log(path);
     if (fs.existsSync(path)) {
       res.set({
         'Content-Type': 'application/octet-stream',

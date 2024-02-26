@@ -26,14 +26,10 @@ import { AvatarsService } from './avatars.service';
       },
       fileFilter: (_, file, callback) => {
         // 检查文件类型
-        if (
-          extname(file.originalname.toLowerCase()) in
-          ['.jpg', '.jpeg', '.png', '.gif']
-        ) {
-          callback(null, true);
-        } else {
-          callback(new Error('Invalid file type'), false);
+        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+          return callback(new Error('Only image files are allowed!'), false);
         }
+        callback(null, true);
       },
     }),
     AuthModule,
