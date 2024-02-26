@@ -222,7 +222,9 @@ export class AnswerService {
   }
 
   async favoriteAnswer(id: number, userId: number): Promise<AnswerDto> {
-    const answer = await this.answerRepository.findOne({ where: { id } });
+    const answer = await this.answerRepository.findOne({ 
+      where: { id },
+      relations: ['favoritedBy'], });
     if (!answer) {
       throw new AnswerNotFoundError(id);
     }
@@ -235,7 +237,7 @@ export class AnswerService {
     if (!answer.favoritedBy) {
       answer.favoritedBy = [user];
     } else {
-      if (!answer.favoritedBy.includes(user)) {
+      if (!answer.favoritedBy.some(favoritedUser => favoritedUser.id === user.id)) {
         answer.favoritedBy.push(user);
       }
     }
@@ -249,7 +251,7 @@ export class AnswerService {
     const userDto = await this.usersService.getUserDtoById(userId);
     await this.answerRepository.save(answer);
     return {
-      id: userId,
+      id: answer.id,
       question_id: answer.questionId,
       content: answer.content,
       author: userDto,
@@ -262,6 +264,7 @@ export class AnswerService {
   async unfavoriteAnswer(answerId: number, userId: number): Promise<void> {
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
+      relations: ['favoritedBy'],
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
@@ -272,9 +275,9 @@ export class AnswerService {
       throw new UserIdNotFoundError(userId);
     }
 
-    if (answer.favoritedBy && answer.favoritedBy.includes(user)) {
+    if (answer.favoritedBy && answer.favoritedBy.some(favoriteUser => favoriteUser.id === user.id)) {
       const index = answer.favoritedBy.indexOf(user);
-      answer.favoritedBy.splice(index);
+      answer.favoritedBy.splice(index, 1);
     } else {
       throw new AnswerNotFavoriteError(answerId);
     }
