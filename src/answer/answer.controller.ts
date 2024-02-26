@@ -173,7 +173,7 @@ export class AnswerController {
     const userId = this.authService.verify(auth).userId;
     await this.answerService.unfavoriteAnswer(answer_id, userId);
     return {
-      code: 204,
+      code: 200,
       message: 'No Content.',
     };
   }
