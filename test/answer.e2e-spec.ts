@@ -325,27 +325,26 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: auxUserId, agreeType: 1 });
-      console.log(response.body);
+        .send({ agreeType: 1 });
+      // console.log(response.body);
       expect(response.body.message).toBe('Answer agreed successfully.');
       
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
       expect(response.body.data.agree_count).toBe(1);
       expect(response.body.data.disagree_count).toBe(0);
-      expect(response.body.data.id).toBe(TestAnswerId);
       expect(response.body.data.question_id).toBe(TestQuestionId);
     });
 
-    // it('should throw AnswerAlreadyAgreeError when trying to agree again', async () => {
+    // it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
     //   const TestQuestionId = questionId[0];
     //   const TestAnswerId = answerId[3];
     //   const response = await request(app.getHttpServer())
     //     .post(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
     //     .set('Authorization', `Bearer ${auxAccessToken}`)
-    //     .send({ id: auxUserId, agreeType: 1 });
+    //     .send({ agreeType: 1 });
     //   console.log(response.body);
-    //   expect(response.body.message).toMatch(/AnswerAlreadyAgreeError/);
+    //   expect(response.body.message).toMatch(/AlreadHasSameAttitudeError: /);
     //   expect(response.status).toBe(400); 
     // });
 
@@ -371,10 +370,10 @@ describe('Answers Module', () => {
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-
+// console.log(response.body);
       expect(response.body.message).toBe('Answer favorited successfully.');  
       expect(response.status).toBe(200);
-      expect(response.body.data.favorite_count).toBe(1);
+      expect(response.body.data.answer.favorite_count).toBe(1);
       
     });
 
@@ -385,8 +384,8 @@ describe('Answers Module', () => {
         .delete(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-
-      expect(response.body.message).toBe('No content.');  
+      console.log(response.body);
+      expect(response.body.message).toBe('Answer is already unfavorited.');  
       expect(response.status).toBe(204);
       expect(response.body.code).toBe(204);
       

@@ -47,7 +47,7 @@ export class Answer {
   @Index({ unique: false })
   groupId?: number;
 
-  @OneToMany(() => UserAttitudeOnAnswer, (attitude) => attitude.type)
+  @OneToMany(() => UserAttitudeOnAnswer, (attitude) => attitude.answer)
   attitudes: UserAttitudeOnAnswer[];
 
   @ManyToMany(() => User)
@@ -69,21 +69,21 @@ export class UserAttitudeOnAnswer {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @ManyToOne(() => User)
+  // @JoinColumn({ name: 'userId' })
+  user: User;
+
   @Column()
   userId: number;
 
-  // @ManyToOne(() => User)
-  // @JoinColumn({ name: 'userId' })
-  // user: User;
-
-  // @ManyToOne( () => Answer)
+  @ManyToOne( () => Answer)
   // @JoinColumn({ name: 'answerId'})
-  // answer: Answer;
+  answer: Answer;
 
   @Column()
   answerId: number;
 
-  @Column()
+  @Column({default: 0})
   type: AttitudeType;
 }
 

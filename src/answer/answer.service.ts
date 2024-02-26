@@ -12,8 +12,8 @@ import { UsersService } from '../users/users.service';
 import { AgreeAnswerDto } from './DTO/agree-answer.dto';
 import { AnswerDto } from './DTO/answer.dto';
 import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
-import { Answer, UserAttitudeOnAnswer } from './answer.entity';
-import { AnswerAlreadyAgreeError, AnswerAlreadyUnfavoriteError, AnswerNotFoundError } from './answer.error';
+import { Answer, AttitudeType, UserAttitudeOnAnswer } from './answer.entity';
+import { AlreadyHasSameAttitudeError, AnswerNotFoundError } from './answer.error';
 @Injectable()
 export class AnswerService {
   constructor(
@@ -167,49 +167,68 @@ export class AnswerService {
     userId: number,
     agree_type: number,
   ): Promise<AgreeAnswerDto> {
-    const answer = await this.answerRepository.findOne({ where: { id } });
+    const answer = await this.answerRepository.findOneBy({ id });
     const userDto = await this.usersService.getUserDtoById(userId);
 
     if (!answer) {
       throw new AnswerNotFoundError(id);
     }
-
-    const userAttitude = this.userAttitudeRepository.create();
-    const user = await this.userRepository.findOneBy({ id: userId });
-    if (!user) {
-      throw new UserIdNotFoundError(userId);
+    const userAttitude = await this.userAttitudeRepository.findOne(
+      {where: {userId, answerId: id},}
+    );
+    if(userAttitude){
+      if(userAttitude.type == agree_type){
+        throw new AlreadyHasSameAttitudeError(userId, id, agree_type);
+      }
+      userAttitude.type = agree_type;
+      await this.userAttitudeRepository.save(userAttitude);
+    }else{
+      await this.userAttitudeRepository.save({
+        userId,
+        answerId: id,
+        type: agree_type,
+      });
     }
-    answer.userId = userId;
-    answer.author = user;
-    userAttitude.answerId = id;
-    userAttitude.type = agree_type;
-    // userAttitude.user = user;
-    userAttitude.userId = userId;
+    
+    const agree_count = await this.userAttitudeRepository.count({
+      where: {answerId: id, type: AttitudeType.Agree},
+    });
+    const disagree_count = await this.userAttitudeRepository.count({
+      where: {answerId: id, type: AttitudeType.Disagree},
+    });
+    // const user = await this.userRepository.findOneBy({ id: userId });
+    // if (!user) {
+    //   throw new UserIdNotFoundError(userId);
+    // }
+    // userAttitude.answerId = id;
+    // userAttitude.type = agree_type;
+    // // userAttitude.user = user;
+    // userAttitude.userId = userId;
     // userAttitude.answer = answer;
 
-    if (!answer.attitudes) {
-      answer.attitudes = [userAttitude];
-    } 
-    else if(answer.attitudes.includes(userAttitude)){
-      throw new AnswerAlreadyAgreeError(id);
-    }
-    else {
-      answer.attitudes.push(userAttitude);
-    }
+    // if (!answer.attitudes) {
+    //   answer.attitudes = [userAttitude];
+    // } 
+    // else if(answer.attitudes.includes(userAttitude)){
+    //   throw new AnswerAlreadyAgreeError(id);
+    // }
+    // else {
+    //   answer.attitudes.push(userAttitude);
+    // }
 
     
-    await this.answerRepository.save(answer);
+    // await this.answerRepository.save(answer);
 
-    const len = answer.attitudes.length;
-    let agree_count = 0,
-      disagree_count = 0;
-    for (let i = 0; i < len; i++) {
-      if (answer.attitudes[i].type == 1) {
-        agree_count += 1;
-      } else {
-        disagree_count += 1;
-      }
-    }
+    // const len = answer.attitudes.length;
+    // let agree_count = 0,
+    //   disagree_count = 0;
+    // for (let i = 0; i < len; i++) {
+    //   if (answer.attitudes[i].type == 1) {
+    //     agree_count += 1;
+    //   } else {
+    //     disagree_count += 1;
+    //   }
+    // }
     return {
       id: userId,
       question_id: answer.questionId,
@@ -273,9 +292,10 @@ export class AnswerService {
       throw new UserIdNotFoundError(userId);
     }
 
-    if(!answer.favoritedBy){
-      throw new AnswerAlreadyUnfavoriteError(answerId);
-    }
+    // if(!answer.favoritedBy){
+      // throw new AnswerAlreadyUnfavoriteError(answerId);
+      // this.favoriteAnswer(answerId, userId);
+    // }
     if (answer.favoritedBy && answer.favoritedBy.includes(user)) {
       const index = answer.favoritedBy.indexOf(user);
       answer.favoritedBy.splice(index);

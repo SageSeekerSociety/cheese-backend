@@ -39,3 +39,17 @@ export class AnswerAlreadyUnfavoriteError extends BaseError {
     );
   }
 }
+
+export class AlreadyHasSameAttitudeError extends BaseError{
+  constructor(
+    public readonly userId: number,
+    public readonly id: number,
+    public readonly agree_type: number,
+  ){
+    super(
+      'AlreadyHasSameAttitudeError',
+      `Already has attitude ${agree_type} on answer ${id}.`,
+      400,
+    );
+  }
+}
