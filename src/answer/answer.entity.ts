@@ -72,12 +72,13 @@ export class UserAttitudeOnAnswer {
   @Column()
   userId: number;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  // @ManyToOne(() => User)
+  // @JoinColumn({ name: 'userId' })
+  // user: User;
 
-  @Column()
-  answer: Answer;
+  // @ManyToOne( () => Answer)
+  // @JoinColumn({ name: 'answerId'})
+  // answer: Answer;
 
   @Column()
   answerId: number;

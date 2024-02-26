@@ -179,11 +179,13 @@ export class AnswerService {
     if (!user) {
       throw new UserIdNotFoundError(userId);
     }
+    answer.userId = userId;
+    answer.author = user;
     userAttitude.answerId = id;
     userAttitude.type = agree_type;
-    userAttitude.user = user;
+    // userAttitude.user = user;
     userAttitude.userId = userId;
-    userAttitude.answer = answer;
+    // userAttitude.answer = answer;
 
     if (!answer.attitudes) {
       answer.attitudes = [userAttitude];
