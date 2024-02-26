@@ -174,7 +174,7 @@ export class AnswerController {
     await this.answerService.unfavoriteAnswer(answer_id, userId);
     return {
       code: 204,
-      message: 'Answer is already unfavorited.',
+      message: 'No Content.',
     };
   }
 }

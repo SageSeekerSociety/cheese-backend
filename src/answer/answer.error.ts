@@ -29,8 +29,8 @@ export class AnswerAlreadyFavoriteError extends BaseError {
 export class AnswerNotFavoriteError extends BaseError {
   constructor(public readonly id: number) {
     super(
-      'AnswerAlreadyUnfavoriteError',
-      `Answer with id ${id} is already unfavorited.`,
+      'AnswerNotFavoriteError',
+      `Answer with id ${id} is not favorited.`,
       400,
     );
   }

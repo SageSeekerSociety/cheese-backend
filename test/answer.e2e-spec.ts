@@ -381,12 +381,20 @@ describe('Answers Module', () => {
     it('should successfully unfavorite an answer', async () => {
       const TestAnswerId = answerId[1];
       const TestQuestionId = questionId[0];
+      console.log(TestAnswerId);
+      const res = await request(app.getHttpServer())
+        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      console.log(res.body);
+      console.log(TestAnswerId);
       const response = await request(app.getHttpServer())
         .delete(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      console.log(TestAnswerId);
       console.log(response.body);
-      expect(response.body.message).toBe('Answer is already unfavorited.');
+      expect(response.body.message).toBe('No Content.');
       expect(response.status).toBe(204);
       expect(response.body.code).toBe(204);
     });
