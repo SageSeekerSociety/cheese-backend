@@ -161,8 +161,6 @@ describe('Answers Module', () => {
       [auxUserId, auxAccessToken] = await createAuxiliaryUser();
     });
   });
-  //describe套describe了，所以这个地方直接itshould就行，然后下面传参我已经修好了
-  //你把这个describe去掉应该就行了
 
   // describe('answer question', () => {
   it('should create some answers', async () => {
@@ -219,15 +217,15 @@ describe('Answers Module', () => {
     });
     it('should return AnswerNotFoundError', async () => {
       const TestQuestionId = questionId[0];
-      const NotExistAnswerId = 99999;
+      const NotExistAnswerId = 999999;
       const response = await request(app.getHttpServer())
-        .get(`/questions/${TestQuestionId}/answers/${NotExistAnswerId}`)
+        .get(`/question/${TestQuestionId}/answers/${NotExistAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       // console.log(response.body);
-      expect(response.body.message).toContain('Cannot GET');
+      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
-      // expect(response.body.code).toBe(404);
+      expect(response.body.code).toBe(404);
     });
   });
 
@@ -404,21 +402,16 @@ describe('Answers Module', () => {
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
     });
-    // it('should throw AnswerAlreadyFavoriteError when trying to favorite again', async () => {
-    //   const response = await request(app.getHttpServer())
-    //     .post(`/answers/${answerId}/favorite`)
-    //     .set('Authorization', `Bearer ${auxAccessToken}`)
-    //     .send({ auxUserId });
-    //   expect(response.status).toBe(400); // Assuming your application throws a 400 for this scenario
-    //   expect(response.body.message).toMatch(/AnswerAlreadyFavoriteError/);
-    // });
+
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
-      const TestAnswerId = answerId[5];
-      const TestQuestionId = questionId[1];
+      const TestAnswerId = answerId[4];
+      const TestQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
         .delete(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+
+      console.log(response.body);
       expect(response.body.message).toMatch(/AnswerNotFavoriteError: /);
       expect(response.status).toBe(400);
       expect(response.body.code).toBe(400);

@@ -6,25 +6,6 @@ export class AnswerNotFoundError extends BaseError {
   }
 }
 
-export class AnswerAlreadyAgreeError extends BaseError {
-  constructor(public readonly id: number) {
-    super(
-      'AnswerAlreadyAgreeError',
-      `Answer with id ${id} is already agreed.`,
-      400,
-    );
-  }
-}
-
-export class AnswerAlreadyFavoriteError extends BaseError {
-  constructor(public readonly id: number) {
-    super(
-      'AnswerAlreadyFavoriteError',
-      `Answer with id ${id} is already favorited.`,
-      400,
-    );
-  }
-}
 
 export class AnswerNotFavoriteError extends BaseError {
   constructor(public readonly id: number) {
