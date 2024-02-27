@@ -85,6 +85,6 @@ export class UserAttitudeOnAnswer {
 }
 
 export enum AttitudeType {
-  Agree,
-  Disagree,
+  Agree ,
+  Disagree ,
 }

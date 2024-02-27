@@ -176,7 +176,7 @@ export class AnswerService {
   async agreeAnswer(
     id: number,
     userId: number,
-    agree_type: number,
+    agree_type: AttitudeType,
   ): Promise<AgreeAnswerDto> {
     const answer = await this.answerRepository.findOneBy({ id });
     const userDto = await this.usersService.getUserDtoById(userId);
@@ -189,6 +189,7 @@ export class AnswerService {
     const userAttitude = await this.userAttitudeRepository.findOne({
       where: { userId, answerId: id },
     });
+    
     if (userAttitude) {
       if (userAttitude.type === agree_type) {
         throw new AlreadyHasSameAttitudeError(userId, id, agree_type);
@@ -196,13 +197,15 @@ export class AnswerService {
       userAttitude.type = agree_type;
       await this.userAttitudeRepository.save(userAttitude);
     } else {
+      
       await this.userAttitudeRepository.save({
         userId,
         answerId: id,
         type: agree_type,
       });
     }
-
+    // console.log(agree_type);
+    // console.log(userAttitude?.type);
     const agree_count = await this.userAttitudeRepository.count({
       where: { answerId: id, type: AttitudeType.Agree },
     });
@@ -211,7 +214,7 @@ export class AnswerService {
     });
 
     return {
-      id: userId,
+      id: answer.id,
       question_id: answer.questionId,
       content: answer.content,
       author: userDto,
@@ -241,13 +244,13 @@ export class AnswerService {
         answer.favoritedBy.push(user);
       }
     }
-    let favoriteCount;
-    if (!answer.favoritedBy.length) {
-      favoriteCount = 0;
-    } else {
-      favoriteCount = answer.favoritedBy.length;
-    }
-    // const favorite_count = answer.favoritedBy.length;
+    // let favoriteCount;
+    // if (!answer.favoritedBy.length) {
+    //   favoriteCount = 0;
+    // } else {
+    //   favoriteCount = answer.favoritedBy.length;
+    // }
+    const favorite_count = answer.favoritedBy.length;
     const userDto = await this.usersService.getUserDtoById(userId);
     await this.answerRepository.save(answer);
     return {
@@ -257,7 +260,7 @@ export class AnswerService {
       author: userDto,
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
-      favorite_count: favoriteCount,
+      favorite_count: favorite_count,
     };
   }
 

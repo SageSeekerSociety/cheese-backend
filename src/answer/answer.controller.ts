@@ -134,7 +134,7 @@ export class AnswerController {
   @Put('/:answer_id/agree')
   async agreeAnswer(
     @Param('answer_id', ParseIntPipe) answer_id: number,
-    @Param('id', ParseIntPipe) id: number,
+    // @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
     @Body() req: AgreeAnswerDto,
   ): Promise<AgreeAnswerRespondDto> {

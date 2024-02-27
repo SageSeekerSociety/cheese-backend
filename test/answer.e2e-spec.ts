@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { CreateAnswerDto } from '../src/answer/DTO/create-answer.dto';
+import { AttitudeType } from '../src/answer/answer.entity';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -329,8 +330,8 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ agreeType: 1 });
-      // console.log(response.body);
+        .send({ agreeType: AttitudeType.Agree });
+      console.log(response.body);
       expect(response.body.message).toBe('Answer agreed successfully.');
 
       expect(response.status).toBe(200);
@@ -340,17 +341,22 @@ describe('Answers Module', () => {
       expect(response.body.data.question_id).toBe(TestQuestionId);
     });
 
-    // it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
-    //   const TestQuestionId = questionId[0];
-    //   const TestAnswerId = answerId[3];
-    //   const response = await request(app.getHttpServer())
-    //     .post(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-    //     .set('Authorization', `Bearer ${auxAccessToken}`)
-    //     .send({ agreeType: 1 });
-    //   console.log(response.body);
-    //   expect(response.body.message).toMatch(/AlreadHasSameAttitudeError: /);
-    //   expect(response.status).toBe(400);
-    // });
+    it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
+      const TestQuestionId = questionId[1];
+      const TestAnswerId = answerId[1];
+      const agree_respond = await request(app.getHttpServer())
+      .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+      .set('Authorization', `Bearer ${auxAccessToken}`)
+      .send({ agreeType: AttitudeType.Disagree });
+      console.log(agree_respond.body);
+      const response = await request(app.getHttpServer())
+        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ agreeType: AttitudeType.Disagree });
+      console.log(response.body);
+      expect(response.body.message).toMatch(/AlreadyHasSameAttitudeError: /);
+      expect(response.status).toBe(400);
+    });
 
     it('should throw AnswerNotFoundError when trying to agree to a non-existent answer', async () => {
       const nonExistentAnswerId = 9999; // Assuming this ID does not exist
@@ -358,7 +364,7 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${nonExistentAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ auxUserId, agreeType: 1 });
+        .send({ agreeType: AttitudeType.Agree });
       expect(response.body.message).toMatch(/AnswerNotFoundError/);
       expect(response.status).toBe(404); // Assuming your application throws a 404 for not found answers
     });
@@ -406,7 +412,17 @@ describe('Answers Module', () => {
     //   expect(response.status).toBe(400); // Assuming your application throws a 400 for this scenario
     //   expect(response.body.message).toMatch(/AnswerAlreadyFavoriteError/);
     // });
-
+    it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
+      const TestAnswerId = answerId[5];
+      const TestQuestionId = questionId[1];
+      const response = await request(app.getHttpServer())
+        .delete(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(response.body.message).toMatch(/AnswerNotFavoriteError: /);
+      expect(response.status).toBe(400);
+      expect(response.body.code).toBe(400);
+    })
     it('should throw AnswerNotFoundError when trying to favorite a non-existent answer', async () => {
       // const TestAnswerId = answerId[0];
       const TestQuestionId = questionId[1];
