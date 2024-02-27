@@ -153,10 +153,23 @@ describe('Topic Module', () => {
     });
   });
 
-  // The following test is disabled because we have decided to migrate searching
-  // to elastic search. However, it is not implemented yet.
-  /*
   describe('search topic', () => {
+    it('should wait some time for elasticsearch to refresh', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    });
+    it('should return empty page without parameters', async () => {
+      const respond = await request(app.getHttpServer()).get('/topics').send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.topics.length).toBe(0);
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.page_start).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
+    });
     it('should search topics and do paging', async () => {
       // Try search: `${TestTopicCode} 高等`
       const respond = await request(app.getHttpServer())
@@ -179,18 +192,12 @@ describe('Topic Module', () => {
       expect(respond2.status).toBe(200);
       expect(respond2.body.code).toBe(200);
       expect(respond2.body.data.topics.length).toBe(3);
-      expect(respond2.body.data.topics[0].name).toBe(
-        `${TestTopicPrefix} 高等数学`,
-      );
-      expect(respond2.body.data.topics[1].name).toBe(
-        `${TestTopicPrefix} 高等代数`,
-      );
-      expect(respond2.body.data.topics[2].name).toBe(
-        `${TestTopicPrefix} 高等数学习题`,
-      );
-      expect(respond2.body.data.page.page_start).toBe(
-        respond2.body.data.topics[0].id,
-      );
+      expect(respond2.body.data.topics[0].name).toContain(TestTopicCode);
+      expect(respond2.body.data.topics[0].name).toContain('高等');
+      expect(respond2.body.data.topics[1].name).toContain(TestTopicCode);
+      expect(respond2.body.data.topics[1].name).toContain('高等');
+      expect(respond2.body.data.topics[2].name).toContain(TestTopicCode);
+      expect(respond2.body.data.topics[2].name).toContain('高等');
       expect(respond2.body.data.page.page_size).toBe(3);
       expect(respond2.body.data.page.has_prev).toBe(false);
       expect(respond2.body.data.page.prev_start).toBe(0);
@@ -208,9 +215,8 @@ describe('Topic Module', () => {
       expect(respond3.body.data.topics[0].id).toBe(
         respond2.body.data.page.next_start,
       );
-      expect(respond3.body.data.topics[0].name).toBe(
-        `${TestTopicPrefix} 高等代数习题`,
-      );
+      expect(respond3.body.data.topics[0].name).toContain(TestTopicCode);
+      expect(respond3.body.data.topics[0].name).toContain('高等');
       expect(respond3.body.data.page.page_start).toBe(
         respond3.body.data.topics[0].id,
       );
@@ -278,7 +284,6 @@ describe('Topic Module', () => {
       expect(respond.status).toBe(400);
     });
   });
-  */
 
   describe('get topic', () => {
     it('should get a topic', async () => {

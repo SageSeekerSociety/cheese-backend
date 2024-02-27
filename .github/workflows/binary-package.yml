@@ -15,6 +15,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Modify Prisma Native Settings # For the compatibility of the query engine, see: https://www.prisma.io/docs/orm/reference/prisma-schema-reference#binarytargets-options
+        run: sed -i "/generator client {/a binaryTargets = [\"windows\", \"debian-openssl-1.0.x\", \"debian-openssl-1.1.x\", \"debian-openssl-3.0.x\", \"linux-musl-openssl-3.0.x\", \"linux-musl\", \"linux-musl-arm64-openssl-3.0.x\", \"linux-musl-arm64-openssl-1.1.x\", \"rhel-openssl-1.0.x\", \"rhel-openssl-1.1.x\", \"rhel-openssl-1.1.x\", \"rhel-openssl-3.0.x\", \"linux-arm64-openssl-1.0.x\", \"linux-arm64-openssl-1.1.x\", \"linux-arm64-openssl-3.0.x\", \"darwin\", \"darwin-arm64\"]" "prisma/schema.prisma"
+
       - name: Install Node.js 18.x
         uses: actions/setup-node@v3
         with:
