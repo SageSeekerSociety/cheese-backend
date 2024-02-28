@@ -1,7 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
-import { CreateAnswerDto } from '../src/answer/DTO/create-answer.dto';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -165,9 +164,6 @@ describe('Answers Module', () => {
   it('should create some answers', async () => {
     const testQuestionId = questionId[0];
     async function createAnswer(content: string) {
-      const createAnswerDto = new CreateAnswerDto();
-      createAnswerDto.questionId = testQuestionId;
-      createAnswerDto.content = content;
       const respond = await request(app.getHttpServer())
         //这个地方建议就是把API修改一下，你传参的时候就直接按你这个post传，然后就不需要send
         //没事了，API没搞错，然后下面requestBody不是只传一个content吗
@@ -182,14 +178,13 @@ describe('Answers Module', () => {
       expect(typeof respond.body.data.id).toBe('number');
       answerId.push(respond.body.data.id);
     }
-    await createAnswer(
-      '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
-    );
     await Promise.all([
+      createAnswer(
+        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
+      ),
       createAnswer('难道你真的是天才？'),
       createAnswer('你不要胡说，1+1明明等于3'),
       createAnswer('Answer content with emoji: 😂😂'),
-      // createAnswer('title', 'Answer content with emoji: 😂😂'),
       createAnswer('烫烫烫'.repeat(1000)),
     ]);
   }, 6000);
@@ -221,7 +216,6 @@ describe('Answers Module', () => {
         .get(`/question/${TestQuestionId}/answers/${NotExistAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      // console.log(response.body);
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
@@ -275,7 +269,6 @@ describe('Answers Module', () => {
         .put(`/question/${testQuestionId}/answers/${testAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ content: updatedContent });
-      // console.log(response.body);
       expect(response.body.message).toBe('Answer updated successfully.');
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
@@ -321,6 +314,22 @@ describe('Answers Module', () => {
   });
 
   describe('Agree Answer', () => {
+    it('should successfully create user attitude on first attempt', async () => {
+      const TestQuestionId = questionId[0];
+      const TestAnswerId = answerId[1];
+      const response = await request(app.getHttpServer())
+        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
+      expect(response.body.message).toBe('Answer agreed successfully.');
+      expect(response.statusCode).toBe(200);
+      expect(response.body.userAttitudeRepository).toBeUndefined();
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.agree_count).toBe(1);
+      expect(response.body.data.disagree_count).toBe(0);
+      expect(response.body.data.question_id).toBe(TestQuestionId);
+    });
+
     it('should successfully agree to an answer', async () => {
       const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[3];
@@ -328,9 +337,7 @@ describe('Answers Module', () => {
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
-      console.log(response.body);
       expect(response.body.message).toBe('Answer agreed successfully.');
-
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
       expect(response.body.data.agree_count).toBe(1);
@@ -341,16 +348,14 @@ describe('Answers Module', () => {
     it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
       const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[3];
-      const agree_respond = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
-      console.log(agree_respond.body);
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
-      console.log(response.body);
       expect(response.body.message).toMatch(/AlreadyHasSameAttitudeError: /);
       expect(response.status).toBe(400);
     });
@@ -375,7 +380,6 @@ describe('Answers Module', () => {
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      // console.log(response.body);
       expect(response.body.message).toBe('Answer favorited successfully.');
       expect(response.status).toBe(200);
       expect(response.body.data.answer.favorite_count).toBe(1);
@@ -384,19 +388,14 @@ describe('Answers Module', () => {
     it('should successfully unfavorite an answer', async () => {
       const TestAnswerId = answerId[1];
       const TestQuestionId = questionId[0];
-      // console.log(TestAnswerId);
-      const res = await request(app.getHttpServer())
+      await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      // console.log(res.body);
-      // console.log(TestAnswerId);
       const response = await request(app.getHttpServer())
         .delete(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      // console.log(TestAnswerId);
-      // console.log(response.body);
       expect(response.body.message).toBe('No Content.');
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
@@ -409,18 +408,32 @@ describe('Answers Module', () => {
         .delete(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-
-      // console.log(response.body);
       expect(response.body.message).toMatch(/AnswerNotFavoriteError: /);
       expect(response.status).toBe(400);
       expect(response.body.code).toBe(400);
-    })
+    });
     it('should throw AnswerNotFoundError when trying to favorite a non-existent answer', async () => {
       // const TestAnswerId = answerId[0];
       const TestQuestionId = questionId[0];
       const nonExistentAnswerId = 99999;
       const response = await request(app.getHttpServer())
         .put(
+          `/question/${TestQuestionId}/answers/${nonExistentAnswerId}/favorite`,
+        )
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+
+      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
+      expect(response.status).toBe(404);
+
+      expect(response.body.code).toBe(404);
+    });
+    it('should throw AnswerNotFoundError when trying to unfavorite a non-existent answer', async () => {
+      // const TestAnswerId = answerId[0];
+      const TestQuestionId = questionId[0];
+      const nonExistentAnswerId = 99998;
+      const response = await request(app.getHttpServer())
+        .delete(
           `/question/${TestQuestionId}/answers/${nonExistentAnswerId}/favorite`,
         )
         .set('Authorization', `Bearer ${auxAccessToken}`)

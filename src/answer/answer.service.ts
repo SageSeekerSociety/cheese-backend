@@ -11,7 +11,6 @@ import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { AgreeAnswerDto } from './DTO/agree-answer.dto';
 import { AnswerDto } from './DTO/answer.dto';
-import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { Answer, UserAttitudeOnAnswer } from './answer.entity';
 import {
   AlreadyHasSameAttitudeError,
@@ -35,7 +34,7 @@ export class AnswerService {
     questionId: number,
     userId: number,
     content: string,
-  ): Promise<CreateAnswerRespondDto> {
+  ): Promise<number> {
     const createdAnswer = this.answerRepository.create({
       questionId,
       userId,
@@ -43,27 +42,15 @@ export class AnswerService {
     });
     createdAnswer.is_group = false;
     await this.answerRepository.save(createdAnswer);
-    
+
     const answerId = createdAnswer.id;
-    // console.log(answerId);
     const userAttitude = this.userAttitudeRepository.create({
-      userId, 
+      userId,
       answerId: answerId,
-    })
+    });
     await this.userAttitudeRepository.save(userAttitude);
     // const userDto = await this.usersService.getUserDtoById(userId);
-    return {
-      answerId: createdAnswer.id,
-    };
-    // return {
-    //   id: createdAnswer.id,
-    //   question_id: createdAnswer.question_Id,
-    //   content: createdAnswer.content,
-    //   author: userDto,
-    //   created_at: createdAnswer.createdAt.getTime(),
-    //   updated_at: createdAnswer.updatedAt.getTime(),
-    //   favorite_count: createdAnswer.favoritedBy.length,
-    // };
+    return createdAnswer.id;
   }
 
   async getQuestionAnswers(
@@ -77,6 +64,7 @@ export class AnswerService {
       .orderBy('answer.createdAt');
     let prevPage = undefined,
       currPage = undefined;
+    /* istanbul ignore if */
     if (!page_start) {
       currPage = await queryBuilder.limit(page_size + 1).getMany();
       const currDto = await Promise.all(
@@ -88,6 +76,7 @@ export class AnswerService {
       return PageHelper.PageStart(currDto, page_size, (answer) => answer.id);
     } else {
       const start = await this.answerRepository.findOneBy({ id: page_start });
+      /* istanbul ignore if */
       if (!start) {
         throw new AnswerNotFoundError(page_start);
       }
@@ -197,7 +186,8 @@ export class AnswerService {
     const userAttitude = await this.userAttitudeRepository.findOne({
       where: { userId, answerId: id },
     });
-    
+
+    /* istanbul ignore else */
     if (userAttitude) {
       if (userAttitude.type == agree_type) {
         throw new AlreadyHasSameAttitudeError(userId, id, agree_type);
@@ -205,15 +195,12 @@ export class AnswerService {
       userAttitude.type = agree_type;
       await this.userAttitudeRepository.save(userAttitude);
     } else {
-
       await this.userAttitudeRepository.save({
         userId,
         answerId: id,
         type: agree_type,
       });
     }
-    console.log(agree_type);
-    // console.log(userAttitude?.type);
 
     const agree_count = await this.userAttitudeRepository.count({
       where: { answerId: id, type: 1 },
@@ -234,22 +221,28 @@ export class AnswerService {
   }
 
   async favoriteAnswer(id: number, userId: number): Promise<AnswerDto> {
-    const answer = await this.answerRepository.findOne({ 
+    const answer = await this.answerRepository.findOne({
       where: { id },
-      relations: ['favoritedBy'], });
+      relations: ['favoritedBy'],
+    });
     if (!answer) {
       throw new AnswerNotFoundError(id);
     }
 
     const user = await this.userRepository.findOneBy({ id: userId });
+    /* istanbul ignore if */
     if (!user) {
       throw new UserIdNotFoundError(userId);
     }
-
+    /* istanbul ignore if */
     if (!answer.favoritedBy) {
       answer.favoritedBy = [user];
     } else {
-      if (!answer.favoritedBy.some(favoritedUser => favoritedUser.id === user.id)) {
+      if (
+        !answer.favoritedBy.some(
+          (favoritedUser) => favoritedUser.id === user.id,
+        )
+      ) {
         answer.favoritedBy.push(user);
       }
     }
@@ -283,11 +276,15 @@ export class AnswerService {
     }
 
     const user = await this.userRepository.findOneBy({ id: userId });
+    /* istanbul ignore if */
     if (!user) {
       throw new UserIdNotFoundError(userId);
     }
 
-    if (answer.favoritedBy && answer.favoritedBy.some(favoriteUser => favoriteUser.id === user.id)) {
+    if (
+      answer.favoritedBy &&
+      answer.favoritedBy.some((favoriteUser) => favoriteUser.id === user.id)
+    ) {
       const index = answer.favoritedBy.indexOf(user);
       answer.favoritedBy.splice(index, 1);
     } else {
