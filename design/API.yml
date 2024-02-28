@@ -1,7 +1,7 @@
-openapi: '3.0.2'
+openapi: "3.0.2"
 info:
   title: Cheese Community API
-  version: '1.0'
+  version: "1.0"
 servers:
   - url: http://localhost:8080/api/{version}
     description: Local server
@@ -32,7 +32,7 @@ components:
           description: 错误码，0表示成功，其他表示失败
         message:
           type: string
-          default: ''
+          default: ""
           description: 错误信息，成功时为空字符串
       required:
         - code
@@ -51,7 +51,7 @@ components:
           type: string
         intro:
           type: string
-          default: ''
+          default: ""
       required:
         - id
         - username
@@ -109,14 +109,14 @@ components:
           type: string
           description: 问题详情
         author:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         type:
           type: integer
           description: 问题类型
         topics:
           type: array
           items:
-            $ref: '#/components/schemas/Topic'
+            $ref: "#/components/schemas/Topic"
         created_at:
           type: integer
           format: int64
@@ -150,7 +150,7 @@ components:
           type: boolean
           description: 是否为小组问题
         group:
-          $ref: '#/components/schemas/Group'
+          $ref: "#/components/schemas/Group"
     Answer:
       type: object
       description: 回答详情
@@ -167,7 +167,7 @@ components:
           type: string
           description: 回答内容
         author:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           format: int64
@@ -202,7 +202,7 @@ components:
           type: boolean
           description: 是否为小组回答
         group:
-          $ref: '#/components/schemas/Group'
+          $ref: "#/components/schemas/Group"
     Comment:
       type: object
       description: 评论详情
@@ -224,12 +224,12 @@ components:
               format: int64
               description: 评论 ID
             user:
-              $ref: '#/components/schemas/User'
+              $ref: "#/components/schemas/User"
         content:
           type: string
           description: 评论内容
         user:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           format: int64
@@ -262,9 +262,9 @@ components:
           type: string
         intro:
           type: string
-          default: ''
+          default: ""
         owner:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           format: int64
@@ -301,7 +301,7 @@ components:
           type: string
         intro:
           type: string
-          default: ''
+          default: ""
         created_at:
           type: integer
           format: int64
@@ -338,7 +338,7 @@ components:
           type: string
           description: 内容
         author:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           description: 创建时间
@@ -363,9 +363,9 @@ components:
           type: array
           description: 媒体文件，如果没有则为空数组
           items:
-            $ref: '#/components/schemas/Media'
+            $ref: "#/components/schemas/Media"
         attachment:
-          $ref: '#/components/schemas/Attachment'
+          $ref: "#/components/schemas/Attachment"
       required:
         - id
         - content
@@ -414,8 +414,8 @@ components:
           description: URL
         meta:
           oneOf:
-            - $ref: '#/components/schemas/ImageMeta'
-            - $ref: '#/components/schemas/VideoMeta'
+            - $ref: "#/components/schemas/ImageMeta"
+            - $ref: "#/components/schemas/VideoMeta"
     ImageMeta:
       type: object
       description: 图片元数据
@@ -477,7 +477,7 @@ components:
           description: 过期时间，如果为 0 表示永不过期
           format: int64
         user:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
     LinkMeta:
       type: object
       description: 链接元数据
@@ -503,7 +503,7 @@ components:
         - password
     LoginResponse:
       allOf:
-        - $ref: '#/components/schemas/CommonResponse'
+        - $ref: "#/components/schemas/CommonResponse"
         - type: object
           properties:
             data:
@@ -512,7 +512,7 @@ components:
                 accessToken:
                   type: string
                 user:
-                  $ref: '#/components/schemas/User'
+                  $ref: "#/components/schemas/User"
               required:
                 - accessToken
                 - user
@@ -539,7 +539,7 @@ components:
         - emailCode
     RegisterResponse:
       allOf:
-        - $ref: '#/components/schemas/CommonResponse'
+        - $ref: "#/components/schemas/CommonResponse"
         - type: object
           properties:
             data:
@@ -548,7 +548,7 @@ components:
                 accessToken:
                   type: string
                 user:
-                  $ref: '#/components/schemas/User'
+                  $ref: "#/components/schemas/User"
               required:
                 - accessToken
                 - user
@@ -564,20 +564,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
       responses:
-        '201':
+        "201":
           description: User registered successfully
           headers:
             Set-Cookie:
-              description: 'refresh token'
+              description: "refresh token"
               schema:
                 type: string
-                example: 'RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/; Expires=Sat, 01 Jan 2025 00:00:00 GMT'
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegisterResponse'
+                $ref: "#/components/schemas/RegisterResponse"
   /users/auth/login:
     post:
       summary: 用户登录
@@ -586,20 +586,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: OK
           headers:
             Set-Cookie:
-              description: 'refresh token'
+              description: "refresh token"
               schema:
                 type: string
-                example: 'RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT'
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: "#/components/schemas/LoginResponse"
   /users/auth/refresh-token:
     post:
       summary: 用户刷新 token
@@ -607,19 +607,19 @@ paths:
       security:
         - REFRESH_TOKEN: []
       responses:
-        '200':
+        "200":
           description: OK
           headers:
             Set-Cookie:
-              description: 'refresh token'
+              description: "refresh token"
               schema:
                 type: string
-                example: 'RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT'
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -639,12 +639,12 @@ paths:
       security:
         - REFRESH_TOKEN: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
 
   /users/verify/email:
     post:
@@ -661,12 +661,12 @@ paths:
               required:
                 - email
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /users/recover/password/request:
     post:
       summary: 重置密码请求
@@ -682,12 +682,12 @@ paths:
               required:
                 - email
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /users/recover/password/verify:
     post:
       summary: 验证 Token 并重置密码
@@ -706,12 +706,12 @@ paths:
                 - token
                 - new_password
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /users/{id}:
     get:
       summary: 获取用户信息
@@ -725,20 +725,20 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           user:
-                            $ref: '#/components/schemas/User'
+                            $ref: "#/components/schemas/User"
                     required:
                       - data
     put:
@@ -771,12 +771,12 @@ paths:
                 - avatar
                 - intro
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /users/{id}/questions:
     get:
       summary: 获取用户提问列表
@@ -803,14 +803,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -819,9 +819,9 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /users/{id}/answers:
@@ -850,14 +850,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -866,9 +866,9 @@ paths:
                           answers:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Answer'
+                              $ref: "#/components/schemas/Answer"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /users/{id}/followers:
@@ -897,14 +897,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -913,9 +913,9 @@ paths:
                           users:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -932,14 +932,14 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -966,14 +966,14 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1012,14 +1012,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1028,9 +1028,9 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /users/{id}/follow/users:
@@ -1059,14 +1059,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1075,9 +1075,9 @@ paths:
                           users:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /questions:
@@ -1105,14 +1105,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1121,9 +1121,9 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -1159,13 +1159,13 @@ paths:
                 - type
                 - topics
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1189,20 +1189,20 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           question:
-                            $ref: '#/components/schemas/Question'
+                            $ref: "#/components/schemas/Question"
                     required:
                       - data
     put:
@@ -1242,12 +1242,12 @@ paths:
                 - type
                 - topics
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除问题
       operationId: deleteQuestion
@@ -1262,7 +1262,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /questions/{id}/followers:
     get:
@@ -1290,13 +1290,13 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1305,9 +1305,9 @@ paths:
                           users:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     put:
@@ -1324,13 +1324,13 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1357,13 +1357,13 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1402,13 +1402,13 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1417,9 +1417,9 @@ paths:
                           answers:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Answer'
+                              $ref: "#/components/schemas/Answer"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -1446,13 +1446,13 @@ paths:
               required:
                 - content
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1485,22 +1485,22 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           question:
-                            $ref: '#/components/schemas/Question'
+                            $ref: "#/components/schemas/Question"
                           answer:
-                            $ref: '#/components/schemas/Answer'
+                            $ref: "#/components/schemas/Answer"
                     required:
                       - data
     put:
@@ -1534,12 +1534,12 @@ paths:
               required:
                 - content
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除回答
       operationId: deleteAnswer
@@ -1561,12 +1561,12 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /questions/{id}/answers/{answer_id}/agree:
     put:
       summary: 赞同回答
@@ -1604,13 +1604,13 @@ paths:
               required:
                 - agree_type
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1645,12 +1645,12 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 取消收藏回答
       operationId: unfavoriteAnswer
@@ -1672,7 +1672,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /questions/{id}/answers/{answer_id}/comments:
     get:
@@ -1707,13 +1707,13 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1724,7 +1724,7 @@ paths:
                             items:
                               type: object
                               allOf:
-                                - $ref: '#/components/schemas/Comment'
+                                - $ref: "#/components/schemas/Comment"
                                 - type: object
                                   properties:
                                     sub_comment_count:
@@ -1733,9 +1733,9 @@ paths:
                                     sub_comments:
                                       type: array
                                       items:
-                                        $ref: '#/components/schemas/Comment'
+                                        $ref: "#/components/schemas/Comment"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
     post:
       summary: 评论回答
       operationId: commentAnswer
@@ -1770,13 +1770,13 @@ paths:
               required:
                 - content
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1829,26 +1829,26 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           comment:
-                            $ref: '#/components/schemas/Comment'
+                            $ref: "#/components/schemas/Comment"
                           sub_comments:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Comment'
+                              $ref: "#/components/schemas/Comment"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     delete:
@@ -1879,7 +1879,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /questions/{id}/answers/{answer_id}/comments/{comment_id}/agree:
     put:
@@ -1925,12 +1925,12 @@ paths:
               required:
                 - agree_type
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /topics:
     get:
       summary: 获取话题列表
@@ -1956,13 +1956,13 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1971,9 +1971,9 @@ paths:
                           topics:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Topic'
+                              $ref: "#/components/schemas/Topic"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -1992,13 +1992,13 @@ paths:
               required:
                 - name
       responses:
-        '201':
+        "201":
           description: Topic created successfully
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2022,20 +2022,20 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           topic:
-                            $ref: '#/components/schemas/Topic'
+                            $ref: "#/components/schemas/Topic"
                     required:
                       - data
   /groups:
@@ -2082,14 +2082,14 @@ paths:
           schema:
             type: boolean
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2098,9 +2098,9 @@ paths:
                           groups:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Group'
+                              $ref: "#/components/schemas/Group"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -2128,13 +2128,13 @@ paths:
                 - avatar
                 - public
       responses:
-        '201':
+        "201":
           description: Group created successfully
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2158,20 +2158,20 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           group:
-                            $ref: '#/components/schemas/Group'
+                            $ref: "#/components/schemas/Group"
                     required:
                       - data
     put:
@@ -2207,12 +2207,12 @@ paths:
                 - avatar
                 - cover
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除圈子
       operationId: deleteGroup
@@ -2227,7 +2227,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /groups/{id}/members:
     get:
@@ -2255,14 +2255,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2271,9 +2271,9 @@ paths:
                           members:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -2300,13 +2300,13 @@ paths:
               required:
                 - intro
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2337,14 +2337,14 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2381,14 +2381,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2397,9 +2397,9 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /groups/{id}/targets:
@@ -2438,14 +2438,14 @@ paths:
               - new
             default: recommend
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2454,9 +2454,9 @@ paths:
                           targets:
                             type: array
                             items:
-                              $ref: '#/components/schemas/GroupTarget'
+                              $ref: "#/components/schemas/GroupTarget"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -2494,13 +2494,13 @@ paths:
                 - name
                 - intro
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2531,12 +2531,12 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     put:
       summary: 更新圈子目标
       operationId: updateGroupTarget
@@ -2590,12 +2590,12 @@ paths:
                 - end_time
                 - attendance
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除圈子目标
       operationId: deleteGroupTarget
@@ -2617,7 +2617,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /groups/{id}/targets/{target_id}/attend:
     post:
@@ -2641,12 +2641,12 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /feeds:
     get:
       summary: 获取动态列表
@@ -2667,14 +2667,14 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2707,8 +2707,8 @@ paths:
                                   type: object
                                   description: 动态数据
                                   oneOf:
-                                    - $ref: '#/components/schemas/Question'
-                                    - $ref: '#/components/schemas/Answer'
+                                    - $ref: "#/components/schemas/Question"
+                                    - $ref: "#/components/schemas/Answer"
                               required:
                                 - from
                                 - type
@@ -2733,13 +2733,13 @@ paths:
       summary: 获取热门问题列表
       operationId: getHotQuestionList
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2748,7 +2748,7 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                     required:
                       - data
   /search:
@@ -2787,14 +2787,14 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2804,11 +2804,11 @@ paths:
                             type: array
                             items:
                               oneOf:
-                                - $ref: '#/components/schemas/Question'
-                                - $ref: '#/components/schemas/Answer'
-                                - $ref: '#/components/schemas/User'
+                                - $ref: "#/components/schemas/Question"
+                                - $ref: "#/components/schemas/Answer"
+                                - $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /images:
@@ -2827,7 +2827,7 @@ paths:
                   type: string
                   format: binary
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -2891,13 +2891,13 @@ paths:
               required:
                 - content
       responses:
-        '201':
+        "201":
           description: Insight created successfully
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2923,20 +2923,20 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           insight:
-                            $ref: '#/components/schemas/Insight'
+                            $ref: "#/components/schemas/Insight"
                     required:
                       - data
     put:
@@ -2963,12 +2963,12 @@ paths:
               required:
                 - content
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除灵感
       operationId: deleteInsight
@@ -2983,7 +2983,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /insights/{id}/likes:
     get:
@@ -3011,13 +3011,13 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -3026,9 +3026,9 @@ paths:
                           likes:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     put:
@@ -3045,12 +3045,12 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 取消点赞灵感
       operationId: unlikeInsight
@@ -3065,7 +3065,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /insights/{id}/comments:
     get:
@@ -3093,13 +3093,13 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -3110,7 +3110,7 @@ paths:
                             items:
                               type: object
                               allOf:
-                                - $ref: '#/components/schemas/Comment'
+                                - $ref: "#/components/schemas/Comment"
                                 - type: object
                                   properties:
                                     sub_comment_count:
@@ -3119,9 +3119,9 @@ paths:
                                     sub_comments:
                                       type: array
                                       items:
-                                        $ref: '#/components/schemas/Comment'
+                                        $ref: "#/components/schemas/Comment"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -3151,13 +3151,13 @@ paths:
               required:
                 - content
       responses:
-        '201':
+        "201":
           description: Comment for insight created successfully
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -3203,26 +3203,26 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           comment:
-                            $ref: '#/components/schemas/Comment'
+                            $ref: "#/components/schemas/Comment"
                           sub_comments:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Comment'
+                              $ref: "#/components/schemas/Comment"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -3256,13 +3256,13 @@ paths:
               required:
                 - content
       responses:
-        '201':
+        "201":
           description: Reply for insight comment created successfully
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -3296,7 +3296,7 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /insights/{id}/comments/{comment_id}/agrees:
     get:
@@ -3331,13 +3331,13 @@ paths:
             format: int64
             default: 20
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -3346,9 +3346,9 @@ paths:
                           agrees:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     put:
@@ -3387,9 +3387,9 @@ paths:
               required:
                 - agree_type
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
