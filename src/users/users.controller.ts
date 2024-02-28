@@ -335,7 +335,7 @@ export class UsersController {
       code: 201,
       message: 'Follow user successfully.',
       data: {
-        follow_count: await this.usersService.getFolloweeCount(userId),
+        follow_count: await this.usersService.getFollowingCount(userId),
       },
     };
   }
@@ -358,7 +358,7 @@ export class UsersController {
       code: 200,
       message: 'Unfollow user successfully.',
       data: {
-        follow_count: await this.usersService.getFolloweeCount(userId),
+        follow_count: await this.usersService.getFollowingCount(userId),
       },
     };
   }

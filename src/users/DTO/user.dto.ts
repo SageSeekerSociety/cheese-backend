@@ -1,18 +1,11 @@
-import { IsInt, IsString } from 'class-validator';
-
 export class UserDto {
-  @IsInt()
   id: number;
-
-  @IsString()
   username: string;
-
-  @IsString()
   nickname: string;
-
-  @IsString()
   avatar: string;
-
-  @IsString()
   intro: string;
+  follow_count: number;
+  fans_count: number;
+  question_count: number;
+  is_follow: boolean;
 }

@@ -22,6 +22,7 @@ import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { Question } from '../questions/questions.legacy.entity';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import {
@@ -78,6 +79,8 @@ export class UsersService {
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
     private readonly prismaService: PrismaService,
+    @InjectRepository(Question)
+    private readonly questionRepository: Repository<Question>,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -338,6 +341,10 @@ export class UsersService {
           nickname: profile.nickname,
           avatar: profile.avatar,
           intro: profile.intro,
+          follow_count: 0,
+          fans_count: 0,
+          question_count: 0,
+          is_follow: false,
         };
       }
     }
@@ -384,6 +391,10 @@ export class UsersService {
       nickname: profile.nickname,
       avatar: profile.avatar,
       intro: profile.intro,
+      follow_count: await this.getFollowingCount(userId),
+      fans_count: await this.getFollowedCount(userId),
+      question_count: await this.getQuestionCount(userId),
+      is_follow: await this.isUserFollowUser(viewerId, userId),
     };
   }
 
@@ -424,6 +435,10 @@ export class UsersService {
         nickname: profile.nickname,
         avatar: profile.avatar,
         intro: profile.intro,
+        follow_count: await this.getFollowingCount(user.id),
+        fans_count: await this.getFollowedCount(user.id),
+        question_count: await this.getQuestionCount(user.id),
+        is_follow: await this.isUserFollowUser(user.id, user.id),
       },
       await this.createSession(user.id),
     ];
@@ -648,10 +663,6 @@ export class UsersService {
     await this.userProfileRepository.save(profile);
   }
 
-  async getFolloweeCount(userId: number): Promise<number> {
-    return await this.userFollowingRepository.countBy({ followerId: userId });
-  }
-
   async addFollowRelationship(
     followerId: number,
     followeeId: number,
@@ -804,5 +815,33 @@ export class UsersService {
 
   async isUserExists(userId: number): Promise<boolean> {
     return (await this.prismaService.user.count({ where: { id: userId } })) > 0;
+  }
+
+  async getFollowingCount(followerId: number | undefined): Promise<number> {
+    if (followerId == undefined) return 0;
+    return await this.userFollowingRepository.countBy({ followerId });
+  }
+
+  async getFollowedCount(followeeId: number | undefined): Promise<number> {
+    if (followeeId == undefined) return 0;
+    return await this.userFollowingRepository.countBy({ followeeId });
+  }
+
+  async getQuestionCount(userId: number | undefined): Promise<number> {
+    if (userId == undefined) return 0;
+    return await this.questionRepository.countBy({ createdById: userId });
+  }
+
+  async isUserFollowUser(
+    followerId: number | undefined,
+    followeeId: number | undefined,
+  ): Promise<boolean> {
+    if (followerId == undefined || followeeId == undefined) return false;
+    return (
+      (await this.userFollowingRepository.findOneBy({
+        followerId,
+        followeeId,
+      })) != undefined
+    );
   }
 }
