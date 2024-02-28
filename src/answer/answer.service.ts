@@ -11,8 +11,13 @@ import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { AgreeAnswerDto } from './DTO/agree-answer.dto';
 import { AnswerDto } from './DTO/answer.dto';
-import { Answer, UserAttitudeOnAnswer } from './answer.entity';
-import { AnswerNotFoundError } from './answer.error';
+import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
+import { Answer, AttitudeType, UserAttitudeOnAnswer } from './answer.entity';
+import {
+  AlreadyHasSameAttitudeError,
+  AnswerNotFavoriteError,
+  AnswerNotFoundError,
+} from './answer.error';
 @Injectable()
 export class AnswerService {
   constructor(
@@ -26,19 +31,37 @@ export class AnswerService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  async createAnswer(userId: number, content: string): Promise<AnswerDto> {
-    const createdAnswer = this.answerRepository.create({ content });
+  async createAnswer(
+    questionId: number,
+    userId: number,
+    content: string,
+  ): Promise<CreateAnswerRespondDto> {
+    const createdAnswer = this.answerRepository.create({
+      questionId,
+      userId,
+      content,
+    });
+    createdAnswer.is_group = false;
     await this.answerRepository.save(createdAnswer);
-    const userDto = await this.usersService.getUserDtoById(userId);
+    const userAttitude=this.userAttitudeRepository.create({
+      userId,
+      answerId:createdAnswer.id,
+      type:0,
+    })
+    await this.userAttitudeRepository.save(userAttitude);
+    // const userDto = await this.usersService.getUserDtoById(userId);
     return {
-      id: createdAnswer.id,
-      question_id: createdAnswer.question_Id,
-      content: createdAnswer.content,
-      author: userDto,
-      created_at: createdAnswer.createdAt.getTime(),
-      updated_at: createdAnswer.updatedAt.getTime(),
-      favorite_count: createdAnswer.favoritedBy.length,
+      answerId: createdAnswer.id,
     };
+    // return {
+    //   id: createdAnswer.id,
+    //   question_id: createdAnswer.question_Id,
+    //   content: createdAnswer.content,
+    //   author: userDto,
+    //   created_at: createdAnswer.createdAt.getTime(),
+    //   updated_at: createdAnswer.updatedAt.getTime(),
+    //   favorite_count: createdAnswer.favoritedBy.length,
+    // };
   }
 
   async getQuestionAnswers(
@@ -106,18 +129,19 @@ export class AnswerService {
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
     });
-    if (answer == undefined) {
+    if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
     const userDto = await this.usersService.getUserDtoById(userId);
+
     return {
       id: answer.id,
-      question_id: answer.question_Id,
+      question_id: answer.questionId,
       content: answer.content,
       author: userDto,
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
-      favorite_count: answer.favoritedBy.length,
+      favorite_count: answer.favoritedBy?.length ?? 0,
     };
   }
 
@@ -152,63 +176,64 @@ export class AnswerService {
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
-    await this.answerRepository.delete(answerId);
+    await this.answerRepository.softRemove(answer);
   }
 
   async agreeAnswer(
     id: number,
     userId: number,
-    agree_type: number,
+    agree_type: AttitudeType,
   ): Promise<AgreeAnswerDto> {
-    const answer = await this.answerRepository.findOne({ where: { id } });
+    const answer = await this.answerRepository.findOneBy({ id });
     const userDto = await this.usersService.getUserDtoById(userId);
 
     if (!answer) {
       throw new AnswerNotFoundError(id);
     }
 
-    const userAttitude = this.userAttitudeRepository.create();
-    const user = await this.userRepository.findOneBy({ id: userId });
-    if (!user) {
-      throw new UserIdNotFoundError(userId);
-    }
-    userAttitude.answerId = id;
-    userAttitude.type = agree_type;
-    userAttitude.user = user;
-    userAttitude.userId = userId;
-    userAttitude.answer = answer;
-
-    if (!answer.attitudes) {
-      answer.attitudes = [userAttitude];
-    } else {
-      answer.attitudes.push(userAttitude);
-    }
-
-    await this.answerRepository.save(answer);
-
-    const len = answer.attitudes.length;
-    let agree_count = 0,
-      disagree_count = 0;
-    for (let i = 0; i < len; i++) {
-      if (answer.attitudes[i].type == 1) {
-        agree_count += 1;
-      } else {
-        disagree_count += 1;
+    // maybe need to check if the user has already agreed or disagreed
+    const userAttitude = await this.userAttitudeRepository.findOne({
+      where: { userId, answerId: id },
+    });
+    
+    if (userAttitude) {
+      if (userAttitude.type === agree_type) {
+        throw new AlreadyHasSameAttitudeError(userId, id, agree_type);
       }
+      userAttitude.type = agree_type;
+      await this.userAttitudeRepository.save(userAttitude);
+    } else {
+      
+      await this.userAttitudeRepository.save({
+        userId,
+        answerId: id,
+        type: agree_type,
+      });
     }
+    // console.log(agree_type);
+    // console.log(userAttitude?.type);
+    const agree_count = await this.userAttitudeRepository.count({
+      where: { answerId: id, type: AttitudeType.Agree },
+    });
+    const disagree_count = await this.userAttitudeRepository.count({
+      where: { answerId: id, type: AttitudeType.Disagree },
+    });
+
     return {
-      id: userId,
-      question_id: answer.question_Id,
+      id: answer.id,
+      question_id: answer.questionId,
       content: answer.content,
       author: userDto,
       agree_type: agree_type,
-      agree_count: agree_count,
-      disagree_count: disagree_count,
+      agree_count,
+      disagree_count,
     };
   }
 
   async favoriteAnswer(id: number, userId: number): Promise<AnswerDto> {
-    const answer = await this.answerRepository.findOne({ where: { id } });
+    const answer = await this.answerRepository.findOne({ 
+      where: { id },
+      relations: ['favoritedBy'], });
     if (!answer) {
       throw new AnswerNotFoundError(id);
     }
@@ -221,17 +246,22 @@ export class AnswerService {
     if (!answer.favoritedBy) {
       answer.favoritedBy = [user];
     } else {
-      if (!answer.favoritedBy.includes(user)) {
+      if (!answer.favoritedBy.some(favoritedUser => favoritedUser.id === user.id)) {
         answer.favoritedBy.push(user);
       }
     }
-
+    // let favoriteCount;
+    // if (!answer.favoritedBy.length) {
+    //   favoriteCount = 0;
+    // } else {
+    //   favoriteCount = answer.favoritedBy.length;
+    // }
     const favorite_count = answer.favoritedBy.length;
     const userDto = await this.usersService.getUserDtoById(userId);
     await this.answerRepository.save(answer);
     return {
-      id: userId,
-      question_id: answer.question_Id,
+      id: answer.id,
+      question_id: answer.questionId,
       content: answer.content,
       author: userDto,
       created_at: answer.createdAt.getTime(),
@@ -243,6 +273,7 @@ export class AnswerService {
   async unfavoriteAnswer(answerId: number, userId: number): Promise<void> {
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
+      relations: ['favoritedBy'],
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
@@ -253,15 +284,13 @@ export class AnswerService {
       throw new UserIdNotFoundError(userId);
     }
 
-    if (answer.favoritedBy.includes(user)) {
+    if (answer.favoritedBy && answer.favoritedBy.some(favoriteUser => favoriteUser.id === user.id)) {
       const index = answer.favoritedBy.indexOf(user);
-      answer.favoritedBy.splice(index);
+      answer.favoritedBy.splice(index, 1);
     } else {
-      // throw new AnswerAlreadyUnfavoriteError(answerId);
-      this.favoriteAnswer(answerId, userId);
+      throw new AnswerNotFavoriteError(answerId);
     }
 
-    // const userDto = await this.usersService.getUserDtoById(userId);
     await this.answerRepository.save(answer);
   }
 }
