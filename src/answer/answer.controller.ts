@@ -138,7 +138,7 @@ export class AnswerController {
     @Headers('Authorization') auth: string | undefined,
     @Body() req: AgreeAnswerDto,
   ): Promise<AgreeAnswerRespondDto> {
-    console.log(req);
+    console.log(req)
     const userId = this.authService.verify(auth).userId;
     const agreedAnswer =  await this.answerService.agreeAnswer(answer_id, userId, req.agree_type);
     return {

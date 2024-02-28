@@ -2,7 +2,6 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { CreateAnswerDto } from '../src/answer/DTO/create-answer.dto';
-import { AttitudeType } from '../src/answer/answer.entity';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
@@ -328,7 +327,7 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agreeType: 1 });
+        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
       console.log(response.body);
       expect(response.body.message).toBe('Answer agreed successfully.');
 
@@ -345,12 +344,12 @@ describe('Answers Module', () => {
       const agree_respond = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agreeType: 2 });
+        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
       console.log(agree_respond.body);
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agreeType: 2 });
+        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
       console.log(response.body);
       expect(response.body.message).toMatch(/AlreadyHasSameAttitudeError: /);
       expect(response.status).toBe(400);
@@ -362,7 +361,7 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${nonExistentAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ agreeType: AttitudeType.Agree });
+        .send({ agree_type: 1 });
       expect(response.body.message).toMatch(/AnswerNotFoundError/);
       expect(response.status).toBe(404); // Assuming your application throws a 404 for not found answers
     });

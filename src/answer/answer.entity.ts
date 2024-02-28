@@ -81,10 +81,10 @@ export class UserAttitudeOnAnswer {
   answerId: number;
 
   @Column({ default: 0 })
-  type: AttitudeType;
+  type: number;
 }
 
-export enum AttitudeType {
-  Agree = 1,
-  Disagree = 2,
-}
+// export enum AttitudeType {
+//   Agree = 1,
+//   Disagree = 2,
+// }

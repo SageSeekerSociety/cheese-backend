@@ -12,7 +12,7 @@ import { UsersService } from '../users/users.service';
 import { AgreeAnswerDto } from './DTO/agree-answer.dto';
 import { AnswerDto } from './DTO/answer.dto';
 import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
-import { Answer, AttitudeType, UserAttitudeOnAnswer } from './answer.entity';
+import { Answer, UserAttitudeOnAnswer } from './answer.entity';
 import {
   AlreadyHasSameAttitudeError,
   AnswerNotFavoriteError,
@@ -47,7 +47,7 @@ export class AnswerService {
     const answerId = createdAnswer.id;
     // console.log(answerId);
     const userAttitude = this.userAttitudeRepository.create({
-      userId: userId, 
+      userId, 
       answerId: answerId,
     })
     await this.userAttitudeRepository.save(userAttitude);
@@ -178,13 +178,13 @@ export class AnswerService {
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
-    await this.answerRepository.delete(answerId);
+    await this.answerRepository.softRemove(answer);
   }
 
   async agreeAnswer(
     id: number,
     userId: number,
-    agree_type: AttitudeType,
+    agree_type: number,
   ): Promise<AgreeAnswerDto> {
     const answer = await this.answerRepository.findOneBy({ id });
     const userDto = await this.usersService.getUserDtoById(userId);
@@ -199,18 +199,13 @@ export class AnswerService {
     });
     
     if (userAttitude) {
-      if(!answer.attitudes){
-        answer.attitudes = [userAttitude];
-      }else{
-        answer.attitudes.push(userAttitude);
-      }
       if (userAttitude.type == agree_type) {
         throw new AlreadyHasSameAttitudeError(userId, id, agree_type);
       }
       userAttitude.type = agree_type;
       await this.userAttitudeRepository.save(userAttitude);
     } else {
-      
+
       await this.userAttitudeRepository.save({
         userId,
         answerId: id,
@@ -219,20 +214,20 @@ export class AnswerService {
     }
     console.log(agree_type);
     // console.log(userAttitude?.type);
-    await this.answerRepository.save(answer);
+
     const agree_count = await this.userAttitudeRepository.count({
-      where: { answerId: id, type: AttitudeType.Agree },
+      where: { answerId: id, type: 1 },
     });
     const disagree_count = await this.userAttitudeRepository.count({
-      where: { answerId: id, type: AttitudeType.Disagree },
+      where: { answerId: id, type: 2 },
     });
-    
+    await this.answerRepository.save(answer);
     return {
       id: answer.id,
       question_id: answer.questionId,
       content: answer.content,
       author: userDto,
-      agree_type: agree_type,
+      agree_type,
       agree_count,
       disagree_count,
     };
