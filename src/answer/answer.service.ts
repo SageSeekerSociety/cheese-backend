@@ -191,7 +191,12 @@ export class AnswerService {
     });
     
     if (userAttitude) {
-      if (userAttitude.type === agree_type) {
+      if(!answer.attitudes){
+        answer.attitudes = [userAttitude];
+      }else{
+        answer.attitudes.push(userAttitude);
+      }
+      if (userAttitude.type == agree_type) {
         throw new AlreadyHasSameAttitudeError(userId, id, agree_type);
       }
       userAttitude.type = agree_type;
@@ -204,15 +209,16 @@ export class AnswerService {
         type: agree_type,
       });
     }
-    // console.log(agree_type);
+    console.log(agree_type);
     // console.log(userAttitude?.type);
+    await this.answerRepository.save(answer);
     const agree_count = await this.userAttitudeRepository.count({
       where: { answerId: id, type: AttitudeType.Agree },
     });
     const disagree_count = await this.userAttitudeRepository.count({
       where: { answerId: id, type: AttitudeType.Disagree },
     });
-
+    
     return {
       id: answer.id,
       question_id: answer.questionId,

@@ -328,7 +328,7 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ agreeType: AttitudeType.Agree });
+        .send({ id: TestAnswerId, userId: auxUserId, agreeType: 1 });
       console.log(response.body);
       expect(response.body.message).toBe('Answer agreed successfully.');
 
@@ -340,17 +340,17 @@ describe('Answers Module', () => {
     });
 
     it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
-      const TestQuestionId = questionId[1];
-      const TestAnswerId = answerId[1];
+      const TestQuestionId = questionId[0];
+      const TestAnswerId = answerId[3];
       const agree_respond = await request(app.getHttpServer())
-      .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-      .set('Authorization', `Bearer ${auxAccessToken}`)
-      .send({ agreeType: AttitudeType.Disagree });
+        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ id: TestAnswerId, userId: auxUserId, agreeType: 2 });
       console.log(agree_respond.body);
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ agreeType: AttitudeType.Disagree });
+        .send({ id: TestAnswerId, userId: auxUserId, agreeType: 2 });
       console.log(response.body);
       expect(response.body.message).toMatch(/AlreadyHasSameAttitudeError: /);
       expect(response.status).toBe(400);
@@ -411,15 +411,15 @@ describe('Answers Module', () => {
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
 
-      console.log(response.body);
+      // console.log(response.body);
       expect(response.body.message).toMatch(/AnswerNotFavoriteError: /);
       expect(response.status).toBe(400);
       expect(response.body.code).toBe(400);
     })
     it('should throw AnswerNotFoundError when trying to favorite a non-existent answer', async () => {
       // const TestAnswerId = answerId[0];
-      const TestQuestionId = questionId[1];
-      const nonExistentAnswerId = 0;
+      const TestQuestionId = questionId[0];
+      const nonExistentAnswerId = 99999;
       const response = await request(app.getHttpServer())
         .put(
           `/question/${TestQuestionId}/answers/${nonExistentAnswerId}/favorite`,
