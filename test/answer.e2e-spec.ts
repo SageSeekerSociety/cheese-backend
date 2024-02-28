@@ -178,10 +178,10 @@ describe('Answers Module', () => {
       expect(typeof respond.body.data.id).toBe('number');
       answerId.push(respond.body.data.id);
     }
+    await createAnswer(
+      '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
+    ); // this should be firstly executed and will be checked further
     await Promise.all([
-      createAnswer(
-        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
-      ),
       createAnswer('难道你真的是天才？'),
       createAnswer('你不要胡说，1+1明明等于3'),
       createAnswer('Answer content with emoji: 😂😂'),

@@ -3,7 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Entity } from 'typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { QuestionsModule } from '../questions/questions.module';
-import { User } from '../users/users.entity';
+import { User } from '../users/users.legacy.entity';
 import { UsersModule } from '../users/users.module';
 import { AnswerController } from './answer.controller';
 import { Answer, UserAttitudeOnAnswer } from './answer.entity';

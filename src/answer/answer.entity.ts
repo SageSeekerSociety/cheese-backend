@@ -12,7 +12,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../users/users.entity';
+import { User } from '../users/users.legacy.entity';
 
 @Entity()
 export class Answer {
