@@ -43,6 +43,14 @@ export class AnswerService {
     });
     createdAnswer.is_group = false;
     await this.answerRepository.save(createdAnswer);
+    
+    const answerId = createdAnswer.id;
+    // console.log(answerId);
+    const userAttitude = this.userAttitudeRepository.create({
+      userId: userId, 
+      answerId: answerId,
+    })
+    await this.userAttitudeRepository.save(userAttitude);
     // const userDto = await this.usersService.getUserDtoById(userId);
     return {
       answerId: createdAnswer.id,

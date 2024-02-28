@@ -46,7 +46,7 @@ export class Answer {
   @Index({ unique: false })
   groupId?: number;
 
-  @OneToMany(() => UserAttitudeOnAnswer, (attitude) => attitude.answer)
+  @OneToMany(() => UserAttitudeOnAnswer, (attitude) => attitude.answer, { cascade: true })
   attitudes: UserAttitudeOnAnswer[];
 
   @ManyToMany(() => User)
@@ -74,7 +74,7 @@ export class UserAttitudeOnAnswer {
   @Column()
   userId: number;
 
-  @ManyToOne(() => Answer)
+  @ManyToOne(() => Answer, answer => answer.attitudes, { onDelete: 'CASCADE' })
   answer: Answer;
 
   @Column()
