@@ -78,8 +78,6 @@ export class AnswerController {
       id,
       answerId,
     );
-    //注意到一个比较抽象的问题，就你在service里面create的时候，你是没有用到questionId的对吧
-    //所以你存储的时候，也没有这个东西，但是你上面getAnwerById你还用上了id，那咋可能找得到
     return {
       code: 200,
       message: 'Answer created successfully.',

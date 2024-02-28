@@ -188,8 +188,6 @@ describe('Answers Module', () => {
       createAnswer('烫烫烫'.repeat(1000)),
     ]);
   }, 6000);
-  // });
-  // });
 
   describe('Get answer', () => {
     it('should get a answer', async () => {
@@ -361,14 +359,14 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFoundError when trying to agree to a non-existent answer', async () => {
-      const nonExistentAnswerId = 9999; // Assuming this ID does not exist
+      const nonExistentAnswerId = 9999; // TODO: change to a 100% non-existent answer ID
       const TestQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
         .put(`/question/${TestQuestionId}/answers/${nonExistentAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ agree_type: 1 });
       expect(response.body.message).toMatch(/AnswerNotFoundError/);
-      expect(response.status).toBe(404); // Assuming your application throws a 404 for not found answers
+      expect(response.status).toBe(404);
     });
   });
 

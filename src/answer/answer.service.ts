@@ -149,10 +149,8 @@ export class AnswerService {
       throw new AnswerNotFoundError(answerId);
     }
 
-    // Update the answer with the data from the DTO
     answer.content = content;
 
-    // Save the updated answer
     await this.answerRepository.save(answer);
   }
 
@@ -246,12 +244,6 @@ export class AnswerService {
         answer.favoritedBy.push(user);
       }
     }
-    // let favoriteCount;
-    // if (!answer.favoritedBy.length) {
-    //   favoriteCount = 0;
-    // } else {
-    //   favoriteCount = answer.favoritedBy.length;
-    // }
     const favorite_count = answer.favoritedBy.length;
     const userDto = await this.usersService.getUserDtoById(userId);
     await this.answerRepository.save(answer);
