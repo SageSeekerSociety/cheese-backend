@@ -180,6 +180,33 @@ describe('Following Submodule of User Module', () => {
       }
     });
 
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${TestUserId}`,
+      );
+      expect(respond.body.data.user.follow_count).toBe(tempUserIds.length);
+      expect(respond.body.data.user.fans_count).toBe(tempUserIds.length);
+      expect(respond.body.data.user.is_follow).toBe(false);
+    });
+
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${TestUserId}`)
+        .set('authorization', 'Bearer ' + tempUserTokens[0]);
+      expect(respond.body.data.user.follow_count).toBe(tempUserIds.length);
+      expect(respond.body.data.user.fans_count).toBe(tempUserIds.length);
+      expect(respond.body.data.user.is_follow).toBe(true);
+    });
+
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${tempUserIds[0]}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.follow_count).toBe(1);
+      expect(respond.body.data.user.fans_count).toBe(1);
+      expect(respond.body.data.user.is_follow).toBe(true);
+    });
+
     it('should return UserAlreadyFollowedError', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/users/${tempUserIds[0]}/followers`)
