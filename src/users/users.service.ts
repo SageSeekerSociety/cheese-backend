@@ -21,20 +21,9 @@ import {
 import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
-import {
-  User,
-  UserFollowingRelationship,
-  UserLoginLog,
-  UserProfile,
-  UserProfileQueryLog,
-  UserRegisterLog,
-  UserRegisterLogType,
-  UserRegisterRequest,
-  UserResetPasswordLog,
-  UserResetPasswordLogType,
-} from './users.entity';
 import {
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
@@ -53,6 +42,18 @@ import {
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
 } from './users.error';
+import {
+  User,
+  UserFollowingRelationship,
+  UserLoginLog,
+  UserProfile,
+  UserProfileQueryLog,
+  UserRegisterLog,
+  UserRegisterLogType,
+  UserRegisterRequest,
+  UserResetPasswordLog,
+  UserResetPasswordLogType,
+} from './users.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -76,6 +77,7 @@ export class UsersService {
     private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
+    private readonly prismaService: PrismaService,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -199,7 +201,7 @@ export class UsersService {
   }
 
   get passwordRule(): string {
-    return 'Password must be 8 characters long and must contain at least one letter, one special character and one number.';
+    return 'Password must be at least 8 characters long and must contain at least one letter, one special character and one number.';
   }
 
   private isCodeExpired(createdAt: Date): boolean {
@@ -801,6 +803,6 @@ export class UsersService {
   }
 
   async isUserExists(userId: number): Promise<boolean> {
-    return (await this.userRepository.findOneBy({ id: userId })) != undefined;
+    return (await this.prismaService.user.count({ where: { id: userId } })) > 0;
   }
 }

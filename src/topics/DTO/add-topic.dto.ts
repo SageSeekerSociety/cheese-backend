@@ -9,6 +9,5 @@ export class AddTopicRequestDto {
 export class AddTopicResponseDto extends BaseRespondDto {
   data: {
     id: number;
-    name: string;
   };
 }

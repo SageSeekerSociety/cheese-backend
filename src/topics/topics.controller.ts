@@ -26,6 +26,7 @@ import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { AddTopicRequestDto, AddTopicResponseDto } from './DTO/add-topic.dto';
 import { SearchTopicResponseDto } from './DTO/search-topic.dto';
 import { TopicsService } from './topics.service';
+import { GetTopicResponseDto } from './DTO/get-topic.dto';
 
 @Controller('/topics')
 @UsePipes(new ValidationPipe())
@@ -48,6 +49,7 @@ export class TopicsController {
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchTopicResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
+    if (q == undefined) q = '';
     // try get viewer id
     let searcherId: number | undefined;
     try {
@@ -90,7 +92,9 @@ export class TopicsController {
     return {
       code: 201,
       message: 'OK',
-      data: topic,
+      data: {
+        id: topic.id,
+      },
     };
   }
 
@@ -100,7 +104,7 @@ export class TopicsController {
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ) {
+  ): Promise<GetTopicResponseDto> {
     let userId: number | undefined;
     try {
       userId = this.authService.verify(auth).userId;
@@ -116,7 +120,9 @@ export class TopicsController {
     return {
       code: 200,
       message: 'OK',
-      data: topic,
+      data: {
+        topic,
+      },
     };
   }
 }

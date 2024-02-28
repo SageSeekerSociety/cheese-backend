@@ -9,6 +9,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { PrismaModule } from '../common/prisma/prisma.module';
 import { EmailService } from './email.service';
 import { UsersController } from './users.controller';
 import {
@@ -20,7 +21,7 @@ import {
   UserRegisterLog,
   UserRegisterRequest,
   UserResetPasswordLog,
-} from './users.entity';
+} from './users.legacy.entity';
 import { UsersService } from './users.service';
 
 @Module({
@@ -35,6 +36,7 @@ import { UsersService } from './users.service';
       UserRegisterLog,
       UserResetPasswordLog,
     ]),
+    PrismaModule,
     AuthModule,
   ],
   controllers: [UsersController],

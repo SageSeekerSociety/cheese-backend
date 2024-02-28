@@ -8,10 +8,12 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
@@ -20,17 +22,19 @@ import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { QuestionDto } from './DTO/question.dto';
 import {
+  QuestionAlreadyFollowedError,
+  QuestionIdNotFoundError,
+  QuestionNotFollowedYetError,
+  QuestionNotHasThisTopicError,
+} from './questions.error';
+import { QuestionElasticsearchDocument } from './questions.es-doc';
+import {
   Question,
   QuestionFollowerRelation,
   QuestionQueryLog,
   QuestionSearchLog,
   QuestionTopicRelation,
-} from './questions.entity';
-import {
-  QuestionAlreadyFollowedError,
-  QuestionIdNotFoundError,
-  QuestionNotFollowedYetError,
-} from './questions.error';
+} from './questions.legacy.entity';
 
 @Injectable()
 export class QuestionsService {
@@ -49,6 +53,8 @@ export class QuestionsService {
     private readonly questionFollowRelationRepository: Repository<QuestionFollowerRelation>,
     @InjectRepository(QuestionSearchLog)
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
+    private readonly elasticSearchService: ElasticsearchService,
+    private readonly prismaService: PrismaService,
   ) {}
 
   async addTopicToQuestion(
@@ -79,6 +85,23 @@ export class QuestionsService {
     await questionTopicRelationRepository.save(relation);
   }
 
+  async deleteTopicFromQuestion(
+    questionId: number,
+    topicId: number,
+    // for transaction
+    questionTopicRelationRepository?: Repository<QuestionTopicRelation>,
+  ): Promise<void> {
+    if (questionTopicRelationRepository == undefined)
+      questionTopicRelationRepository = this.questionTopicRelationRepository;
+    const relation = await questionTopicRelationRepository.findOneBy({
+      questionId,
+      topicId,
+    });
+    if (relation == null)
+      throw new QuestionNotHasThisTopicError(questionId, topicId);
+    await questionTopicRelationRepository.softDelete({ id: relation.id });
+  }
+
   // returns: question id
   async addQuestion(
     askerUserId: number,
@@ -93,10 +116,11 @@ export class QuestionsService {
       if (topicExists == false) throw new TopicNotFoundError(topicId);
     }
     // TODO: Validate groupId.
-    return this.entityManager.transaction(
+    let question: Question;
+    await this.entityManager.transaction(
       async (entityManager: EntityManager) => {
         const questionRepository = entityManager.getRepository(Question);
-        const question = questionRepository.create({
+        question = questionRepository.create({
           createdById: askerUserId,
           title,
           content,
@@ -118,9 +142,28 @@ export class QuestionsService {
             ),
           ),
         );
-        return question.id;
       },
     );
+    if (question! == undefined)
+      throw new Error(
+        "Impossible: variable 'question' is undefined after transaction.",
+      );
+    const esIndexResult =
+      await this.elasticSearchService.index<QuestionElasticsearchDocument>({
+        index: 'questions',
+        document: {
+          id: question.id,
+          title: question.title,
+          content: question.content,
+        },
+      });
+    await this.prismaService.questionElasticsearchRelation.create({
+      data: {
+        elasticsearchId: esIndexResult._id,
+        question: { connect: { id: question.id } },
+      },
+    });
+    return question.id;
   }
 
   async hasFollowedQuestion(
@@ -228,21 +271,25 @@ export class QuestionsService {
     userAgent?: string, // optional
   ): Promise<[QuestionDto[], PageRespondDto]> {
     const timeBegin = Date.now();
-    const allQuestionIds = (await this.questionRepository
-      .createQueryBuilder('question')
-      .select([
-        'question.id AS id',
-        'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-      ])
-      .where(
-        'MATCH (question.title, question.content) AGAINST (:keywords IN NATURAL LANGUAGE MODE)',
-      )
-      .orderBy({ relevance: 'DESC', id: 'ASC' })
-      .limit(1000)
-      .setParameter('keywords', keywords)
-      .getRawMany()) as { id: number }[];
-    const [questionIds, page] = PageHelper.PageFromAll(
-      allQuestionIds,
+    const result = !keywords
+      ? { hits: { hits: [] } }
+      : await this.elasticSearchService.search<QuestionElasticsearchDocument>({
+          index: 'questions',
+          size: 1000,
+          body: {
+            query: {
+              multi_match: {
+                query: keywords,
+                fields: ['title', 'content'],
+              },
+            },
+          },
+        });
+    const allQuestionEsDocs = result.hits.hits
+      .filter((h) => h._source != undefined)
+      .map((h) => h._source) as QuestionElasticsearchDocument[];
+    const [questionEsDocs, page] = PageHelper.PageFromAll(
+      allQuestionEsDocs,
       firstQuestionId,
       pageSize,
       (i) => i.id,
@@ -251,23 +298,21 @@ export class QuestionsService {
       },
     );
     const questions = await Promise.all(
-      questionIds.map((questionId) =>
+      questionEsDocs.map((questionId) =>
         this.getQuestionDto(questionId.id, searcherId, ip, userAgent),
       ),
     );
-    if (searcherId != undefined || ip != undefined || userAgent != undefined) {
-      const log = this.questionSearchLogRepository.create({
-        keywords,
-        firstQuestionId: firstQuestionId,
-        pageSize,
-        result: questionIds.map((t) => t.id).join(','),
-        duration: (Date.now() - timeBegin) / 1000,
-        searcherId,
-        ip,
-        userAgent,
-      });
-      await this.questionSearchLogRepository.save(log);
-    }
+    const log = this.questionSearchLogRepository.create({
+      keywords,
+      firstQuestionId: firstQuestionId,
+      pageSize,
+      result: questionEsDocs.map((t) => t.id).join(','),
+      duration: (Date.now() - timeBegin) / 1000,
+      searcherId,
+      ip,
+      userAgent,
+    });
+    await this.questionSearchLogRepository.save(log);
     return [questions, page];
   }
 
@@ -277,6 +322,7 @@ export class QuestionsService {
     content: string,
     type: number,
     topicIds: number[],
+    updateById: number,
   ): Promise<void> {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
@@ -292,18 +338,47 @@ export class QuestionsService {
         const questionTopicRelationRepository = entityManager.getRepository(
           QuestionTopicRelation,
         );
-        await questionTopicRelationRepository.softDelete({ questionId });
+        const oldTopicIds = (
+          await questionTopicRelationRepository.findBy({ questionId })
+        ).map((r) => r.topicId);
+        const toDelete = oldTopicIds.filter((id) => !topicIds.includes(id));
+        const toAdd = topicIds.filter((id) => !oldTopicIds.includes(id));
         await Promise.all(
-          topicIds.map((topicId) =>
+          toDelete.map((id) => this.deleteTopicFromQuestion(questionId, id)),
+        );
+        await Promise.all(
+          toAdd.map((id) =>
             this.addTopicToQuestion(
-              question.id,
-              topicId,
-              question.createdById,
+              questionId,
+              id,
+              updateById,
               true,
               questionTopicRelationRepository,
             ),
           ),
         );
+        const esRelation =
+          await this.prismaService.questionElasticsearchRelation.findUnique({
+            where: { questionId },
+          });
+        if (esRelation == null)
+          throw new Error(
+            `Question with id ${questionId} exists, ` +
+              `but there is no record of its elaticsearch id. ` +
+              `This is impossible if the program works well. ` +
+              `It might be caused by a bug, a database migration problem, ` +
+              `or that the database has corrupted.`,
+          );
+        const questionEsDocNew: QuestionElasticsearchDocument = {
+          id: questionId,
+          title: title,
+          content: content,
+        };
+        await this.elasticSearchService.update<QuestionElasticsearchDocument>({
+          index: 'questions',
+          id: esRelation.elasticsearchId,
+          doc: questionEsDocNew,
+        });
       },
     );
   }
@@ -321,6 +396,25 @@ export class QuestionsService {
       id: questionId,
     });
     if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+    const esRelation =
+      await this.prismaService.questionElasticsearchRelation.findUnique({
+        where: { questionId },
+      });
+    if (esRelation == null)
+      throw new Error(
+        `Question with id ${questionId} exists, ` +
+          `but there is no record of its elaticsearch id. ` +
+          `This is impossible if the program works well. ` +
+          `It might be caused by a bug, a database migration problem, ` +
+          `or that the database has corrupted.`,
+      );
+    await this.elasticSearchService.delete({
+      index: 'questions',
+      id: esRelation.elasticsearchId,
+    });
+    await this.prismaService.questionElasticsearchRelation.delete({
+      where: { questionId },
+    });
     await this.questionRepository.softDelete({ id: questionId });
   }
 

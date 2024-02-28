@@ -8,13 +8,15 @@
  */
 
 import { Injectable } from '@nestjs/common';
+import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { TopicDto } from './DTO/topic.dto';
-import { Topic, TopicSearchLog } from './topics.entity';
 import { TopicAlreadyExistsError, TopicNotFoundError } from './topics.error';
+import { TopicElasticsearchDocument } from './topics.es-doc';
+import { Topic, TopicSearchLog } from './topics.legacy.entity';
 
 @Injectable()
 export class TopicsService {
@@ -23,6 +25,7 @@ export class TopicsService {
     private readonly topicRepository: Repository<Topic>,
     @InjectRepository(TopicSearchLog)
     private readonly topicSearchLogRepository: Repository<TopicSearchLog>,
+    private readonly elasticsearchService: ElasticsearchService,
   ) {}
 
   async addTopic(topicName: string, userId: number): Promise<TopicDto> {
@@ -33,6 +36,13 @@ export class TopicsService {
       createdById: userId,
     });
     const topicSaved = await this.topicRepository.save(topic);
+    await this.elasticsearchService.index<TopicElasticsearchDocument>({
+      index: 'topics',
+      document: {
+        id: topicSaved.id,
+        name: topicSaved.name,
+      },
+    });
     return {
       id: topicSaved.id,
       name: topicSaved.name,
@@ -41,47 +51,47 @@ export class TopicsService {
 
   async searchTopics(
     keywords: string,
-    pageStart: number, // undefined if from start
+    pageStart: number | undefined,
     pageSize: number,
     searcherId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
   ): Promise<[TopicDto[], PageRespondDto]> {
     const timeBegin = Date.now();
-    const allData = await this.topicRepository
-      .createQueryBuilder('topic')
-      .select([
-        'topic.id',
-        'topic.name',
-        'MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE) AS relevance',
-      ])
-      .where('MATCH (topic.name) AGAINST (:keywords IN NATURAL LANGUAGE MODE)')
-      .orderBy({ relevance: 'DESC', id: 'ASC' })
-      .limit(1000)
-      .setParameter('keywords', keywords)
-      .getMany();
+    const result = !keywords
+      ? { hits: { hits: [] } }
+      : await this.elasticsearchService.search<TopicElasticsearchDocument>({
+          index: 'topics',
+          size: 1000,
+          body: {
+            query: {
+              match: { name: keywords },
+            },
+          },
+        });
+    const allData = result.hits.hits
+      .filter((h) => h._source != undefined)
+      .map((h) => h._source) as TopicElasticsearchDocument[];
     const [data, page] = PageHelper.PageFromAll(
       allData,
       pageStart,
       pageSize,
       (i) => i.id,
-      () => {
+      (pageStart) => {
         throw new TopicNotFoundError(pageStart);
       },
     );
-    if (searcherId != undefined || ip != undefined || userAgent != undefined) {
-      const log = this.topicSearchLogRepository.create({
-        keywords: keywords,
-        firstTopicId: pageStart,
-        pageSize: pageSize,
-        result: data.map((t) => t.id).join(','),
-        duration: (Date.now() - timeBegin) / 1000,
-        searcherId: searcherId,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.topicSearchLogRepository.save(log);
-    }
+    const log = this.topicSearchLogRepository.create({
+      keywords: keywords,
+      firstTopicId: pageStart,
+      pageSize: pageSize,
+      result: data.map((t) => t.id).join(','),
+      duration: (Date.now() - timeBegin) / 1000,
+      searcherId: searcherId,
+      ip: ip,
+      userAgent: userAgent,
+    });
+    await this.topicSearchLogRepository.save(log);
     return [data, page];
   }
 

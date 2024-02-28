@@ -22,12 +22,6 @@ import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
 import { GroupProfile } from './group-profile.entity';
 import {
-  Group,
-  GroupMembership,
-  GroupQuestionRelationship,
-  GroupTarget,
-} from './group.entity';
-import {
   CannotDeleteGroupError,
   GroupAlreadyJoinedError,
   GroupIdNotFoundError,
@@ -35,6 +29,12 @@ import {
   GroupNotJoinedError,
   InvalidGroupNameError,
 } from './groups.error';
+import {
+  Group,
+  GroupMembership,
+  GroupQuestionRelationship,
+  GroupTarget,
+} from './groups.legacy.entity';
 
 export enum GroupQueryType {
   Recommend = 'recommend',
