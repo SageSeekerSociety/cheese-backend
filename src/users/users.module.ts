@@ -8,8 +8,10 @@
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Answer } from '../answer/answer.entity';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
+import { Question } from '../questions/questions.legacy.entity';
 import { EmailService } from './email.service';
 import { UsersController } from './users.controller';
 import {
@@ -35,6 +37,8 @@ import { UsersService } from './users.service';
       UserProfileQueryLog,
       UserRegisterLog,
       UserResetPasswordLog,
+      Question,
+      Answer,
     ]),
     PrismaModule,
     AuthModule,
