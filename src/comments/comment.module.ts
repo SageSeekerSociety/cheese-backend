@@ -10,9 +10,6 @@ import { UsersModule } from '../users/users.module';
 import { CommentsController } from './comment.controller';
 import { Comment, UserAttitudeOnComments } from './comment.entity';
 import { CommentsService } from './comment.service';
-// 但我感觉不该直接访问Question/Answer的database
-// 应该用他们service提供的一个函数 check存在性的
-// 注释记得删除
 @Module({
   imports: [
     TypeOrmModule.forFeature([

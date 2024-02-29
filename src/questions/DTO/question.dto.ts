@@ -6,7 +6,7 @@ export class QuestionDto {
   id: number;
   title: string;
   content: string;
-  user: UserDto;
+  author: UserDto;
   type: number;
   topics: TopicDto[];
   created_at: number; // timestamp

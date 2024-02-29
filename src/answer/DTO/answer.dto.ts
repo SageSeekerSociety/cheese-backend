@@ -1,4 +1,3 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 import { UserDto } from '../../users/DTO/user.dto';
 
 export class AnswerDto {
@@ -8,13 +7,9 @@ export class AnswerDto {
   author: UserDto;
   created_at: number; // timestamp
   updated_at: number; // timestamp
+  agree_type: number;
+  is_favorite: boolean;
+  agree_count: number;
   favorite_count: number;
-}
-
-export class AnswerRespondDto extends BaseRespondDto {
-  data: AnswerDto;
-}
-
-export class AnswerDetailRespondDto extends BaseRespondDto {
-  data: AnswerDto;
+  view_count: number;
 }
