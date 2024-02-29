@@ -13,6 +13,7 @@
 
 import { user } from "../users/users.legacy"
 import { question } from "../questions/questions.legacy"
+import { answer } from "../answer/answer.legacy"
 
 model group {
   id                          Int                           @id(map: "PK_256aa0fda9b1de1a73ee0b7106b") @default(autoincrement())
@@ -20,6 +21,7 @@ model group {
   createdAt                   DateTime                      @default(dbgenerated("('now'::text)::timestamp(3) with time zone"))
   updatedAt                   DateTime                      @default(now()) @db.Timestamp(6)
   deletedAt                   DateTime?                     @db.Timestamp(6)
+  answer                      answer[]
   group_membership            group_membership[]
   group_profile               group_profile?
   group_question_relationship group_question_relationship[]
