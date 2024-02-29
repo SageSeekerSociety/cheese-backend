@@ -62,7 +62,7 @@ export class UserAttitudeOnComments {
   @ManyToOne(() => Comment)
   @JoinColumn({ name: 'commentId' })
   comment: Comment;
-  
+
   @Column()
   agreeType: 'Indifferent' | 'Agreed' | 'Disagreed';
 
