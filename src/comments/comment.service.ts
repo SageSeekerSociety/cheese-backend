@@ -2,9 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Answer } from '../answer/answer.entity';
-import { AnswerService } from '../answer/answer.service';
 import { Question } from '../questions/questions.legacy.entity';
-import { QuestionsService } from '../questions/questions.service';
 import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { CommentDto } from './DTO/comment.dto';
@@ -19,9 +17,7 @@ import {
 @Injectable()
 export class CommentsService {
   constructor(
-    private usersService: UsersService,
-    private answerService: AnswerService,
-    private questionService: QuestionsService,
+    private readonly usersService: UsersService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(UserAttitudeOnComments)
@@ -43,7 +39,9 @@ export class CommentsService {
     let commentable;
     switch (commentableType) {
       case 'answer':
-        commentable = this.answerService.getAnswerDto(commentableId);
+        commentable = await this.answersRepository.findOneBy({
+          id: commentableId,
+        });
         break;
       case 'comment':
         commentable = await this.commentsRepository.findOneBy({
@@ -51,7 +49,9 @@ export class CommentsService {
         });
         break;
       case 'question':
-        commentable = this.questionService.getQuestionDto(commentableId);
+        commentable = await this.questionsRepository.findOneBy({
+          id: commentableId,
+        });
         break;
     }
 
