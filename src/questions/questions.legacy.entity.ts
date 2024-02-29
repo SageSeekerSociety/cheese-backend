@@ -30,9 +30,7 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
-  JoinColumn,
   ManyToOne,
-  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -42,7 +40,6 @@ import { Topic } from '../topics/topics.legacy.entity';
 import { User } from '../users/users.legacy.entity';
 
 import { isMySQL } from '../common/helper/db.helper';
-import { UserDto } from '../users/DTO/user.dto';
 
 @Entity()
 // Use fulltext index to support fulltext search.
@@ -229,51 +226,4 @@ export class QuestionSearchLog {
 
   @CreateDateColumn()
   createdAt: Date;
-}
-
-@Entity()
-export class QuestionInvitation {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column()
-  questionId: number;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: UserDto;
-
-  @Column()
-  userId: number;
-
-  @Column()
-  createAt: number;
-
-  @Column()
-  updateAt: number;
-
-  @Column()
-  isAnswered: boolean;
-
-  @OneToMany(
-    () => InvitationUser,
-    (invitationUser) => invitationUser.questionInvitation,
-  )
-  invitedUsers: InvitationUser[];
-}
-
-@Entity()
-export class InvitationUser {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @ManyToOne(
-    () => QuestionInvitation,
-    (questionInvitation) => questionInvitation.invitedUsers,
-  )
-  questionInvitation: QuestionInvitation;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: UserDto;
 }

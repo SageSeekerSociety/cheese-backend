@@ -15,10 +15,8 @@ import { TopicsModule } from '../topics/topics.module';
 import { UsersModule } from '../users/users.module';
 import { QuestionsController } from './questions.controller';
 import {
-  InvitationUser,
   Question,
   QuestionFollowerRelation,
-  QuestionInvitation,
   QuestionQueryLog,
   QuestionSearchLog,
   QuestionTopicRelation,
@@ -33,8 +31,6 @@ import { QuestionsService } from './questions.service';
       QuestionFollowerRelation,
       QuestionQueryLog,
       QuestionSearchLog,
-      QuestionInvitation,
-      InvitationUser,
     ]),
     ConfiguredElasticsearchModule,
     PrismaModule,
