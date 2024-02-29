@@ -257,13 +257,6 @@ describe('comments Module', () => {
       [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
       [auxAdminUserDto, auxAdminAccessToken] = await createAuxiliaryUser();
     });
-    console.log(auxAccessToken);
-    console.log(auxAdminAccessToken);
-    console.log(auxUserDto);
-    console.log(auxAdminUserDto);
-    console.log(TestUserDto);
-    console.log(TestUserId);
-    console.log(auxUserId);
   });
 
   // describe('get Comments', () => {

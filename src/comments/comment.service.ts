@@ -62,15 +62,14 @@ export class CommentsService {
       commentableType,
       commentableId,
     });
-    console.log(comment.id);
     const userAttitudeOnComment = this.userAttitudeOnCommentsRepository.create({
       agreeType: 'Indifferent',
       userId: userId,
-      comment:comment,
+      comment: comment,
     });
     comment.agreeCount = 0;
     comment.disagreeCount = 0;
-    const savedComment = await this.commentsRepository.save(comment); 
+    const savedComment = await this.commentsRepository.save(comment);
     await this.userAttitudeOnCommentsRepository.save(userAttitudeOnComment);
     return savedComment.id;
   }
@@ -147,7 +146,7 @@ export class CommentsService {
         await this.userAttitudeOnCommentsRepository.findOne({
           where: { id: comment.id, userId },
         });
-      const userDto=await this.usersService.getUserDtoById(userId);
+      const userDto = await this.usersService.getUserDtoById(userId);
       return {
         comment: {
           id: comment.id,
