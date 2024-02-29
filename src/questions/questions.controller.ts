@@ -16,6 +16,7 @@ import {
   Headers,
   Ip,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
@@ -36,7 +37,9 @@ import {
   UnfollowQuestionResponseDto,
 } from './DTO/follow-unfollow-question.dto';
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
+import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
+import { inviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
@@ -272,4 +275,45 @@ export class QuestionsController {
       },
     };
   }
+
+  @Get('/:id/invitions')
+  async getQuestionInvitations(
+    @Param('id',ParseIntPipe) id:number,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    pageStart: number,
+    @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
+    @Query('sort',new ParseEnumPipe({optional: true})) sort:'+createdAt'|'-createdAt',
+  ):Promise<GetQuestionInvitationsResponseDto> {
+    if (pageSize == undefined || pageSize == 0) pageSize = 20;
+    if (sort==undefined) sort='+createdAt';
+    const invitations = await this.questionsService.getQuestionInvitations(id,sort,pageSize,pageStart);
+    return {
+      code:200,
+      message:"Invited",
+      data:{
+        invitions:invitations.invitions,
+        page: {
+          page_start: invitations.page_start,
+          page_size:pageSize,
+          has_prev:invitations.has_prev,
+          has_more:invitations.has_more,
+        }
+      }
+    }
+  }
+
+  @Post('/:id/invitions')
+  async inviteUserAnswerQuestion(
+    @Param('id',ParseIntPipe) id:number,
+    @Headers('Authorization') auth:string|undefined,
+    @Body() user_ids:number[],
+  ):Promise<inviteUsersAnswerResponseDto> {
+    const userId =await this.authService.verify(auth).userId;
+    const inviteUserAnswer=await this.questionsService.inviteUsersToAnswerQuestion(id,user_ids);
+    return {
+      code:201,
+      message:"Invited",
+      data:inviteUserAnswer,
+    }
+  } 
 }

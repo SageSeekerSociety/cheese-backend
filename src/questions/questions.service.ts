@@ -495,29 +495,33 @@ export class QuestionsService {
     return invitedUsers;
   }
 
-  async getQuestionInvitions(
+  async getQuestionInvitations(
     questionId: number,
-    sort: '+createAt' | '-createAt',
+    sort: '+createdAt'|'-createdAt',
     pageSize: number,
     pageStart: number,
-  ): Promise<{
-    questionInvitations: { questionInvitation: QuestionInvitationDto }[];
-  }> {
-    const orderField = sort === '+createAt' ? 'ASC' : 'DESC';
-    const questionInvitations = await this.questionInvitationRepository.find({
+  ): Promise<{ invitions: QuestionInvitationDto[]; page_start: number; has_prev: boolean; has_more: boolean }> {
+    const orderField = sort === '+createdAt' ? 'ASC' : 'DESC';
+    const [questionInvitations, totalCount] = await this.questionInvitationRepository.findAndCount({
       where: { questionId },
       order: { createAt: orderField },
       take: pageSize,
       skip: pageStart,
     });
 
+    const total = totalCount;
+    const currentPage = Math.floor(pageStart / pageSize) + 1;
+    const hasPrev = currentPage > 1;
+    const hasNext = total > (currentPage * pageSize);
+
     return {
-      questionInvitations: questionInvitations.map((questionInvitation) => ({
-        questionInvitation: questionInvitation,
-      })),
+      invitions: questionInvitations.map((questionInvitation) => questionInvitation),
+      page_start: pageStart,
+      has_prev: hasPrev,
+      has_more: hasNext,
     };
   }
-
+  
   async cancelInvitation(
     questionId: number,
     invitationIds: number[],
@@ -528,7 +532,7 @@ export class QuestionsService {
           where: { id: invitationId, questionId: questionId },
         });
         if (invitation) {
-          await this.questionInvitationRepository.remove(invitation);
+          await this.questionInvitationRepository.softRemove(invitation);
         }
       }),
     );
