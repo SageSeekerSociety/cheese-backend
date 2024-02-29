@@ -55,6 +55,7 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
+import { Answer } from '../answer/answer.entity';
 
 @Injectable()
 export class UsersService {
@@ -81,6 +82,8 @@ export class UsersService {
     private readonly prismaService: PrismaService,
     @InjectRepository(Question)
     private readonly questionRepository: Repository<Question>,
+    @InjectRepository(Answer)
+    private readonly answerRepository: Repository<Answer>,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -344,6 +347,7 @@ export class UsersService {
           follow_count: 0,
           fans_count: 0,
           question_count: 0,
+          answer_count: 0,
           is_follow: false,
         };
       }
@@ -394,6 +398,7 @@ export class UsersService {
       follow_count: await this.getFollowingCount(userId),
       fans_count: await this.getFollowedCount(userId),
       question_count: await this.getQuestionCount(userId),
+      answer_count: await this.getAnswerCount(userId),
       is_follow: await this.isUserFollowUser(viewerId, userId),
     };
   }
@@ -429,17 +434,7 @@ export class UsersService {
     });
     await this.userLoginLogRepository.save(log);
     return [
-      {
-        id: user.id,
-        username: user.username,
-        nickname: profile.nickname,
-        avatar: profile.avatar,
-        intro: profile.intro,
-        follow_count: await this.getFollowingCount(user.id),
-        fans_count: await this.getFollowedCount(user.id),
-        question_count: await this.getQuestionCount(user.id),
-        is_follow: await this.isUserFollowUser(user.id, user.id),
-      },
+      await this.getUserDtoById(user.id, user.id, ip, userAgent),
       await this.createSession(user.id),
     ];
   }
@@ -830,6 +825,11 @@ export class UsersService {
   async getQuestionCount(userId: number | undefined): Promise<number> {
     if (userId == undefined) return 0;
     return await this.questionRepository.countBy({ createdById: userId });
+  }
+
+  async getAnswerCount(userId: number | undefined): Promise<number> {
+    if (userId == undefined) return 0;
+    return await this.answerRepository.countBy({ createdById: userId });
   }
 
   async isUserFollowUser(

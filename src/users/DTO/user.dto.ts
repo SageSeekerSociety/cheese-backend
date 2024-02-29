@@ -7,5 +7,6 @@ export class UserDto {
   follow_count: number;
   fans_count: number;
   question_count: number;
+  answer_count: number;
   is_follow: boolean;
 }
