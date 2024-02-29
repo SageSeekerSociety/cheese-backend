@@ -49,6 +49,7 @@ export class TopicsController {
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchTopicResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
+    if (q == undefined) q = '';
     // try get viewer id
     let searcherId: number | undefined;
     try {

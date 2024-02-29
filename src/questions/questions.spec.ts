@@ -113,7 +113,7 @@ describe('Questions Module', () => {
 
   it('should throw QuestionIdNotFoundError', async () => {
     await expect(
-      questionsService.updateQuestion(-1, 'title', 'content', 0, []),
+      questionsService.updateQuestion(-1, 'title', 'content', 0, [], 1),
     ).rejects.toThrow(new QuestionIdNotFoundError(-1));
     await expect(questionsService.deleteQuestion(-1)).rejects.toThrow(
       new QuestionIdNotFoundError(-1),
