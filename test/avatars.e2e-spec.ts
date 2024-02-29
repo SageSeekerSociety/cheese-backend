@@ -105,11 +105,10 @@ describe('Avatar Module', () => {
       expect(respond.headers['content-disposition']).toContain('attachment');
     });
     it('should return AvatarNotFoundError when an avatar is not found', async () => {
-      const avatarId = AvatarId + 1;
       const respond = await request(app.getHttpServer())
-        .get(`/avatars/${avatarId}`)
+        .get('/avatars/100')
         .send();
-      expect(respond.body.message).toMatch(`Avatar ${avatarId} Not Found`);
+      expect(respond.body.message).toContain('Avatar 100 Not Found');
       expect(respond.status).toBe(404);
     });
   });
