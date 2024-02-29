@@ -188,6 +188,18 @@ describe('Answers Module', () => {
       createAnswer('烫烫烫'.repeat(1000)),
     ]);
   }, 6000);
+  it('should return updated statistic info when getting user', async () => {
+    const respond = await request(app.getHttpServer()).get(
+      `/users/${auxUserId}`,
+    );
+    expect(respond.body.data.user.answer_count).toBe(5);
+  });
+  it('should return updated statistic info when getting user', async () => {
+    const respond = await request(app.getHttpServer())
+      .get(`/users/${auxUserId}`)
+      .set('authorization', 'Bearer ' + TestToken);
+    expect(respond.body.data.user.answer_count).toBe(5);
+  });
 
   describe('Get answer', () => {
     it('should get a answer', async () => {

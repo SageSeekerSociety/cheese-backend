@@ -22,6 +22,8 @@ describe('Following Submodule of User Module', () => {
   )}@ruc.edu.cn`;
   let TestToken: string;
   let TestUserId: number;
+  const tempUserIds: number[] = [];
+  const tempUserTokens: string[] = [];
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     // returns [userId, accessToken]
@@ -115,8 +117,6 @@ describe('Following Submodule of User Module', () => {
   });
 
   describe('follow logic', () => {
-    const tempUserIds: number[] = [];
-    const tempUserTokens: string[] = [];
     it('should successfully create some auxiliary users first', async () => {
       for (let i = 0; i < 10; i++) {
         const [id, token] = await createAuxiliaryUser();
@@ -369,6 +369,53 @@ describe('Following Submodule of User Module', () => {
       expect(respond3.body.data.page.has_more).toBe(true);
       expect(respond3.body.data.page.next_start).toBe(tempUserIds[4]);
     }, 20000);
+  });
+
+  describe('statistics', () => {
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${TestUserId}`,
+      );
+      expect(respond.body.data.user.follow_count).toBe(tempUserIds.length);
+      expect(respond.body.data.user.fans_count).toBe(tempUserIds.length + 1);
+      expect(respond.body.data.user.is_follow).toBe(false);
+    });
+
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${TestUserId}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.follow_count).toBe(tempUserIds.length);
+      expect(respond.body.data.user.fans_count).toBe(tempUserIds.length + 1);
+      expect(respond.body.data.user.is_follow).toBe(false);
+    });
+
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${tempUserIds[0]}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.follow_count).toBe(1);
+      expect(respond.body.data.user.fans_count).toBe(1);
+      expect(respond.body.data.user.is_follow).toBe(true);
+    });
+
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${tempUserIds[0]}`,
+      );
+      expect(respond.body.data.user.follow_count).toBe(1);
+      expect(respond.body.data.user.fans_count).toBe(1);
+      expect(respond.body.data.user.is_follow).toBe(false);
+    });
+
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${tempUserIds[0]}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.follow_count).toBe(1);
+      expect(respond.body.data.user.fans_count).toBe(1);
+      expect(respond.body.data.user.is_follow).toBe(true);
+    });
   });
 
   afterAll(async () => {

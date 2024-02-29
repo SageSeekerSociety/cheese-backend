@@ -35,7 +35,7 @@ export class Answer {
 
   @Column()
   @Index({ unique: false })
-  questionId: number; //askeruser_Id
+  questionId: number;
 
   @ManyToOne(() => Group)
   group: Group;

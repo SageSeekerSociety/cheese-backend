@@ -176,6 +176,18 @@ describe('Questions Module', () => {
         createQuestion('long question', '啊'.repeat(30000)),
       ]);
     }, 60000);
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${TestUserId}`,
+      );
+      expect(respond.body.data.user.question_count).toBe(6);
+    });
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${TestUserId}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.question_count).toBe(6);
+    });
     it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
         .post('/questions')
