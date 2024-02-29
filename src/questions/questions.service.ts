@@ -245,7 +245,7 @@ export class QuestionsService {
       id: question.id,
       title: question.title,
       content: question.content,
-      user,
+      author: user,
       type: question.type,
       topics,
       created_at: question.createdAt.getTime(),
