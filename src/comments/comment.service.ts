@@ -7,7 +7,7 @@ import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { CommentDto } from './DTO/comment.dto';
 import { GetCommentDetailDto } from './DTO/getCommentDetail.dto';
-import { Comment, UserAttitudeOnComments } from './comment.entity';
+import { Comment, UserAttitudeOnComments } from './comment.legacy.entity';
 import {
   CommentNotFoundByUserError,
   CommentNotFoundError,

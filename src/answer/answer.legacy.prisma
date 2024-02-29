@@ -17,7 +17,7 @@ import { question } from "../questions/questions.legacy"
 
 model answer {
   id                       Int                        @id(map: "PK_9232db17b63fb1e94f97e5c224f") @default(autoincrement())
-  authorId                 Int
+  createdById              Int
   questionId               Int
   groupId                  Int?
   content                  String
@@ -25,8 +25,8 @@ model answer {
   updatedAt                DateTime                   @default(now()) @db.Timestamp(6)
   deletedAt                DateTime?                  @db.Timestamp(6)
   group                    group?                     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1887685ce6667b435b01c646a2c")
-  user                     user                       @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_328f85639a97f8ff158e0cf7b1f")
   question                 question                   @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a4013f10cd6924793fbd5f0d637")
+  user                     user                       @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f636f6e852686173ea947f29045")
   answer_delete_log        answer_delete_log[]
   answer_favorited_by_user answer_favorited_by_user[]
   answer_query_log         answer_query_log[]
@@ -34,8 +34,8 @@ model answer {
   answer_user_attitude     answer_user_attitude[]
 
   @@index([groupId], map: "IDX_1887685ce6667b435b01c646a2")
-  @@index([authorId], map: "IDX_328f85639a97f8ff158e0cf7b1")
   @@index([questionId], map: "IDX_a4013f10cd6924793fbd5f0d63")
+  @@index([createdById], map: "IDX_f636f6e852686173ea947f2904")
 }
 
 model answer_delete_log {
@@ -93,7 +93,7 @@ model answer_user_attitude {
   id       Int    @id(map: "PK_c06b4ffc5a74d07cb867d6b3f98") @default(autoincrement())
   userId   Int
   answerId Int
-  type     Int
+  type     Int    @default(0)
   answer   answer @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_2de5146dd65213f724e32745d06")
   user     user   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7555fb52fdf623d67f9884ea63d")
 }

@@ -15,6 +15,7 @@ import { group_membership } from "../groups/groups.legacy"
 import { question, question_follower_relation, question_query_log, question_search_log, question_topic_relation } from "../questions/questions.legacy"
 import { topic, topic_search_log } from "../topics/topics.legacy"
 import { answer, answer_delete_log, answer_favorited_by_user, answer_query_log, answer_update_log, answer_user_attitude } from "../answer/answer.legacy"
+import { comment } from "../comments/comment.legacy"
 
 model user {
   id                                                                       Int                           @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
@@ -30,6 +31,7 @@ model user {
   answer_query_log                                                         answer_query_log[]
   answer_update_log                                                        answer_update_log[]
   answer_user_attitude                                                     answer_user_attitude[]
+  comment                                                                  comment[]
   group_membership                                                         group_membership[]
   question                                                                 question[]
   question_follower_relation                                               question_follower_relation[]
@@ -38,6 +40,7 @@ model user {
   question_topic_relation                                                  question_topic_relation[]
   topic                                                                    topic[]
   topic_search_log                                                         topic_search_log[]
+  user_attitude_on_comments                                                user_attitude_on_comments[]
   user_following_relationship_user_following_relationship_followerIdTouser user_following_relationship[] @relation("user_following_relationship_followerIdTouser")
   user_following_relationship_user_following_relationship_followeeIdTouser user_following_relationship[] @relation("user_following_relationship_followeeIdTouser")
   user_login_log                                                           user_login_log[]
@@ -46,14 +49,25 @@ model user {
   user_profile_query_log_user_profile_query_log_vieweeIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_vieweeIdTouser")
 }
 
+model user_attitude_on_comments {
+  id        Int      @id(map: "PK_17b33ce71a699a2c7832385e412") @default(autoincrement())
+  userId    Int
+  agreeType String   @db.VarChar
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @db.Timestamp(6)
+  commentId Int?
+  comment   comment? @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_2c9bf1f647bc45f862d98c041ee")
+  user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ee3b5623574567d10008ffe66a0")
+}
+
 model user_following_relationship {
   id                                                Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
   followeeId                                        Int
   followerId                                        Int
   createdAt                                         DateTime  @default(now()) @db.Timestamp(6)
   deletedAt                                         DateTime? @db.Timestamp(6)
-  user_user_following_relationship_followerIdTouser user      @relation("user_following_relationship_followerIdTouser", fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_following_relationship_follower_id")
-  user_user_following_relationship_followeeIdTouser user      @relation("user_following_relationship_followeeIdTouser", fields: [followeeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_following_relationship_followee_id")
+  user_user_following_relationship_followerIdTouser user      @relation("user_following_relationship_followerIdTouser", fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_868df0c2c3a138ee54d2a515bce")
+  user_user_following_relationship_followeeIdTouser user      @relation("user_following_relationship_followeeIdTouser", fields: [followeeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c78831eeee179237b1482d0c6fb")
 
   @@index([followerId], map: "IDX_868df0c2c3a138ee54d2a515bc")
   @@index([followeeId], map: "IDX_c78831eeee179237b1482d0c6f")
@@ -65,7 +79,7 @@ model user_login_log {
   ip        String   @db.VarChar
   userAgent String   @db.VarChar
   createdAt DateTime @default(now()) @db.Timestamp(6)
-  user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_login_log_user_id")
+  user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66c592c7f7f20d1214aba2d0046")
 
   @@index([userId], map: "IDX_66c592c7f7f20d1214aba2d004")
 }
@@ -79,7 +93,7 @@ model user_profile {
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime  @default(now()) @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
-  user      user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_user_id")
+  user      user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_51cb79b5555effaf7d69ba1cff9")
 }
 
 model user_profile_query_log {
@@ -89,8 +103,8 @@ model user_profile_query_log {
   ip                                         String   @db.VarChar
   userAgent                                  String   @db.VarChar
   createdAt                                  DateTime @default(now()) @db.Timestamp(6)
-  user_user_profile_query_log_viewerIdTouser user?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_query_log_viewer_id")
-  user_user_profile_query_log_vieweeIdTouser user     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_query_log_viewee_id")
+  user_user_profile_query_log_viewerIdTouser user?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1261db28434fde159acda6094bc")
+  user_user_profile_query_log_vieweeIdTouser user     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff592e4403b328be0de4f2b3973")
 
   @@index([viewerId], map: "IDX_1261db28434fde159acda6094b")
   @@index([vieweeId], map: "IDX_ff592e4403b328be0de4f2b397")

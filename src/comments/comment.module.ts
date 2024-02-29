@@ -8,7 +8,7 @@ import { QuestionsModule } from '../questions/questions.module';
 import { User } from '../users/users.legacy.entity';
 import { UsersModule } from '../users/users.module';
 import { CommentsController } from './comment.controller';
-import { Comment, UserAttitudeOnComments } from './comment.entity';
+import { Comment, UserAttitudeOnComments } from './comment.legacy.entity';
 import { CommentsService } from './comment.service';
 @Module({
   imports: [
