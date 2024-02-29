@@ -21,7 +21,7 @@ export class CommentsService {
   constructor(
     private usersService: UsersService,
     private answerService: AnswerService,
-    private questinoService: QuestionsService,
+    private questionService: QuestionsService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(UserAttitudeOnComments)
@@ -46,10 +46,12 @@ export class CommentsService {
         commentable = this.answerService.getAnswerDto(commentableId);
         break;
       case 'comment':
-        commentable = await this.commentsRepository.findOneBy({id:commentableId})
+        commentable = await this.commentsRepository.findOneBy({
+          id: commentableId,
+        });
         break;
       case 'question':
-        commentable = this.questinoService.getQuestionDto(commentableId);
+        commentable = this.questionService.getQuestionDto(commentableId);
         break;
     }
 
