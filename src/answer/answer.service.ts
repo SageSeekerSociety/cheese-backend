@@ -10,8 +10,6 @@ import { UsersService } from '../users/users.service';
 import { AnswerDto } from './DTO/answer.dto';
 import {
   Answer,
-  AnswerAttitudeAgree,
-  AnswerAttitudeUndefined,
   AnswerDeleteLog,
   AnswerQueryLog,
   AnswerUpdateLog,
@@ -22,6 +20,9 @@ import {
   AnswerNotFavoriteError,
   AnswerNotFoundError,
 } from './answer.error';
+
+export const AnswerAttitudeUndefined = 0;
+export const AnswerAttitudeAgree = 1;
 
 @Injectable()
 export class AnswerService {
@@ -49,7 +50,7 @@ export class AnswerService {
   ): Promise<number> {
     const answer = this.answerRepository.create({
       questionId,
-      createdById: userId,
+      authorId: userId,
       content,
     });
     const createdAnswer = await this.answerRepository.save(answer);
@@ -161,7 +162,7 @@ export class AnswerService {
       throw new AnswerNotFoundError(answerId);
     }
     const authorDto = await this.usersService.getUserDtoById(
-      answer.createdById,
+      answer.authorId,
       viewerId,
       ip,
       userAgent,

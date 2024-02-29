@@ -38,3 +38,13 @@ export class QuestionNotFollowedYetError extends BaseError {
     );
   }
 }
+
+export class QuestionNotHasThisTopicError extends BaseError {
+  constructor(id: number, topicId: number) {
+    super(
+      'QuestionNotHasThisTopicError',
+      `Question with id ${id} does not have topic with id ${topicId}.`,
+      400,
+    );
+  }
+}

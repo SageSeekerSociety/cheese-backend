@@ -19,6 +19,7 @@ import { UsersModule } from './users/users.module';
     }),
     UsersModule,
     QuestionsModule,
+    AnswerModule,
     GroupsModule,
     AnswerModule,
     CommentsModule,

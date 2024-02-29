@@ -14,9 +14,7 @@ import {
 import { Group } from '../groups/groups.legacy.entity';
 import { Question } from '../questions/questions.legacy.entity';
 import { User } from '../users/users.legacy.entity';
-
-export const AnswerAttitudeUndefined = 0;
-export const AnswerAttitudeAgree = 1;
+import { AnswerAttitudeUndefined } from './answer.service';
 
 @Entity()
 export class Answer {
@@ -24,18 +22,18 @@ export class Answer {
   id: number;
 
   @ManyToOne(() => User)
-  createdBy: User;
+  author: User;
 
   @Column()
   @Index({ unique: false })
-  createdById: number;
+  authorId: number;
 
   @ManyToOne(() => Question)
   question: Question;
 
   @Column()
   @Index({ unique: false })
-  questionId: number;
+  questionId: number; //askeruser_Id
 
   @ManyToOne(() => Group)
   group: Group;

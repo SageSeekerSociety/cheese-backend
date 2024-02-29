@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Answer } from '../answer/answer.entity';
+import { AnswerService } from '../answer/answer.service';
 import { Question } from '../questions/questions.legacy.entity';
+import { QuestionsService } from '../questions/questions.service';
 import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { CommentDto } from './DTO/comment.dto';
@@ -18,6 +20,8 @@ import {
 export class CommentsService {
   constructor(
     private usersService: UsersService,
+    private answerService: AnswerService,
+    private questinoService: QuestionsService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     @InjectRepository(UserAttitudeOnComments)
@@ -36,21 +40,18 @@ export class CommentsService {
     commentableType: 'answer' | 'comment' | 'question',
     commentableId: number,
   ): Promise<number> {
-    let commentableRepository;
+    let commentable;
     switch (commentableType) {
       case 'answer':
-        commentableRepository = this.answersRepository;
+        commentable = this.answerService.getAnswerDto(commentableId);
         break;
       case 'comment':
-        commentableRepository = this.commentsRepository;
+        commentable = await this.commentsRepository.findOneBy({id:commentableId})
         break;
       case 'question':
-        commentableRepository = this.questionsRepository;
+        commentable = this.questinoService.getQuestionDto(commentableId);
         break;
     }
-    const commentable = await commentableRepository.findOne({
-      where: { id: commentableId },
-    });
 
     if (!commentable) {
       throw new CommentableIdNotFoundError(commentableId);

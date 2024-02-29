@@ -257,13 +257,6 @@ describe('comments Module', () => {
       [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
       [auxAdminUserDto, auxAdminAccessToken] = await createAuxiliaryUser();
     });
-    console.log(auxAccessToken);
-    console.log(auxAdminAccessToken);
-    console.log(auxUserDto);
-    console.log(auxAdminUserDto);
-    console.log(TestUserDto);
-    console.log(TestUserId);
-    console.log(auxUserId);
   });
 
   // describe('get Comments', () => {
@@ -361,7 +354,6 @@ describe('comments Module', () => {
       );
       expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(201);
-      // 可以根据具体情况验证其他返回数据
     });
     it('should agree to a comment', async () => {
       const commentId = CommentIds[4];
@@ -374,7 +366,6 @@ describe('comments Module', () => {
       );
       expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(201);
-      // 可以根据具体情况验证其他返回数据
     });
     it('should get some difference from others', async () => {
       const respond = await request(app.getHttpServer())

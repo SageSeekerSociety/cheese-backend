@@ -219,9 +219,9 @@ describe('Questions Module', () => {
       expect(respond.body.data.question.content).toBe(
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
-      expect(respond.body.data.question.user.id).toBe(TestUserId);
-      expect(respond.body.data.question.user.username).toBe(TestUsername);
-      expect(respond.body.data.question.user.nickname).toBe('test_user');
+      expect(respond.body.data.question.author.id).toBe(TestUserId);
+      expect(respond.body.data.question.author.username).toBe(TestUsername);
+      expect(respond.body.data.question.author.nickname).toBe('test_user');
       expect(respond.body.data.question.type).toBe(0);
       expect(respond.body.data.question.topics.length).toBe(2);
       expect(respond.body.data.question.topics[0].name).toContain(
@@ -254,9 +254,9 @@ describe('Questions Module', () => {
       expect(respond.body.data.question.content).toBe(
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
-      expect(respond.body.data.question.user.id).toBe(TestUserId);
-      expect(respond.body.data.question.user.username).toBe(TestUsername);
-      expect(respond.body.data.question.user.nickname).toBe('test_user');
+      expect(respond.body.data.question.author.id).toBe(TestUserId);
+      expect(respond.body.data.question.author.username).toBe(TestUsername);
+      expect(respond.body.data.question.author.nickname).toBe('test_user');
       expect(respond.body.data.question.type).toBe(0);
       expect(respond.body.data.question.topics.length).toBe(2);
       expect(respond.body.data.question.topics[0].name).toContain(
@@ -287,19 +287,26 @@ describe('Questions Module', () => {
     });
   });
 
-  // The following test is disabled because we have decided to migrate searching
-  // to elastic search. However, it is not implemented yet.
-  /*
   describe('search question', () => {
-    it('should search successfully without parameters', async () => {
+    it('should wait some time for elasticsearch to refresh', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    });
+    it('should return empty page without parameters', async () => {
       const respond = await request(app.getHttpServer())
         .get('/questions')
         .send();
       expect(respond.body.message).toBe('OK');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
+      expect(respond.body.data.questions.length).toBe(0);
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.page_start).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
     });
-    it('should search successfully without page_size and page_start', async () => {
+    it('should return empty page without page_size and page_start', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/questions?q=${TestQuestionCode}`)
         .send();
@@ -309,7 +316,7 @@ describe('Questions Module', () => {
       expect(respond.body.data.questions.length).toBe(
         respond.body.data.page.page_size,
       );
-      expect(respond.body.data.page.page_start).toBe(questionIds[0]);
+      expect(questionIds).toContain(respond.body.data.page.page_start);
       expect(respond.body.data.page.page_size).toBeGreaterThanOrEqual(6);
       expect(respond.body.data.page.has_prev).toBe(false);
       expect(respond.body.data.page.prev_start).toBe(0);
@@ -322,7 +329,7 @@ describe('Questions Module', () => {
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
       expect(respond.body.data.questions.length).toBe(1);
-      expect(respond.body.data.page.page_start).toBe(questionIds[0]);
+      expect(questionIds).toContain(respond.body.data.page.page_start);
       expect(respond.body.data.page.page_size).toBe(1);
       expect(respond.body.data.page.has_prev).toBe(false);
       expect(respond.body.data.page.prev_start).toBe(0);
@@ -338,7 +345,9 @@ describe('Questions Module', () => {
       expect(respond2.body.data.page.page_start).toBe(next);
       expect(respond2.body.data.page.page_size).toBe(1);
       expect(respond2.body.data.page.has_prev).toBe(true);
-      expect(respond2.body.data.page.prev_start).toBe(questionIds[0]);
+      expect(respond2.body.data.page.prev_start).toBe(
+        respond.body.data.page.page_start,
+      );
       expect(respond2.body.data.page.has_more).toBe(true);
     });
     it('should return QuestionIdNotFoundError', async () => {
@@ -350,7 +359,6 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(404);
     });
   });
-  */
 
   describe('update question', () => {
     it('should update a question', async () => {
