@@ -24,17 +24,11 @@ export class Answer {
   author: User;
 
   @Column()
-  userId:number;
+  userId: number;
 
   @Column()
   @Index({ unique: false })
-  question_Id: number; //askeruser_Id
-
-  // Use column type 'text' to support arbitrary length of string.
-  @Column('text')
-  // Use fulltext index to support fulltext search.
-  @Index({ fulltext: true, parser: 'ngram' })
-  title: string;
+  questionId: number; //askeruser_Id
 
   // Use column type 'text' to support arbitrary length of string.
   @Column('text')
@@ -52,7 +46,7 @@ export class Answer {
   @Index({ unique: false })
   groupId?: number;
 
-  @OneToMany(() => UserAttitudeOnAnswer, (attitude) => attitude.type)
+  @OneToMany(() => UserAttitudeOnAnswer, (attitude) => attitude.answer)
   attitudes: UserAttitudeOnAnswer[];
 
   @ManyToMany(() => User)
@@ -72,23 +66,25 @@ export class Answer {
 @Entity()
 export class UserAttitudeOnAnswer {
   @PrimaryGeneratedColumn()
-    userId: number;
+  id: number;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
   user: User;
 
-  @JoinColumn()
+  @Column()
+  userId: number;
+
+  @ManyToOne(() => Answer)
   answer: Answer;
 
   @Column()
   answerId: number;
 
-  @Column()
+  @Column({ default: 0 })
   type: AttitudeType;
 }
 
 export enum AttitudeType {
-  Agree,
-  Disagree,
+  Agree ,
+  Disagree ,
 }

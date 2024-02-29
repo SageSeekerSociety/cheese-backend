@@ -62,9 +62,11 @@ export class CommentsService {
       commentableType,
       commentableId,
     });
+    console.log(comment.id);
     const userAttitudeOnComment = this.userAttitudeOnCommentsRepository.create({
       agreeType: 'Indifferent',
       userId: userId,
+      comment:comment,
     });
     comment.agreeCount = 0;
     comment.disagreeCount = 0;
@@ -85,7 +87,6 @@ export class CommentsService {
       if (!Comment) throw new CommentNotFoundError(commentId);
       else throw new CommentNotFoundByUserError(userId);
     }
-
     await this.commentsRepository.softRemove(comment);
   }
 
@@ -153,7 +154,7 @@ export class CommentsService {
           commentableId: comment.commentableId,
           commentableType: comment.commentableType,
           content: comment.content,
-          userdto: userDto,
+          user: userDto,
           createdAt: comment.createdAt.getTime(),
           agreeCount: comment.agreeCount,
           disagreeCount: comment.disagreeCount,

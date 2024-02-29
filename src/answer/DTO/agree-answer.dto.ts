@@ -1,12 +1,13 @@
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-import { User } from '../../users/users.legacy.entity';
+import { UserDto } from '../../users/DTO/user.dto';
+import { AttitudeType } from '../answer.entity';
 
 export class AgreeAnswerDto {
   id: number;
   question_id: number;
   content: string;
-  author: User;
-  agree_type: number;
+  author: UserDto;
+  agree_type: AttitudeType;
   agree_count: number;
   disagree_count: number;
 }
