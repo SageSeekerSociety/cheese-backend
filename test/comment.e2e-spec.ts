@@ -18,11 +18,7 @@ describe('comments Module', () => {
   )}@ruc.edu.cn`;
 
   let TestToken: string;
-  let TestUserDto: any;
-  let TestUserId: number;
   let auxAccessToken: string;
-  let auxUserDto: any;
-  let auxUserId: number;
 
   // for future use
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -122,8 +118,6 @@ describe('comments Module', () => {
       expect(respond.body.data.accessToken).toBeDefined();
       TestToken = respond.body.data.accessToken;
       expect(respond.body.data.user.id).toBeDefined();
-      TestUserDto = respond.body.data.user;
-      TestUserId = respond.body.data.user.id;
     });
 
     it('should create some topics', async () => {
@@ -144,7 +138,7 @@ describe('comments Module', () => {
       await createTopic('钓鱼');
     }, 60000);
     it('should create an auxiliary user', async () => {
-      [auxUserId, auxAccessToken] = await createAuxiliaryUser();
+      [, auxAccessToken] = await createAuxiliaryUser();
     });
     it('should create some questions', async () => {
       async function createQuestion(title: string, content: string) {
@@ -254,7 +248,7 @@ describe('comments Module', () => {
       expect(respond.body.code).toBe(401);
     });
     it('should create some auxiliary users', async () => {
-      [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
+      [, auxAccessToken] = await createAuxiliaryUser();
       [auxAdminUserDto, auxAdminAccessToken] = await createAuxiliaryUser();
     });
   });
