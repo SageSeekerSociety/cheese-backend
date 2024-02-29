@@ -4,7 +4,6 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
-  JoinColumn,
   JoinTable,
   ManyToMany,
   ManyToOne,
@@ -12,7 +11,12 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Group } from '../groups/groups.legacy.entity';
+import { Question } from '../questions/questions.legacy.entity';
 import { User } from '../users/users.legacy.entity';
+
+export const AnswerAttitudeUndefined = 0;
+export const AnswerAttitudeAgree = 1;
 
 @Entity()
 export class Answer {
@@ -20,34 +24,32 @@ export class Answer {
   id: number;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  author: User;
-
-  @Column()
-  userId: number;
+  createdBy: User;
 
   @Column()
   @Index({ unique: false })
-  questionId: number; //askeruser_Id
+  createdById: number;
 
-  // Use column type 'text' to support arbitrary length of string.
-  @Column('text')
-  // Use fulltext index to support fulltext search.
-  @Index({ fulltext: true, parser: 'ngram' })
-  content: string;
-
-  // @Column()
-  // type: Answer;
+  @ManyToOne(() => Question)
+  question: Question;
 
   @Column()
-  is_group: boolean;
+  @Index({ unique: false })
+  questionId: number;
+
+  @ManyToOne(() => Group)
+  group: Group;
 
   @Column({ nullable: true })
   @Index({ unique: false })
   groupId?: number;
 
-  @OneToMany(() => UserAttitudeOnAnswer, (attitude) => attitude.answer)
-  attitudes: UserAttitudeOnAnswer[];
+  // Use column type 'text' to support arbitrary length of string.
+  @Column('text')
+  content: string;
+
+  @OneToMany(() => AnswerUserAttitude, (attitude) => attitude.answer)
+  attitudes: AnswerUserAttitude[];
 
   @ManyToMany(() => User)
   @JoinTable()
@@ -60,11 +62,11 @@ export class Answer {
   updatedAt: Date;
 
   @DeleteDateColumn()
-  deletedAt: Date;
+  deletedAt?: Date;
 }
 
 @Entity()
-export class UserAttitudeOnAnswer {
+export class AnswerUserAttitude {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -74,17 +76,98 @@ export class UserAttitudeOnAnswer {
   @Column()
   userId: number;
 
-  @ManyToOne(() => Answer)
+  @ManyToOne(() => Answer, (answer) => answer.attitudes)
   answer: Answer;
 
   @Column()
   answerId: number;
 
-  @Column({ default: 0 })
-  type: AttitudeType;
+  @Column({ default: AnswerAttitudeUndefined })
+  type: number;
 }
 
-export enum AttitudeType {
-  Agree ,
-  Disagree ,
+// export enum AttitudeType {
+//   Agree = 1,
+//   Disagree = 2,
+// }
+
+@Entity()
+export class AnswerQueryLog {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => User)
+  @Index()
+  viewer: User;
+
+  @Column('int', { nullable: true })
+  viewerId?: number | null;
+
+  @ManyToOne(() => Answer)
+  @Index()
+  answer: Answer;
+
+  @Column('int')
+  answerId: number;
+
+  @Column()
+  ip: string;
+
+  @Column()
+  userAgent: string = '';
+
+  @CreateDateColumn()
+  createdAt: Date;
+}
+
+@Entity()
+export class AnswerUpdateLog {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => User)
+  @Index()
+  updater: User;
+
+  @Column('int', { nullable: true })
+  updaterId?: number | null;
+
+  @ManyToOne(() => Answer)
+  @Index()
+  answer: Answer;
+
+  @Column('int')
+  answerId: number;
+
+  @Column('text')
+  oldContent: string; // The content before update.
+
+  @Column('text')
+  newContent: string; // The content after update.
+
+  @CreateDateColumn()
+  createdAt: Date;
+}
+
+@Entity()
+export class AnswerDeleteLog {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => User)
+  @Index()
+  deleter: User;
+
+  @Column('int', { nullable: true })
+  deleterId?: number | null;
+
+  @ManyToOne(() => Answer)
+  @Index()
+  answer: Answer;
+
+  @Column('int')
+  answerId: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

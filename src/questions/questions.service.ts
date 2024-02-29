@@ -18,6 +18,8 @@ import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
+import { QuestionInvitationDto } from './DTO/get-question-invitation.dto';
+import { inviteUsersAnswerDto } from './DTO/invite-user-answer.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
   QuestionAlreadyFollowedError,
@@ -25,8 +27,10 @@ import {
   QuestionNotFollowedYetError,
 } from './questions.error';
 import {
+  InvitationUser,
   Question,
   QuestionFollowerRelation,
+  QuestionInvitation,
   QuestionQueryLog,
   QuestionSearchLog,
   QuestionTopicRelation,
@@ -49,6 +53,10 @@ export class QuestionsService {
     private readonly questionFollowRelationRepository: Repository<QuestionFollowerRelation>,
     @InjectRepository(QuestionSearchLog)
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
+    @InjectRepository(QuestionInvitation)
+    private readonly questionInvitationRepository: Repository<QuestionInvitation>,
+    @InjectRepository(InvitationUser)
+    private readonly invitationUserRepository: Repository<InvitationUser>,
   ) {}
 
   async addTopicToQuestion(
@@ -432,5 +440,97 @@ export class QuestionsService {
         (i) => i.id,
       );
     }
+  }
+  async inviteUsersToAnswerQuestion(
+    questionId: number,
+    userIds: number[],
+  ): Promise<inviteUsersAnswerDto[]> {
+    const invitedUsers: inviteUsersAnswerDto[] = [];
+    for (const userId of userIds) {
+      const userdto = await this.userService.getUserDtoById(userId);
+      if (!userdto) {
+        const invitedUser: inviteUsersAnswerDto = {
+          userId: userId,
+          success: false,
+          reason: 'userNotFound',
+        };
+        invitedUsers.push(invitedUser);
+        continue;
+      }
+      const haveBeenInvited = await this.questionInvitationRepository.findOne({
+        where: {
+          questionId: questionId,
+          userId: userId,
+        },
+      });
+      if (haveBeenInvited) {
+        const invitedUser: inviteUsersAnswerDto = {
+          userId: userId,
+          success: false,
+          reason: 'userInvited',
+        };
+        invitedUsers.push(invitedUser);
+        continue;
+      }
+
+      const invitation = this.questionInvitationRepository.create({
+        questionId: questionId,
+        user: userdto,
+        createAt: Date.now(),
+        updateAt: Date.now(),
+        isAnswered: false,
+      });
+      await this.questionInvitationRepository.save(invitation);
+      const invitedUserObj = this.invitationUserRepository.create({
+        user: userdto,
+      });
+      await this.invitationUserRepository.save(invitedUserObj);
+      const invitedUser: inviteUsersAnswerDto = {
+        userId: userId,
+        invitionId: invitation.id,
+        success: true,
+      };
+      invitedUsers.push(invitedUser);
+    }
+    return invitedUsers;
+  }
+
+  async getQuestionInvitions(
+    questionId: number,
+    sort: '+createAt' | '-createAt',
+    pageSize: number,
+    pageStart: number,
+  ): Promise<{
+    questionInvitations: { questionInvitation: QuestionInvitationDto }[];
+  }> {
+    const orderField = sort === '+createAt' ? 'ASC' : 'DESC';
+    const questionInvitations = await this.questionInvitationRepository.find({
+      where: { questionId },
+      order: { createAt: orderField },
+      take: pageSize,
+      skip: pageStart,
+    });
+
+    return {
+      questionInvitations: questionInvitations.map((questionInvitation) => ({
+        questionInvitation: questionInvitation,
+      })),
+    };
+  }
+
+  async cancelInvitation(
+    questionId: number,
+    invitationIds: number[],
+  ): Promise<void> {
+    await Promise.all(
+      invitationIds.map(async (invitationId) => {
+        const invitation = await this.questionInvitationRepository.findOne({
+          where: { id: invitationId, questionId: questionId },
+        });
+        if (invitation) {
+          await this.questionInvitationRepository.remove(invitation);
+        }
+      }),
+    );
   }
 }

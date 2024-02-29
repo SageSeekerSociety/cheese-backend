@@ -6,7 +6,6 @@ export class AnswerNotFoundError extends BaseError {
   }
 }
 
-
 export class AnswerNotFavoriteError extends BaseError {
   constructor(public readonly id: number) {
     super(
