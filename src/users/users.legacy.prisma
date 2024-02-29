@@ -14,6 +14,7 @@
 import { group_membership } from "../groups/groups.legacy"
 import { question, question_follower_relation, question_query_log, question_search_log, question_topic_relation } from "../questions/questions.legacy"
 import { topic, topic_search_log } from "../topics/topics.legacy"
+import { answer, answer_delete_log, answer_favorited_by_user, answer_query_log, answer_update_log, answer_user_attitude } from "../answer/answer.legacy"
 
 model user {
   id                                                                       Int                           @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
@@ -23,6 +24,12 @@ model user {
   createdAt                                                                DateTime                      @default(now()) @db.Timestamp(6)
   updatedAt                                                                DateTime                      @default(now()) @db.Timestamp(6)
   deletedAt                                                                DateTime?                     @db.Timestamp(6)
+  answer                                                                   answer[]
+  answer_delete_log                                                        answer_delete_log[]
+  answer_favorited_by_user                                                 answer_favorited_by_user[]
+  answer_query_log                                                         answer_query_log[]
+  answer_update_log                                                        answer_update_log[]
+  answer_user_attitude                                                     answer_user_attitude[]
   group_membership                                                         group_membership[]
   question                                                                 question[]
   question_follower_relation                                               question_follower_relation[]

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Answer } from '../answer/answer.entity';
+import { Answer } from '../answer/answer.legacy.entity';
 import { AnswerModule } from '../answer/answer.module';
 import { AuthModule } from '../auth/auth.module';
 import { Question } from '../questions/questions.legacy.entity';

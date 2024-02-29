@@ -55,7 +55,7 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { Answer } from '../answer/answer.entity';
+import { Answer } from '../answer/answer.legacy.entity';
 
 @Injectable()
 export class UsersService {

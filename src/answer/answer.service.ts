@@ -16,7 +16,7 @@ import {
   AnswerQueryLog,
   AnswerUpdateLog,
   AnswerUserAttitude,
-} from './answer.entity';
+} from './answer.legacy.entity';
 import {
   AlreadyHasSameAttitudeError,
   AnswerNotFavoriteError,
