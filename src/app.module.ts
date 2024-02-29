@@ -21,7 +21,6 @@ import { UsersModule } from './users/users.module';
     QuestionsModule,
     AnswerModule,
     GroupsModule,
-    AnswerModule,
     CommentsModule,
   ],
   controllers: [],
