@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AnswerModule } from './answer/answer.module';
 import configuration, {
   databaseConfigFactory,
 } from './common/config/configuration';
@@ -19,6 +20,7 @@ import { AvatarsModule } from './avatars/avatars.module';
     }),
     UsersModule,
     QuestionsModule,
+    AnswerModule,
     GroupsModule,
     AvatarsModule,
   ],

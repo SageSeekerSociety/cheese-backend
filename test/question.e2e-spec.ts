@@ -219,9 +219,9 @@ describe('Questions Module', () => {
       expect(respond.body.data.question.content).toBe(
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
-      expect(respond.body.data.question.user.id).toBe(TestUserId);
-      expect(respond.body.data.question.user.username).toBe(TestUsername);
-      expect(respond.body.data.question.user.nickname).toBe('test_user');
+      expect(respond.body.data.question.author.id).toBe(TestUserId);
+      expect(respond.body.data.question.author.username).toBe(TestUsername);
+      expect(respond.body.data.question.author.nickname).toBe('test_user');
       expect(respond.body.data.question.type).toBe(0);
       expect(respond.body.data.question.topics.length).toBe(2);
       expect(respond.body.data.question.topics[0].name).toContain(
@@ -254,9 +254,9 @@ describe('Questions Module', () => {
       expect(respond.body.data.question.content).toBe(
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
-      expect(respond.body.data.question.user.id).toBe(TestUserId);
-      expect(respond.body.data.question.user.username).toBe(TestUsername);
-      expect(respond.body.data.question.user.nickname).toBe('test_user');
+      expect(respond.body.data.question.author.id).toBe(TestUserId);
+      expect(respond.body.data.question.author.username).toBe(TestUsername);
+      expect(respond.body.data.question.author.nickname).toBe('test_user');
       expect(respond.body.data.question.type).toBe(0);
       expect(respond.body.data.question.topics.length).toBe(2);
       expect(respond.body.data.question.topics[0].name).toContain(
