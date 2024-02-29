@@ -45,7 +45,7 @@ export class AvatarsController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const avatar = await this.avatarsService.findOne(id);
-    const path = __dirname + '\\images\\' + avatar.name;
+    const path = __dirname + '//images//' + avatar.name;
     const file = fs.createReadStream(path);
     if (fs.existsSync(path)) {
       res.set({
