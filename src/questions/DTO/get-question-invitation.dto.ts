@@ -13,10 +13,10 @@ export class QuestionInvitationDto {
   userId: number;
 
   @IsInt()
-  createAt: number;
+  createAt: Date;
 
   @IsInt()
-  updateAt: number;
+  updateAt: Date;
 
   @IsBoolean()
   isAnswered: boolean;

@@ -32,6 +32,7 @@ import {
   AddQuestionRequestDto,
   AddQuestionResponseDto,
 } from './DTO/add-question.dto';
+import { cancelInvitationResponseDto } from './DTO/cancel-invition.dto';
 import {
   FollowQuestionResponseDto,
   UnfollowQuestionResponseDto,
@@ -286,17 +287,17 @@ export class QuestionsController {
   ):Promise<GetQuestionInvitationsResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     if (sort==undefined) sort='+createdAt';
-    const invitations = await this.questionsService.getQuestionInvitations(id,sort,pageSize,pageStart);
+    const invitions = await this.questionsService.getQuestionInvitions(id,sort,pageSize,pageStart);
     return {
       code:200,
       message:"Invited",
       data:{
-        invitions:invitations.invitions,
+        invitions:invitions.invitions,
         page: {
-          page_start: invitations.page_start,
+          page_start: invitions.page_start,
           page_size:pageSize,
-          has_prev:invitations.has_prev,
-          has_more:invitations.has_more,
+          has_prev:invitions.has_prev,
+          has_more:invitions.has_more,
         }
       }
     }
@@ -306,14 +307,28 @@ export class QuestionsController {
   async inviteUserAnswerQuestion(
     @Param('id',ParseIntPipe) id:number,
     @Headers('Authorization') auth:string|undefined,
-    @Body() user_ids:number[],
+    @Body() userIds:number[],
   ):Promise<inviteUsersAnswerResponseDto> {
     const userId =await this.authService.verify(auth).userId;
-    const inviteUserAnswer=await this.questionsService.inviteUsersToAnswerQuestion(id,user_ids);
+    const inviteUserAnswer=await this.questionsService.inviteUsersToAnswerQuestion(id,userIds);
     return {
       code:201,
       message:"Invited",
       data:inviteUserAnswer,
     }
   } 
+
+  @Delete('/:id/invitions')
+  async cancelInvition(
+    @Param('id',ParseIntPipe) id:number,
+    @Headers('Authorization') auth:string|undefined,
+    @Body() InvitionIds:number[],
+  ):Promise<cancelInvitationResponseDto>{
+    const userId=this.authService.verify(auth).userId;
+    await this.questionsService.cancelInvitation(id,InvitionIds);
+    return {
+      code:204,
+      message:"successfully cancelled",
+    };
+  }
 }

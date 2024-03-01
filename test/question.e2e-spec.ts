@@ -587,6 +587,32 @@ describe('Questions Module', () => {
     });
   });
 
+  describe('invite user to answer question', () => {
+    it('should invite some users to answer question',async() => {
+      const userIds:number[]= [TestUserId,auxUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitions`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      expect(respond.body.message).toBe('Invited');
+      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(201);
+      expect(respond.body.data[0].userId).toEqual(TestUserId);
+      expect(respond.body.data[1].userId).toEqual(auxUserId);
+    });
+
+    it('should cancel the invitions',async()=> {
+      const userIds:number[]= [TestUserId,auxUserId];
+      const respond = await request(app.getHttpServer())
+      .delete(`/questions/${questionIds[1]}/invitions`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds); 
+      expect(respond.body.message).toBe('successfully cancelled');
+      expect(respond.body.code).toBe(204);
+      expect(respond.status).toBe(200);
+    })
+  })
+
   afterAll(async () => {
     await app.close();
   });

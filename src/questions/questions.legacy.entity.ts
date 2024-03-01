@@ -42,7 +42,6 @@ import { Topic } from '../topics/topics.legacy.entity';
 import { User } from '../users/users.legacy.entity';
 
 import { isMySQL } from '../common/helper/db.helper';
-import { UserDto } from '../users/DTO/user.dto';
 
 @Entity()
 // Use fulltext index to support fulltext search.
@@ -241,16 +240,16 @@ export class QuestionInvitation {
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })
-  user: UserDto;
+  user: User;
 
   @Column()
   userId: number;
 
-  @Column()
-  createAt: number;
+  @CreateDateColumn()
+  createAt: Date;
 
-  @Column()
-  updateAt: number;
+  @UpdateDateColumn()
+  updateAt: Date;
 
   @Column()
   isAnswered: boolean;
@@ -260,6 +259,9 @@ export class QuestionInvitation {
     (invitationUser) => invitationUser.questionInvitation,
   )
   invitedUsers: InvitationUser[];
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
 }
 
 @Entity()
@@ -275,5 +277,14 @@ export class InvitationUser {
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'userId' })
-  user: UserDto;
+  user: User;
+
+  @CreateDateColumn()
+  createAt: Date;
+
+  @UpdateDateColumn()
+  updateAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
 }

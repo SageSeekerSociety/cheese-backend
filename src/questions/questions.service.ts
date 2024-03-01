@@ -476,10 +476,9 @@ export class QuestionsService {
       const invitation = this.questionInvitationRepository.create({
         questionId: questionId,
         user: userdto,
-        createAt: Date.now(),
-        updateAt: Date.now(),
         isAnswered: false,
       });
+      
       await this.questionInvitationRepository.save(invitation);
       const invitedUserObj = this.invitationUserRepository.create({
         user: userdto,
@@ -495,7 +494,7 @@ export class QuestionsService {
     return invitedUsers;
   }
 
-  async getQuestionInvitations(
+  async getQuestionInvitions(
     questionId: number,
     sort: '+createdAt'|'-createdAt',
     pageSize: number,
