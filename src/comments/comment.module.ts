@@ -1,28 +1,25 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Answer } from '../answer/answer.legacy.entity';
 import { AnswerModule } from '../answer/answer.module';
+import { AttitudeModule } from '../attitude/attitude.module';
 import { AuthModule } from '../auth/auth.module';
-import { Question } from '../questions/questions.legacy.entity';
 import { QuestionsModule } from '../questions/questions.module';
-import { User } from '../users/users.legacy.entity';
 import { UsersModule } from '../users/users.module';
 import { CommentsController } from './comment.controller';
-import { Comment, UserAttitudeOnComments } from './comment.legacy.entity';
+import {
+  Comment,
+  CommentDeleteLog,
+  CommentQueryLog,
+} from './comment.legacy.entity';
 import { CommentsService } from './comment.service';
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Comment,
-      Answer,
-      Question,
-      User,
-      UserAttitudeOnComments,
-    ]),
+    TypeOrmModule.forFeature([Comment, CommentDeleteLog, CommentQueryLog]),
     AuthModule,
     UsersModule,
     QuestionsModule,
     AnswerModule,
+    AttitudeModule,
   ],
   controllers: [CommentsController],
   providers: [CommentsService],

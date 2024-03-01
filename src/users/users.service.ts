@@ -499,6 +499,24 @@ export class UsersService {
             resourceIds: undefined,
           },
         },
+        {
+          // An user can create and delete comment.
+          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['comment'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          // An user can set attitude to any comment
+          authorizedActions: [AuthorizedAction.other],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['comment/attitude'],
+            resourceIds: undefined,
+          },
+        },
       ],
     };
     return this.sessionService.createSession(userId, authorization);

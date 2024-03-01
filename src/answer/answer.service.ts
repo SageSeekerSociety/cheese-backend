@@ -315,4 +315,8 @@ export class AnswerService {
 
     await this.answerRepository.save(answer);
   }
+
+  async isAnswerExists(answerId: number): Promise<boolean> {
+    return (await this.answerRepository.countBy({ id: answerId })) > 0;
+  }
 }

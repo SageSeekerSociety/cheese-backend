@@ -19,6 +19,8 @@ describe('comments Module', () => {
 
   let TestToken: string;
   let auxAccessToken: string;
+  let TestUserId: number;
+  let TestUserDto: any;
 
   // for future use
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -118,6 +120,7 @@ describe('comments Module', () => {
       expect(respond.body.data.accessToken).toBeDefined();
       TestToken = respond.body.data.accessToken;
       expect(respond.body.data.user.id).toBeDefined();
+      TestUserId = respond.body.data.user.id;
     });
 
     it('should create some topics', async () => {
@@ -206,7 +209,7 @@ describe('comments Module', () => {
         content: string,
       ) {
         const respond = await request(app.getHttpServer())
-          .post(`/comments/${commentableType}/${commentableId}/create`)
+          .post(`/comments/${commentableType}/${commentableId}`)
           .set('Authorization', `Bearer ${TestToken}`)
           .send({
             content: `${TestCommentPrefix} ${content}`,
@@ -227,20 +230,20 @@ describe('comments Module', () => {
     it('should not create comment due to invalid commentableId', async () => {
       const content = 'what you gonna to know?';
       const respond = await request(app.getHttpServer())
-        .post(`/comments/question/114514/create`)
+        .post(`/comments/question/114514`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
           content: `${TestCommentPrefix} ${content}`,
         });
 
-      expect(respond.body.message).toContain('CommentableID');
+      expect(respond.body.message).toMatch(/^CommentableIdNotFoundError: /);
       expect(respond.body.code).toBe(404);
       expect(respond.status).toBe(404);
     });
     it('should return AuthenticationRequiredError', async () => {
       const content = 'what you gonna to know?';
       const respond = await request(app.getHttpServer())
-        .post(`/comments/question/${questionIds[0]}/create`)
+        .post(`/comments/question/${questionIds[0]}/`)
         .send({
           content: `${TestCommentPrefix} ${content}`,
         });
@@ -250,6 +253,13 @@ describe('comments Module', () => {
     it('should create some auxiliary users', async () => {
       [, auxAccessToken] = await createAuxiliaryUser();
       [auxAdminUserDto, auxAdminAccessToken] = await createAuxiliaryUser();
+    });
+    it('should get user dto', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${TestUserId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      TestUserDto = respond.body.data.user;
     });
   });
 
@@ -266,7 +276,7 @@ describe('comments Module', () => {
   //     expect(respond.body.code).toBe(200);
   //     console.log(respond.body.comment)
   //     expect(respond.body.data.comments[0].commentableId).toBe(questionIds[0]);
-  //     expect(respond.body.data.comments[0].commentableType).toBe('question');
+  //     expect(respond.body.data.comments[0].commentableType).toBe('QUESTION');
   //     expect(respond.body.data.comments[0].content).toBe('zfgg好帅!');
   //     expect(respond.body.data.comments[0].id).toBeDefined();
   //     expect(respond.body.data.comments[0].created_at).toBeDefined();
@@ -292,14 +302,15 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBeDefined();
-      expect(respond.body.data.commentableId).toBe(questionIds[0]);
-      expect(respond.body.data.commentableType).toBe('question');
-      expect(respond.body.data.content).toContain('zfgg好帅');
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.disagreeCount).toBe(0);
-      expect(respond.body.data.agreeCount).toBe(0);
-      expect(respond.body.data.agreeType).toBe('Indifferent');
+      expect(respond.body.data.comment.id).toBeDefined();
+      expect(respond.body.data.comment.commentable_id).toBe(questionIds[0]);
+      expect(respond.body.data.comment.commentable_type).toBe('QUESTION');
+      expect(respond.body.data.comment.content).toContain('zfgg好帅');
+      expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
+      expect(respond.body.data.comment.created_at).toBeDefined();
+      expect(respond.body.data.comment.disagree_count).toBe(0);
+      expect(respond.body.data.comment.agree_count).toBe(0);
+      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
     });
     it('should get comment by id', async () => {
       const respond = await request(app.getHttpServer())
@@ -309,14 +320,15 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBeDefined();
-      expect(respond.body.data.commentableId).toBe(CommentIds[0]);
-      expect(respond.body.data.commentableType).toBe('comment');
-      expect(respond.body.data.content).toContain('啦啦啦德玛西亚');
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.disagreeCount).toBe(0);
-      expect(respond.body.data.agreeCount).toBe(0);
-      expect(respond.body.data.agreeType).toBe('Indifferent');
+      expect(respond.body.data.comment.id).toBeDefined();
+      expect(respond.body.data.comment.commentable_id).toBe(CommentIds[0]);
+      expect(respond.body.data.comment.commentable_type).toBe('COMMENT');
+      expect(respond.body.data.comment.content).toContain('啦啦啦德玛西亚');
+      expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
+      expect(respond.body.data.comment.created_at).toBeDefined();
+      expect(respond.body.data.comment.disagree_count).toBe(0);
+      expect(respond.body.data.comment.agree_count).toBe(0);
+      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
     });
     it('should return CommentNotFoundError due to the invalid id', async () => {
       const respond = await request(app.getHttpServer())
@@ -327,39 +339,32 @@ describe('comments Module', () => {
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
-    it('should return AuthenticationRequiredError', async () => {
-      const respond = await request(app.getHttpServer())
-        .get(`/comments/${CommentIds[0]}`)
-        .send();
-      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(respond.body.code).toBe(401);
-    });
   });
 
   describe('AttitudeToComment', () => {
     it('should agree to a comment', async () => {
       const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
-        .post(`/comments/${commentId}/attitude`)
+        .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitudeType: 'Agreed' });
+        .send({ attitude_type: 'Agree' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
     });
     it('should agree to a comment', async () => {
       const commentId = CommentIds[4];
       const respond = await request(app.getHttpServer())
-        .post(`/comments/${commentId}/attitude`)
+        .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitudeType: 'Agreed' });
+        .send({ attitude_type: 'Agree' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
     });
     it('should get some difference from others', async () => {
       const respond = await request(app.getHttpServer())
@@ -369,14 +374,15 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBeDefined();
-      expect(respond.body.data.commentableId).toBe(questionIds[0]);
-      expect(respond.body.data.commentableType).toBe('question');
-      expect(respond.body.data.content).toContain('zfgg好帅');
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.disagreeCount).toBe(0);
-      expect(respond.body.data.agreeCount).toBe(1);
-      expect(respond.body.data.agreeType).toBe('Indifferent');
+      expect(respond.body.data.comment.id).toBeDefined();
+      expect(respond.body.data.comment.commentable_id).toBe(questionIds[0]);
+      expect(respond.body.data.comment.commentable_type).toBe('QUESTION');
+      expect(respond.body.data.comment.content).toContain('zfgg好帅');
+      expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
+      expect(respond.body.data.comment.created_at).toBeDefined();
+      expect(respond.body.data.comment.disagree_count).toBe(0);
+      expect(respond.body.data.comment.agree_count).toBe(1);
+      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
     });
     it('should get some difference from self', async () => {
       const respond = await request(app.getHttpServer())
@@ -386,26 +392,27 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBeDefined();
-      expect(respond.body.data.commentableId).toBe(questionIds[0]);
-      expect(respond.body.data.commentableType).toBe('question');
-      expect(respond.body.data.content).toContain('zfgg好帅');
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.disagreeCount).toBe(0);
-      expect(respond.body.data.agreeCount).toBe(1);
-      expect(respond.body.data.agreeType).toBe('Agreed');
+      expect(respond.body.data.comment.id).toBeDefined();
+      expect(respond.body.data.comment.commentable_id).toBe(questionIds[0]);
+      expect(respond.body.data.comment.commentable_type).toBe('QUESTION');
+      expect(respond.body.data.comment.content).toContain('zfgg好帅');
+      expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
+      expect(respond.body.data.comment.created_at).toBeDefined();
+      expect(respond.body.data.comment.disagree_count).toBe(0);
+      expect(respond.body.data.comment.agree_count).toBe(1);
+      expect(respond.body.data.comment.attitude_type).toBe('AGREE');
     });
     it('should disagree to a comment', async () => {
       const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
-        .post(`/comments/${commentId}/attitude`)
+        .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitudeType: 'Disagreed' });
+        .send({ attitude_type: 'Disagree' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
     });
     it('should get some difference from others', async () => {
       const respond = await request(app.getHttpServer())
@@ -415,14 +422,15 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBeDefined();
-      expect(respond.body.data.commentableId).toBe(questionIds[0]);
-      expect(respond.body.data.commentableType).toBe('question');
-      expect(respond.body.data.content).toContain('zfgg好帅');
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.disagreeCount).toBe(1);
-      expect(respond.body.data.agreeCount).toBe(0);
-      expect(respond.body.data.agreeType).toBe('Indifferent');
+      expect(respond.body.data.comment.id).toBeDefined();
+      expect(respond.body.data.comment.commentable_id).toBe(questionIds[0]);
+      expect(respond.body.data.comment.commentable_type).toBe('QUESTION');
+      expect(respond.body.data.comment.content).toContain('zfgg好帅');
+      expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
+      expect(respond.body.data.comment.created_at).toBeDefined();
+      expect(respond.body.data.comment.disagree_count).toBe(1);
+      expect(respond.body.data.comment.agree_count).toBe(0);
+      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
     });
     it('should get some difference from self', async () => {
       const respond = await request(app.getHttpServer())
@@ -432,31 +440,32 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.id).toBeDefined();
-      expect(respond.body.data.commentableId).toBe(questionIds[0]);
-      expect(respond.body.data.commentableType).toBe('question');
-      expect(respond.body.data.content).toContain('zfgg好帅');
-      expect(respond.body.data.createdAt).toBeDefined();
-      expect(respond.body.data.disagreeCount).toBe(1);
-      expect(respond.body.data.agreeCount).toBe(0);
-      expect(respond.body.data.agreeType).toBe('Disagreed');
+      expect(respond.body.data.comment.id).toBeDefined();
+      expect(respond.body.data.comment.commentable_id).toBe(questionIds[0]);
+      expect(respond.body.data.comment.commentable_type).toBe('QUESTION');
+      expect(respond.body.data.comment.content).toContain('zfgg好帅');
+      expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
+      expect(respond.body.data.comment.created_at).toBeDefined();
+      expect(respond.body.data.comment.disagree_count).toBe(1);
+      expect(respond.body.data.comment.agree_count).toBe(0);
+      expect(respond.body.data.comment.attitude_type).toBe('DISAGREE');
     });
-    it('should return to InvalidAgreeTypeError', async () => {
+    it('should return to InvalidAttitudeTypeError', async () => {
       const commentId = CommentIds[1];
       const respond = await request(app.getHttpServer())
-        .post(`/comments/${commentId}/attitude`)
+        .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitudeType: '5' });
-      expect(respond.body.message).toContain('InvalidAgreeTypeError:');
+        .send({ attitude_type: 'LIKE' });
+      expect(respond.body.message).toContain('InvalidAttitudeTypeError:');
       expect(respond.status).toBe(400);
       expect(respond.body.code).toBe(400);
     });
     it('should return CommentNotFoundError', async () => {
       const commentId = 114514;
       const respond = await request(app.getHttpServer())
-        .post(`/comments/${commentId}/attitude`)
+        .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitudeType: '2' });
+        .send({ attitude_type: '2' });
       expect(respond.body.message).toContain('CommentNotFoundError:');
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
@@ -464,8 +473,8 @@ describe('comments Module', () => {
     it('should return AuthenticationRequiredError', async () => {
       const commentId = CommentIds[1];
       const respond = await request(app.getHttpServer())
-        .post(`/comments/${commentId}/attitude`)
-        .send({ attitudeType: '2' });
+        .put(`/comments/${commentId}/attitude`)
+        .send({ attitude_type: '2' });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
     });
@@ -488,9 +497,9 @@ describe('comments Module', () => {
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(respond.body.message).toContain('CommentNotFoundByUserError:');
-      expect(respond.status).toBe(404);
-      expect(respond.body.code).toBe(404);
+      expect(respond.body.message).toMatch(/^PermissionDeniedError: /);
+      expect(respond.status).toBe(403);
+      expect(respond.body.code).toBe(403);
     });
     it('should not delete a comment due to the invalid commentId', async () => {
       const commentId = 114514;

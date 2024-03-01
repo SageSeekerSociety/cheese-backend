@@ -15,7 +15,9 @@ import { group_membership } from "../groups/groups.legacy"
 import { question, question_follower_relation, question_query_log, question_search_log, question_topic_relation } from "../questions/questions.legacy"
 import { topic, topic_search_log } from "../topics/topics.legacy"
 import { answer, answer_delete_log, answer_favorited_by_user, answer_query_log, answer_update_log, answer_user_attitude } from "../answer/answer.legacy"
-import { comment } from "../comments/comment.legacy"
+import { Attitude } from "../attitude/attitude"
+import { comment, comment_delete_log, comment_query_log } from "../comments/comment.legacy"
+import { AttitudeLog } from "../attitude/attitude"
 
 model user {
   id                                                                       Int                           @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
@@ -32,6 +34,8 @@ model user {
   answer_update_log                                                        answer_update_log[]
   answer_user_attitude                                                     answer_user_attitude[]
   comment                                                                  comment[]
+  comment_delete_log                                                       comment_delete_log[]
+  comment_query_log                                                        comment_query_log[]
   group_membership                                                         group_membership[]
   question                                                                 question[]
   question_follower_relation                                               question_follower_relation[]
@@ -40,25 +44,16 @@ model user {
   question_topic_relation                                                  question_topic_relation[]
   topic                                                                    topic[]
   topic_search_log                                                         topic_search_log[]
-  user_attitude_on_comments                                                user_attitude_on_comments[]
   user_following_relationship_user_following_relationship_followerIdTouser user_following_relationship[] @relation("user_following_relationship_followerIdTouser")
   user_following_relationship_user_following_relationship_followeeIdTouser user_following_relationship[] @relation("user_following_relationship_followeeIdTouser")
   user_login_log                                                           user_login_log[]
   user_profile                                                             user_profile?
   user_profile_query_log_user_profile_query_log_viewerIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_viewerIdTouser")
   user_profile_query_log_user_profile_query_log_vieweeIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_vieweeIdTouser")
+  Attitude                                                                 Attitude[]
+  AttitudeLog                                                              AttitudeLog[]
 }
 
-model user_attitude_on_comments {
-  id        Int      @id(map: "PK_17b33ce71a699a2c7832385e412") @default(autoincrement())
-  userId    Int
-  agreeType String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @default(now()) @db.Timestamp(6)
-  commentId Int?
-  comment   comment? @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_2c9bf1f647bc45f862d98c041ee")
-  user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ee3b5623574567d10008ffe66a0")
-}
 
 model user_following_relationship {
   id                                                Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())

@@ -117,6 +117,54 @@ model answer_user_attitude {
 }
 
 //
+// attitude.prisma
+//
+
+enum AttitudableType {
+  COMMENT
+
+  @@map("attitudable_type")
+}
+
+enum AttitudeType {
+  UNDEFINED
+  AGREE
+  DISAGREE
+  LIKE
+  DISLIKE
+
+  @@map("attitude_type")
+}
+
+model Attitude {
+  id              Int             @id @default(autoincrement())
+  user            user            @relation(fields: [userId], references: [id])
+  userId          Int
+  attitudableType AttitudableType
+  attitudableId   Int
+  attitude        AttitudeType
+  createdAt       DateTime        @default(now())
+
+  @@unique([attitudableId, userId, attitudableType])
+  @@index([userId])
+  @@map("attitude")
+}
+
+model AttitudeLog {
+  id              Int             @id @default(autoincrement())
+  user            user            @relation(fields: [userId], references: [id])
+  userId          Int
+  attitudableType AttitudableType
+  attitudableId   Int
+  attitude        AttitudeType
+  createdAt       DateTime        @default(now())
+
+  @@index([attitudableId, attitudableType])
+  @@index([userId])
+  @@map("attitude_log")
+}
+
+//
 // session.legacy.prisma
 //
 
@@ -172,19 +220,53 @@ model session_refresh_log {
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
+enum comment_commentabletype_enum {
+  ANSWER
+  COMMENT
+  QUESTION
+}
+
 model comment {
-  id                        Int                         @id(map: "PK_0b0e4bbc8415ec426f87f3a88e2") @default(autoincrement())
-  content                   String                      @db.VarChar
-  commentableId             Int
-  commentableType           String                      @db.VarChar
-  agreeCount                Int
-  disagreeCount             Int
-  userId                    Int
-  createdAt                 DateTime                    @default(now()) @db.Timestamp(6)
-  updatedAt                 DateTime                    @default(now()) @db.Timestamp(6)
-  deletedAt                 DateTime?                   @db.Timestamp(6)
-  user                      user                        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c0354a9a009d3bb45a08655ce3b")
-  user_attitude_on_comments user_attitude_on_comments[]
+  id                 Int                          @id(map: "PK_0b0e4bbc8415ec426f87f3a88e2") @default(autoincrement())
+  commentableType    comment_commentabletype_enum
+  commentableId      Int
+  content            String
+  createdById        Int
+  createdAt          DateTime                     @default(now()) @db.Timestamp(6)
+  updatedAt          DateTime                     @default(now()) @db.Timestamp(6)
+  deletedAt          DateTime?                    @db.Timestamp(6)
+  user               user                         @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_63ac916757350d28f05c5a6a4ba")
+  comment_delete_log comment_delete_log[]
+  comment_query_log  comment_query_log[]
+
+  @@index([commentableId], map: "IDX_525212ea7a75cba69724e42303")
+  @@index([createdById], map: "IDX_63ac916757350d28f05c5a6a4b")
+}
+
+model comment_delete_log {
+  id           Int      @id(map: "PK_429889b4bdc646cb80ef8bc1814") @default(autoincrement())
+  commentId    Int
+  operatedById Int
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  user         user     @relation(fields: [operatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_53f0a8befcc12c0f7f2bab7584d")
+  comment      comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66705ce7d7908554cff01b260ec")
+
+  @@index([operatedById], map: "IDX_53f0a8befcc12c0f7f2bab7584")
+  @@index([commentId], map: "IDX_66705ce7d7908554cff01b260e")
+}
+
+model comment_query_log {
+  id        Int      @id(map: "PK_afbfb3d92cbf55c99cb6bdcd58f") @default(autoincrement())
+  commentId Int
+  viewerId  Int?
+  ip        String   @db.VarChar
+  userAgent String   @db.VarChar
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  comment   comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4020ff7fcffb2737e990f8bde5e")
+  user      user?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4ead8566a6fa987264484b13d54")
+
+  @@index([commentId], map: "IDX_4020ff7fcffb2737e990f8bde5")
+  @@index([viewerId], map: "IDX_4ead8566a6fa987264484b13d5")
 }
 
 //
@@ -463,6 +545,8 @@ model user {
   answer_update_log                                                        answer_update_log[]
   answer_user_attitude                                                     answer_user_attitude[]
   comment                                                                  comment[]
+  comment_delete_log                                                       comment_delete_log[]
+  comment_query_log                                                        comment_query_log[]
   group_membership                                                         group_membership[]
   question                                                                 question[]
   question_follower_relation                                               question_follower_relation[]
@@ -471,24 +555,14 @@ model user {
   question_topic_relation                                                  question_topic_relation[]
   topic                                                                    topic[]
   topic_search_log                                                         topic_search_log[]
-  user_attitude_on_comments                                                user_attitude_on_comments[]
   user_following_relationship_user_following_relationship_followerIdTouser user_following_relationship[] @relation("user_following_relationship_followerIdTouser")
   user_following_relationship_user_following_relationship_followeeIdTouser user_following_relationship[] @relation("user_following_relationship_followeeIdTouser")
   user_login_log                                                           user_login_log[]
   user_profile                                                             user_profile?
   user_profile_query_log_user_profile_query_log_viewerIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_viewerIdTouser")
   user_profile_query_log_user_profile_query_log_vieweeIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_vieweeIdTouser")
-}
-
-model user_attitude_on_comments {
-  id        Int      @id(map: "PK_17b33ce71a699a2c7832385e412") @default(autoincrement())
-  userId    Int
-  agreeType String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  updatedAt DateTime @default(now()) @db.Timestamp(6)
-  commentId Int?
-  comment   comment? @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_2c9bf1f647bc45f862d98c041ee")
-  user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ee3b5623574567d10008ffe66a0")
+  Attitude                                                                 Attitude[]
+  AttitudeLog                                                              AttitudeLog[]
 }
 
 model user_following_relationship {

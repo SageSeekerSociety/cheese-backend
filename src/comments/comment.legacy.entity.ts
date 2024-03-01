@@ -20,39 +20,38 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  JoinColumn,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../users/users.legacy.entity';
+import { CommentableType } from './commentable.enum';
 
 @Entity()
 export class Comment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  content: string;
+  @Column({
+    type: 'enum',
+    enum: CommentableType,
+  })
+  commentableType: CommentableType;
 
   @Column()
+  @Index()
   commentableId: number;
 
-  @Column()
-  commentableType: 'answer' | 'comment' | 'question';
-
-  @Column()
-  agreeCount: number;
-
-  @Column()
-  disagreeCount: number;
+  @Column('text')
+  content: string;
 
   @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
+  createdBy: User;
 
   @Column()
-  userId: number;
+  @Index()
+  createdById: number;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -65,27 +64,53 @@ export class Comment {
 }
 
 @Entity()
-export class UserAttitudeOnComments {
+export class CommentDeleteLog {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
-  @Column()
-  userId: number;
-
   @ManyToOne(() => Comment)
-  @JoinColumn({ name: 'commentId' })
   comment: Comment;
 
   @Column()
-  agreeType: 'Indifferent' | 'Agreed' | 'Disagreed';
+  @Index()
+  commentId: number;
+
+  @ManyToOne(() => User)
+  operatedBy: User;
+
+  @Column()
+  @Index()
+  operatedById: number;
 
   @CreateDateColumn()
   createdAt: Date;
+}
 
-  @UpdateDateColumn()
-  updatedAt: Date;
+@Entity()
+export class CommentQueryLog {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => Comment)
+  comment: Comment;
+
+  @Column()
+  @Index()
+  commentId: number;
+
+  @ManyToOne(() => User)
+  viewer: User;
+
+  @Column('int', { nullable: true })
+  @Index()
+  viewerId?: number | null;
+
+  @Column()
+  ip: string;
+
+  @Column()
+  userAgent: string = '';
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

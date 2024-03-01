@@ -32,5 +32,6 @@ import { AnswerService } from './answer.service';
   ],
   providers: [AnswerService],
   controllers: [AnswerController],
+  exports: [AnswerService],
 })
 export class AnswerModule {}

@@ -4,22 +4,27 @@ import {
   Delete,
   Get,
   Headers,
+  Ip,
   Param,
   ParseIntPipe,
   Post,
+  Put,
+  Query,
   UseFilters,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
+import { AttitudeType } from '@prisma/client';
+import { parseAttitude } from '../attitude/attitude.enum';
+import { InvalidAttitudeTypeError } from '../attitude/attitude.error';
+import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { UserIdNotFoundError } from '../users/users.error';
-import { AttitudeCommentResponseDto } from './DTO/agreeComment.dto';
-import { CreateCommentResponseDto } from './DTO/comment.dto';
-import { DeleteCommentRespondDto } from './DTO/deleteComment.dto';
-import { GetCommentDetailResponseDto } from './DTO/getCommentDetail.dto';
-import { GetCommentsResponseDto } from './DTO/getComments.dto';
+import { CreateCommentResponseDto } from './DTO/create-comment.dto';
+import { GetCommentDetailResponseDto } from './DTO/get-comment-detail.dto';
+import { GetCommentsResponseDto } from './DTO/get-comments.dto';
 import { CommentsService } from './comment.service';
+import { parseCommentable } from './commentable.enum';
 @Controller('/comments')
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
@@ -32,51 +37,64 @@ export class CommentsController {
   @Get('/:commentableType/:commentableId')
   async getComments(
     @Param('commentableType')
-    commentableType: 'answer' | 'question' | 'comment',
+    commentableType: string,
     @Param('commentableId', ParseIntPipe) commentableId: number,
-    // @Query('page_start', new ParseIntPipe({ optional: true }))
-    // pageStart: number = 1,
-    // @Query('page_size', new ParseIntPipe({ optional: true }))
-    // pageSize: number = 20,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    pageStart: number | undefined,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    pageSize: number = 20,
     @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetCommentsResponseDto> {
-    const userId = this.authService.verify(auth).userId;
-    if (!userId) {
-      throw new UserIdNotFoundError(userId);
+    let userId: number | undefined;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
     }
-    const [comments] = await this.commentsService.getComments(
-      userId,
-      commentableType,
+    const [comments, page] = await this.commentsService.getComments(
+      parseCommentable(commentableType),
       commentableId,
-      // pageStart,
-      // pageSize,
+      pageStart,
+      pageSize,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,
       message: 'Get comments successfully',
       data: {
         comments,
-        //page,
+        page,
       },
     };
   }
 
-  @Post('/:commentableType/:commentableId/create')
+  @Post('/:commentableType/:commentableId')
   async createComment(
-    @Param('commentableId', ParseIntPipe) commentableId: number,
     @Param('commentableType')
-    commentableType: 'comment' | 'answer' | 'question',
+    commentableType: string,
+    @Param('commentableId', ParseIntPipe) commentableId: number,
     @Body('content') content: string,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<CreateCommentResponseDto> {
     const userId = this.authService.verify(auth).userId;
-    const commentId = await this.commentsService.createComment(
+    this.authService.audit(
+      auth,
+      AuthorizedAction.create,
       userId,
-      content,
-      commentableType,
-      commentableId,
+      'comment',
+      undefined,
     );
-
+    const commentId = await this.commentsService.createComment(
+      parseCommentable(commentableType),
+      commentableId,
+      content,
+      userId,
+    );
     return {
       code: 201,
       message: 'Comment created successfully',
@@ -90,30 +108,56 @@ export class CommentsController {
   async deleteComment(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<DeleteCommentRespondDto> {
+  ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    await this.commentsService.deleteComment(userId, commentId);
+    this.authService.audit(
+      auth,
+      AuthorizedAction.delete,
+      await this.commentsService.getCommentCreatedById(commentId),
+      'comment',
+      commentId,
+    );
+    await this.commentsService.deleteComment(commentId, userId);
     return {
       code: 204,
       message: 'Comment deleted already',
-      success: true,
     };
   }
 
-  @Post('/:commentId/attitude')
+  private parseAttitudeTypeForComment(attitude: string): AttitudeType {
+    const attitudeParsed = parseAttitude(attitude);
+    const allowed: AttitudeType[] = [
+      AttitudeType.UNDEFINED,
+      AttitudeType.AGREE,
+      AttitudeType.DISAGREE,
+    ];
+    if (allowed.indexOf(attitudeParsed) == -1)
+      throw new InvalidAttitudeTypeError(attitude);
+    return attitudeParsed;
+  }
+
+  @Put('/:commentId/attitude')
   async attitudeToComment(
     @Param('commentId', ParseIntPipe) commentId: number,
-    @Body('attitudeType') attitude: 'Agreed' | 'Disagreed',
+    @Body('attitude_type') attitude: string,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<AttitudeCommentResponseDto> {
+  ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
-
-    await this.commentsService.attitudeToComment(userId, commentId, attitude);
-
+    this.authService.audit(
+      auth,
+      AuthorizedAction.other,
+      await this.commentsService.getCommentCreatedById(commentId),
+      'comment/attitude',
+      commentId,
+    );
+    await this.commentsService.setAttitudeToComment(
+      commentId,
+      userId,
+      this.parseAttitudeTypeForComment(attitude),
+    );
     return {
-      code: 201,
+      code: 200,
       message: 'You have expressed your attitude towards the comment',
-      data: { attitudeType: attitude },
     };
   }
 
@@ -121,16 +165,28 @@ export class CommentsController {
   async getCommentDetail(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetCommentDetailResponseDto> {
-    const userId = this.authService.verify(auth).userId;
-    const comment = await this.commentsService.getCommentDetail(
-      userId,
+    let userId: number | undefined;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
+    const comment = await this.commentsService.getCommentDto(
       commentId,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,
       message: 'Details are as follows',
-      data: comment,
+      data: {
+        comment,
+      },
     };
   }
 }
