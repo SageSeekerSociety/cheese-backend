@@ -1468,13 +1468,11 @@ paths:
             schema:
               type: object
               properties:
-                user_ids:
-                  type: array
-                  items:
-                    type: integer
-                    format: int64
+                user_id:
+                  type: integer
+                  format: int64
               required:
-                - user_ids
+                - user_id
       responses:
         "201":
           description: Successfully invited
@@ -1488,39 +1486,73 @@ paths:
                       data:
                         type: object
                         properties:
-                          invitions:
-                            type: array
-                            items:
-                              type: object
-                              properties:
-                                user_id:
-                                  type: integer
-                                  format: int64
-                                success:
-                                  type: boolean
-                                  description: 是否邀请成功
-                                invition_id:
-                                  type: integer
-                                  description: 邀请 ID（如果邀请成功）
-                                  format: int64
-                                reason:
-                                  type: string
-                                  description: 失败原因（如果邀请失败）
-                                  enum:
-                                    - user_not_found
-                                    - user_invited
-                                    - user_answered
-                                    - user_banned
-                                    - user_blacklisted
-                              required:
-                                - user_id
-                                - success
+                          invition:
+                            type: object
+                            properties:
+                              user_id:
+                                type: integer
+                                format: int64
+                              success:
+                                type: boolean
+                                description: 是否邀请成功
+                              invition_id:
+                                type: integer
+                                description: 邀请 ID（如果邀请成功）
+                                format: int64
+                              reason:
+                                type: string
+                                description: 失败原因（如果邀请失败）
+                                enum:
+                                  - user_not_found
+                                  - user_invited
+                                  - user_answered
+                                  - user_banned
+                                  - user_blacklisted
+                            required:
+                              - user_id
+                              - success
                         required:
-                          - invitions
+                          - invition
+                    required:
+                      - data
+  /questions/{id}/invitions/{invition_id}:
+    get:
+      summary: 获取邀请详情
+      operationId: getInvitionDetail
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: invition_id
+          in: path
+          description: 邀请 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invition:
+                            $ref: "#/components/schemas/QuestionInvition"
                     required:
                       - data
     delete:
-      summary: 取消邀请
+      summary: 撤销邀请
       operationId: cancelInvition
       parameters:
         - name: id
@@ -1530,21 +1562,15 @@ paths:
           schema:
             type: integer
             format: int64
+        - name: invition_id
+          in: path
+          description: 邀请 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
       security:
         - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                invition_ids:
-                  type: array
-                  items:
-                    type: integer
-                    format: int64
-              required:
-                - invition_ids
       responses:
         "204":
           description: No Content
