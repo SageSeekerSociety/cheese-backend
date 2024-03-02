@@ -21,7 +21,7 @@ model topic {
   createdAt               DateTime                  @default(now()) @db.Timestamp(6)
   deletedAt               DateTime?                 @db.Timestamp(6)
   question_topic_relation question_topic_relation[]
-  user                    user                      @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_topic_created_by_id")
+  user                    user                      @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_59d7548ea797208240417106e2d")
 
   @@index([createdById], map: "IDX_59d7548ea797208240417106e2")
   @@index([name], map: "idx_topic_name_ft")
@@ -38,7 +38,7 @@ model topic_search_log {
   ip           String   @db.VarChar
   userAgent    String   @db.VarChar
   createdAt    DateTime @default(now()) @db.Timestamp(6)
-  user         user?    @relation(fields: [searcherId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_topic_search_log_searcher_id")
+  user         user?    @relation(fields: [searcherId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_fe1e75b8b625499f0119faaba5b")
 
   @@index([keywords], map: "IDX_85c1844b4fa3e29b1b8dfaeac6")
   @@index([searcherId], map: "IDX_fe1e75b8b625499f0119faaba5")

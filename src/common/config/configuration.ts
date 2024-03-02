@@ -8,6 +8,14 @@ export default () => {
     throw new Error(
       'Typeorm synchronize is deprecated. Use "pnpm prisma db push" to update database structure instead.',
     );
+
+  // See: https://orkhan.gitbook.io/typeorm/docs/logging
+  const typeormLoggingMode =
+    process.env.TYPEORM_DB_LOGGING_ALL === 'true'
+      ? true
+      : process.env.TYPEORM_DB_LOGGING_ERROR === 'true'
+        ? ['error']
+        : false;
   return {
     port: parseInt(process.env.PORT || '3000', 10),
     database: {
@@ -18,7 +26,7 @@ export default () => {
       password: process.env.TYPEORM_DB_PASSWORD,
       database: process.env.TYPEORM_DB_NAME,
       synchronize: process.env.TYPEORM_DB_SYNCHRONIZE === 'true',
-      logging: process.env.TYPEORM_DB_LOGGING === 'true',
+      logging: typeormLoggingMode,
       autoLoadEntities: process.env.TYPEORM_DB_AUTO_LOAD_ENTITIES === 'true',
       ...(isMySQL()
         ? {

@@ -74,7 +74,8 @@ TYPEORM_DB_SYNCHRONIZE=true # This option is used to synchronize the database sc
                             # Set it to false in production.
 TYPEORM_DB_AUTO_LOAD_ENTITIES=true
 TYPEORM_DB_CONNECT_TIMEOUT=60000
-TYPEORM_DB_LOGGING=false
+TYPEORM_DB_LOGGING_ALL=false
+TYPEORM_DB_LOGGING_ERROR=true
 
 # The configuration for Elasticsearch
 ELASTICSEARCH_NODE=http://127.0.0.1:9200/

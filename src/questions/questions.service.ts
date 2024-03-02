@@ -527,4 +527,8 @@ export class QuestionsService {
       );
     }
   }
+
+  async isQuestionExists(questionId: number): Promise<boolean> {
+    return (await this.questionRepository.countBy({ id: questionId })) > 0;
+  }
 }

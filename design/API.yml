@@ -251,20 +251,14 @@ components:
           type: integer
           format: int64
           description: 评论 ID
-        answer_id:
+        commentable_id:
           type: integer
           format: int64
-          description: 评论所属的回答 ID
-        quote:
-          type: object
-          description: 回复的评论
-          properties:
-            id:
-              type: integer
-              format: int64
-              description: 评论 ID
-            user:
-              $ref: "#/components/schemas/User"
+          description: 评论对象 ID
+        commentable_type:
+          type: string
+          description: 评论对象，大写
+          example: ANSWER
         content:
           type: string
           description: 评论内容
@@ -274,19 +268,27 @@ components:
           type: integer
           format: int64
           description: 创建时间（时间戳）
-        agree_type:
-          type: integer
-          description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
+        attitude_type:
+          type: string
+          description: attitude类型，UNDEFINED表示未操作，AGREE表示赞同，DISAGREE表示反对
           enum:
-            - 0
-            - 1
-            - 2
+            - AGREE
+            - DISAGREE
+            - UNDEFINED
         agree_count:
           type: integer
           description: 赞同数量
+        disagree_count:
+          type: integer
+          description: 反对数量
+        #sub_comments:
+        #  type: array
+        #  items:
+        #    $ref: "#/components/schemas/Comment"
       required:
         - id
-        - answer_id
+        - commentable_id
+        - commentable_type
         - content
         - user
         - created_at
@@ -1714,25 +1716,24 @@ paths:
       responses:
         "204":
           description: No Content
-  /questions/{id}/answers/{answer_id}/comments:
+  /comments/{commentableType}/{commentableId}:
     get:
-      summary: 获取回答评论列表
-      operationId: getAnswerComments
+      summary: 获取对象评论列表
+      operationId: getComments
       parameters:
-        - name: id
+        - name: commentableId
           in: path
-          description: 问题 ID
+          description: 对象 ID
           required: true
           schema:
             type: integer
             format: int64
-        - name: answer_id
+        - name: commentableType
           in: path
-          description: 回答 ID
+          description: 对象类型
           required: true
           schema:
-            type: integer
-            format: int64
+            type: string
         - name: page_start
           in: query
           description: 该页第一个评论的 ID，留空即为从头开始
@@ -1765,37 +1766,25 @@ paths:
                               type: object
                               allOf:
                                 - $ref: "#/components/schemas/Comment"
-                                - type: object
-                                  properties:
-                                    sub_comment_count:
-                                      type: integer
-                                      description: 子评论数量
-                                    sub_comments:
-                                      type: array
-                                      items:
-                                        $ref: "#/components/schemas/Comment"
                           page:
                             $ref: "#/components/schemas/Page"
     post:
-      summary: 评论回答
-      operationId: commentAnswer
+      summary: 创建评论
+      operationId: createComment
       parameters:
-        - name: id
+        - name: commentableType
           in: path
-          description: 问题 ID
+          description: 评论的对象类型
+          required: true
+          schema:
+            type: string
+        - name: commentableId
+          in: path
+          description: 对象ID
           required: true
           schema:
             type: integer
             format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-      security:
-        - bearerAuth: []
       requestBody:
         content:
           application/json:
@@ -1804,11 +1793,14 @@ paths:
               properties:
                 content:
                   type: string
-                reply_id:
-                  type: integer
-                  format: int64
+                #quoteId:
+                #  type: integer
+                #quoteUserId:
+                #  type: integer
               required:
                 - content
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -1827,27 +1819,14 @@ paths:
                             format: int64
                         required:
                           - id
-                    required:
-                      - data
-  /questions/{id}/answers/{answer_id}/comments/{comment_id}:
+                required:
+                  - data
+
+  /comments/{comment_id}:
     get:
       summary: 获取评论详情
       operationId: getCommentDetail
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
         - name: comment_id
           in: path
           description: 评论 ID
@@ -1855,19 +1834,6 @@ paths:
           schema:
             type: integer
             format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个子评论的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页子评论数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
       responses:
         "200":
           description: OK
@@ -1883,32 +1849,12 @@ paths:
                         properties:
                           comment:
                             $ref: "#/components/schemas/Comment"
-                          sub_comments:
-                            type: array
-                            items:
-                              $ref: "#/components/schemas/Comment"
-                          page:
-                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     delete:
       summary: 删除评论
       operationId: deleteComment
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
         - name: comment_id
           in: path
           description: 评论 ID
@@ -1921,25 +1867,11 @@ paths:
       responses:
         "204":
           description: No Content
-  /questions/{id}/answers/{answer_id}/comments/{comment_id}/agree:
+  /comments/{comment_id}/attitude:
     put:
-      summary: 赞同评论
-      operationId: agreeComment
+      summary: 对评论表态
+      operationId: attitudeComment
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
         - name: comment_id
           in: path
           description: 评论 ID
@@ -1955,15 +1887,15 @@ paths:
             schema:
               type: object
               properties:
-                agree_type:
+                attitude_type:
                   type: integer
-                  description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
+                  description: 类型
                   enum:
-                    - 0
-                    - 1
-                    - 2
+                    - UNDEFINED
+                    - AGREE
+                    - DISAGREE
               required:
-                - agree_type
+                - attitude_type
       responses:
         "200":
           description: OK
@@ -1971,6 +1903,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
+
   /topics:
     get:
       summary: 获取话题列表

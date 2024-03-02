@@ -15,6 +15,9 @@ import { group_membership } from "../groups/groups.legacy"
 import { question, question_follower_relation, question_query_log, question_search_log, question_topic_relation } from "../questions/questions.legacy"
 import { topic, topic_search_log } from "../topics/topics.legacy"
 import { answer, answer_delete_log, answer_favorited_by_user, answer_query_log, answer_update_log, answer_user_attitude } from "../answer/answer.legacy"
+import { Attitude } from "../attitude/attitude"
+import { comment, comment_delete_log, comment_query_log } from "../comments/comment.legacy"
+import { AttitudeLog } from "../attitude/attitude"
 
 model user {
   id                                                                       Int                           @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
@@ -30,6 +33,9 @@ model user {
   answer_query_log                                                         answer_query_log[]
   answer_update_log                                                        answer_update_log[]
   answer_user_attitude                                                     answer_user_attitude[]
+  comment                                                                  comment[]
+  comment_delete_log                                                       comment_delete_log[]
+  comment_query_log                                                        comment_query_log[]
   group_membership                                                         group_membership[]
   question                                                                 question[]
   question_follower_relation                                               question_follower_relation[]
@@ -44,7 +50,10 @@ model user {
   user_profile                                                             user_profile?
   user_profile_query_log_user_profile_query_log_viewerIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_viewerIdTouser")
   user_profile_query_log_user_profile_query_log_vieweeIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_vieweeIdTouser")
+  Attitude                                                                 Attitude[]
+  AttitudeLog                                                              AttitudeLog[]
 }
+
 
 model user_following_relationship {
   id                                                Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
@@ -52,8 +61,8 @@ model user_following_relationship {
   followerId                                        Int
   createdAt                                         DateTime  @default(now()) @db.Timestamp(6)
   deletedAt                                         DateTime? @db.Timestamp(6)
-  user_user_following_relationship_followerIdTouser user      @relation("user_following_relationship_followerIdTouser", fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_following_relationship_follower_id")
-  user_user_following_relationship_followeeIdTouser user      @relation("user_following_relationship_followeeIdTouser", fields: [followeeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_following_relationship_followee_id")
+  user_user_following_relationship_followerIdTouser user      @relation("user_following_relationship_followerIdTouser", fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_868df0c2c3a138ee54d2a515bce")
+  user_user_following_relationship_followeeIdTouser user      @relation("user_following_relationship_followeeIdTouser", fields: [followeeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c78831eeee179237b1482d0c6fb")
 
   @@index([followerId], map: "IDX_868df0c2c3a138ee54d2a515bc")
   @@index([followeeId], map: "IDX_c78831eeee179237b1482d0c6f")
@@ -65,7 +74,7 @@ model user_login_log {
   ip        String   @db.VarChar
   userAgent String   @db.VarChar
   createdAt DateTime @default(now()) @db.Timestamp(6)
-  user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_login_log_user_id")
+  user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66c592c7f7f20d1214aba2d0046")
 
   @@index([userId], map: "IDX_66c592c7f7f20d1214aba2d004")
 }
@@ -79,7 +88,7 @@ model user_profile {
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime  @default(now()) @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
-  user      user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_user_id")
+  user      user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_51cb79b5555effaf7d69ba1cff9")
 }
 
 model user_profile_query_log {
@@ -89,8 +98,8 @@ model user_profile_query_log {
   ip                                         String   @db.VarChar
   userAgent                                  String   @db.VarChar
   createdAt                                  DateTime @default(now()) @db.Timestamp(6)
-  user_user_profile_query_log_viewerIdTouser user?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_query_log_viewer_id")
-  user_user_profile_query_log_vieweeIdTouser user     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_query_log_viewee_id")
+  user_user_profile_query_log_viewerIdTouser user?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1261db28434fde159acda6094bc")
+  user_user_profile_query_log_vieweeIdTouser user     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff592e4403b328be0de4f2b3973")
 
   @@index([viewerId], map: "IDX_1261db28434fde159acda6094b")
   @@index([vieweeId], map: "IDX_ff592e4403b328be0de4f2b397")

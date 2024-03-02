@@ -55,7 +55,7 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { Answer } from '../answer/answer.entity';
+import { Answer } from '../answer/answer.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -496,6 +496,24 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: undefined,
             types: ['topics'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          // An user can create and delete comment.
+          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['comment'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          // An user can set attitude to any comment
+          authorizedActions: [AuthorizedAction.other],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['comment/attitude'],
             resourceIds: undefined,
           },
         },
