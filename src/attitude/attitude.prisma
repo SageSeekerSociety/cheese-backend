@@ -32,6 +32,7 @@ model Attitude {
   attitudableId   Int
   attitude        AttitudeType
   createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt()
 
   @@unique([attitudableId, userId, attitudableType])
   @@index([userId])

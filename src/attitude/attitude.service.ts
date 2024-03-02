@@ -37,7 +37,7 @@ export class AttitudeService {
         attitude,
       },
     });
-    const old = await this.prismaService.attitude.findUnique({
+    await this.prismaService.attitude.upsert({
       where: {
         attitudableId_userId_attitudableType: {
           userId,
@@ -45,25 +45,16 @@ export class AttitudeService {
           attitudableId,
         },
       },
+      update: {
+        attitude,
+      },
+      create: {
+        userId,
+        attitudableType,
+        attitudableId,
+        attitude,
+      },
     });
-    if (old != null && old.attitude != attitude) {
-      await this.prismaService.attitude.delete({
-        where: { id: old.id },
-      });
-    }
-    if (
-      (old == null || old.attitude != attitude) &&
-      attitude != AttitudeType.UNDEFINED
-    ) {
-      await this.prismaService.attitude.create({
-        data: {
-          userId,
-          attitudableType,
-          attitudableId,
-          attitude,
-        },
-      });
-    }
   }
 
   async getAttitude(
