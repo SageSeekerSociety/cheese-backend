@@ -465,7 +465,7 @@ describe('comments Module', () => {
       const respond = await request(app.getHttpServer())
         .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitude_type: '2' });
+        .send({ attitude_type: 'agree' });
       expect(respond.body.message).toContain('CommentNotFoundError:');
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
@@ -474,7 +474,7 @@ describe('comments Module', () => {
       const commentId = CommentIds[1];
       const respond = await request(app.getHttpServer())
         .put(`/comments/${commentId}/attitude`)
-        .send({ attitude_type: '2' });
+        .send({ attitude_type: 'disagree' });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
     });
