@@ -1,0 +1,12 @@
+import { user_profile } from "../users/users.legacy"
+import { group_profile } from "../groups/groups.legacy"
+
+model avatar {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar
+  userProfile   user_profile? @relation(fields: [userProfileId], references: [id])
+  userProfileId Int?
+  groupProfile  group_profile? @relation(fields: [groupProfileId], references: [id])
+  groupProfileId Int?
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+}

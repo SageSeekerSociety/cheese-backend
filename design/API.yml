@@ -54,8 +54,8 @@ components:
           description: 昵称
           example: "芝士"
         avatar:
-          type: string
-          description: 头像 URL
+          type: integer
+          description: 头像 id
         intro:
           type: string
           description: 个人简介
@@ -803,7 +803,7 @@ paths:
                 nickname:
                   type: string
                 avatar:
-                  type: string
+                  type: int
                 intro:
                   type: string
               required:
@@ -2159,7 +2159,7 @@ paths:
                 intro:
                   type: string
                 avatar:
-                  type: string
+                  type: integer
                 public:
                   type: boolean
               required:
@@ -2238,7 +2238,7 @@ paths:
                 intro:
                   type: string
                 avatar:
-                  type: string
+                  type: integer
                 cover:
                   type: string
               required:
@@ -3434,10 +3434,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
   
-  /avatars:
+  /avatars/{ownerType}/{ownerId}:
     post:
       summary: Upload an avatar for a specific owner type and ID
       operationId: uploadAvatar
+      parameters: 
+        - name: ownerType
+          in: path
+          required: true
+          description:Avatar type(user or group)
+        - name: ownerId
+          in: path
+          required: true
+          description:userid or groupid which will own the avatar
       requestBody:
         content:
           multipart/form-data:
@@ -3459,8 +3468,9 @@ paths:
                   id:
                     type: number
                     description: Unique identifier for the uploaded avatar
+  /avatars/{id}:
     get:
-      summary:Ger an avatar by id
+      summary:Get an avatar by id
       operationId: getAvatar
       parameters:  
         - name: id

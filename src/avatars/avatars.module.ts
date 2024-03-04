@@ -7,6 +7,8 @@ import { AuthModule } from '../auth/auth.module';
 import { AvatarsController } from './avatars.controller';
 import { Avatar } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
+import { GroupsModule } from '../groups/groups.module';
+import { UsersModule } from '../users/users.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Avatar]),
@@ -19,13 +21,10 @@ import { AvatarsService } from './avatars.service';
         },
       }),
       limits: {
-        // 限制文件大小为 2 MB
         fileSize: 2 * 1024 * 1024,
-        // 限制文件名长度为 50 bytes
         fieldNameSize: 50,
       },
       fileFilter: (_, file, callback) => {
-        // 检查文件类型
         if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
           return callback(new Error('Only image files are allowed!'), false);
         }
@@ -33,15 +32,11 @@ import { AvatarsService } from './avatars.service';
       },
     }),
     AuthModule,
+    GroupsModule,
+    UsersModule,
   ],
   controllers: [AvatarsController],
   providers: [AvatarsService],
   exports: [AvatarsService],
 })
-export class AvatarsModule {
-  private isValidFileType(file: { originalname: string }): boolean {
-    const allowedTypes = ['.jpg', '.jpeg', '.png', '.gif'];
-    const fileExt = extname(file.originalname).toLowerCase();
-    return allowedTypes.includes(fileExt);
-  }
-}
+export class AvatarsModule {}

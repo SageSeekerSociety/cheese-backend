@@ -14,8 +14,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import * as fs from 'fs';
 import { AuthService } from '../auth/auth.service';
-import { AvatarsService } from './avatars.service';
 import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
+import { AvatarsService } from './avatars.service';
 
 @Controller('/avatars')
 export class AvatarsController {
@@ -23,14 +23,21 @@ export class AvatarsController {
     private readonly avatarsService: AvatarsService,
     private readonly authService: AuthService,
   ) {}
-  @Post()
+  @Post('/:ownerType/:ownerId')
   @UseInterceptors(FileInterceptor('avatar'))
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
     @Headers('Authorization') auth: string,
+    @Param('ownerType') type: string,
+    @Param('ownerId') id: number,
   ): Promise<UploadAvatarRespondDto> {
     const userid = this.authService.verify(auth).userId;
-    const avatar = await this.avatarsService.save(file.filename, userid);
+    const avatar = await this.avatarsService.save(
+      file.filename,
+      userid,
+      type,
+      id,
+    );
     return {
       code: 201,
       message: 'Upload avatar successfully',

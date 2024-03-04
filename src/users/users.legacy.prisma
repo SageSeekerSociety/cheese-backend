@@ -14,6 +14,7 @@
 import { group_membership } from "../groups/groups.legacy"
 import { question, question_follower_relation, question_query_log, question_search_log, question_topic_relation } from "../questions/questions.legacy"
 import { topic, topic_search_log } from "../topics/topics.legacy"
+import { avatar } from "../avatars/avatars.legacy"
 
 model user {
   id                                                                       Int                           @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
@@ -67,7 +68,8 @@ model user_profile {
   id        Int       @id(map: "PK_f44d0cd18cfd80b0fed7806c3b7") @default(autoincrement())
   userId    Int       @unique(map: "IDX_51cb79b5555effaf7d69ba1cff")
   nickname  String    @db.VarChar
-  avatar    String    @db.VarChar
+  avatar    Int
+  avatars   avatar[]
   intro     String    @db.VarChar
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime  @default(now()) @db.Timestamp(6)

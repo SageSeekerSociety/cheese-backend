@@ -1,12 +1,12 @@
-import { IsString } from 'class-validator';
+import { IsInt, IsString } from 'class-validator';
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
 export class UpdateUserRequestDto {
   @IsString()
   nickname: string;
 
-  @IsString()
-  avatar: string;
+  @IsInt()
+  avatar: number;
 
   @IsString()
   intro: string;

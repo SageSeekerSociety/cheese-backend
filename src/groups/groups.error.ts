@@ -57,6 +57,10 @@ export class GroupNotJoinedError extends BaseError {
 }
 export class UpdateAvatarError extends BaseError {
   constructor() {
-    super('UpdateAvatarError', `Can not use avatar loaded by others`, 403);
+    super(
+      'UpdateAvatarError',
+      `Can only use avatars uploaded by this group`,
+      403,
+    );
   }
 }

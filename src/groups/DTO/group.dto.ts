@@ -5,7 +5,7 @@ export class GroupDto {
   id: number;
   name: string;
   intro: string;
-  avatar: string;
+  avatar: number;
   owner: UserDto;
   created_at: number; // timestamp
   updated_at: number; // timestamp

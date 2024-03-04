@@ -13,6 +13,7 @@
 
 import { user } from "../users/users.legacy"
 import { question } from "../questions/questions.legacy"
+import { avatar } from "../avatars/avatars.legacy"
 
 model group {
   id                          Int                           @id(map: "PK_256aa0fda9b1de1a73ee0b7106b") @default(autoincrement())
@@ -44,7 +45,8 @@ model group_membership {
 model group_profile {
   id        Int       @id(map: "PK_2a62b59d1bf8a3191c992e8daf4") @default(autoincrement())
   intro     String    @db.VarChar
-  avatar    String    @db.VarChar
+  avatar    Int    
+  avatars   avatar[]
   groupId   Int       @unique(map: "REL_7359ba99cc116d00cf74e048ed")
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime  @default(now()) @db.Timestamp(6)

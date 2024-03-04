@@ -56,8 +56,8 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { AvatarsService } from '../avatars/avatars.service';
 import { Answer } from '../answer/answer.entity';
+import { Avatar } from '../avatars/avatars.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -65,11 +65,10 @@ export class UsersService {
     private readonly emailService: EmailService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
-    private readonly avatarService: AvatarsService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)
-    private readonly userProfileRepository: Repository<UserProfile>,
+    public readonly userProfileRepository: Repository<UserProfile>,
     @InjectRepository(UserFollowingRelationship)
     private readonly userFollowingRepository: Repository<UserFollowingRelationship>,
     @InjectRepository(UserRegisterRequest)
@@ -87,6 +86,8 @@ export class UsersService {
     private readonly questionRepository: Repository<Question>,
     @InjectRepository(Answer)
     private readonly answerRepository: Repository<Answer>,
+    @InjectRepository(Avatar)
+    private readonly avatarRepository: Repository<Avatar>,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -220,8 +221,8 @@ export class UsersService {
     );
   }
 
-  get defaultAvatar(): string {
-    return 'default.jpg';
+  get defaultAvatar(): number {
+    return 1;
   }
 
   get defaultIntro(): string {
@@ -648,16 +649,18 @@ export class UsersService {
   async updateUserProfile(
     userId: number,
     nickname: string,
-    avatar: string,
+    avatar: number,
     intro: string,
   ): Promise<void> {
     const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
     }
-    const avatarOwner = (await this.avatarService.findOne(parseInt(avatar)))
-      .userid;
-    if (avatarOwner == userId) {
+    const avatardto = await this.avatarRepository.findOneBy({ id: avatar });
+    //const avatarOwner = (await this.avatarService.findOne(avatar))
+    //  .userProfileId;
+    if (avatardto == undefined) throw new Error();
+    if (avatardto.userProfileId == profile.id) {
       profile.avatar = avatar;
     } else {
       throw new UpdateAvatarError();

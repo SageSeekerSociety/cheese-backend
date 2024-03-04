@@ -55,7 +55,6 @@ export class GroupsController {
       req.name,
       userId,
       req.intro,
-      req.avatar,
     );
     return {
       code: 201,

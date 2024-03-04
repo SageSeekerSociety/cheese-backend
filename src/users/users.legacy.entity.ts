@@ -32,10 +32,12 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Avatar } from '../avatars/avatars.legacy.entity';
 
 @Entity()
 export class User {
@@ -119,7 +121,10 @@ export class UserProfile {
   nickname: string;
 
   @Column()
-  avatar: string;
+  avatar: number;
+
+  @OneToMany(() => Avatar, (avatar) => avatar.userProfile)
+  avatars: Avatar[];
 
   @Column()
   intro: string;

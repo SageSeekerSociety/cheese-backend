@@ -4,10 +4,12 @@ import {
   DeleteDateColumn,
   Entity,
   JoinColumn,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Avatar } from '../avatars/avatars.legacy.entity';
 import { Group } from './groups.legacy.entity';
 
 @Entity()
@@ -19,7 +21,10 @@ export class GroupProfile {
   intro: string;
 
   @Column()
-  avatar: string;
+  avatar: number;
+
+  @OneToMany(() => Avatar, (avatar) => avatar.userProfile)
+  avatars: Avatar[];
 
   @OneToOne(() => Group, (group) => group.profile)
   @JoinColumn()

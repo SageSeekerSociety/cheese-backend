@@ -36,7 +36,7 @@ import {
   GroupQuestionRelationship,
   GroupTarget,
 } from './groups.legacy.entity';
-import { AvatarsService } from '../avatars/avatars.service';
+import { Avatar } from '../avatars/avatars.legacy.entity';
 
 export enum GroupQueryType {
   Recommend = 'recommend',
@@ -49,11 +49,12 @@ export class GroupsService {
   constructor(
     private usersService: UsersService,
     private questionsService: QuestionsService,
-    private avatarService: AvatarsService,
+    @InjectRepository(Avatar)
+    private avatarsRepository: Repository<Avatar>,
     @InjectRepository(Group)
     private groupsRepository: Repository<Group>,
     @InjectRepository(GroupProfile)
-    private groupProfilesRepository: Repository<GroupProfile>,
+    public groupProfilesRepository: Repository<GroupProfile>,
     @InjectRepository(GroupMembership)
     private groupMembershipsRepository: Repository<GroupMembership>,
     @InjectRepository(GroupQuestionRelationship)
@@ -69,12 +70,13 @@ export class GroupsService {
   get groupNameRule(): string {
     return 'Group display name must be 1-16 characters long and can only contain letters, numbers, underscores, hyphens and Chinese characters.';
   }
-
+  get defaultAvatar(): number {
+    return 1;
+  }
   async createGroup(
     name: string,
     userId: number,
     intro: string,
-    avatar: string,
   ): Promise<GroupDto> {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
@@ -86,7 +88,7 @@ export class GroupsService {
 
     const group = this.groupsRepository.create({ name });
     await this.groupsRepository.save(group);
-
+    const avatar = this.defaultAvatar;
     const groupProfile = this.groupProfilesRepository.create({
       groupId: group.id,
       intro,
@@ -315,7 +317,7 @@ export class GroupsService {
     groupId: number,
     name: string,
     intro: string,
-    avatar: string,
+    avatar: number,
   ): Promise<void> {
     const group = await this.groupsRepository.findOne({
       where: { id: groupId },
@@ -341,16 +343,19 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
-    const avatar_owner = (await this.avatarService.findOne(parseInt(avatar)))
-      .userid;
-    if (avatar_owner == userId) {
+    //const avatar_profileid = (await this.avatarService.findOne(avatar))
+    //.groupProfileId;
+    const avatardto = await this.avatarsRepository.findOneBy({ id: avatar });
+    if (avatardto == undefined) {
+      throw new Error();
+    }
+    if (avatardto.groupProfileId == group.profile.id) {
       group.profile.avatar = avatar;
     } else {
       throw new UpdateAvatarError();
     }
     group.name = name;
     group.profile.intro = intro;
-    //group.profile.avatar = avatar;
     await this.groupsRepository.save(group);
     await this.groupProfilesRepository.save(group.profile);
   }
