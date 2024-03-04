@@ -600,6 +600,42 @@ describe('Questions Module', () => {
       expect(respond.body.data[0].userId).toEqual(TestUserId);
       expect(respond.body.data[1].userId).toEqual(auxUserId);
     });
+    it('should return AuthenticationRequiredError',async()=> {
+      const userIds:number[]= [TestUserId,auxUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitions`)
+      .send(userIds);
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should return UserIdNotFoundError', async()=> {
+      const userIds:number[] = [114514];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitions`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      expect(respond.body.message).toContain('UserIdNotFoundError')
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return QuestionIdNotFoundError', async()=> {
+      const userIds:number[] = [TestUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/114514/invitions`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      expect(respond.body.message).toContain('QuestionIdNotFoundError')
+      expect(respond.body.code).toBe(404);
+    })
+    it('should get userInvited',async()=> {
+      const userIds:number[]=[TestUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitions`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      console.log(respond.body.data)
+      expect(respond.body.data[0].reason).toContain('userInvited');
+      expect(respond.body.code).toBe(201);
+    })
 
     it('should cancel the invitions',async()=> {
       const userIds:number[]= [TestUserId,auxUserId];
@@ -610,7 +646,8 @@ describe('Questions Module', () => {
       expect(respond.body.message).toBe('successfully cancelled');
       expect(respond.body.code).toBe(204);
       expect(respond.status).toBe(200);
-    })
+    });
+    
   })
 
   afterAll(async () => {

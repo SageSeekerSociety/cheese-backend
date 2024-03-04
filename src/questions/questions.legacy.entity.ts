@@ -255,17 +255,17 @@ export class QuestionInvitation {
   isAnswered: boolean;
 
   @OneToMany(
-    () => InvitationUser,
+    () => InvitedUser,
     (invitationUser) => invitationUser.questionInvitation,
   )
-  invitedUsers: InvitationUser[];
+  invitedUsers: InvitedUser[];
 
   @DeleteDateColumn()
   deletedAt?: Date;
 }
 
 @Entity()
-export class InvitationUser {
+export class InvitedUser {
   @PrimaryGeneratedColumn()
   id: number;
 

@@ -13,7 +13,7 @@ import { TopicsModule } from '../topics/topics.module';
 import { UsersModule } from '../users/users.module';
 import { QuestionsController } from './questions.controller';
 import {
-  InvitationUser,
+  InvitedUser,
   Question,
   QuestionFollowerRelation,
   QuestionInvitation,
@@ -32,7 +32,7 @@ import { QuestionsService } from './questions.service';
       QuestionQueryLog,
       QuestionSearchLog,
       QuestionInvitation,
-      InvitationUser,
+      InvitedUser,
     ]),
     AuthModule,
     UsersModule,

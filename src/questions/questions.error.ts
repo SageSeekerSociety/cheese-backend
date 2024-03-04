@@ -38,3 +38,13 @@ export class QuestionNotFollowedYetError extends BaseError {
     );
   }
 }
+
+export class QuestionInvitationIdNotFoundError extends BaseError {
+  constructor(id: number) {
+    super(
+      'QuestionInvitationIdNotFoundError',
+      `Question invitation with id ${id} is not found.`,
+      400,
+    );
+  }
+}
