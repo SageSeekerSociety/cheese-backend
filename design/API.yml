@@ -1515,6 +1515,46 @@ paths:
                           - invitation
                     required:
                       - data
+  /questions/{id}/invitations/recommendations:
+    get:
+      summary: 获取推荐邀请用户列表
+      operationId: getQuestionInvitationRecommendations
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页用户数量
+          schema:
+            type: integer
+            format: int64
+            default: 5
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                        required:
+                          - users
+                    required:
+                      - data
   /questions/{id}/invitations/{invitation_id}:
     get:
       summary: 获取邀请详情
