@@ -194,6 +194,23 @@ components:
           description: 是否为小组问题
         group:
           $ref: "#/components/schemas/Group"
+      required:
+        - id
+        - title
+        - content
+        - author
+        - type
+        - topics
+        - created_at
+        - updated_at
+        - is_follow
+        - is_like
+        - answer_count
+        - comment_count
+        - follow_count
+        - like_count
+        - view_count
+        - is_group
     Answer:
       type: object
       description: 回答详情
