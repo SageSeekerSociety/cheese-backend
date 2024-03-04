@@ -171,6 +171,9 @@ components:
         is_like:
           type: boolean
           description: 是否点赞问题
+        is_answered:
+          type: boolean
+          description: 当前登录用户是否回答了该问题
         answer_count:
           type: integer
           description: 回答数量
