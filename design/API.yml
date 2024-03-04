@@ -1486,33 +1486,12 @@ paths:
                       data:
                         type: object
                         properties:
-                          invitation:
-                            type: object
-                            properties:
-                              user_id:
-                                type: integer
-                                format: int64
-                              success:
-                                type: boolean
-                                description: 是否邀请成功
-                              invitation_id:
-                                type: integer
-                                description: 邀请 ID（如果邀请成功）
-                                format: int64
-                              reason:
-                                type: string
-                                description: 失败原因（如果邀请失败）
-                                enum:
-                                  - user_not_found
-                                  - user_invited
-                                  - user_answered
-                                  - user_banned
-                                  - user_blacklisted
-                            required:
-                              - user_id
-                              - success
+                          invitation_id:
+                            type: integer
+                            description: 邀请 ID（如果邀请成功）
+                            format: int64
                         required:
-                          - invitation
+                          - invitation_id
                     required:
                       - data
   /questions/{id}/invitations/recommendations:
