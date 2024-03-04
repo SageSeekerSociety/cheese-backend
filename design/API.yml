@@ -153,7 +153,7 @@ components:
           description: 是否为小组问题
         group:
           $ref: "#/components/schemas/Group"
-    QuestionInvition:
+    QuestionInvitation:
       type: object
       description: 问题邀请
       properties:
@@ -1397,10 +1397,10 @@ paths:
                           - follow_count
                     required:
                       - data
-  /questions/{id}/invitions:
+  /questions/{id}/invitations:
     get:
       summary: 获取该问题下被邀请回答的用户
-      operationId: getQuestionInvitions
+      operationId: getQuestionInvitations
       parameters:
         - name: id
           in: path
@@ -1441,10 +1441,10 @@ paths:
                       data:
                         type: object
                         properties:
-                          invitions:
+                          invitations:
                             type: array
                             items:
-                              $ref: "#/components/schemas/QuestionInvition"
+                              $ref: "#/components/schemas/QuestionInvitation"
                           page:
                             $ref: "#/components/schemas/Page"
                     required:
@@ -1486,7 +1486,7 @@ paths:
                       data:
                         type: object
                         properties:
-                          invition:
+                          invitation:
                             type: object
                             properties:
                               user_id:
@@ -1495,7 +1495,7 @@ paths:
                               success:
                                 type: boolean
                                 description: 是否邀请成功
-                              invition_id:
+                              invitation_id:
                                 type: integer
                                 description: 邀请 ID（如果邀请成功）
                                 format: int64
@@ -1512,13 +1512,13 @@ paths:
                               - user_id
                               - success
                         required:
-                          - invition
+                          - invitation
                     required:
                       - data
-  /questions/{id}/invitions/{invition_id}:
+  /questions/{id}/invitations/{invitation_id}:
     get:
       summary: 获取邀请详情
-      operationId: getInvitionDetail
+      operationId: getInvitationDetail
       parameters:
         - name: id
           in: path
@@ -1527,7 +1527,7 @@ paths:
           schema:
             type: integer
             format: int64
-        - name: invition_id
+        - name: invitation_id
           in: path
           description: 邀请 ID
           required: true
@@ -1547,13 +1547,13 @@ paths:
                       data:
                         type: object
                         properties:
-                          invition:
-                            $ref: "#/components/schemas/QuestionInvition"
+                          invitation:
+                            $ref: "#/components/schemas/QuestionInvitation"
                     required:
                       - data
     delete:
       summary: 撤销邀请
-      operationId: cancelInvition
+      operationId: cancelInvitation
       parameters:
         - name: id
           in: path
@@ -1562,7 +1562,7 @@ paths:
           schema:
             type: integer
             format: int64
-        - name: invition_id
+        - name: invitation_id
           in: path
           description: 邀请 ID
           required: true
