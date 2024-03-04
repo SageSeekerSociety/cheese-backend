@@ -165,9 +165,7 @@ describe('Answers Module', () => {
     const testQuestionId = questionId[0];
     async function createAnswer(content: string) {
       const respond = await request(app.getHttpServer())
-        //这个地方建议就是把API修改一下，你传参的时候就直接按你这个post传，然后就不需要send
-        //没事了，API没搞错，然后下面requestBody不是只传一个content吗
-        .post(`/question/${testQuestionId}/answers`)
+        .post(`/questions/${testQuestionId}/answers`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({
           content: content,
@@ -206,7 +204,7 @@ describe('Answers Module', () => {
       const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[0];
       const response = await request(app.getHttpServer())
-        .get(`/question/${TestQuestionId}/answers/${TestAnswerId}`)
+        .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(response.body.message).toBe('Answer fetched successfully.');
@@ -233,7 +231,7 @@ describe('Answers Module', () => {
       const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[0];
       const response = await request(app.getHttpServer())
-        .get(`/question/${TestQuestionId}/answers/${TestAnswerId}`)
+        .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .send();
       expect(response.body.message).toBe('Answer fetched successfully.');
       expect(response.status).toBe(200);
@@ -260,7 +258,7 @@ describe('Answers Module', () => {
       const TestQuestionId = questionId[0];
       const NotExistAnswerId = 999999;
       const response = await request(app.getHttpServer())
-        .get(`/question/${TestQuestionId}/answers/${NotExistAnswerId}`)
+        .get(`/questions/${TestQuestionId}/answers/${NotExistAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
@@ -275,7 +273,7 @@ describe('Answers Module', () => {
       const pageStart = answerId[0];
       const pageSize = 20;
       const response = await request(app.getHttpServer())
-        .get(`/question/${TestQuestionId}/answers`)
+        .get(`/questions/${TestQuestionId}/answers`)
         .query({
           questionId: TestQuestionId,
           page_start: pageStart,
@@ -301,7 +299,7 @@ describe('Answers Module', () => {
       const pageStart = answerId[0];
       const pageSize = 20;
       const response = await request(app.getHttpServer())
-        .get(`/question/${TestQuestionId}/answers`)
+        .get(`/questions/${TestQuestionId}/answers`)
         .query({
           questionId: TestQuestionId,
           page_start: pageStart,
@@ -324,7 +322,7 @@ describe('Answers Module', () => {
     it('should return an empty list for a non-existent question ID', async () => {
       const nonExistentQuestionId = 99999;
       const response = await request(app.getHttpServer())
-        .get(`/question/${nonExistentQuestionId}/answers`)
+        .get(`/questions/${nonExistentQuestionId}/answers`)
         .set('Authorization', `Bearer ${TestToken}`);
       expect(response.body.message).toBe('Answers fetched successfully.');
       expect(response.status).toBe(200);
@@ -338,7 +336,7 @@ describe('Answers Module', () => {
       const testAnswerId = answerId[1];
       const updatedContent = '--------更新----------';
       const response = await request(app.getHttpServer())
-        .put(`/question/${testQuestionId}/answers/${testAnswerId}`)
+        .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ content: updatedContent });
       expect(response.body.message).toBe('Answer updated successfully.');
@@ -350,7 +348,7 @@ describe('Answers Module', () => {
       const nonExistentAnswerId = 0;
       const testQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
-        .put(`/question/${testQuestionId}/answers/${nonExistentAnswerId}`)
+        .put(`/questions/${testQuestionId}/answers/${nonExistentAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ content: 'Some content' });
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
@@ -364,7 +362,7 @@ describe('Answers Module', () => {
       const testQuestionId = questionId[0];
       const TestAnswerId = answerId[2];
       const response = await request(app.getHttpServer())
-        .delete(`/question/${testQuestionId}/answers/${TestAnswerId}`)
+        .delete(`/questions/${testQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`);
 
       expect(response.body.message).toBe('Answer deleted successfully.');
@@ -376,7 +374,7 @@ describe('Answers Module', () => {
       const testQuestionId = questionId[0];
       const nonExistentAnswerId = 0;
       const response = await request(app.getHttpServer())
-        .delete(`/question/${testQuestionId}/answers/${nonExistentAnswerId}`)
+        .delete(`/questions/${testQuestionId}/answers/${nonExistentAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`);
 
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
@@ -390,7 +388,7 @@ describe('Answers Module', () => {
       const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[1];
       const response = await request(app.getHttpServer())
-        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
       expect(response.body.message).toBe('Answer agreed successfully.');
@@ -406,7 +404,7 @@ describe('Answers Module', () => {
       const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[3];
       const response = await request(app.getHttpServer())
-        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
       expect(response.body.message).toBe('Answer agreed successfully.');
@@ -421,11 +419,11 @@ describe('Answers Module', () => {
       const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[3];
       await request(app.getHttpServer())
-        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
       const response = await request(app.getHttpServer())
-        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
       expect(response.body.message).toMatch(/AlreadyHasSameAttitudeError: /);
@@ -436,7 +434,9 @@ describe('Answers Module', () => {
       const nonExistentAnswerId = 9999; // TODO: change to a 100% non-existent answer ID
       const TestQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
-        .put(`/question/${TestQuestionId}/answers/${nonExistentAnswerId}/agree`)
+        .put(
+          `/questions/${TestQuestionId}/answers/${nonExistentAnswerId}/agree`,
+        )
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ agree_type: 1 });
       expect(response.body.message).toMatch(/AnswerNotFoundError/);
@@ -449,7 +449,7 @@ describe('Answers Module', () => {
       const TestAnswerId = answerId[1];
       const TestQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
-        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(response.body.message).toBe('Answer favorited successfully.');
@@ -461,11 +461,11 @@ describe('Answers Module', () => {
       const TestAnswerId = answerId[1];
       const TestQuestionId = questionId[0];
       await request(app.getHttpServer())
-        .put(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       const response = await request(app.getHttpServer())
-        .delete(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
+        .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(response.body.message).toBe('Answer unfavorited successfully.');
@@ -477,7 +477,7 @@ describe('Answers Module', () => {
       const TestAnswerId = answerId[4];
       const TestQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
-        .delete(`/question/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
+        .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(response.body.message).toMatch(/AnswerNotFavoriteError: /);
@@ -490,7 +490,7 @@ describe('Answers Module', () => {
       const nonExistentAnswerId = 99999;
       const response = await request(app.getHttpServer())
         .put(
-          `/question/${TestQuestionId}/answers/${nonExistentAnswerId}/favorite`,
+          `/questions/${TestQuestionId}/answers/${nonExistentAnswerId}/favorite`,
         )
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
@@ -506,7 +506,7 @@ describe('Answers Module', () => {
       const nonExistentAnswerId = 99998;
       const response = await request(app.getHttpServer())
         .delete(
-          `/question/${TestQuestionId}/answers/${nonExistentAnswerId}/favorite`,
+          `/questions/${TestQuestionId}/answers/${nonExistentAnswerId}/favorite`,
         )
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
