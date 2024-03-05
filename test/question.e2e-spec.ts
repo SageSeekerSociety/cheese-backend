@@ -591,7 +591,7 @@ describe('Questions Module', () => {
     it('should invite some users to answer question',async() => {
       const userIds:number[]= [TestUserId,auxUserId];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitions`)
+      .post(`/questions/${questionIds[1]}/invitations`)
       .set('Authorization', `Bearer ${TestToken}`)
       .send(userIds);
       expect(respond.body.message).toBe('Invited');
@@ -603,7 +603,7 @@ describe('Questions Module', () => {
     it('should return AuthenticationRequiredError',async()=> {
       const userIds:number[]= [TestUserId,auxUserId];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitions`)
+      .post(`/questions/${questionIds[1]}/invitations`)
       .send(userIds);
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
@@ -611,7 +611,7 @@ describe('Questions Module', () => {
     it('should return UserIdNotFoundError', async()=> {
       const userIds:number[] = [114514];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitions`)
+      .post(`/questions/${questionIds[1]}/invitations`)
       .set('Authorization', `Bearer ${TestToken}`)
       .send(userIds);
       expect(respond.body.message).toContain('UserIdNotFoundError')
@@ -620,7 +620,7 @@ describe('Questions Module', () => {
     it('should return QuestionIdNotFoundError', async()=> {
       const userIds:number[] = [TestUserId];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/114514/invitions`)
+      .post(`/questions/114514/invitations`)
       .set('Authorization', `Bearer ${TestToken}`)
       .send(userIds);
       expect(respond.body.message).toContain('QuestionIdNotFoundError')
@@ -629,7 +629,7 @@ describe('Questions Module', () => {
     it('should get userInvited',async()=> {
       const userIds:number[]=[TestUserId];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitions`)
+      .post(`/questions/${questionIds[1]}/invitations`)
       .set('Authorization', `Bearer ${TestToken}`)
       .send(userIds);
       console.log(respond.body.data)
@@ -637,10 +637,10 @@ describe('Questions Module', () => {
       expect(respond.body.code).toBe(201);
     })
 
-    it('should cancel the invitions',async()=> {
+    it('should cancel the invitations',async()=> {
       const userIds:number[]= [TestUserId,auxUserId];
       const respond = await request(app.getHttpServer())
-      .delete(`/questions/${questionIds[1]}/invitions`)
+      .delete(`/questions/${questionIds[1]}/invitations`)
       .set('Authorization', `Bearer ${TestToken}`)
       .send(userIds); 
       expect(respond.body.message).toBe('successfully cancelled');

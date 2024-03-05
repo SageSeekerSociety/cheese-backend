@@ -502,12 +502,12 @@ export class QuestionsService {
     return invitedUsers;
   }
 
-  async getQuestionInvitions(
+  async getQuestionInvitations(
     questionId: number,
     sort: '+createdAt'|'-createdAt',
     pageSize: number,
     pageStart: number,
-  ): Promise<{ invitions: QuestionInvitationDto[]; page_start: number; has_prev: boolean; has_more: boolean }> {
+  ): Promise<{Invitations: QuestionInvitationDto[]; page_start: number; has_prev: boolean; has_more: boolean }> {
     const orderField = sort === '+createdAt' ? 'ASC' : 'DESC';
     const [questionInvitations, totalCount] = await this.questionInvitationRepository.findAndCount({
       where: { questionId },
@@ -522,7 +522,7 @@ export class QuestionsService {
     const hasNext = total > (currentPage * pageSize);
 
     return {
-      invitions: questionInvitations.map((questionInvitation) => questionInvitation),
+    Invitations: questionInvitations.map((questionInvitation) => questionInvitation),
       page_start: pageStart,
       has_prev: hasPrev,
       has_more: hasNext,

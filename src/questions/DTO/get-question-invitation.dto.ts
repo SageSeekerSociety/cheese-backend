@@ -23,7 +23,7 @@ export class QuestionInvitationDto {
 }
 export class GetQuestionInvitationsResponseDto extends BaseRespondDto {
   data: {
-    invitions: QuestionInvitationDto[];
+    invitations: QuestionInvitationDto[];
     page: PageRespondDto;
   };
 }
