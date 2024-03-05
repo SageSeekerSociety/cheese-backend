@@ -190,8 +190,8 @@ export class AnswerController {
     const userId = this.authService.verify(auth).userId;
     await this.answerService.unfavoriteAnswer(answerId, userId);
     return {
-      code: 200,
-      message: 'Answer unfavorited successfully.',
+      code: 204,
+      message: 'No Content',
     };
   }
 }
