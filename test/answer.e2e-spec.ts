@@ -200,6 +200,20 @@ describe('Answers Module', () => {
       .set('authorization', 'Bearer ' + TestToken);
     expect(respond.body.data.user.answer_count).toBe(5);
   });
+  it('should return questionAlreadyAnsweredError when user answer the same question', async () => {
+    const TestQuestionId = questionId[0];
+    const content = 'content';
+    await request(app.getHttpServer())
+      .post(`/question/${TestQuestionId}/answers`)
+      .set('Authorization', `Bearer ${auxAccessToken}`)
+      .send(content);
+    const respond = await request(app.getHttpServer())
+      .post(`/question/${TestQuestionId}/answers`)
+      .set('Authorization', `Bearer ${auxAccessToken}`)
+      .send(content);
+    expect(respond.body.message).toMatch(/questionAlreadyAnsweredError: /);
+    expect(respond.body.code).toBe(400);
+  });
 
   describe('Get answer', () => {
     it('should get a answer', async () => {
