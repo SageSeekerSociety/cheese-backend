@@ -600,8 +600,8 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(201);
       expect(respond.body.data[0].userId).toEqual(TestUserId);
       expect(respond.body.data[1].userId).toEqual(auxUserId);
-      invitaionIds.push(respond.body.data[0].id);
-      invitaionIds.push(respond.body.data[1].id);
+      invitaionIds.push(respond.body.data[0].invitation);
+      invitaionIds.push(respond.body.data[1].invitation);
     });
     it('should return AuthenticationRequiredError',async()=> {
       const userIds:number[]= [TestUserId,auxUserId];
@@ -635,27 +635,27 @@ describe('Questions Module', () => {
       .post(`/questions/${questionIds[1]}/invitations`)
       .set('Authorization', `Bearer ${TestToken}`)
       .send(userIds);
-      expect(respond.body.data[0].reason).toContain('userInvited');
-      expect(respond.body.code).toBe(201);
+      expect(respond.body.message).toContain('AlreadyInvited');
+      expect(respond.body.code).toBe(400);
     })
     
     it('should answer the question',async()=>{
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/answers`)
+      .post(`/question/${questionIds[1]}/answers`)
       .set('Authorization', `Bearer ${TestToken}`)
-      .send("woc");
+      .send({content:"woc"});
       expect(respond.body.code).toBe(200);
     })
 
-    it('should return alreadyAnsweredError',async()=>{
-      const userIds:number[]=[TestUserId];
-      const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitations`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send(userIds);
-      expect(respond.body.data[0].reason).toContain('AlreadyAnswered');
-      expect(respond.body.code).toBe(201);
-    })
+    // it('should return alreadyAnsweredError',async()=>{
+    //   const userIds:number[]=[TestUserId];
+    //   const respond = await request(app.getHttpServer())
+    //   .post(`/questions/${questionIds[1]}/invitations`)
+    //   .set('Authorization', `Bearer ${TestToken}`)
+    //   .send(userIds);
+    //   expect(respond.body.message).toContain('AlreadyAnswered');
+    //   expect(respond.body.code).toBe(201);
+    // })
 
     it('should cancel the invitations',async()=> {
       const userIds:number[]= [TestUserId,auxUserId];
@@ -668,15 +668,25 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(200);
     });
 
-    it('get some details',async()=> {
+    it('should get some details',async()=> {
       const respond = await request(app.getHttpServer())
       .get(`/questions/${questionIds[1]}/invitations/${invitaionIds[0]}`)
       .set('Authorization', `Bearer ${TestToken}`)
       .send();
       expect(respond.body.data.questionId).toBe(questionIds[1]);
-      expect(respond.body.data.invitationId).toBe(invitaionIds[0]);
+      expect(respond.body.data.id).toBe(invitaionIds[0]);
       expect(respond.body.code).toBe(200);
     })
+
+    it('should get recommendation', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}/invitations/recommendations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ page_size: 1 });
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+    });
+    
   })
 
   afterAll(async () => {

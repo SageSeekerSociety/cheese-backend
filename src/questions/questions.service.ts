@@ -522,21 +522,24 @@ export class QuestionsService {
     };
   }
   async getQuestionInvitationRecommendations(
-    questionId:number,
-    pageSize=5,
-  ):Promise<GetRecommentdations> {
+    questionId: number,
+    pageSize = 5,
+  ): Promise<GetRecommentdations> {
     const question = await this.questionRepository.findOne({
       where: { id: questionId },
     });
-    if(!question) {
+    console.log(question)
+    if (!question) {
       throw new QuestionIdNotFoundError(questionId);
     }
     const users = await this.questionInvitationRepository.find({
       where: { questionId },
+      take: pageSize, // 添加 take 参数来限制结果数量
     });
+    console.log(users)
     return {
       users: users.map((user) => user.user),
-    }
+    };
   }
   async getInvitationDetail(
     questionId:number,

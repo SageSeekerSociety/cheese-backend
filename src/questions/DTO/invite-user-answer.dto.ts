@@ -14,6 +14,7 @@ export class inviteUsersAnswerDto {
   @IsBoolean()
   success: boolean;
 
+  
   @IsInt()
   @IsOptional()
   invitation?: number;

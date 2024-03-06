@@ -41,6 +41,7 @@ import { QuestionInvitationDetailResponseDto } from './DTO/get-invitaion-detail.
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
 import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
+import { GetRecommentdationsRespondDto } from './DTO/get-recommendations.dto';
 import { inviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
@@ -339,10 +340,25 @@ export class QuestionsController {
     @Param('invitation_id',ParseIntPipe) invitation_id:number,
   ):Promise<QuestionInvitationDetailResponseDto>{
     const InvitationDetail=await this.questionsService.getInvitationDetail(id,invitation_id);
+    
     return {
       code:200,
       message:"successfully",
       data:InvitationDetail,
+    }
+  }
+
+  @Get('/:id/invitations/recommendations')
+  async getQuestionInvitationRecommendations(
+    @Param('id',ParseIntPipe) id:number,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    page_size: number=5,
+  ):Promise<GetRecommentdationsRespondDto>{
+    const InvitationRecommendations=await this.questionsService.getQuestionInvitationRecommendations(id,page_size);
+    return {
+      code:200,
+      message:"successfully",
+      data:InvitationRecommendations,
     }
   }
 }
