@@ -21,6 +21,7 @@ import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { QuestionDto } from './DTO/question.dto';
+import { Answer } from '../answer/answer.legacy.entity';
 import {
   QuestionAlreadyFollowedError,
   QuestionIdNotFoundError,
@@ -55,6 +56,8 @@ export class QuestionsService {
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
+    @InjectRepository(Answer)
+    private answerRepository: Repository<Answer>,
   ) {}
 
   async addTopicToQuestion(
@@ -241,6 +244,16 @@ export class QuestionsService {
       });
       await this.questionQueryLogRepository.save(log);
     }
+    const answer = await this.answerRepository.findOne({
+      where: { questionId, createdById: viewerId },
+    });
+    let is_answered = false,
+      answer_id = undefined;
+    if (answer) {
+      is_answered = true;
+      answer_id = answer.id;
+    }
+
     return {
       id: question.id,
       title: question.title,
@@ -252,6 +265,8 @@ export class QuestionsService {
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
       is_like: false, // TODO: Implement this.
+      is_answered: is_answered, //TODO: Implement this.
+      my_answer_id: answer_id, //TODO: Implement this.
       answer_count: 0, // TODO: Implement this.
       comment_count: 0, // TODO: Implement this.
       follow_count: followCount,

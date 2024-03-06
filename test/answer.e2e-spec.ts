@@ -482,9 +482,9 @@ describe('Answers Module', () => {
         .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(response.body.message).toBe('Answer unfavorited successfully.');
+      expect(response.body.message).toBe('No Content.');
       expect(response.status).toBe(200);
-      expect(response.body.code).toBe(200);
+      expect(response.body.code).toBe(204);
     });
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {

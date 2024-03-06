@@ -7,12 +7,13 @@ import { PageHelper } from '../common/helper/page.helper';
 import { UserIdNotFoundError } from '../users/users.error';
 import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
+import { QuestionsService } from '../questions/questions.service';
 import { AnswerDto } from './DTO/answer.dto';
 import {
   AlreadyHasSameAttitudeError,
   AnswerNotFavoriteError,
   AnswerNotFoundError,
-  questionAlreadyAnsweredError,
+  QuestionAlreadyAnsweredError,
 } from './answer.error';
 import {
   Answer,
@@ -28,7 +29,7 @@ import {
 export class AnswerService {
   constructor(
     private usersService: UsersService,
-    //private questionsService: QuestionsService,
+    private questionsService: QuestionsService,
     @InjectRepository(Answer)
     private answerRepository: Repository<Answer>,
     @InjectRepository(AnswerUserAttitude)
@@ -45,19 +46,26 @@ export class AnswerService {
 
   async createAnswer(
     questionId: number,
-    userId: number,
+    createdById: number,
     content: string,
   ): Promise<number> {
-    const ans = await this.answerRepository.find({
-      where: { userId, questionId },
-    });
-    if (ans) {
-      throw new questionAlreadyAnsweredError(userId, questionId, ans.id);
-    }
+    const questionDto = await this.questionsService.getQuestionDto(questionId);
+    if (questionDto.is_answered)
+      throw new QuestionAlreadyAnsweredError(
+        createdById,
+        questionId,
+        questionDto.my_answer_id,
+      );
 
+    // const ans = await this.answerRepository.findOne({
+    //   where: { createdById, questionId },
+    // });
+    // if (ans) {
+    //   throw new QuestionAlreadyAnsweredError(createdById, questionId, ans.id);
+    // }
     const answer = this.answerRepository.create({
       questionId,
-      createdById: userId,
+      createdById: createdById,
       content,
     });
     const createdAnswer = await this.answerRepository.save(answer);
@@ -143,9 +151,9 @@ export class AnswerService {
 
   async isFavorite(
     answerId: number,
-    userId: number | undefined,
+    createdById: number | undefined,
   ): Promise<boolean> {
-    if (userId == undefined) return false;
+    if (createdById == undefined) return false;
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
       relations: ['favoritedBy'],
@@ -153,7 +161,7 @@ export class AnswerService {
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
-    return answer.favoritedBy.some((user) => user.id === userId);
+    return answer.favoritedBy.some((user) => user.id === createdById);
   }
 
   async getAnswerDto(
@@ -199,7 +207,7 @@ export class AnswerService {
   }
 
   async updateAnswer(
-    userId: number,
+    createdById: number,
     answerId: number,
     content: string,
   ): Promise<void> {
@@ -215,7 +223,7 @@ export class AnswerService {
     await this.answerRepository.save(answer);
 
     const log = this.answerUpdateLogRepository.create({
-      updaterId: userId,
+      updaterId: createdById,
       answerId,
       oldContent,
       newContent: content,
@@ -275,7 +283,7 @@ export class AnswerService {
     }
   }
 
-  async favoriteAnswer(id: number, userId: number): Promise<void> {
+  async favoriteAnswer(id: number, createdById: number): Promise<void> {
     const answer = await this.answerRepository.findOne({
       where: { id },
       relations: ['favoritedBy'],
@@ -284,10 +292,10 @@ export class AnswerService {
       throw new AnswerNotFoundError(id);
     }
 
-    const user = await this.userRepository.findOneBy({ id: userId });
+    const user = await this.userRepository.findOneBy({ id: createdById });
     /* istanbul ignore if */
     if (!user) {
-      throw new UserIdNotFoundError(userId);
+      throw new UserIdNotFoundError(createdById);
     }
     if (
       !answer.favoritedBy.some((favoritedUser) => favoritedUser.id === user.id)
@@ -297,7 +305,7 @@ export class AnswerService {
     await this.answerRepository.save(answer);
   }
 
-  async unfavoriteAnswer(answerId: number, userId: number): Promise<void> {
+  async unfavoriteAnswer(answerId: number, createdById: number): Promise<void> {
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
       relations: ['favoritedBy'],
@@ -306,10 +314,10 @@ export class AnswerService {
       throw new AnswerNotFoundError(answerId);
     }
 
-    const user = await this.userRepository.findOneBy({ id: userId });
+    const user = await this.userRepository.findOneBy({ id: createdById });
     /* istanbul ignore if */
     if (!user) {
-      throw new UserIdNotFoundError(userId);
+      throw new UserIdNotFoundError(createdById);
     }
 
     if (
