@@ -265,8 +265,8 @@ export class QuestionsService {
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
       is_like: false, // TODO: Implement this.
-      is_answered: is_answered, //TODO: Implement this.
-      my_answer_id: answer_id, //TODO: Implement this.
+      is_answered: is_answered,
+      my_answer_id: answer_id,
       answer_count: 0, // TODO: Implement this.
       comment_count: 0, // TODO: Implement this.
       follow_count: followCount,
