@@ -374,10 +374,11 @@ components:
         disagree_count:
           type: integer
           description: 反对数量
-        #sub_comments:
-        #  type: array
-        #  items:
-        #    $ref: "#/components/schemas/Comment"
+        sub_comments:
+          type: array
+          description: 当 commentable_type 不为 COMMENT 时，返回该条评论的子评论
+          items:
+            $ref: "#/components/schemas/Comment"
       required:
         - id
         - commentable_id
@@ -1562,6 +1563,12 @@ paths:
         - $ref: "#/components/parameters/commentableType"
         - $ref: "#/components/parameters/page_start"
         - $ref: "#/components/parameters/page_size"
+        - name: with_subcomments
+          in: query
+          description: 是否获取子评论
+          schema:
+            type: boolean
+            default: true
       responses:
         "200":
           description: OK
@@ -1628,6 +1635,12 @@ paths:
       operationId: getCommentDetail
       parameters:
         - $ref: "#/components/parameters/commentId"
+        - name: with_subcomments
+          in: query
+          description: 是否获取子评论
+          schema:
+            type: boolean
+            default: true
       responses:
         "200":
           description: OK
