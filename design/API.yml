@@ -438,9 +438,6 @@ components:
         is_member:
           type: boolean
           description: 当前用户是否为小组成员
-        is_public:
-          type: boolean
-          description: 是否为公开小组
         role:
           allOf:
             - $ref: "#/components/schemas/GroupRoleType"
@@ -456,7 +453,6 @@ components:
         - question_count
         - answer_count
         - is_member
-        - is_public
     GroupTarget:
       type: object
       description: 小组目标
@@ -690,16 +686,13 @@ components:
       type: object
       description: 小组设置
       properties:
-        is_public:
-          type: boolean
-          description: 是否为公开小组
         join_type:
           type: string
           description: 加入小组方式
           enum:
-            - open
-            - application
-            - invitation-only
+            - OPEN
+            - APPLICATION
+            - INVITATION_ONLY
         join_questions:
           type: array
           description: 若加入方式为 application，需要回答的问题
