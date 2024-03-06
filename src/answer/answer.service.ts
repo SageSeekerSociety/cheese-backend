@@ -4,10 +4,10 @@ import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 //mport { AnswerModule } from './answer.module';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { QuestionsService } from '../questions/questions.service';
 import { UserIdNotFoundError } from '../users/users.error';
 import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
-import { QuestionsService } from '../questions/questions.service';
 import { AnswerDto } from './DTO/answer.dto';
 import {
   AlreadyHasSameAttitudeError,
