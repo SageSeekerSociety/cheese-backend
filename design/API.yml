@@ -336,6 +336,12 @@ components:
           description: 是否为小组回答
         group:
           $ref: "#/components/schemas/Group"
+    CommentTag:
+      type: string
+      description: 评论标签
+      enum:
+        - SOLVED
+        - IGNORED
     Comment:
       type: object
       description: 评论详情
@@ -374,6 +380,8 @@ components:
         disagree_count:
           type: integer
           description: 反对数量
+        tag:
+          $ref: "#/components/schemas/CommentTag"
         sub_comments:
           type: array
           description: 当 commentable_type 不为 COMMENT 时，返回该条评论的子评论
@@ -1566,9 +1574,16 @@ paths:
         - name: with_subcomments
           in: query
           description: 是否获取子评论
+          required: false
           schema:
             type: boolean
             default: true
+        - name: tag
+          in: query
+          description: 评论标签
+          required: false
+          schema:
+            $ref: "#/components/schemas/CommentTag"
       responses:
         "200":
           description: OK
@@ -1628,7 +1643,6 @@ paths:
                           - id
                 required:
                   - data
-
   /comments/{commentId}:
     get:
       summary: 获取评论详情
@@ -1658,6 +1672,30 @@ paths:
                             $ref: "#/components/schemas/Comment"
                     required:
                       - data
+    patch:
+      summary: 更新评论
+      operationId: updateComment
+      parameters:
+        - $ref: "#/components/parameters/commentId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  $ref: "#/components/schemas/Comment/properties/content"
+                tag:
+                  $ref: "#/components/schemas/Comment/properties/tag"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除评论
       operationId: deleteComment
