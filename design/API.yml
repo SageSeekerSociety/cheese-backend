@@ -441,9 +441,13 @@ components:
     Media:
       type: object
       properties:
-        id:
+        material_id:
           type: integer
-          description: ID
+          description: 材料 ID
+          format: int64
+        created_at:
+          type: integer
+          description: 创建时间
           format: int64
         type:
           type: string
@@ -454,6 +458,8 @@ components:
         url:
           type: string
           description: URL
+        uploader:
+          $ref: "#/components/schemas/User"
         meta:
           oneOf:
             - $ref: "#/components/schemas/ImageMeta"
@@ -493,6 +499,18 @@ components:
         thumbnail:
           type: string
           description: 缩略图 URL
+    AudioMeta:
+      type: object
+      description: 音频元数据
+      properties:
+        size:
+          type: integer
+          description: 大小
+          format: int64
+        duration:
+          type: integer
+          description: 时长
+          format: int64
     FileMeta:
       type: object
       description: 文件元数据
@@ -504,22 +522,13 @@ components:
         name:
           type: string
           description: 文件名称
-        type:
+        mime:
           type: string
-          description: 文件类型
-          enum:
-            - image
-            - video
-            - audio
-            - document
-            - executable
-            - other
+          description: MIME 类型
         expires:
           type: integer
           description: 过期时间，如果为 0 表示永不过期
           format: int64
-        user:
-          $ref: "#/components/schemas/User"
     LinkMeta:
       type: object
       description: 链接元数据
@@ -596,6 +605,35 @@ components:
                 - user
           required:
             - data
+    Material:
+      type: object
+      description: 上传的“材料”（图片、视频、音频、文件等）
+      properties:
+        id:
+          type: integer
+          description: 材料 ID
+          format: int64
+        type:
+          type: string
+          description: 材料类型
+          enum:
+            - image
+            - video
+            - audio
+            - file
+        url:
+          type: string
+          description: 材料 URL
+        uploader:
+          $ref: "#/components/schemas/User"
+        meta:
+          oneOf:
+            - $ref: "#/components/schemas/ImageMeta"
+            - $ref: "#/components/schemas/VideoMeta"
+            - $ref: "#/components/schemas/FileMeta"
+      required:
+        - id
+        - type
 
 paths:
   /users:
@@ -3366,3 +3404,92 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
+  /materials:
+    post:
+      summary: 上传材料
+      operationId: uploadMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  description: 材料类型
+                  enum:
+                    - image
+                    - video
+                    - file
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: 材料 ID
+                    required:
+                      - data
+  /materials/{materialId}:
+    get:
+      summary: 获取材料详情
+      operationId: getMaterialDetail
+      parameters:
+        - name: materialId
+          in: path
+          description: 材料 ID
+          required: true
+          schema:
+            type: string
+        - name: fields
+          in: query
+          description: 需要返回的字段
+          schema:
+            type: string
+            default: url,uploader,meta
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          material:
+                            $ref: "#/components/schemas/Material"
+                    required:
+                      - data
+    delete:
+      summary: 删除材料
+      operationId: deleteMaterial
+      parameters:
+        - name: materialId
+          in: path
+          description: 材料 ID
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
