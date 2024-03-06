@@ -12,15 +12,15 @@ import { AuthModule } from '../auth/auth.module';
 import { EmailService } from './email.service';
 import { UsersController } from './users.controller';
 import {
-  User,
-  UserFollowingRelationship,
-  UserLoginLog,
-  UserProfile,
-  UserProfileQueryLog,
-  UserRegisterLog,
-  UserRegisterRequest,
-  UserResetPasswordLog,
-} from './users.entity';
+    User,
+    UserFollowingRelationship,
+    UserLoginLog,
+    UserProfile,
+    UserProfileQueryLog,
+    UserRegisterLog,
+    UserRegisterRequest,
+    UserResetPasswordLog,
+} from './users.legacy.entity';
 import { UsersService } from './users.service';
 
 @Module({

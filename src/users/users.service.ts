@@ -14,9 +14,9 @@ import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
-  AuthService,
-  Authorization,
-  AuthorizedAction,
+    AuthService,
+    Authorization,
+    AuthorizedAction,
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
@@ -24,35 +24,35 @@ import { PageHelper } from '../common/helper/page.helper';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import {
-  User,
-  UserFollowingRelationship,
-  UserLoginLog,
-  UserProfile,
-  UserProfileQueryLog,
-  UserRegisterLog,
-  UserRegisterLogType,
-  UserRegisterRequest,
-  UserResetPasswordLog,
-  UserResetPasswordLogType,
-} from './users.entity';
-import {
-  CodeNotMatchError,
-  EmailAlreadyRegisteredError,
-  EmailNotFoundError,
-  EmailSendFailedError,
-  FollowYourselfError,
-  InvalidEmailAddressError,
-  InvalidEmailSuffixError,
-  InvalidNicknameError,
-  InvalidPasswordError,
-  InvalidUsernameError,
-  PasswordNotMatchError,
-  UserAlreadyFollowedError,
-  UserIdNotFoundError,
-  UserNotFollowedYetError,
-  UsernameAlreadyRegisteredError,
-  UsernameNotFoundError,
+    CodeNotMatchError,
+    EmailAlreadyRegisteredError,
+    EmailNotFoundError,
+    EmailSendFailedError,
+    FollowYourselfError,
+    InvalidEmailAddressError,
+    InvalidEmailSuffixError,
+    InvalidNicknameError,
+    InvalidPasswordError,
+    InvalidUsernameError,
+    PasswordNotMatchError,
+    UserAlreadyFollowedError,
+    UserIdNotFoundError,
+    UserNotFollowedYetError,
+    UsernameAlreadyRegisteredError,
+    UsernameNotFoundError,
 } from './users.error';
+import {
+    User,
+    UserFollowingRelationship,
+    UserLoginLog,
+    UserProfile,
+    UserProfileQueryLog,
+    UserRegisterLog,
+    UserRegisterLogType,
+    UserRegisterRequest,
+    UserResetPasswordLog,
+    UserResetPasswordLogType,
+} from './users.legacy.entity';
 
 @Injectable()
 export class UsersService {

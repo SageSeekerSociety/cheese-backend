@@ -12,7 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthService } from './auth.service';
-import { Session, SessionRefreshLog } from './session.entity';
+import { Session, SessionRefreshLog } from './session.legacy.entity';
 import { SessionService } from './session.service';
 
 @Module({

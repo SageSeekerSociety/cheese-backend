@@ -10,13 +10,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
-  NotRefreshTokenError,
-  RefreshTokenAlreadyUsedError,
-  SessionExpiredError,
-  SessionRevokedError,
+    NotRefreshTokenError,
+    RefreshTokenAlreadyUsedError,
+    SessionExpiredError,
+    SessionRevokedError,
 } from './auth.error';
 import { AuthService, Authorization, AuthorizedAction } from './auth.service';
-import { Session, SessionRefreshLog } from './session.entity';
+import { Session, SessionRefreshLog } from './session.legacy.entity';
 
 @Injectable()
 export class SessionService {

@@ -28,6 +28,7 @@ describe('Questions Module', () => {
   let TestUserId: number;
   const TopicIds: number[] = [];
   const questionIds: number[] = [];
+  const invitaionIds: number[] = [];
   let auxUserId: number;
   let auxAccessToken: string;
 
@@ -214,29 +215,33 @@ describe('Questions Module', () => {
       expect(respond.body.message).toBe('OK');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
-      expect(respond.body.data.id).toBe(questionIds[0]);
-      expect(respond.body.data.title).toContain(TestQuestionPrefix);
-      expect(respond.body.data.content).toBe(
+      expect(respond.body.data.question.id).toBe(questionIds[0]);
+      expect(respond.body.data.question.title).toContain(TestQuestionPrefix);
+      expect(respond.body.data.question.content).toBe(
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
-      expect(respond.body.data.user.id).toBe(TestUserId);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user');
-      expect(respond.body.data.type).toBe(0);
-      expect(respond.body.data.topics.length).toBe(2);
-      expect(respond.body.data.topics[0].name).toContain(TestTopicPrefix);
-      expect(respond.body.data.topics[1].name).toContain(TestTopicPrefix);
-      expect(respond.body.data.created_at).toBeDefined();
-      expect(respond.body.data.updated_at).toBeDefined();
-      expect(respond.body.data.is_follow).toBe(false);
-      expect(respond.body.data.is_like).toBe(false);
-      expect(respond.body.data.answer_count).toBe(0);
-      expect(respond.body.data.view_count).toBe(0);
-      expect(respond.body.data.follow_count).toBe(0);
-      expect(respond.body.data.like_count).toBe(0);
-      expect(respond.body.data.comment_count).toBe(0);
-      expect(respond.body.data.is_group).toBe(false);
-      expect(respond.body.data.group).toBe(undefined);
+      expect(respond.body.data.question.user.id).toBe(TestUserId);
+      expect(respond.body.data.question.user.username).toBe(TestUsername);
+      expect(respond.body.data.question.user.nickname).toBe('test_user');
+      expect(respond.body.data.question.type).toBe(0);
+      expect(respond.body.data.question.topics.length).toBe(2);
+      expect(respond.body.data.question.topics[0].name).toContain(
+        TestTopicPrefix,
+      );
+      expect(respond.body.data.question.topics[1].name).toContain(
+        TestTopicPrefix,
+      );
+      expect(respond.body.data.question.created_at).toBeDefined();
+      expect(respond.body.data.question.updated_at).toBeDefined();
+      expect(respond.body.data.question.is_follow).toBe(false);
+      expect(respond.body.data.question.is_like).toBe(false);
+      expect(respond.body.data.question.answer_count).toBe(0);
+      expect(respond.body.data.question.view_count).toBe(0);
+      expect(respond.body.data.question.follow_count).toBe(0);
+      expect(respond.body.data.question.like_count).toBe(0);
+      expect(respond.body.data.question.comment_count).toBe(0);
+      expect(respond.body.data.question.is_group).toBe(false);
+      expect(respond.body.data.question.group).toBe(undefined);
     }, 20000);
     it('should get a question without token', async () => {
       const respond = await request(app.getHttpServer())
@@ -245,29 +250,33 @@ describe('Questions Module', () => {
       expect(respond.body.message).toBe('OK');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
-      expect(respond.body.data.id).toBe(questionIds[0]);
-      expect(respond.body.data.title).toContain(TestQuestionPrefix);
-      expect(respond.body.data.content).toBe(
+      expect(respond.body.data.question.id).toBe(questionIds[0]);
+      expect(respond.body.data.question.title).toContain(TestQuestionPrefix);
+      expect(respond.body.data.question.content).toBe(
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
-      expect(respond.body.data.user.id).toBe(TestUserId);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user');
-      expect(respond.body.data.type).toBe(0);
-      expect(respond.body.data.topics.length).toBe(2);
-      expect(respond.body.data.topics[0].name).toContain(TestTopicPrefix);
-      expect(respond.body.data.topics[1].name).toContain(TestTopicPrefix);
-      expect(respond.body.data.created_at).toBeDefined();
-      expect(respond.body.data.updated_at).toBeDefined();
-      expect(respond.body.data.is_follow).toBe(false);
-      expect(respond.body.data.is_like).toBe(false);
-      expect(respond.body.data.answer_count).toBe(0);
-      expect(respond.body.data.view_count).toBe(1);
-      expect(respond.body.data.follow_count).toBe(0);
-      expect(respond.body.data.like_count).toBe(0);
-      expect(respond.body.data.comment_count).toBe(0);
-      expect(respond.body.data.is_group).toBe(false);
-      expect(respond.body.data.group).toBe(undefined);
+      expect(respond.body.data.question.user.id).toBe(TestUserId);
+      expect(respond.body.data.question.user.username).toBe(TestUsername);
+      expect(respond.body.data.question.user.nickname).toBe('test_user');
+      expect(respond.body.data.question.type).toBe(0);
+      expect(respond.body.data.question.topics.length).toBe(2);
+      expect(respond.body.data.question.topics[0].name).toContain(
+        TestTopicPrefix,
+      );
+      expect(respond.body.data.question.topics[1].name).toContain(
+        TestTopicPrefix,
+      );
+      expect(respond.body.data.question.created_at).toBeDefined();
+      expect(respond.body.data.question.updated_at).toBeDefined();
+      expect(respond.body.data.question.is_follow).toBe(false);
+      expect(respond.body.data.question.is_like).toBe(false);
+      expect(respond.body.data.question.answer_count).toBe(0);
+      expect(respond.body.data.question.view_count).toBe(1);
+      expect(respond.body.data.question.follow_count).toBe(0);
+      expect(respond.body.data.question.like_count).toBe(0);
+      expect(respond.body.data.question.comment_count).toBe(0);
+      expect(respond.body.data.question.is_group).toBe(false);
+      expect(respond.body.data.question.group).toBe(undefined);
     }, 20000);
     it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
@@ -279,6 +288,9 @@ describe('Questions Module', () => {
     });
   });
 
+  // The following test is disabled because we have decided to migrate searching
+  // to elastic search. However, it is not implemented yet.
+  /*
   describe('search question', () => {
     it('should search successfully without parameters', async () => {
       const respond = await request(app.getHttpServer())
@@ -339,6 +351,7 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(404);
     });
   });
+  */
 
   describe('update question', () => {
     it('should update a question', async () => {
@@ -361,13 +374,15 @@ describe('Questions Module', () => {
       expect(respond2.body.message).toBe('OK');
       expect(respond2.body.code).toBe(200);
       expect(respond2.status).toBe(200);
-      expect(respond2.body.data.id).toBe(questionIds[0]);
-      expect(respond2.body.data.title).toContain('flag');
-      expect(respond2.body.data.content).toContain('flag');
-      expect(respond2.body.data.type).toBe(1);
-      expect(respond2.body.data.topics.length).toBe(1);
-      expect(respond2.body.data.topics[0].id).toBe(TopicIds[2]);
-      expect(respond2.body.data.topics[0].name).toBe(`${TestTopicPrefix} 钓鱼`);
+      expect(respond2.body.data.question.id).toBe(questionIds[0]);
+      expect(respond2.body.data.question.title).toContain('flag');
+      expect(respond2.body.data.question.content).toContain('flag');
+      expect(respond2.body.data.question.type).toBe(1);
+      expect(respond2.body.data.question.topics.length).toBe(1);
+      expect(respond2.body.data.question.topics[0].id).toBe(TopicIds[2]);
+      expect(respond2.body.data.question.topics[0].name).toBe(
+        `${TestTopicPrefix} 钓鱼`,
+      );
     });
     it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
@@ -572,6 +587,97 @@ describe('Questions Module', () => {
       expect(respond.body.code).toBe(400);
     });
   });
+
+  describe('invite user to answer question', () => {
+    it('should invite some users to answer question',async() => {
+      const userIds:number[]= [TestUserId,auxUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitations`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      expect(respond.body.message).toBe('Invited');
+      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(201);
+      expect(respond.body.data[0].userId).toEqual(TestUserId);
+      expect(respond.body.data[1].userId).toEqual(auxUserId);
+      invitaionIds.push(respond.body.data[0].id);
+      invitaionIds.push(respond.body.data[1].id);
+    });
+    it('should return AuthenticationRequiredError',async()=> {
+      const userIds:number[]= [TestUserId,auxUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitations`)
+      .send(userIds);
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should return UserIdNotFoundError', async()=> {
+      const userIds:number[] = [114514];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitations`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      expect(respond.body.message).toContain('UserIdNotFoundError')
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return QuestionIdNotFoundError', async()=> {
+      const userIds:number[] = [TestUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/114514/invitations`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      expect(respond.body.message).toContain('QuestionIdNotFoundError')
+      expect(respond.body.code).toBe(404);
+    })
+    it('should get userInvited',async()=> {
+      const userIds:number[]=[TestUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitations`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      expect(respond.body.data[0].reason).toContain('userInvited');
+      expect(respond.body.code).toBe(201);
+    })
+    
+    it('should answer the question',async()=>{
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/answers`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send("woc");
+      expect(respond.body.code).toBe(200);
+    })
+
+    it('should return alreadyAnsweredError',async()=>{
+      const userIds:number[]=[TestUserId];
+      const respond = await request(app.getHttpServer())
+      .post(`/questions/${questionIds[1]}/invitations`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds);
+      expect(respond.body.data[0].reason).toContain('AlreadyAnswered');
+      expect(respond.body.code).toBe(201);
+    })
+
+    it('should cancel the invitations',async()=> {
+      const userIds:number[]= [TestUserId,auxUserId];
+      const respond = await request(app.getHttpServer())
+      .delete(`/questions/${questionIds[1]}/invitations`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send(userIds); 
+      expect(respond.body.message).toBe('successfully cancelled');
+      expect(respond.body.code).toBe(204);
+      expect(respond.status).toBe(200);
+    });
+
+    it('get some details',async()=> {
+      const respond = await request(app.getHttpServer())
+      .get(`/questions/${questionIds[1]}/invitations/${invitaionIds[0]}`)
+      .set('Authorization', `Bearer ${TestToken}`)
+      .send();
+      expect(respond.body.data.questionId).toBe(questionIds[1]);
+      expect(respond.body.data.invitationId).toBe(invitaionIds[0]);
+      expect(respond.body.code).toBe(200);
+    })
+  })
 
   afterAll(async () => {
     await app.close();

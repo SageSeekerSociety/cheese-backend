@@ -16,6 +16,7 @@ import {
   Headers,
   Ip,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
@@ -31,12 +32,16 @@ import {
   AddQuestionRequestDto,
   AddQuestionResponseDto,
 } from './DTO/add-question.dto';
+import { cancelInvitationResponseDto } from './DTO/cancel-invitation.dto';
 import {
   FollowQuestionResponseDto,
   UnfollowQuestionResponseDto,
 } from './DTO/follow-unfollow-question.dto';
+import { QuestionInvitationDetailResponseDto } from './DTO/get-invitation-detail.dto';
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
+import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
+import { inviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
@@ -269,5 +274,73 @@ export class QuestionsController {
         follow_count: await this.questionsService.getFollowCountOfQuestion(id),
       },
     };
+  }
+
+  @Get('/:id/invitations')
+  async getQuestionInvitations(
+    @Param('id',ParseIntPipe) id:number,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    pageStart: number,
+    @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
+    @Query('sort',new ParseEnumPipe({optional: true})) sort:'+createdAt'|'-createdAt',
+  ):Promise<GetQuestionInvitationsResponseDto> {
+    if (pageSize == undefined || pageSize == 0) pageSize = 20;
+    if (sort==undefined) sort='+createdAt';
+    const invitations = await this.questionsService.getQuestionInvitations(id,sort,pageSize,pageStart);
+    return {
+      code:200,
+      message:"Invited",
+      data:{
+        invitations:invitations.Invitations,
+        page: {
+          page_start: invitations.page_start,
+          page_size:pageSize,
+          has_prev:invitations.has_prev,
+          has_more:invitations.has_more,
+        }
+      }
+    }
+  }
+
+  @Post('/:id/invitations')
+  async inviteUserAnswerQuestion(
+    @Param('id',ParseIntPipe) id:number,
+    @Headers('Authorization') auth:string|undefined,
+    @Body() userIds:number[],
+  ):Promise<inviteUsersAnswerResponseDto> {
+    const userId =await this.authService.verify(auth).userId;
+    const inviteUserAnswer=await this.questionsService.inviteUsersToAnswerQuestion(id,userIds);
+    return {
+      code:201,
+      message:"Invited",
+      data:inviteUserAnswer,
+    }
+  } 
+
+  @Delete('/:id/invitations')
+  async cancelInvition(
+    @Param('id',ParseIntPipe) id:number,
+    @Headers('Authorization') auth:string|undefined,
+    @Body() InvitionIds:number[],
+  ):Promise<cancelInvitationResponseDto>{
+    const userId=this.authService.verify(auth).userId;
+    await this.questionsService.cancelInvitation(id,InvitionIds);
+    return {
+      code:204,
+      message:"successfully cancelled",
+    };
+  }
+
+  @Get('/:id/invitations/:invitation_id')
+  async getInvitationDetail(
+    @Param('id',ParseIntPipe) id:number,
+    @Param('invitation_id',ParseIntPipe) invitation_id:number,
+  ):Promise<QuestionInvitationDetailResponseDto>{
+    const InvitationDetail=await this.questionsService.getInvitationDetail(id,invitation_id);
+    return {
+      code:200,
+      message:"successfully",
+      data:InvitationDetail,
+    }
   }
 }
