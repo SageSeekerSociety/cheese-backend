@@ -20,17 +20,17 @@ import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { QuestionDto } from './DTO/question.dto';
 import {
+  QuestionAlreadyFollowedError,
+  QuestionIdNotFoundError,
+  QuestionNotFollowedYetError,
+} from './questions.error';
+import {
   Question,
   QuestionFollowerRelation,
   QuestionQueryLog,
   QuestionSearchLog,
   QuestionTopicRelation,
-} from './questions.entity';
-import {
-  QuestionAlreadyFollowedError,
-  QuestionIdNotFoundError,
-  QuestionNotFollowedYetError,
-} from './questions.error';
+} from './questions.legacy.entity';
 
 @Injectable()
 export class QuestionsService {
@@ -432,5 +432,141 @@ export class QuestionsService {
         (i) => i.id,
       );
     }
+  }
+  async inviteUsersToAnswerQuestion(
+    questionId: number,
+    userIds: number[],
+  ): Promise<inviteUsersAnswerDto[]> {
+    const invitedUsers: inviteUsersAnswerDto[] = [];
+    const question = await this.questionRepository.findOne({
+      where: { id: questionId },
+    });
+    if(!question) {
+      throw new QuestionIdNotFoundError(questionId);
+    }
+    for (const userId of userIds) {
+      const userdto = await this.userService.getUserDtoById(userId);
+      if (!userdto) {
+        const invitedUser: inviteUsersAnswerDto = {
+          userId: userId,
+          success: false,
+          reason: 'userNotFound',
+        };
+        invitedUsers.push(invitedUser);
+        continue;
+      }
+      const haveBeenInvited = await this.questionInvitationRepository.findOne({
+        where: {
+          questionId: questionId,
+          userId: userId,
+        },
+      });
+      if (haveBeenInvited) {
+        const invitedUser: inviteUsersAnswerDto = {
+          userId: userId,
+          success: false,
+          reason: 'userInvited',
+        };
+        invitedUsers.push(invitedUser);
+        continue;
+      }
+
+      const invitation = this.questionInvitationRepository.create({
+        questionId: questionId,
+        user: userdto,
+        isAnswered: false,
+      });
+      
+      await this.questionInvitationRepository.save(invitation);
+      const invitedUserObj = this.invitationUserRepository.create({
+        user: userdto,
+      });
+      await this.invitationUserRepository.save(invitedUserObj);
+      const invitedUser: inviteUsersAnswerDto = {
+        userId: userId,
+        invitionId: invitation.id,
+        success: true,
+      };
+      invitedUsers.push(invitedUser);
+    }
+    return invitedUsers;
+  }
+
+  async getQuestionInvitations(
+    questionId: number,
+    sort: '+createdAt'|'-createdAt',
+    pageSize: number,
+    pageStart: number,
+  ): Promise<{Invitations: QuestionInvitationDto[]; page_start: number; has_prev: boolean; has_more: boolean }> {
+    const orderField = sort === '+createdAt' ? 'ASC' : 'DESC';
+    const [questionInvitations, totalCount] = await this.questionInvitationRepository.findAndCount({
+      where: { questionId },
+      order: { createAt: orderField },
+      take: pageSize,
+      skip: pageStart,
+    });
+
+    const total = totalCount;
+    const currentPage = Math.floor(pageStart / pageSize) + 1;
+    const hasPrev = currentPage > 1;
+    const hasNext = total > (currentPage * pageSize);
+
+    return {
+    Invitations: questionInvitations.map((questionInvitation) => questionInvitation),
+      page_start: pageStart,
+      has_prev: hasPrev,
+      has_more: hasNext,
+    };
+  }
+  async getQuestionInvitationRecommendations(
+    questionId:number,
+    pageSize=5,
+  ):Promise<GetRecommentdations> {
+    const question = await this.questionRepository.findOne({
+      where: { id: questionId },
+    });
+    if(!question) {
+      throw new QuestionIdNotFoundError(questionId);
+    }
+    const users = await this.questionInvitationRepository.find({
+      where: { questionId },
+    });
+    return {
+      users: users.map((user) => user.user),
+    }
+  }
+  async getInvitationDetail(
+    questionId:number,
+    invitationId:number,
+  ):Promise<QuestionInvitationDto> {
+    const question=await this.questionRepository.findOne({
+      where: { id: questionId },
+    });
+    if(!question) {
+      throw new QuestionIdNotFoundError(questionId);
+    };
+    const invitation = await this.questionInvitationRepository.findOne({
+      where: { id: invitationId, questionId },
+    });
+    if(!invitation) {
+      throw new QuestionInvitationIdNotFoundError(invitationId);
+    }
+    return invitation;
+  }
+
+  async cancelInvitation(
+    questionId: number,
+    invitationIds: number[],
+  ): Promise<void> {
+    await Promise.all(
+      invitationIds.map(async (invitationId) => {
+        const invitation = await this.questionInvitationRepository.findOne({
+          where: { id: invitationId, questionId: questionId },
+        });
+        if (invitation) {
+          await this.questionInvitationRepository.softRemove(invitation);
+        }
+      }),
+    );
   }
 }

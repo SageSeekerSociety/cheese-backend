@@ -210,3 +210,62 @@ export class QuestionSearchLog {
   @CreateDateColumn()
   createdAt: Date;
 }
+@Entity()
+export class QuestionInvitation {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  questionId: number;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @Column()
+  userId: number;
+
+  @CreateDateColumn()
+  createAt: Date;
+
+  @UpdateDateColumn()
+  updateAt: Date;
+
+  @Column()
+  isAnswered: boolean;
+
+  @OneToMany(
+    () => InvitedUser,
+    (invitationUser) => invitationUser.questionInvitation,
+  )
+  invitedUsers: InvitedUser[];
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
+}
+
+@Entity()
+export class InvitedUser {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(
+    () => QuestionInvitation,
+    (questionInvitation) => questionInvitation.invitedUsers,
+  )
+  questionInvitation: QuestionInvitation;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'userId' })
+  user: User;
+
+  @CreateDateColumn()
+  createAt: Date;
+
+  @UpdateDateColumn()
+  updateAt: Date;
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
+}
+

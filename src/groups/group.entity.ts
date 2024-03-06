@@ -20,7 +20,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Question } from '../questions/questions.entity';
+import { Question } from '../questions/questions.legacy.entity';
 import { User } from '../users/users.entity';
 import { GroupProfile } from './group-profile.entity';
 
