@@ -131,7 +131,7 @@ describe('Answers Module', () => {
       await createTopic('数学');
       await createTopic('哥德巴赫猜想');
       await createTopic('钓鱼');
-    }, 60000);
+    }, 6000);
     it('should create some questions', async () => {
       async function createQuestion(title: string, content: string) {
         const respond = await request(app.getHttpServer())
@@ -154,20 +154,19 @@ describe('Answers Module', () => {
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
     });
-
+    console.log(questionId[0]);
     it('should create an auxiliary user', async () => {
       [auxUserId, auxAccessToken] = await createAuxiliaryUser();
     });
   });
-
   // describe('answer question', () => {
   it('should create some answers', async () => {
-    const testQuestionId = questionId[1];
+    const testQuestionId = questionId[0];
     async function createAnswer(content: string) {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${testQuestionId}/answers`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send(content);
+        .send({ content });
       expect(respond.body.message).toBe('Answer created successfully.');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(201);
@@ -375,7 +374,8 @@ describe('Answers Module', () => {
       const TestAnswerId = answerId[2];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${testQuestionId}/answers/${TestAnswerId}`)
-        .set('Authorization', `Bearer ${auxAccessToken}`);
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
 
       expect(response.body.message).toBe('Answer deleted successfully.');
       expect(response.status).toBe(200);
@@ -387,7 +387,8 @@ describe('Answers Module', () => {
       const nonExistentAnswerId = 0;
       const response = await request(app.getHttpServer())
         .delete(`/questions/${testQuestionId}/answers/${nonExistentAnswerId}`)
-        .set('Authorization', `Bearer ${auxAccessToken}`);
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
 
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
