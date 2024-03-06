@@ -9,6 +9,8 @@
   "collectCoverageFrom": [
     "src/*/**/*.ts",
     "!src/*/**/*.dto.ts",
+    "!src/*/**/*.es-doc.ts",
+    "!src/*/**/*.enum.ts",
     "!src/common/config/configuration.ts"
   ],
   "testTimeout": 60000

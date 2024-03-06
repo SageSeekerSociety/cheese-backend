@@ -32,6 +32,7 @@ import {
   PermissionDeniedError,
   TokenExpiredError,
 } from './auth.error';
+import path from 'node:path';
 
 export enum AuthorizedAction {
   create = 1,
@@ -114,7 +115,7 @@ export class TokenPayload {
 export class AuthService {
   constructor(private readonly jwtService: JwtService) {
     const tokenPayloadSchemaRaw = readFileSync(
-      'src/auth/token-payload.schema.json',
+      path.resolve(__dirname, '../../src/auth/token-payload.schema.json'),
       'utf8',
     );
     const tokenPayloadSchema = JSON.parse(tokenPayloadSchemaRaw);

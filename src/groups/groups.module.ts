@@ -14,10 +14,10 @@ import { UsersModule } from '../users/users.module';
 import { GroupProfile } from './group-profile.entity';
 import { GroupsController } from './groups.controller';
 import {
-    Group,
-    GroupMembership,
-    GroupQuestionRelationship,
-    GroupTarget,
+  Group,
+  GroupMembership,
+  GroupQuestionRelationship,
+  GroupTarget,
 } from './groups.legacy.entity';
 import { GroupsService } from './groups.service';
 

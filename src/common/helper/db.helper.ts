@@ -1,3 +1,3 @@
 export function isMySQL() {
-  return true; // todo: can not read dotenv here unless implement as a service.
+  return false; // todo: can not read dotenv here unless implement as a service.
 }

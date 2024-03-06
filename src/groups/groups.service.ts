@@ -22,18 +22,18 @@ import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
 import { GroupProfile } from './group-profile.entity';
 import {
-    CannotDeleteGroupError,
-    GroupAlreadyJoinedError,
-    GroupIdNotFoundError,
-    GroupNameAlreadyUsedError,
-    GroupNotJoinedError,
-    InvalidGroupNameError,
+  CannotDeleteGroupError,
+  GroupAlreadyJoinedError,
+  GroupIdNotFoundError,
+  GroupNameAlreadyUsedError,
+  GroupNotJoinedError,
+  InvalidGroupNameError,
 } from './groups.error';
 import {
-    Group,
-    GroupMembership,
-    GroupQuestionRelationship,
-    GroupTarget,
+  Group,
+  GroupMembership,
+  GroupQuestionRelationship,
+  GroupTarget,
 } from './groups.legacy.entity';
 
 export enum GroupQueryType {

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AnswerModule } from './answer/answer.module';
+import { CommentsModule } from './comments/comment.module';
 import configuration, {
   databaseConfigFactory,
 } from './common/config/configuration';
@@ -17,7 +19,9 @@ import { UsersModule } from './users/users.module';
     }),
     UsersModule,
     QuestionsModule,
+    AnswerModule,
     GroupsModule,
+    CommentsModule,
   ],
   controllers: [],
   providers: [],

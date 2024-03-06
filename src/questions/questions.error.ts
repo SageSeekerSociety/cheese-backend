@@ -48,14 +48,19 @@ export class QuestionInvitationIdNotFoundError extends BaseError {
     );
   }
 }
-
-export class AlreadyInvitedError extends BaseError{ 
-  constructor(id: number) {
+export class QuestionNotHasThisTopicError extends BaseError {
+  constructor(id: number, topicId: number) {
     super(
-      'AlreadyInvitedError',
-      `User with id ${id} is already invited.`,
+      'QuestionNotHasThisTopicError',
+      `Question with id ${id} does not have topic with id ${topicId}.`,
       400,
     );
+  }
+}
+
+export class AlreadyInvitedError extends BaseError {
+  constructor(id: number) {
+    super('AlreadyInvitedError', `User with id ${id} is already invited.`, 400);
   }
 }
 

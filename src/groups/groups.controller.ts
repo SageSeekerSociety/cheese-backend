@@ -51,7 +51,7 @@ export class GroupsController {
     @Headers('Authorization') auth: string | undefined,
   ): Promise<GroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const groupDto = await this.groupsService.createGroup(
+    const group = await this.groupsService.createGroup(
       req.name,
       userId,
       req.intro,
@@ -59,8 +59,8 @@ export class GroupsController {
     );
     return {
       code: 201,
-      message: 'Group created successfully.',
-      data: groupDto,
+      message: 'Group created successfully',
+      data: { group },
     };
   }
 
@@ -104,11 +104,11 @@ export class GroupsController {
     @Headers('Authorization') auth: string | undefined,
   ): Promise<GroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    const groupDto = await this.groupsService.getGroupDtoById(userId, id);
+    const group = await this.groupsService.getGroupDtoById(userId, id);
     return {
       code: 200,
       message: 'Group fetched successfully.',
-      data: groupDto,
+      data: { group },
     };
   }
 

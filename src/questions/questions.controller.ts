@@ -67,6 +67,7 @@ export class QuestionsController {
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchQuestionResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
+    if (q == undefined) q = '';
     // try get viewer id
     let searcherId: number | undefined;
     try {
@@ -145,7 +146,9 @@ export class QuestionsController {
     return {
       code: 200,
       message: 'OK',
-      data: questionDto,
+      data: {
+        question: questionDto,
+      },
     };
   }
 
@@ -168,6 +171,7 @@ export class QuestionsController {
       body.content,
       body.type,
       body.topics,
+      this.authService.verify(auth).userId,
     );
     return {
       code: 200,
@@ -278,69 +282,79 @@ export class QuestionsController {
 
   @Get('/:id/invitations')
   async getQuestionInvitations(
-    @Param('id',ParseIntPipe) id:number,
+    @Param('id', ParseIntPipe) id: number,
     @Query('page_start', new ParseIntPipe({ optional: true }))
     pageStart: number,
     @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
-    @Query('sort',new ParseEnumPipe({optional: true})) sort:'+createdAt'|'-createdAt',
-  ):Promise<GetQuestionInvitationsResponseDto> {
+    @Query('sort', new ParseEnumPipe({ optional: true }))
+    sort: '+createdAt' | '-createdAt',
+  ): Promise<GetQuestionInvitationsResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
-    if (sort==undefined) sort='+createdAt';
-    const invitations = await this.questionsService.getQuestionInvitations(id,sort,pageSize,pageStart);
+    if (sort == undefined) sort = '+createdAt';
+    const invitations = await this.questionsService.getQuestionInvitations(
+      id,
+      sort,
+      pageSize,
+      pageStart,
+    );
     return {
-      code:200,
-      message:"Invited",
-      data:{
-        invitations:invitations.Invitations,
+      code: 200,
+      message: 'Invited',
+      data: {
+        invitations: invitations.Invitations,
         page: {
           page_start: invitations.page_start,
-          page_size:pageSize,
-          has_prev:invitations.has_prev,
-          has_more:invitations.has_more,
-        }
-      }
-    }
+          page_size: pageSize,
+          has_prev: invitations.has_prev,
+          has_more: invitations.has_more,
+        },
+      },
+    };
   }
 
   @Post('/:id/invitations')
   async inviteUserAnswerQuestion(
-    @Param('id',ParseIntPipe) id:number,
-    @Headers('Authorization') auth:string|undefined,
-    @Body() userIds:number[],
-  ):Promise<inviteUsersAnswerResponseDto> {
-    const userId =await this.authService.verify(auth).userId;
-    const inviteUserAnswer=await this.questionsService.inviteUsersToAnswerQuestion(id,userIds);
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body() userIds: number[],
+  ): Promise<inviteUsersAnswerResponseDto> {
+    const userId = await this.authService.verify(auth).userId;
+    const inviteUserAnswer =
+      await this.questionsService.inviteUsersToAnswerQuestion(id, userIds);
     return {
-      code:201,
-      message:"Invited",
-      data:inviteUserAnswer,
-    }
-  } 
+      code: 201,
+      message: 'Invited',
+      data: inviteUserAnswer,
+    };
+  }
 
   @Delete('/:id/invitations')
   async cancelInvition(
-    @Param('id',ParseIntPipe) id:number,
-    @Headers('Authorization') auth:string|undefined,
-    @Body() InvitionIds:number[],
-  ):Promise<cancelInvitationResponseDto>{
-    const userId=this.authService.verify(auth).userId;
-    await this.questionsService.cancelInvitation(id,InvitionIds);
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body() InvitionIds: number[],
+  ): Promise<cancelInvitationResponseDto> {
+    const userId = this.authService.verify(auth).userId;
+    await this.questionsService.cancelInvitation(id, InvitionIds);
     return {
-      code:204,
-      message:"successfully cancelled",
+      code: 204,
+      message: 'successfully cancelled',
     };
   }
 
   @Get('/:id/invitations/:invitation_id')
   async getInvitationDetail(
-    @Param('id',ParseIntPipe) id:number,
-    @Param('invitation_id',ParseIntPipe) invitation_id:number,
-  ):Promise<QuestionInvitationDetailResponseDto>{
-    const InvitationDetail=await this.questionsService.getInvitationDetail(id,invitation_id);
+    @Param('id', ParseIntPipe) id: number,
+    @Param('invitation_id', ParseIntPipe) invitation_id: number,
+  ): Promise<QuestionInvitationDetailResponseDto> {
+    const InvitationDetail = await this.questionsService.getInvitationDetail(
+      id,
+      invitation_id,
+    );
     return {
-      code:200,
-      message:"successfully",
-      data:InvitationDetail,
-    }
+      code: 200,
+      message: 'successfully',
+      data: InvitationDetail,
+    };
   }
 }

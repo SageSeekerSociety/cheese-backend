@@ -12,46 +12,49 @@ import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Answer } from '../answer/answer.legacy.entity';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
-    AuthService,
-    Authorization,
-    AuthorizedAction,
+  AuthService,
+  Authorization,
+  AuthorizedAction,
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { Question } from '../questions/questions.legacy.entity';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import {
-    CodeNotMatchError,
-    EmailAlreadyRegisteredError,
-    EmailNotFoundError,
-    EmailSendFailedError,
-    FollowYourselfError,
-    InvalidEmailAddressError,
-    InvalidEmailSuffixError,
-    InvalidNicknameError,
-    InvalidPasswordError,
-    InvalidUsernameError,
-    PasswordNotMatchError,
-    UserAlreadyFollowedError,
-    UserIdNotFoundError,
-    UserNotFollowedYetError,
-    UsernameAlreadyRegisteredError,
-    UsernameNotFoundError,
+  CodeNotMatchError,
+  EmailAlreadyRegisteredError,
+  EmailNotFoundError,
+  EmailSendFailedError,
+  FollowYourselfError,
+  InvalidEmailAddressError,
+  InvalidEmailSuffixError,
+  InvalidNicknameError,
+  InvalidPasswordError,
+  InvalidUsernameError,
+  PasswordNotMatchError,
+  UserAlreadyFollowedError,
+  UserIdNotFoundError,
+  UserNotFollowedYetError,
+  UsernameAlreadyRegisteredError,
+  UsernameNotFoundError,
 } from './users.error';
 import {
-    User,
-    UserFollowingRelationship,
-    UserLoginLog,
-    UserProfile,
-    UserProfileQueryLog,
-    UserRegisterLog,
-    UserRegisterLogType,
-    UserRegisterRequest,
-    UserResetPasswordLog,
-    UserResetPasswordLogType,
+  User,
+  UserFollowingRelationship,
+  UserLoginLog,
+  UserProfile,
+  UserProfileQueryLog,
+  UserRegisterLog,
+  UserRegisterLogType,
+  UserRegisterRequest,
+  UserResetPasswordLog,
+  UserResetPasswordLogType,
 } from './users.legacy.entity';
 
 @Injectable()
@@ -76,6 +79,11 @@ export class UsersService {
     private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
+    private readonly prismaService: PrismaService,
+    @InjectRepository(Question)
+    private readonly questionRepository: Repository<Question>,
+    @InjectRepository(Answer)
+    private readonly answerRepository: Repository<Answer>,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -199,7 +207,7 @@ export class UsersService {
   }
 
   get passwordRule(): string {
-    return 'Password must be 8 characters long and must contain at least one letter, one special character and one number.';
+    return 'Password must be at least 8 characters long and must contain at least one letter, one special character and one number.';
   }
 
   private isCodeExpired(createdAt: Date): boolean {
@@ -336,6 +344,11 @@ export class UsersService {
           nickname: profile.nickname,
           avatar: profile.avatar,
           intro: profile.intro,
+          follow_count: 0,
+          fans_count: 0,
+          question_count: 0,
+          answer_count: 0,
+          is_follow: false,
         };
       }
     }
@@ -382,6 +395,11 @@ export class UsersService {
       nickname: profile.nickname,
       avatar: profile.avatar,
       intro: profile.intro,
+      follow_count: await this.getFollowingCount(userId),
+      fans_count: await this.getFollowedCount(userId),
+      question_count: await this.getQuestionCount(userId),
+      answer_count: await this.getAnswerCount(userId),
+      is_follow: await this.isUserFollowUser(viewerId, userId),
     };
   }
 
@@ -416,13 +434,7 @@ export class UsersService {
     });
     await this.userLoginLogRepository.save(log);
     return [
-      {
-        id: user.id,
-        username: user.username,
-        nickname: profile.nickname,
-        avatar: profile.avatar,
-        intro: profile.intro,
-      },
+      await this.getUserDtoById(user.id, user.id, ip, userAgent),
       await this.createSession(user.id),
     ];
   }
@@ -484,6 +496,24 @@ export class UsersService {
           authorizedResource: {
             ownedByUser: undefined,
             types: ['topics'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          // An user can create and delete comment.
+          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['comment'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          // An user can set attitude to any comment
+          authorizedActions: [AuthorizedAction.other],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['comment/attitude'],
             resourceIds: undefined,
           },
         },
@@ -646,10 +676,6 @@ export class UsersService {
     await this.userProfileRepository.save(profile);
   }
 
-  async getFolloweeCount(userId: number): Promise<number> {
-    return await this.userFollowingRepository.countBy({ followerId: userId });
-  }
-
   async addFollowRelationship(
     followerId: number,
     followeeId: number,
@@ -801,6 +827,39 @@ export class UsersService {
   }
 
   async isUserExists(userId: number): Promise<boolean> {
-    return (await this.userRepository.findOneBy({ id: userId })) != undefined;
+    return (await this.prismaService.user.count({ where: { id: userId } })) > 0;
+  }
+
+  async getFollowingCount(followerId: number | undefined): Promise<number> {
+    if (followerId == undefined) return 0;
+    return await this.userFollowingRepository.countBy({ followerId });
+  }
+
+  async getFollowedCount(followeeId: number | undefined): Promise<number> {
+    if (followeeId == undefined) return 0;
+    return await this.userFollowingRepository.countBy({ followeeId });
+  }
+
+  async getQuestionCount(userId: number | undefined): Promise<number> {
+    if (userId == undefined) return 0;
+    return await this.questionRepository.countBy({ createdById: userId });
+  }
+
+  async getAnswerCount(userId: number | undefined): Promise<number> {
+    if (userId == undefined) return 0;
+    return await this.answerRepository.countBy({ createdById: userId });
+  }
+
+  async isUserFollowUser(
+    followerId: number | undefined,
+    followeeId: number | undefined,
+  ): Promise<boolean> {
+    if (followerId == undefined || followeeId == undefined) return false;
+    return (
+      (await this.userFollowingRepository.findOneBy({
+        followerId,
+        followeeId,
+      })) != undefined
+    );
   }
 }

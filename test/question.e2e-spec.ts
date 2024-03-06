@@ -177,6 +177,18 @@ describe('Questions Module', () => {
         createQuestion('long question', '啊'.repeat(30000)),
       ]);
     }, 60000);
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${TestUserId}`,
+      );
+      expect(respond.body.data.user.question_count).toBe(6);
+    });
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${TestUserId}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.question_count).toBe(6);
+    });
     it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
         .post('/questions')
@@ -220,9 +232,9 @@ describe('Questions Module', () => {
       expect(respond.body.data.question.content).toBe(
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
-      expect(respond.body.data.question.user.id).toBe(TestUserId);
-      expect(respond.body.data.question.user.username).toBe(TestUsername);
-      expect(respond.body.data.question.user.nickname).toBe('test_user');
+      expect(respond.body.data.question.author.id).toBe(TestUserId);
+      expect(respond.body.data.question.author.username).toBe(TestUsername);
+      expect(respond.body.data.question.author.nickname).toBe('test_user');
       expect(respond.body.data.question.type).toBe(0);
       expect(respond.body.data.question.topics.length).toBe(2);
       expect(respond.body.data.question.topics[0].name).toContain(
@@ -292,15 +304,25 @@ describe('Questions Module', () => {
   // to elastic search. However, it is not implemented yet.
   /*
   describe('search question', () => {
-    it('should search successfully without parameters', async () => {
+    it('should wait some time for elasticsearch to refresh', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    });
+    it('should return empty page without parameters', async () => {
       const respond = await request(app.getHttpServer())
         .get('/questions')
         .send();
       expect(respond.body.message).toBe('OK');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
+      expect(respond.body.data.questions.length).toBe(0);
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.page_start).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
     });
-    it('should search successfully without page_size and page_start', async () => {
+    it('should return empty page without page_size and page_start', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/questions?q=${TestQuestionCode}`)
         .send();
@@ -310,7 +332,7 @@ describe('Questions Module', () => {
       expect(respond.body.data.questions.length).toBe(
         respond.body.data.page.page_size,
       );
-      expect(respond.body.data.page.page_start).toBe(questionIds[0]);
+      expect(questionIds).toContain(respond.body.data.page.page_start);
       expect(respond.body.data.page.page_size).toBeGreaterThanOrEqual(6);
       expect(respond.body.data.page.has_prev).toBe(false);
       expect(respond.body.data.page.prev_start).toBe(0);
@@ -323,7 +345,7 @@ describe('Questions Module', () => {
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
       expect(respond.body.data.questions.length).toBe(1);
-      expect(respond.body.data.page.page_start).toBe(questionIds[0]);
+      expect(questionIds).toContain(respond.body.data.page.page_start);
       expect(respond.body.data.page.page_size).toBe(1);
       expect(respond.body.data.page.has_prev).toBe(false);
       expect(respond.body.data.page.prev_start).toBe(0);
@@ -339,7 +361,9 @@ describe('Questions Module', () => {
       expect(respond2.body.data.page.page_start).toBe(next);
       expect(respond2.body.data.page.page_size).toBe(1);
       expect(respond2.body.data.page.has_prev).toBe(true);
-      expect(respond2.body.data.page.prev_start).toBe(questionIds[0]);
+      expect(respond2.body.data.page.prev_start).toBe(
+        respond.body.data.page.page_start,
+      );
       expect(respond2.body.data.page.has_more).toBe(true);
     });
     it('should return QuestionIdNotFoundError', async () => {
@@ -589,12 +613,12 @@ describe('Questions Module', () => {
   });
 
   describe('invite user to answer question', () => {
-    it('should invite some users to answer question',async() => {
-      const userIds:number[]= [TestUserId,auxUserId];
+    it('should invite some users to answer question', async () => {
+      const userIds: number[] = [TestUserId, auxUserId];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitations`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send(userIds);
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send(userIds);
       expect(respond.body.message).toBe('Invited');
       expect(respond.body.code).toBe(201);
       expect(respond.status).toBe(201);
@@ -603,81 +627,81 @@ describe('Questions Module', () => {
       invitaionIds.push(respond.body.data[0].id);
       invitaionIds.push(respond.body.data[1].id);
     });
-    it('should return AuthenticationRequiredError',async()=> {
-      const userIds:number[]= [TestUserId,auxUserId];
+    it('should return AuthenticationRequiredError', async () => {
+      const userIds: number[] = [TestUserId, auxUserId];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitations`)
-      .send(userIds);
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .send(userIds);
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
     });
-    it('should return UserIdNotFoundError', async()=> {
-      const userIds:number[] = [114514];
+    it('should return UserIdNotFoundError', async () => {
+      const userIds: number[] = [114514];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitations`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send(userIds);
-      expect(respond.body.message).toContain('UserIdNotFoundError')
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send(userIds);
+      expect(respond.body.message).toContain('UserIdNotFoundError');
       expect(respond.body.code).toBe(404);
     });
-    it('should return QuestionIdNotFoundError', async()=> {
-      const userIds:number[] = [TestUserId];
+    it('should return QuestionIdNotFoundError', async () => {
+      const userIds: number[] = [TestUserId];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/114514/invitations`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send(userIds);
-      expect(respond.body.message).toContain('QuestionIdNotFoundError')
+        .post(`/questions/114514/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send(userIds);
+      expect(respond.body.message).toContain('QuestionIdNotFoundError');
       expect(respond.body.code).toBe(404);
-    })
-    it('should get userInvited',async()=> {
-      const userIds:number[]=[TestUserId];
+    });
+    it('should get userInvited', async () => {
+      const userIds: number[] = [TestUserId];
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitations`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send(userIds);
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send(userIds);
       expect(respond.body.data[0].reason).toContain('userInvited');
       expect(respond.body.code).toBe(201);
-    })
-    
-    it('should answer the question',async()=>{
-      const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/answers`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send("woc");
-      expect(respond.body.code).toBe(200);
-    })
+    });
 
-    it('should return alreadyAnsweredError',async()=>{
-      const userIds:number[]=[TestUserId];
+    it('should answer the question', async () => {
       const respond = await request(app.getHttpServer())
-      .post(`/questions/${questionIds[1]}/invitations`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send(userIds);
+        .post(`/questions/${questionIds[1]}/answers`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send('woc');
+      expect(respond.body.code).toBe(200);
+    });
+
+    it('should return alreadyAnsweredError', async () => {
+      const userIds: number[] = [TestUserId];
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send(userIds);
       expect(respond.body.data[0].reason).toContain('AlreadyAnswered');
       expect(respond.body.code).toBe(201);
-    })
+    });
 
-    it('should cancel the invitations',async()=> {
-      const userIds:number[]= [TestUserId,auxUserId];
+    it('should cancel the invitations', async () => {
+      const userIds: number[] = [TestUserId, auxUserId];
       const respond = await request(app.getHttpServer())
-      .delete(`/questions/${questionIds[1]}/invitations`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send(userIds); 
+        .delete(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send(userIds);
       expect(respond.body.message).toBe('successfully cancelled');
       expect(respond.body.code).toBe(204);
       expect(respond.status).toBe(200);
     });
 
-    it('get some details',async()=> {
+    it('get some details', async () => {
       const respond = await request(app.getHttpServer())
-      .get(`/questions/${questionIds[1]}/invitations/${invitaionIds[0]}`)
-      .set('Authorization', `Bearer ${TestToken}`)
-      .send();
+        .get(`/questions/${questionIds[1]}/invitations/${invitaionIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
       expect(respond.body.data.questionId).toBe(questionIds[1]);
       expect(respond.body.data.invitationId).toBe(invitaionIds[0]);
       expect(respond.body.code).toBe(200);
-    })
-  })
+    });
+  });
 
   afterAll(async () => {
     await app.close();

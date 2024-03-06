@@ -7,45 +7,74 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     strategy:
       # only one run
       matrix:
-        # See supported MySQL versions at https://hub.docker.com/_/mysql
-        mysql-version: [latest]
+        postgresql-version: [latest]
+        elasticsearch-version: [8.12.2]
         node-version: [18.x]
         pnpm-version: [8]
 
     env:
-      DB_TYPE: mysql
-      DB_HOST: localhost
-      DB_PORT: 3306
-      DB_USERNAME: testuser
-      DB_PASSWORD: mysql-test-password
-      DB_NAME: cheese
-      DB_SYNCHRONIZE: true
-      DB_AUTO_LOAD_ENTITIES: true
-      DB_CONNECT_TIMEOUT: 60000
-      DB_LOGGING: false
+      TEST_REPEAT: 1 # Tests will be repeated
+      PORT: 7777
       JWT_SECRET: Test JWT Secret
-      TEST_REPEAT: 10 # Tests will be repeated
+      PRISMA_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      TYPEORM_DB_TYPE: postgres
+      TYPEORM_DB_HOST: localhost
+      TYPEORM_DB_PORT: 5432
+      TYPEORM_DB_USERNAME: postgres
+      TYPEORM_DB_PASSWORD: postgres
+      TYPEORM_DB_NAME: postgres
+      TYPEORM_DB_SYNCHRONIZE: false
+      TYPEORM_DB_AUTO_LOAD_ENTITIES: true
+      TYPEORM_DB_CONNECT_TIMEOUT: 60000
+      TYPEORM_DB_LOGGING_ALL: false
+      TYPEORM_DB_LOGGING_ERROR: true
+      ELASTICSEARCH_NODE: http://127.0.0.1:9200/
+      ELASTICSEARCH_MAX_RETRIES: 10
+      ELASTICSEARCH_REQUEST_TIMEOUT: 60000
+      ELASTICSEARCH_PING_TIMEOUT: 60000
+      ELASTICSEARCH_SNIFF_ON_START: false
+      ELASTICSEARCH_AUTH_USERNAME: elastic
+      ELASTICSEARCH_AUTH_PASSWORD: your-elasticsearch-password
 
     services:
-      mysql: # See: https://joshi-aparna.github.io/blog/github-actions-mysql/
-        image: mysql:${{ matrix.mysql-version }}
+      # See: https://docs.github.com/en/actions/using-containerized-services/creating-postgresql-service-containers
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres:${{ matrix.postgresql-version }}
+        # Provide the password for postgres
         env:
-          MYSQL_ROOT_PASSWORD: ${{ env.DB_PASSWORD }}
-          MYSQL_DATABASE: ${{ env.DB_NAME }}
-          MYSQL_USER: ${{ env.DB_USERNAME }}
-          MYSQL_PASSWORD: ${{ env.DB_PASSWORD }}
-        ports:
-          - 3306:3306
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
         options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5432:5432
+      elasticsearch: # See: https://discuss.elastic.co/t/set-password-and-user-with-docker-compose/225075
+        image: docker.elastic.co/elasticsearch/elasticsearch:${{ matrix.elasticsearch-version }}
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: true
+          ELASTIC_USERNAME: ${{ env.ELASTICSEARCH_AUTH_USERNAME }}
+          ELASTIC_PASSWORD: ${{ env.ELASTICSEARCH_AUTH_PASSWORD }}
+        options: >-
+          --health-cmd "curl http://localhost:9200/_cluster/health"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          # Maps tcp port 9200 on service container to the host
+          - 9200:9200
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -63,19 +92,25 @@ jobs:
 
       - name: Install Dependencies
         run: pnpm install
+      
+      - name: Initialize Database Structures with Prisma
+        run: pnpm prisma db push
 
-      - name: Start Application to Create Tables
+      - name: Try to Start Application
         run: |
-          PORT=7777
           pnpm start | tee output &
           while true; do
+              sleep 10
               if grep -q "Nest application successfully started" output; then
                   echo "Detected 'Nest application successfully started'. Stopping pnpm..."
                   pid=$(netstat -nlp | grep :$PORT | awk '{print $7}' | awk -F'/' '{print $1}')
                   kill $pid
                   break
               fi
-              sleep 1
+              if [[ -z "$(netstat -nlp | grep :$PORT | awk '{print $7}' | awk -F'/' '{print $1}')" ]]; then
+                  echo "Nest application failed to start."
+                  exit -1
+              fi
           done
 
       - name: Run Tests

@@ -142,10 +142,15 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.message).toBe('Query user successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.username).toBe(TestUsername);
-      expect(respond.body.data.nickname).toBe('test_user_updated');
-      expect(respond.body.data.avatar).toBe('default.jpg');
-      expect(respond.body.data.intro).toBe('test user updated');
+      expect(respond.body.data.user.username).toBe(TestUsername);
+      expect(respond.body.data.user.nickname).toBe('test_user_updated');
+      expect(respond.body.data.user.avatar).toBe('default.jpg');
+      expect(respond.body.data.user.intro).toBe('test user updated');
+      expect(respond.body.data.user.follow_count).toBe(0);
+      expect(respond.body.data.user.fans_count).toBe(0);
+      expect(respond.body.data.user.question_count).toBe(0);
+      expect(respond.body.data.user.answer_count).toBe(0);
+      expect(respond.body.data.user.is_follow).toBe(false);
     });
     it('should get modified user profile even without a token', async () => {
       const respond = await request(app.getHttpServer()).get(
@@ -156,10 +161,15 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.message).toBe('Query user successfully.');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.username).toBe(TestUsername);
-      expect(respond.body.data.nickname).toBe('test_user_updated');
-      expect(respond.body.data.avatar).toBe('default.jpg');
-      expect(respond.body.data.intro).toBe('test user updated');
+      expect(respond.body.data.user.username).toBe(TestUsername);
+      expect(respond.body.data.user.nickname).toBe('test_user_updated');
+      expect(respond.body.data.user.avatar).toBe('default.jpg');
+      expect(respond.body.data.user.intro).toBe('test user updated');
+      expect(respond.body.data.user.follow_count).toBe(0);
+      expect(respond.body.data.user.fans_count).toBe(0);
+      expect(respond.body.data.user.question_count).toBe(0);
+      expect(respond.body.data.user.answer_count).toBe(0);
+      expect(respond.body.data.user.is_follow).toBe(false);
     });
     it('should return UserIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer()).get(`/users/-1`);
