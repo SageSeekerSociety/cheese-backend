@@ -560,7 +560,8 @@ components:
           type: array
           description: 如果材料类型为不为 text，所上传的材料 ID
           items:
-            type: string
+            type: integer
+            format: int64
     GroupTargetCheckIn:
       type: object
       description: 小组目标打卡
