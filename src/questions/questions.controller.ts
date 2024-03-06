@@ -37,6 +37,7 @@ import {
   FollowQuestionResponseDto,
   UnfollowQuestionResponseDto,
 } from './DTO/follow-unfollow-question.dto';
+import { QuestionInvitationDetailResponseDto } from './DTO/get-invitaion-detail.dto';
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
 import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
@@ -330,5 +331,18 @@ export class QuestionsController {
       code:204,
       message:"successfully cancelled",
     };
+  }
+
+  @Get('/:id/invitations/:invitation_id')
+  async getInvitationDetail(
+    @Param('id',ParseIntPipe) id:number,
+    @Param('invitation_id',ParseIntPipe) invitation_id:number,
+  ):Promise<QuestionInvitationDetailResponseDto>{
+    const InvitationDetail=await this.questionsService.getInvitationDetail(id,invitation_id);
+    return {
+      code:200,
+      message:"successfully",
+      data:InvitationDetail,
+    }
   }
 }

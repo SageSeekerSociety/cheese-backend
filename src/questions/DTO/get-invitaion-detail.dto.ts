@@ -1,13 +1,13 @@
 import { BaseRespondDto } from "../../common/DTO/base-respond.dto";
 import { User } from "../../users/users.legacy.entity";
-export class QuestionInvitationDto {
+export class QuestionInvitationDetailDto {
   id:number;
   questionId:number;
   user:User;
   createdAt:Date;
   updatedAt:Date;
-  isAnwered:boolean;
+  isAnswered:boolean;
 }
-export class QuestionInvitationResponseDto extends BaseRespondDto {
-  data:QuestionInvitationDto; 
+export class QuestionInvitationDetailResponseDto extends BaseRespondDto {
+  data:QuestionInvitationDetailDto; 
 }

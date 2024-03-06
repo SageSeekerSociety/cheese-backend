@@ -16,7 +16,7 @@ export class inviteUsersAnswerDto {
 
   @IsInt()
   @IsOptional()
-  invitionId?: number;
+  invitation?: number;
 
   @IsString()
   @IsOptional()

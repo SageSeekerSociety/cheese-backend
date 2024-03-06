@@ -18,11 +18,14 @@ import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
+import { QuestionInvitationDetailDto } from './DTO/get-invitaion-detail.dto';
 import { QuestionInvitationDto } from './DTO/get-question-invitation.dto';
 import { GetRecommentdations } from './DTO/get-recommendations.dto';
 import { inviteUsersAnswerDto } from './DTO/invite-user-answer.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
+  AlreadyAnsweredError,
+  AlreadyInvitedError,
   QuestionAlreadyFollowedError,
   QuestionIdNotFoundError,
   QuestionInvitationIdNotFoundError,
@@ -456,15 +459,6 @@ export class QuestionsService {
     }
     for (const userId of userIds) {
       const userdto = await this.userService.getUserDtoById(userId);
-      if (!userdto) {
-        const invitedUser: inviteUsersAnswerDto = {
-          userId: userId,
-          success: false,
-          reason: 'userNotFound',
-        };
-        invitedUsers.push(invitedUser);
-        continue;
-      }
       const haveBeenInvited = await this.questionInvitationRepository.findOne({
         where: {
           questionId: questionId,
@@ -472,13 +466,12 @@ export class QuestionsService {
         },
       });
       if (haveBeenInvited) {
-        const invitedUser: inviteUsersAnswerDto = {
-          userId: userId,
-          success: false,
-          reason: 'userInvited',
-        };
-        invitedUsers.push(invitedUser);
-        continue;
+        if(haveBeenInvited.isAnswered) {
+          throw new AlreadyAnsweredError(userId);
+        }
+        else{
+          throw new AlreadyInvitedError(userId);
+        }
       }
 
       const invitation = this.questionInvitationRepository.create({
@@ -494,7 +487,7 @@ export class QuestionsService {
       await this.invitationUserRepository.save(invitedUserObj);
       const invitedUser: inviteUsersAnswerDto = {
         userId: userId,
-        invitionId: invitation.id,
+        invitation: invitation.id,
         success: true,
       };
       invitedUsers.push(invitedUser);
@@ -548,7 +541,7 @@ export class QuestionsService {
   async getInvitationDetail(
     questionId:number,
     invitationId:number,
-  ):Promise<QuestionInvitationDto> {
+  ):Promise<QuestionInvitationDetailDto> {
     const question=await this.questionRepository.findOne({
       where: { id: questionId },
     });
@@ -561,7 +554,14 @@ export class QuestionsService {
     if(!invitation) {
       throw new QuestionInvitationIdNotFoundError(invitationId);
     }
-    return invitation;
+    const detail: QuestionInvitationDetailDto = new QuestionInvitationDetailDto();
+    detail.id=invitation.id;
+    detail.questionId=invitation.questionId;
+    detail.user=invitation.user;
+    detail.createdAt=invitation.createAt;
+    detail.updatedAt=invitation.updateAt;
+    detail.isAnswered=invitation.isAnswered;
+    return detail;
   }
 
   async cancelInvitation(

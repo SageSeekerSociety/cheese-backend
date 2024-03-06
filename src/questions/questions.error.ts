@@ -48,3 +48,23 @@ export class QuestionInvitationIdNotFoundError extends BaseError {
     );
   }
 }
+
+export class AlreadyInvitedError extends BaseError{ 
+  constructor(id: number) {
+    super(
+      'AlreadyInvitedError',
+      `User with id ${id} is already invited.`,
+      400,
+    );
+  }
+}
+
+export class AlreadyAnsweredError extends BaseError {
+  constructor(id: number) {
+    super(
+      'AlreadyAnsweredError',
+      `User with id ${id} has already answered the question.`,
+      400,
+    );
+  }
+}
