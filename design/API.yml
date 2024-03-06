@@ -458,8 +458,6 @@ components:
         url:
           type: string
           description: URL
-        uploader:
-          $ref: "#/components/schemas/User"
         meta:
           oneOf:
             - $ref: "#/components/schemas/ImageMeta"
@@ -624,8 +622,6 @@ components:
         url:
           type: string
           description: 材料 URL
-        uploader:
-          $ref: "#/components/schemas/User"
         meta:
           oneOf:
             - $ref: "#/components/schemas/ImageMeta"
@@ -3460,7 +3456,7 @@ paths:
           description: 需要返回的字段
           schema:
             type: string
-            default: url,uploader,meta
+            default: url,meta
       responses:
         "200":
           description: OK
