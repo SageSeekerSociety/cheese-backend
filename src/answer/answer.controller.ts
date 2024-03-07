@@ -106,6 +106,7 @@ export class AnswerController {
       // The user is not logged in.
     }
     const answerDto = await this.answerService.getAnswerDto(
+      id,
       answerId,
       userId,
       userAgent,

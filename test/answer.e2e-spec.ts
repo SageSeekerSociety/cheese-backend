@@ -25,6 +25,7 @@ describe('Answers Module', () => {
   let auxUserId: number;
   let auxAccessToken: string;
   const answerId: number[] = [];
+  const AnswerQuestionMap: { [key: number]: number } = {};
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
@@ -179,6 +180,7 @@ describe('Answers Module', () => {
         expect(respond.status).toBe(201);
         expect(typeof respond.body.data.id).toBe('number');
         answerId.push(respond.body.data.id);
+        AnswerQuestionMap[respond.body.data.id] = questionId;
       }
       const answerContents = [
         '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
@@ -221,8 +223,9 @@ describe('Answers Module', () => {
 
   describe('Get answer', () => {
     it('should get a answer', async () => {
-      const TestQuestionId = questionId[0];
-      const TestAnswerId = answerId[0];
+      // const TestQuestionId = questionId[0];
+      const TestAnswerId = answerId[3];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -248,8 +251,9 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.view_count).toBeDefined();
     });
     it('should get a answer even without token', async () => {
-      const TestQuestionId = questionId[0];
-      const TestAnswerId = answerId[0];
+      // const TestQuestionId = questionId[0];
+      const TestAnswerId = answerId[3];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .send();
@@ -274,14 +278,15 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.favorite_count).toBe(0);
       expect(response.body.data.answer.view_count).toBeDefined();
     });
-    it('should return AnswerNotFoundError', async () => {
+
+    it('should return AnswerQuestionNotMatchError', async () => {
       const TestQuestionId = questionId[0];
-      const NotExistAnswerId = 999999;
+      const TestAnswerId = answerId[0];
       const response = await request(app.getHttpServer())
-        .get(`/questions/${TestQuestionId}/answers/${NotExistAnswerId}`)
+        .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
+      expect(response.body.message).toMatch(/AnswerQuestionNotMatchError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
     });
