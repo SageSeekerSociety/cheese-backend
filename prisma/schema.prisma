@@ -377,6 +377,22 @@ model QuestionElasticsearchRelation {
 }
 
 //
+// questions.invitation.prisma
+//
+
+model QuestionInvitationRelation {
+  id         Int      @id @default(autoincrement())
+  questionId Int
+  question   question @relation(fields: [questionId], references: [id])
+  user       user     @relation(fields: [userId], references: [id])
+  userId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("question_invitation_relation")
+}
+
+//
 // questions.legacy.prisma
 //
 
@@ -410,6 +426,7 @@ model question {
   question_query_log            question_query_log[]
   question_topic_relation       question_topic_relation[]
   QuestionElasticsearchRelation QuestionElasticsearchRelation?
+  questionInvitationRelation    QuestionInvitationRelation[]
 
   @@index([createdById], map: "IDX_187915d8eaa010cde8b053b35d")
   @@index([title, content], map: "IDX_8b24620899a8556c3f22f52145")
@@ -547,6 +564,15 @@ model user {
   createdAt                                                                DateTime                      @default(now()) @db.Timestamp(6)
   updatedAt                                                                DateTime                      @default(now()) @db.Timestamp(6)
   deletedAt                                                                DateTime?                     @db.Timestamp(6)
+  answer                                                                   answer[]
+  answer_delete_log                                                        answer_delete_log[]
+  answer_favorited_by_user                                                 answer_favorited_by_user[]
+  answer_query_log                                                         answer_query_log[]
+  answer_update_log                                                        answer_update_log[]
+  answer_user_attitude                                                     answer_user_attitude[]
+  comment                                                                  comment[]
+  comment_delete_log                                                       comment_delete_log[]
+  comment_query_log                                                        comment_query_log[]
   group_membership                                                         group_membership[]
   question                                                                 question[]
   question_follower_relation                                               question_follower_relation[]
@@ -563,15 +589,7 @@ model user {
   user_profile_query_log_user_profile_query_log_vieweeIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_vieweeIdTouser")
   Attitude                                                                 Attitude[]
   AttitudeLog                                                              AttitudeLog[]
-  answer                                                                   answer[]
-  answer_delete_log                                                        answer_delete_log[]
-  answer_favorited_by_user                                                 answer_favorited_by_user[]
-  answer_query_log                                                         answer_query_log[]
-  answer_update_log                                                        answer_update_log[]
-  answer_user_attitude                                                     answer_user_attitude[]
-  comment                                                                  comment[]
-  comment_delete_log                                                       comment_delete_log[]
-  comment_query_log                                                        comment_query_log[]
+  QuestionInvitationRelation                                               QuestionInvitationRelation[]
 }
 
 model user_following_relationship {

@@ -41,6 +41,7 @@ import { QuestionInvitationDetailResponseDto } from './DTO/get-invitation-detail
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
 import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
+import { GetRecommentdationsRespondDto } from './DTO/get-recommendations.dto';
 import { inviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
@@ -320,7 +321,7 @@ export class QuestionsController {
   ): Promise<inviteUsersAnswerResponseDto> {
     const userId = await this.authService.verify(auth).userId;
     const inviteUserAnswer =
-      await this.questionsService.inviteUsersToAnswerQuestion(id, userIds);
+      await this.questionsService.inviteUsersToAnswerQuestion(id, userIds[0]);
     return {
       code: 201,
       message: 'Invited',
@@ -332,10 +333,10 @@ export class QuestionsController {
   async cancelInvition(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-    @Body() InvitionIds: number[],
+    @Body() InvitationId: number[],
   ): Promise<cancelInvitationResponseDto> {
     const userId = this.authService.verify(auth).userId;
-    await this.questionsService.cancelInvitation(id, InvitionIds);
+    await this.questionsService.cancelInvitation(id, InvitationId[0]);
     return {
       code: 204,
       message: 'successfully cancelled',
@@ -355,6 +356,24 @@ export class QuestionsController {
       code: 200,
       message: 'successfully',
       data: InvitationDetail,
+    };
+  }
+
+  @Get('/:id/recommendations')
+  async getRecommendations(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    pageSize: number,
+  ): Promise<GetRecommentdationsRespondDto> {
+    const users =
+      await this.questionsService.getQuestionInvitationRecommendations(
+        id,
+        pageSize,
+      );
+    return {
+      code: 200,
+      message: 'successfully',
+      data: users,
     };
   }
 }

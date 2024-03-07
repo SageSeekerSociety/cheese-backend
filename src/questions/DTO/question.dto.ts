@@ -1,7 +1,7 @@
+import { IsOptional } from 'class-validator';
 import { GroupDto } from '../../groups/DTO/group.dto';
 import { TopicDto } from '../../topics/DTO/topic.dto';
 import { UserDto } from '../../users/DTO/user.dto';
-
 export class QuestionDto {
   id: number;
   title: string;
@@ -13,6 +13,9 @@ export class QuestionDto {
   updated_at: number; // timestamp
   is_follow: boolean;
   is_like: boolean;
+  is_answered: boolean;
+  @IsOptional()
+  my_answer_id?: number;
   answer_count: number;
   comment_count: number;
   follow_count: number;

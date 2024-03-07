@@ -27,6 +27,15 @@ model user {
   createdAt                                                                DateTime                      @default(now()) @db.Timestamp(6)
   updatedAt                                                                DateTime                      @default(now()) @db.Timestamp(6)
   deletedAt                                                                DateTime?                     @db.Timestamp(6)
+  answer                                                                   answer[]
+  answer_delete_log                                                        answer_delete_log[]
+  answer_favorited_by_user                                                 answer_favorited_by_user[]
+  answer_query_log                                                         answer_query_log[]
+  answer_update_log                                                        answer_update_log[]
+  answer_user_attitude                                                     answer_user_attitude[]
+  comment                                                                  comment[]
+  comment_delete_log                                                       comment_delete_log[]
+  comment_query_log                                                        comment_query_log[]
   group_membership                                                         group_membership[]
   question                                                                 question[]
   question_follower_relation                                               question_follower_relation[]
@@ -43,6 +52,7 @@ model user {
   user_profile_query_log_user_profile_query_log_vieweeIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_vieweeIdTouser")
   Attitude                                                                 Attitude[]
   AttitudeLog                                                              AttitudeLog[]
+  QuestionInvitationRelation                                               QuestionInvitationRelation[]
 }
 
 model user_following_relationship {

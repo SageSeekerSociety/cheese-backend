@@ -32,10 +32,9 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
-  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  UpdateDateColumn
 } from 'typeorm';
 import { GroupQuestionRelationship } from '../groups/groups.legacy.entity';
 import { Topic } from '../topics/topics.legacy.entity';
@@ -251,40 +250,31 @@ export class QuestionInvitation {
   @UpdateDateColumn()
   updateAt: Date;
 
-  @Column()
-  isAnswered: boolean;
-
-  @OneToMany(
-    () => InvitedUser,
-    (invitationUser) => invitationUser.questionInvitation,
-  )
-  invitedUsers: InvitedUser[];
-
   @DeleteDateColumn()
   deletedAt?: Date;
 }
 
-@Entity()
-export class InvitedUser {
-  @PrimaryGeneratedColumn()
-  id: number;
+// @Entity()
+// export class InvitedUser {
+//   @PrimaryGeneratedColumn()
+//   id: number;
 
-  @ManyToOne(
-    () => QuestionInvitation,
-    (questionInvitation) => questionInvitation.invitedUsers,
-  )
-  questionInvitation: QuestionInvitation;
+//   @ManyToOne(
+//     () => QuestionInvitation,
+//     (questionInvitation) => questionInvitation.invitedUsers,
+//   )
+//   questionInvitation: QuestionInvitation;
 
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
+//   @ManyToOne(() => User)
+//   @JoinColumn({ name: 'userId' })
+//   user: User;
 
-  @CreateDateColumn()
-  createAt: Date;
+//   @CreateDateColumn()
+//   createAt: Date;
 
-  @UpdateDateColumn()
-  updateAt: Date;
+//   @UpdateDateColumn()
+//   updateAt: Date;
 
-  @DeleteDateColumn()
-  deletedAt?: Date;
-}
+//   @DeleteDateColumn()
+//   deletedAt?: Date;
+// }

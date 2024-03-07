@@ -1,10 +1,4 @@
-import {
-  IsArray,
-  IsBoolean,
-  IsInt,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsBoolean, IsInt, IsOptional } from 'class-validator';
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
 export class inviteUsersAnswerDto {
@@ -16,19 +10,9 @@ export class inviteUsersAnswerDto {
 
   @IsInt()
   @IsOptional()
-  invitation?: number;
-
-  @IsString()
-  @IsOptional()
-  reason?:
-    | 'userNotFound'
-    | 'userInvited'
-    | 'userAnswered'
-    | 'userBanned'
-    | 'userBlacklisted';
+  invitationId?: number;
 }
 
 export class inviteUsersAnswerResponseDto extends BaseRespondDto {
-  @IsArray()
-  data: inviteUsersAnswerDto[];
+  data: inviteUsersAnswerDto;
 }

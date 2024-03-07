@@ -1,7 +1,7 @@
-import { BaseRespondDto } from "../../common/DTO/base-respond.dto";
-import { User } from "../../users/users.legacy.entity";
+import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { UserDto } from '../../users/DTO/user.dto';
 export class GetRecommentdations {
-  users:User[];
+  users: UserDto[];
 }
 
 export class GetRecommentdationsRespondDto extends BaseRespondDto {

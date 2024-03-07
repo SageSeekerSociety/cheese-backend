@@ -36,7 +36,6 @@ import {
 } from './questions.error';
 import { QuestionElasticsearchDocument } from './questions.es-doc';
 import {
-  InvitedUser,
   Question,
   QuestionFollowerRelation,
   QuestionInvitation,
@@ -64,8 +63,6 @@ export class QuestionsService {
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
     @InjectRepository(QuestionInvitation)
     private readonly questionInvitationRepository: Repository<QuestionInvitation>,
-    @InjectRepository(InvitedUser)
-    private readonly invitationUserRepository: Repository<InvitedUser>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
   ) {}
@@ -254,6 +251,7 @@ export class QuestionsService {
       });
       await this.questionQueryLogRepository.save(log);
     }
+
     return {
       id: question.id,
       title: question.title,
@@ -265,6 +263,8 @@ export class QuestionsService {
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
       is_like: false, // TODO: Implement this.
+      is_answered: false, //TODO: Implement this
+      my_answer_id: 0, //TODO: Implement this
       answer_count: 0, // TODO: Implement this.
       comment_count: 0, // TODO: Implement this.
       follow_count: followCount,
@@ -542,50 +542,37 @@ export class QuestionsService {
   }
   async inviteUsersToAnswerQuestion(
     questionId: number,
-    userIds: number[],
-  ): Promise<inviteUsersAnswerDto[]> {
-    const invitedUsers: inviteUsersAnswerDto[] = [];
-    const question = await this.questionRepository.findOne({
-      where: { id: questionId },
-    });
-    if (!question) {
-      throw new QuestionIdNotFoundError(questionId);
-    }
-    for (const userId of userIds) {
-      const userdto = await this.userService.getUserDtoById(userId);
-      const haveBeenInvited = await this.questionInvitationRepository.findOne({
+    userId: number,
+  ): Promise<inviteUsersAnswerDto> {
+    const questionDto = await this.getQuestionDto(questionId);
+    const userdto = await this.userService.getUserDtoById(userId);
+    const haveBeenInvited =
+      await this.prismaService.questionInvitationRelation.findFirst({
         where: {
           questionId: questionId,
           userId: userId,
         },
       });
-      if (haveBeenInvited) {
-        if (haveBeenInvited.isAnswered) {
-          throw new AlreadyAnsweredError(userId);
-        } else {
-          throw new AlreadyInvitedError(userId);
-        }
+
+    if (haveBeenInvited) {
+      if (questionDto.is_answered) {
+        throw new AlreadyAnsweredError(userId);
+      } else {
+        throw new AlreadyInvitedError(userId);
       }
-
-      const invitation = this.questionInvitationRepository.create({
-        questionId: questionId,
-        user: userdto,
-        isAnswered: false,
-      });
-
-      await this.questionInvitationRepository.save(invitation);
-      const invitedUserObj = this.invitationUserRepository.create({
-        user: userdto,
-      });
-      await this.invitationUserRepository.save(invitedUserObj);
-      const invitedUser: inviteUsersAnswerDto = {
-        userId: userId,
-        invitation: invitation.id,
-        success: true,
-      };
-      invitedUsers.push(invitedUser);
     }
-    return invitedUsers;
+    const Invitation =
+      await this.prismaService.questionInvitationRelation.create({
+        data: {
+          questionId,
+          userId,
+        },
+      });
+    return {
+      userId,
+      success: true,
+      invitationId: Invitation.id,
+    };
   }
 
   async getQuestionInvitations(
@@ -599,24 +586,31 @@ export class QuestionsService {
     has_prev: boolean;
     has_more: boolean;
   }> {
-    const orderField = sort === '+createdAt' ? 'ASC' : 'DESC';
-    const [questionInvitations, totalCount] =
-      await this.questionInvitationRepository.findAndCount({
+    const orderField = sort === '+createdAt' ? 'asc' : 'desc';
+    const questionDto = await this.getQuestionDto(questionId);
+    const questionInvitations =
+      await this.prismaService.questionInvitationRelation.findMany({
         where: { questionId },
-        order: { createAt: orderField },
+        orderBy: { createdAt: orderField }, // 使用正确的字段名
         take: pageSize,
         skip: pageStart,
       });
 
-    const total = totalCount;
+    const totalCount = questionInvitations.length;
+
     const currentPage = Math.floor(pageStart / pageSize) + 1;
     const hasPrev = currentPage > 1;
-    const hasNext = total > currentPage * pageSize;
+    const hasNext = totalCount > currentPage * pageSize;
 
     return {
-      Invitations: questionInvitations.map(
-        (questionInvitation) => questionInvitation,
-      ),
+      Invitations: questionInvitations.map((invitation) => ({
+        id: invitation.id,
+        questionId: invitation.questionId,
+        userId: invitation.userId,
+        createAt: invitation.createdAt,
+        updateAt: invitation.updatedAt,
+        isAnswered: questionDto.is_answered,
+      })),
       page_start: pageStart,
       has_prev: hasPrev,
       has_more: hasNext,
@@ -632,54 +626,61 @@ export class QuestionsService {
     if (!question) {
       throw new QuestionIdNotFoundError(questionId);
     }
-    const users = await this.questionInvitationRepository.find({
-      where: { questionId },
+    const randomUserEntities = await this.prismaService.user.findMany({
+      take: pageSize,
+      orderBy: {
+        id: 'asc',
+      }, //TODO
     });
+    const userDtos = await Promise.all(
+      randomUserEntities.map((entity) =>
+        this.userService.getUserDtoById(entity.id),
+      ),
+    );
+
     return {
-      users: users.map((user) => user.user),
+      users: userDtos,
     };
   }
   async getInvitationDetail(
     questionId: number,
     invitationId: number,
   ): Promise<QuestionInvitationDetailDto> {
-    const question = await this.questionRepository.findOne({
-      where: { id: questionId },
-    });
-    if (!question) {
-      throw new QuestionIdNotFoundError(questionId);
-    }
-    const invitation = await this.questionInvitationRepository.findOne({
-      where: { id: invitationId, questionId },
-    });
+    const questionDto = await this.getQuestionDto(questionId);
+    const invitation =
+      await this.prismaService.questionInvitationRelation.findFirst({
+        where: { id: invitationId, questionId },
+      });
     if (!invitation) {
       throw new QuestionInvitationIdNotFoundError(invitationId);
     }
-    const detail: QuestionInvitationDetailDto =
-      new QuestionInvitationDetailDto();
-    detail.id = invitation.id;
-    detail.questionId = invitation.questionId;
-    detail.user = invitation.user;
-    detail.createdAt = invitation.createAt;
-    detail.updatedAt = invitation.updateAt;
-    detail.isAnswered = invitation.isAnswered;
-    return detail;
+    const userdto = await this.userService.getUserDtoById(invitation.userId);
+    return {
+      id: invitation.id,
+      questionId: invitation.questionId,
+      user: userdto,
+      createdAt: invitation.createdAt,
+      updatedAt: invitation.updatedAt,
+      isAnswered: questionDto.is_answered,
+    };
   }
 
   async cancelInvitation(
     questionId: number,
-    invitationIds: number[],
+    invitationId: number,
   ): Promise<void> {
-    await Promise.all(
-      invitationIds.map(async (invitationId) => {
-        const invitation = await this.questionInvitationRepository.findOne({
-          where: { id: invitationId, questionId: questionId },
-        });
-        if (invitation) {
-          await this.questionInvitationRepository.softRemove(invitation);
-        }
-      }),
-    );
+    const invitation =
+      await this.prismaService.questionInvitationRelation.findFirst({
+        where: { id: invitationId, questionId },
+      });
+    if (!invitation) {
+      throw new QuestionInvitationIdNotFoundError(invitationId);
+    }
+    await this.prismaService.questionInvitationRelation.delete({
+      where: {
+        id: invitationId, // 根据实际情况设置要删除的记录的条件
+      },
+    });
   }
 
   async isQuestionExists(questionId: number): Promise<boolean> {
