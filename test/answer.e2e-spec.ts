@@ -280,8 +280,8 @@ describe('Answers Module', () => {
     });
 
     it('should return AnswerQuestionNotMatchError', async () => {
-      const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId] + 1;
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
