@@ -21,7 +21,6 @@ model topic {
   createdAt               DateTime                  @default(now()) @db.Timestamp(6)
   deletedAt               DateTime?                 @db.Timestamp(6)
   question_topic_relation question_topic_relation[]
-  user                    user                      @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_topic_created_by_id")
   user                    user                      @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_59d7548ea797208240417106e2d")
 
   @@index([createdById], map: "IDX_59d7548ea797208240417106e2")

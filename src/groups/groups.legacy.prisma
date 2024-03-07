@@ -36,8 +36,6 @@ model group_membership {
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime  @default(now()) @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
-  user      user      @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_group_membership_member_id")
-  group     group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_group_membership_group_id")
   user      user      @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7d88d00d8617a802b698c0cd609")
   group     group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_b1411f07fafcd5ad93c6ee16424")
 
