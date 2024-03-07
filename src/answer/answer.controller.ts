@@ -191,7 +191,7 @@ export class AnswerController {
     await this.answerService.unfavoriteAnswer(answerId, userId);
     return {
       code: 204,
-      message: 'No Content',
+      message: 'No Content.',
     };
   }
 }

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
-//mport { AnswerModule } from './answer.module';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { QuestionsService } from '../questions/questions.service';
@@ -57,15 +56,16 @@ export class AnswerService {
         questionDto.my_answer_id,
       );
 
-    // const ans = await this.answerRepository.findOne({
-    //   where: { createdById, questionId },
-    // });
-    // if (ans) {
-    //   throw new QuestionAlreadyAnsweredError(createdById, questionId, ans.id);
-    // }
+    const ans = await this.answerRepository.findOne({
+      where: { createdById, questionId },
+    });
+    if (ans) {
+      throw new QuestionAlreadyAnsweredError(createdById, questionId, ans.id);
+    }
+
     const answer = this.answerRepository.create({
       questionId,
-      createdById: createdById,
+      createdById,
       content,
     });
     const createdAnswer = await this.answerRepository.save(answer);

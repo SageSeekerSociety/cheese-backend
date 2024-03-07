@@ -131,7 +131,7 @@ describe('Answers Module', () => {
       await createTopic('数学');
       await createTopic('哥德巴赫猜想');
       await createTopic('钓鱼');
-    }, 6000);
+    }, 60000);
     it('should create some questions', async () => {
       async function createQuestion(title: string, content: string) {
         const respond = await request(app.getHttpServer())
@@ -148,66 +148,75 @@ describe('Answers Module', () => {
         expect(respond.status).toBe(201);
         expect(respond.body.data.id).toBeDefined();
         questionId.push(respond.body.data.id);
+        return respond.body.data.id;
       }
-      await createQuestion(
-        '我这个哥德巴赫猜想的证明对吗？',
-        '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
-      );
+
+      await Promise.all([
+        createQuestion(
+          '我这个哥德巴赫猜想的证明对吗？',
+          '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
+        ),
+        createQuestion('求助', '给指导老师分配了任务，老师不干活怎么办？'),
+        createQuestion('求助', '给指导老师分配了任务，老师不干活怎么办？'),
+        createQuestion('不懂就问', '忘记给指导老师分配任务了怎么办'),
+        createQuestion('小创求捞', '副教授职称，靠谱不鸽，求本科生带飞'),
+      ]);
     });
-    console.log(questionId[0]);
     it('should create an auxiliary user', async () => {
       [auxUserId, auxAccessToken] = await createAuxiliaryUser();
     });
   });
-  // describe('answer question', () => {
-  it('should create some answers', async () => {
-    const testQuestionId = questionId[0];
-    async function createAnswer(content: string) {
-      const respond = await request(app.getHttpServer())
-        .post(`/questions/${testQuestionId}/answers`)
+  describe('answer question', () => {
+    it('should create some answers', async () => {
+      // const testQuestionId = questionId[0];
+      async function createAnswer(questionId: number, content: string) {
+        const respond = await request(app.getHttpServer())
+          .post(`/questions/${questionId}/answers`)
+          .set('Authorization', `Bearer ${auxAccessToken}`)
+          .send({ content });
+        expect(respond.body.message).toBe('Answer created successfully.');
+        expect(respond.body.code).toBe(200);
+        expect(respond.status).toBe(201);
+        expect(typeof respond.body.data.id).toBe('number');
+        answerId.push(respond.body.data.id);
+      }
+      const answerContents = [
+        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
+        '难道你真的是天才？',
+        '你不要胡说，1+1明明等于3',
+        'Answer content with emoji: 😂😂',
+        '烫烫烫'.repeat(1000),
+      ];
+      await Promise.all(
+        questionId.map((id, index) => createAnswer(id, answerContents[index])),
+      );
+    }, 60000);
+    it('should return QuestionAlreadyAnsweredError when user answer the same question', async () => {
+      const TestQuestionId = questionId[0];
+      const content = 'content';
+      await request(app.getHttpServer())
+        .post(`/questions/${TestQuestionId}/answers`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ content });
-      expect(respond.body.message).toBe('Answer created successfully.');
-      expect(respond.body.code).toBe(200);
-      expect(respond.status).toBe(201);
-      expect(typeof respond.body.data.id).toBe('number');
-      answerId.push(respond.body.data.id);
-    }
-    await createAnswer(
-      '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
-    ); // this should be firstly executed and will be checked further
-    await Promise.all([
-      createAnswer('难道你真的是天才？'),
-      createAnswer('你不要胡说，1+1明明等于3'),
-      createAnswer('Answer content with emoji: 😂😂'),
-      createAnswer('烫烫烫'.repeat(1000)),
-    ]);
-  }, 6000);
-  it('should return QuestionAlreadyAnsweredError when user answer the same question', async () => {
-    const TestQuestionId = questionId[0];
-    const content = 'content';
-    await request(app.getHttpServer())
-      .post(`/questions/${TestQuestionId}/answers`)
-      .set('Authorization', `Bearer ${auxAccessToken}`)
-      .send(content);
-    const respond = await request(app.getHttpServer())
-      .post(`/questions/${TestQuestionId}/answers`)
-      .set('Authorization', `Bearer ${auxAccessToken}`)
-      .send(content);
-    expect(respond.body.message).toMatch(/QuestionAlreadyAnsweredError: /);
-    expect(respond.body.code).toBe(400);
-  });
-  it('should return updated statistic info when getting user', async () => {
-    const respond = await request(app.getHttpServer()).get(
-      `/users/${auxUserId}`,
-    );
-    expect(respond.body.data.user.answer_count).toBeDefined();
-  });
-  it('should return updated statistic info when getting user', async () => {
-    const respond = await request(app.getHttpServer())
-      .get(`/users/${auxUserId}`)
-      .set('authorization', 'Bearer ' + TestToken);
-    expect(respond.body.data.user.answer_count).toBeDefined();
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${TestQuestionId}/answers`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ content });
+      expect(respond.body.message).toMatch(/QuestionAlreadyAnsweredError: /);
+      expect(respond.body.code).toBe(400);
+    });
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${auxUserId}`,
+      );
+      expect(respond.body.data.user.answer_count).toBeDefined();
+    });
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.answer_count).toBeDefined();
+    });
   });
 
   describe('Get answer', () => {
