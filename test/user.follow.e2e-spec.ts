@@ -34,7 +34,7 @@ describe('Following Submodule of User Module', () => {
       .send({ email });
     expect(respond.status).toBe(201);
     const verificationCode = (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
     ).mock.calls.at(-1)[1];
     const respond2 = await request(app.getHttpServer())
       .post('/users')
@@ -61,16 +61,16 @@ describe('Following Submodule of User Module', () => {
 
   beforeEach(() => {
     (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
     ).mock.calls.length = 0;
     (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
     ).mock.results.length = 0;
     (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+      MockedEmailService.mock.instances[0]?.sendPasswordResetEmail as jest.Mock
     ).mock.calls.length = 0;
     (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+      MockedEmailService.mock.instances[0]?.sendPasswordResetEmail as jest.Mock
     ).mock.results.length = 0;
   });
 
@@ -88,13 +88,13 @@ describe('Following Submodule of User Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
@@ -136,6 +136,9 @@ describe('Following Submodule of User Module', () => {
     });
 
     it('should return UserIdNotFoundError', async () => {
+      if (tempUserIds[0] == null) {
+        throw new Error('tempUserIds[0] is undefined.');
+      }
       const respond = await request(app.getHttpServer())
         .post(`/users/${tempUserIds[0] + 1000000000}/followers`)
         //.set('User-Agent', 'PostmanRuntime/7.26.8')

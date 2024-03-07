@@ -27,13 +27,12 @@ describe('comments Module', () => {
   let auxAdminAccessToken: string;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let auxAdminUserDto: any;
-  const CommentIds: number[] = [];
-  const TopicIds: number[] = [];
+  const commentIds: number[] = [];
+  const topicIds: number[] = [];
   const questionIds: number[] = [];
-  const TestCommentPrefix = `G${Math.floor(Math.random() * 1000000)}`;
+  const testCommentPrefix = `G${Math.floor(Math.random() * 1000000)}`;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
-    // returns [userId, accessToken]
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
     const respond = await request(app.getHttpServer())
       .post('/users/verify/email')
@@ -41,7 +40,7 @@ describe('comments Module', () => {
       .send({ email });
     expect(respond.status).toBe(201);
     const verificationCode = (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
     ).mock.calls.at(-1)[1];
     const respond2 = await request(app.getHttpServer())
       .post('/users')
@@ -54,7 +53,7 @@ describe('comments Module', () => {
         emailCode: verificationCode,
       });
     expect(respond2.status).toBe(201);
-    return [respond2.body.data.user, respond2.body.data.accessToken];
+    return [respond2.body.data.user.id, respond2.body.data.accessToken];
   }
 
   beforeAll(async () => {
@@ -67,17 +66,13 @@ describe('comments Module', () => {
   }, 20000);
 
   beforeEach(() => {
+    const mockedEmailService = MockedEmailService.mock.instances[0]!;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.calls.length = 0;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.results.length = 0;
+    (mockedEmailService.sendPasswordResetEmail as jest.Mock).mock.calls.length =
+      0;
     (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.results.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+      mockedEmailService.sendPasswordResetEmail as jest.Mock
     ).mock.results.length = 0;
   });
 
@@ -95,13 +90,13 @@ describe('comments Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
@@ -134,7 +129,7 @@ describe('comments Module', () => {
         expect(respond.body.message).toBe('OK');
         expect(respond.status).toBe(201);
         expect(respond.body.code).toBe(201);
-        TopicIds.push(respond.body.data.id);
+        topicIds.push(respond.body.data.id);
       }
       await createTopic('数学');
       await createTopic('哥德巴赫猜想');
@@ -152,7 +147,7 @@ describe('comments Module', () => {
             title: `${TestQuestionPrefix} ${title}`,
             content,
             type: 0,
-            topics: [TopicIds[0], TopicIds[1]],
+            topics: [topicIds[0], topicIds[1]],
           });
         expect(respond.body.message).toBe('Created');
         expect(respond.body.code).toBe(201);
@@ -183,7 +178,7 @@ describe('comments Module', () => {
           content:
             '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
           type: 0,
-          topics: [TopicIds[0], TopicIds[1]],
+          topics: [topicIds[0], topicIds[1]],
         });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
@@ -204,28 +199,31 @@ describe('comments Module', () => {
     });
     it('should create some comments', async () => {
       async function createComment(
-        commentableId: number,
+        commentableId: number | undefined,
         commentableType: 'comment' | 'question' | 'answer',
         content: string,
       ) {
+        if (commentableId == undefined) {
+          throw new Error('commentableId is undefined');
+        }
         const respond = await request(app.getHttpServer())
           .post(`/comments/${commentableType}/${commentableId}`)
           .set('Authorization', `Bearer ${TestToken}`)
           .send({
-            content: `${TestCommentPrefix} ${content}`,
+            content: `${testCommentPrefix} ${content}`,
           });
 
         expect(respond.body.message).toBe('Comment created successfully');
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
         expect(respond.body.data.id).toBeTruthy();
-        CommentIds.push(respond.body.data.id);
+        commentIds.push(respond.body.data.id);
       }
       await createComment(questionIds[0], 'question', 'zfgg好帅');
       await createComment(questionIds[1], 'question', 'zfggnb');
       await createComment(questionIds[2], 'question', 'zfgg???????');
       await createComment(questionIds[3], 'question', '宵宫!');
-      await createComment(CommentIds[0], 'comment', '啦啦啦德玛西亚');
+      await createComment(commentIds[0], 'comment', '啦啦啦德玛西亚');
     }, 80000);
     it('should not create comment due to invalid commentableId', async () => {
       const content = 'what you gonna to know?';
@@ -233,7 +231,7 @@ describe('comments Module', () => {
         .post(`/comments/question/114514`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
-          content: `${TestCommentPrefix} ${content}`,
+          content: `${testCommentPrefix} ${content}`,
         });
 
       expect(respond.body.message).toMatch(/^CommentableIdNotFoundError: /);
@@ -245,7 +243,7 @@ describe('comments Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/comments/question/${questionIds[0]}/`)
         .send({
-          content: `${TestCommentPrefix} ${content}`,
+          content: `${testCommentPrefix} ${content}`,
         });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
@@ -296,7 +294,7 @@ describe('comments Module', () => {
   describe('get comment list by id', () => {
     it('should get comment by id', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/comments/${CommentIds[0]}`)
+        .get(`/comments/${commentIds[0]}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(respond.body.message).toBe('Details are as follows');
@@ -314,14 +312,14 @@ describe('comments Module', () => {
     });
     it('should get comment by id', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/comments/${CommentIds[4]}`)
+        .get(`/comments/${commentIds[4]}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.comment.id).toBeDefined();
-      expect(respond.body.data.comment.commentable_id).toBe(CommentIds[0]);
+      expect(respond.body.data.comment.commentable_id).toBe(commentIds[0]);
       expect(respond.body.data.comment.commentable_type).toBe('COMMENT');
       expect(respond.body.data.comment.content).toContain('啦啦啦德玛西亚');
       expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
@@ -343,7 +341,7 @@ describe('comments Module', () => {
 
   describe('AttitudeToComment', () => {
     it('should agree to a comment', async () => {
-      const commentId = CommentIds[0];
+      const commentId = commentIds[0];
       const respond = await request(app.getHttpServer())
         .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -355,7 +353,7 @@ describe('comments Module', () => {
       expect(respond.body.code).toBe(200);
     });
     it('should agree to a comment', async () => {
-      const commentId = CommentIds[4];
+      const commentId = commentIds[4];
       const respond = await request(app.getHttpServer())
         .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -368,7 +366,7 @@ describe('comments Module', () => {
     });
     it('should get some difference from others', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/comments/${CommentIds[0]}`)
+        .get(`/comments/${commentIds[0]}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(respond.body.message).toBe('Details are as follows');
@@ -386,7 +384,7 @@ describe('comments Module', () => {
     });
     it('should get some difference from self', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/comments/${CommentIds[0]}`)
+        .get(`/comments/${commentIds[0]}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toBe('Details are as follows');
@@ -403,7 +401,7 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.attitude_type).toBe('AGREE');
     });
     it('should disagree to a comment', async () => {
-      const commentId = CommentIds[0];
+      const commentId = commentIds[0];
       const respond = await request(app.getHttpServer())
         .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -416,7 +414,7 @@ describe('comments Module', () => {
     });
     it('should get some difference from others', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/comments/${CommentIds[0]}`)
+        .get(`/comments/${commentIds[0]}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(respond.body.message).toBe('Details are as follows');
@@ -434,7 +432,7 @@ describe('comments Module', () => {
     });
     it('should get some difference from self', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/comments/${CommentIds[0]}`)
+        .get(`/comments/${commentIds[0]}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toBe('Details are as follows');
@@ -451,7 +449,7 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.attitude_type).toBe('DISAGREE');
     });
     it('should return to InvalidAttitudeTypeError', async () => {
-      const commentId = CommentIds[1];
+      const commentId = commentIds[1];
       const respond = await request(app.getHttpServer())
         .put(`/comments/${commentId}/attitude`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -471,7 +469,7 @@ describe('comments Module', () => {
       expect(respond.body.code).toBe(404);
     });
     it('should return AuthenticationRequiredError', async () => {
-      const commentId = CommentIds[1];
+      const commentId = commentIds[1];
       const respond = await request(app.getHttpServer())
         .put(`/comments/${commentId}/attitude`)
         .send({ attitude_type: 'disagree' });
@@ -482,7 +480,7 @@ describe('comments Module', () => {
 
   describe('deleteComment', () => {
     it('should delete a comment', async () => {
-      const commentId = CommentIds[1];
+      const commentId = commentIds[1];
       const respond = await request(app.getHttpServer())
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -492,7 +490,7 @@ describe('comments Module', () => {
       expect(respond.body.code).toBe(204);
     });
     it('should not delete a comment when the user does not match', async () => {
-      const commentId = CommentIds[0];
+      const commentId = commentIds[0];
       const respond = await request(app.getHttpServer())
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -512,7 +510,7 @@ describe('comments Module', () => {
       expect(respond.body.code).toBe(404);
     });
     it('should return AuthenticationRequiredError', async () => {
-      const commentId = CommentIds[0];
+      const commentId = commentIds[0];
       const respond = await request(app.getHttpServer())
         .delete(`/comments/${commentId}`)
         .send();
@@ -520,7 +518,7 @@ describe('comments Module', () => {
       expect(respond.body.code).toBe(401);
     });
     it('should delete a comment', async () => {
-      const commentId = CommentIds[4];
+      const commentId = commentIds[4];
       const respond = await request(app.getHttpServer())
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${TestToken}`)

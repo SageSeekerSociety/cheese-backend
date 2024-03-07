@@ -34,17 +34,13 @@ describe('User Module', () => {
   }, 20000);
 
   beforeEach(() => {
+    const mockedEmailService = MockedEmailService.mock.instances[0]!;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.calls.length = 0;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.results.length = 0;
+    (mockedEmailService.sendPasswordResetEmail as jest.Mock).mock.calls.length =
+      0;
     (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.results.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+      mockedEmailService.sendPasswordResetEmail as jest.Mock
     ).mock.results.length = 0;
   });
 
@@ -115,13 +111,13 @@ describe('User Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
 
       jest.advanceTimersByTime(11 * 60 * 1000);
@@ -157,13 +153,13 @@ describe('User Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
 
       jest.advanceTimersByTime(9 * 60 * 1000);
@@ -215,13 +211,13 @@ describe('User Module', () => {
       });
       expect(respond.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith('another-' + TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       return (
         request(app.getHttpServer())
@@ -284,13 +280,13 @@ describe('User Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith('another-' + TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
@@ -324,13 +320,13 @@ describe('User Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith('another-' + TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
@@ -362,13 +358,13 @@ describe('User Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith('another-' + TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
@@ -400,13 +396,13 @@ describe('User Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith('another-' + TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
@@ -443,12 +439,15 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
-      expect(respond.header['set-cookie'][0]).toMatch(
+      expect(respond.header['set-cookie']?.[0]).toMatch(
         /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
       );
-      TestRefreshToken = respond.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
+      const TestRefreshToken2 = respond?.header?.['set-cookie']?.[0]
+        ?.split(';')?.[0]
+        ?.split('=')?.[1];
+      expect(TestRefreshToken2).toBeDefined();
+      TestRefreshToken = TestRefreshToken2!;
+
       expect(respond.body.data.accessToken).toBeDefined();
       TestToken = respond.body.data.accessToken;
     });
@@ -465,9 +464,12 @@ describe('User Module', () => {
       expect(respond2.body.code).toBe(201);
       expect(respond2.body.data.accessToken).toBeDefined();
       TestRefreshTokenOld = TestRefreshToken;
-      TestRefreshToken = respond2.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
+      const TestRefreshToken2 = respond2?.header?.['set-cookie']?.[0]
+        ?.split(';')?.[0]
+        ?.split('=')?.[1];
+      expect(TestRefreshToken2).toBeDefined();
+      TestRefreshToken = TestRefreshToken2!;
+
       TestToken = respond2.body.data.accessToken;
       expect(respond2.body.data.user.username).toBe(TestUsername);
       expect(respond2.body.data.user.nickname).toBe('test_user');
@@ -517,15 +519,17 @@ describe('User Module', () => {
       expect(respond2.body.data.accessToken).toBeDefined();
       expect(respond2.body.data.user.username).toBe(TestUsername);
       expect(respond2.body.data.user.nickname).toBe('test_user');
-      const refreshToken = respond2.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
+      const refreshToken = respond2?.header?.['set-cookie']?.[0]
+        ?.split(';')?.[0]
+        ?.split('=')?.[1];
+      expect(refreshToken).toBeDefined();
+
       jest.setSystemTime(Date.now() + 31 * 24 * 60 * 60 * 1000);
       const respond3 = await request(app.getHttpServer())
         .post('/users/auth/refresh-token')
         .set(
           'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${refreshToken};    other_cookie=value`,
+          `some_cookie=12345;    REFRESH_TOKEN=${refreshToken!};    other_cookie=value`,
         )
         .send();
       expect(respond3.body.message).toMatch(/^TokenExpiredError: /);
@@ -546,12 +550,14 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
-      expect(respond.header['set-cookie'][0]).toMatch(
+      expect(respond.header?.['set-cookie']?.[0]).toMatch(
         /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
       );
-      TestRefreshToken = respond.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
+      const TestRefreshToken2 = respond?.header?.['set-cookie']?.[0]
+        ?.split(';')?.[0]
+        ?.split('=')?.[1];
+      expect(TestRefreshToken2).toBeDefined();
+      TestRefreshToken = TestRefreshToken2!;
       expect(respond.body.data.accessToken).toBeDefined();
       TestToken = respond.body.data.accessToken;
     });
@@ -571,9 +577,12 @@ describe('User Module', () => {
         expect(respond2.status).toBe(201);
         expect(respond2.body.code).toBe(201);
         expect(respond2.body.data.accessToken).toBeDefined();
-        refreshToken = respond2.header['set-cookie'][0]
-          .split(';')[0]
-          .split('=')[1];
+        const refreshToken2 = respond2?.header?.['set-cookie']?.[0]
+          ?.split(';')?.[0]
+          ?.split('=')?.[1];
+        expect(refreshToken2).toBeDefined();
+        refreshToken = refreshToken2!;
+
         expect(respond2.body.data.user.username).toBe(TestUsername);
         expect(respond2.body.data.user.nickname).toBe('test_user');
       }
@@ -603,12 +612,15 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user');
-      expect(respond.header['set-cookie'][0]).toMatch(
+      expect(respond?.header?.['set-cookie']?.[0]).toMatch(
         /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
       );
-      TestRefreshToken = respond.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
+      const TestRefreshToken2 = respond?.header?.['set-cookie']?.[0]
+        ?.split(';')?.[0]
+        ?.split('=')?.[1];
+      expect(TestRefreshToken2).toBeDefined();
+      TestRefreshToken = TestRefreshToken2!;
+
       expect(respond.body.data.accessToken).toBeDefined();
       TestToken = respond.body.data.accessToken;
     });
@@ -625,9 +637,12 @@ describe('User Module', () => {
       expect(respond2.body.code).toBe(201);
       expect(respond2.body.data.accessToken).toBeDefined();
       TestRefreshTokenOld = TestRefreshToken;
-      TestRefreshToken = respond2.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
+      const TestRefreshToken2 = respond2?.header?.['set-cookie']?.[0]
+        ?.split(';')?.[0]
+        ?.split('=')?.[1];
+      expect(TestRefreshToken2).toBeDefined();
+      TestRefreshToken = TestRefreshToken2!;
+
       TestToken = respond2.body.data.accessToken;
       expect(respond2.body.data.user.username).toBe(TestUsername);
       expect(respond2.body.data.user.nickname).toBe('test_user');
@@ -771,13 +786,14 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail,
+        MockedEmailService.mock.instances[0]?.sendPasswordResetEmail,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail,
+        MockedEmailService.mock.instances[0]?.sendPasswordResetEmail,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const token = (
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+        MockedEmailService.mock.instances[0]
+          ?.sendPasswordResetEmail as jest.Mock
       ).mock.calls[0][1];
 
       jest.advanceTimersByTime(9 * 60 * 1000);
@@ -834,13 +850,14 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail,
+        MockedEmailService.mock.instances[0]?.sendPasswordResetEmail,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail,
+        MockedEmailService.mock.instances[0]?.sendPasswordResetEmail,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const token = (
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+        MockedEmailService.mock.instances[0]
+          ?.sendPasswordResetEmail as jest.Mock
       ).mock.calls[0][1];
 
       jest.advanceTimersByTime(11 * 60 * 1000);
@@ -872,13 +889,14 @@ describe('User Module', () => {
       expect(respond.body.code).toBe(201);
       expect(respond.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail,
+        MockedEmailService.mock.instances[0]?.sendPasswordResetEmail,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail,
+        MockedEmailService.mock.instances[0]?.sendPasswordResetEmail,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const token = (
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+        MockedEmailService.mock.instances[0]
+          ?.sendPasswordResetEmail as jest.Mock
       ).mock.calls[0][1];
 
       jest.advanceTimersByTime(9 * 60 * 1000);

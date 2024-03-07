@@ -32,7 +32,6 @@ describe('Questions Module', () => {
   let auxAccessToken: string;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
-    // returns [userId, accessToken]
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
     const respond = await request(app.getHttpServer())
       .post('/users/verify/email')
@@ -40,7 +39,7 @@ describe('Questions Module', () => {
       .send({ email });
     expect(respond.status).toBe(201);
     const verificationCode = (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
     ).mock.calls.at(-1)[1];
     const respond2 = await request(app.getHttpServer())
       .post('/users')
@@ -66,17 +65,13 @@ describe('Questions Module', () => {
   }, 20000);
 
   beforeEach(() => {
+    const mockedEmailService = MockedEmailService.mock.instances[0]!;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.calls.length = 0;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.results.length = 0;
+    (mockedEmailService.sendPasswordResetEmail as jest.Mock).mock.calls.length =
+      0;
     (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.results.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+      mockedEmailService.sendPasswordResetEmail as jest.Mock
     ).mock.results.length = 0;
   });
 
@@ -94,13 +89,13 @@ describe('Questions Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
@@ -585,7 +580,10 @@ describe('Questions Module', () => {
       expect(respond4.body.data.page.next_start).toBe(0);
     });
     it('should unfollow questions', async () => {
-      async function unfollow(questionId: number) {
+      async function unfollow(questionId: number | undefined) {
+        if (questionId == undefined) {
+          throw new Error('questionId is undefined');
+        }
         const respond = await request(app.getHttpServer())
           .delete(`/questions/${questionId}/followers`)
           .set('Authorization', `Bearer ${TestToken}`)

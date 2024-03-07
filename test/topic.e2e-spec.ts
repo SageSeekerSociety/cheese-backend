@@ -35,17 +35,13 @@ describe('Topic Module', () => {
   }, 20000);
 
   beforeEach(() => {
+    const mockedEmailService = MockedEmailService.mock.instances[0]!;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.calls.length = 0;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.results.length = 0;
+    (mockedEmailService.sendPasswordResetEmail as jest.Mock).mock.calls.length =
+      0;
     (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.results.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+      mockedEmailService.sendPasswordResetEmail as jest.Mock
     ).mock.results.length = 0;
   });
 
@@ -63,13 +59,13 @@ describe('Topic Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')

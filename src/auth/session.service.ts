@@ -74,6 +74,21 @@ export class SessionService {
     );
   }
 
+  private async getSessionIdByRefreshToken(
+    refreshToken: string,
+  ): Promise<number> {
+    const auth = this.authService.verify(refreshToken);
+    const permissions = auth.permissions;
+    if (permissions[0] == null || permissions.length > 1) {
+      throw new NotRefreshTokenError();
+    }
+    const resouceIds = permissions[0].authorizedResource.resourceIds;
+    if (resouceIds == null || resouceIds[0] == null || resouceIds.length > 1) {
+      throw new NotRefreshTokenError();
+    }
+    return resouceIds[0];
+  }
+
   // After refreshing the session, the old refresh token is revoked.
   // Returns:
   //     item1: A new refresh token.
@@ -83,15 +98,7 @@ export class SessionService {
     refreshTokenValidSeconds: number = this.defaultRefreshTokenValidSeconds,
     accessTokenValidSeconds: number = this.defaultAccessTokenValidSeconds,
   ): Promise<[string, string]> {
-    const auth = this.authService.verify(oldRefreshToken);
-    if (
-      auth.permissions.length !== 1 ||
-      auth.permissions[0].authorizedResource.resourceIds == undefined ||
-      auth.permissions[0].authorizedResource.resourceIds.length !== 1
-    ) {
-      throw new NotRefreshTokenError();
-    }
-    const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
+    const sessionId = await this.getSessionIdByRefreshToken(oldRefreshToken);
     this.authService.audit(
       oldRefreshToken,
       AuthorizedAction.other,
@@ -157,15 +164,7 @@ export class SessionService {
   }
 
   async revokeSession(refreshToken: string): Promise<void> {
-    const auth = this.authService.verify(refreshToken);
-    if (
-      auth.permissions.length !== 1 ||
-      auth.permissions[0].authorizedResource.resourceIds == undefined ||
-      auth.permissions[0].authorizedResource.resourceIds.length !== 1
-    ) {
-      throw new NotRefreshTokenError();
-    }
-    const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
+    const sessionId = await this.getSessionIdByRefreshToken(refreshToken);
     this.authService.audit(
       refreshToken,
       AuthorizedAction.other,
