@@ -12,6 +12,7 @@ import {
   AlreadyHasSameAttitudeError,
   AnswerNotFavoriteError,
   AnswerNotFoundError,
+  AnswerQuestionNotMatchError,
   QuestionAlreadyAnsweredError,
 } from './answer.error';
 import {
@@ -73,7 +74,7 @@ export class AnswerService {
   }
 
   async getQuestionAnswers(
-    questionId: number | undefined,
+    questionId: number,
     pageStart: number | undefined,
     pageSize: number,
     viewerId?: number,
@@ -88,7 +89,13 @@ export class AnswerService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
+          return this.getAnswerDto(
+            questionId,
+            entity.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
         }),
       );
       return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
@@ -115,7 +122,13 @@ export class AnswerService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
+          return this.getAnswerDto(
+            questionId,
+            entity.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
         }),
       );
       return PageHelper.PageMiddle(
@@ -132,6 +145,16 @@ export class AnswerService {
     return await this.answerQueryLogRepository.count({
       where: { answerId },
     });
+  }
+
+  async getAnswerQuestionId(answerId: number): Promise<number> {
+    const answer = await this.answerRepository.findOne({
+      where: { id: answerId },
+    });
+    if (!answer) {
+      throw new AnswerNotFoundError(answerId);
+    }
+    return answer.questionId;
   }
 
   async getAgreeType(
@@ -165,16 +188,17 @@ export class AnswerService {
   }
 
   async getAnswerDto(
+    questionId: number,
     answerId: number,
     viewerId?: number,
     userAgent?: string,
     ip?: string,
   ): Promise<AnswerDto> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: { id: answerId, questionId: questionId },
     });
     if (!answer) {
-      throw new AnswerNotFoundError(answerId);
+      throw new AnswerQuestionNotMatchError(questionId, answerId);
     }
     const authorDto = await this.usersService.getUserDtoById(
       answer.createdById,

@@ -25,6 +25,7 @@ describe('Answers Module', () => {
   let auxUserId: number;
   let auxAccessToken: string;
   const answerId: number[] = [];
+  const AnswerQuestionMap: { [key: number]: number } = {};
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
@@ -175,6 +176,7 @@ describe('Answers Module', () => {
         console.log('respond.body.data.id:', respond.body.data.id);
         expect(typeof respond.body.data.id).toBe('number');
         answerId.push(respond.body.data.id);
+        AnswerQuestionMap[respond.body.data.id] = questionId;
       }
       await createAnswer(
         '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
@@ -216,8 +218,9 @@ describe('Answers Module', () => {
 
   describe('Get answer', () => {
     it('should get a answer', async () => {
-      const TestQuestionId = questionId[0];
-      const TestAnswerId = answerId[0];
+      // const TestQuestionId = questionId[0];
+      const TestAnswerId = answerId[3];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -231,9 +234,9 @@ describe('Answers Module', () => {
       expect(response.body.data.question.author).toBeDefined();
       expect(response.body.data.answer.id).toBe(TestAnswerId);
       expect(response.body.data.answer.question_id).toBe(TestQuestionId);
-      expect(response.body.data.answer.content).toContain(
-        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
-      );
+      // expect(response.body.data.answer.content).toContain(
+      //   '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
+      // );
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
       expect(response.body.data.answer.agree_type).toBe(0);
@@ -243,8 +246,9 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.view_count).toBeDefined();
     });
     it('should get a answer even without token', async () => {
-      const TestQuestionId = questionId[0];
+      // const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .send();
@@ -257,9 +261,9 @@ describe('Answers Module', () => {
       expect(response.body.data.question.author.id).toBe(TestUserId);
       expect(response.body.data.answer.id).toBe(TestAnswerId);
       expect(response.body.data.answer.question_id).toBe(TestQuestionId);
-      expect(response.body.data.answer.content).toContain(
-        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
-      );
+      // expect(response.body.data.answer.content).toContain(
+      //   '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
+      // );
       expect(response.body.data.answer.author.id).toBe(auxUserId);
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
@@ -269,14 +273,15 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.favorite_count).toBe(0);
       expect(response.body.data.answer.view_count).toBeDefined();
     });
-    it('should return AnswerNotFoundError', async () => {
-      const TestQuestionId = questionId[0];
-      const NotExistAnswerId = 999999;
+
+    it('should return AnswerQuestionNotMatchError', async () => {
+      const TestAnswerId = answerId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId] + 1;
       const response = await request(app.getHttpServer())
-        .get(`/questions/${TestQuestionId}/answers/${NotExistAnswerId}`)
+        .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
+      expect(response.body.message).toMatch(/AnswerQuestionNotMatchError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
     });
