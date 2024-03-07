@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Answer } from '../answer/answer.entity';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
@@ -19,6 +20,8 @@ import {
   AuthorizedAction,
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
+import { AvatarNotFoundError } from '../avatars/avatars.error';
+import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -37,7 +40,6 @@ import {
   InvalidPasswordError,
   InvalidUsernameError,
   PasswordNotMatchError,
-  UpdateAvatarError,
   UserAlreadyFollowedError,
   UserIdNotFoundError,
   UserNotFollowedYetError,
@@ -56,8 +58,6 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { Answer } from '../answer/answer.entity';
-import { Avatar } from '../avatars/avatars.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -65,10 +65,11 @@ export class UsersService {
     private readonly emailService: EmailService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly avatarsService: AvatarsService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)
-    public readonly userProfileRepository: Repository<UserProfile>,
+    private readonly userProfileRepository: Repository<UserProfile>,
     @InjectRepository(UserFollowingRelationship)
     private readonly userFollowingRepository: Repository<UserFollowingRelationship>,
     @InjectRepository(UserRegisterRequest)
@@ -86,8 +87,6 @@ export class UsersService {
     private readonly questionRepository: Repository<Question>,
     @InjectRepository(Answer)
     private readonly answerRepository: Repository<Answer>,
-    @InjectRepository(Avatar)
-    private readonly avatarRepository: Repository<Avatar>,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -221,10 +220,6 @@ export class UsersService {
     );
   }
 
-  get defaultAvatar(): number {
-    return 1;
-  }
-
   get defaultIntro(): string {
     return 'This user has not set an introduction yet.';
   }
@@ -235,6 +230,7 @@ export class UsersService {
     password: string,
     email: string,
     emailCode: string,
+    avatar: number,
     ip: string,
     userAgent: string,
   ): Promise<UserDto> {
@@ -304,7 +300,10 @@ export class UsersService {
               `4. We are under attack!`,
           );
         }
-
+        // Verify whether the username exists.
+        if ((await this.avatarsService.findOne(avatar)) == undefined) {
+          throw new AvatarNotFoundError(avatar);
+        }
         // Verify whether the username is registered.
         if ((await this.userRepository.findOneBy({ username })) != undefined) {
           const log = this.userRegisterLogRepository.create({
@@ -327,10 +326,11 @@ export class UsersService {
           email: email,
         });
         await this.userRepository.save(user);
+        await this.avatarsService.plusUsageCount(avatar);
         const profile = this.userProfileRepository.create({
           user: user,
           nickname: nickname,
-          avatar: this.defaultAvatar,
+          avatarId: avatar,
           intro: this.defaultIntro,
         });
         await this.userProfileRepository.save(profile);
@@ -346,7 +346,7 @@ export class UsersService {
           id: user.id,
           username: user.username,
           nickname: profile.nickname,
-          avatar: profile.avatar,
+          avatar: profile.avatarId,
           intro: profile.intro,
           follow_count: 0,
           fans_count: 0,
@@ -397,7 +397,7 @@ export class UsersService {
       id: user.id,
       username: user.username,
       nickname: profile.nickname,
-      avatar: profile.avatar,
+      avatar: profile.avatarId,
       intro: profile.intro,
       follow_count: await this.getFollowingCount(userId),
       fans_count: await this.getFollowedCount(userId),
@@ -649,26 +649,28 @@ export class UsersService {
   async updateUserProfile(
     userId: number,
     nickname: string,
-    avatar: number,
     intro: string,
   ): Promise<void> {
     const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
     }
-    const avatardto = await this.avatarRepository.findOneBy({ id: avatar });
-    //const avatarOwner = (await this.avatarService.findOne(avatar))
-    //  .userProfileId;
-    if (avatardto == undefined) throw new Error();
-    if (avatardto.userProfileId == profile.id) {
-      profile.avatar = avatar;
-    } else {
-      throw new UpdateAvatarError();
-    }
     profile.nickname = nickname;
-    profile.avatar = avatar;
     profile.intro = intro;
     await this.userProfileRepository.save(profile);
+  }
+  async updateUserAvatar(userId: number, avatar: number): Promise<void> {
+    const profile = await this.userProfileRepository.findOneBy({ userId });
+    if (profile == undefined) {
+      throw new UserIdNotFoundError(userId);
+    }
+    const avatarId = (await this.avatarsService.findOne(avatar)).id;
+    const preAvatarId = profile.avatarId;
+    profile.avatarId = avatarId;
+    await this.avatarsService.plusUsageCount(avatarId);
+    await this.avatarsService.minusUsageCount(preAvatarId);
+    await this.userProfileRepository.save(profile);
+    return;
   }
 
   async addFollowRelationship(

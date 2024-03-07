@@ -22,7 +22,8 @@ describe('Profile Submodule of User Module', () => {
   )}@ruc.edu.cn`;
   let TestToken: string;
   let TestUserId: number;
-  let AvatarId: number;
+  let PreAvatarId: number;
+  let UpdateAvatarId: number;
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -48,6 +49,20 @@ describe('Profile Submodule of User Module', () => {
   });
 
   describe('preparation', () => {
+    it('should upload an avatar', async () => {
+      async function uploadAvatar() {
+        const respond = await request(app.getHttpServer())
+          .post('/avatars')
+          //.set('Authorization', `Bearer ${TestToken}`)
+          .attach('avatar', 'src/avatars/resources/default.jpg');
+        expect(respond.status).toBe(201);
+        expect(respond.body.message).toBe('Upload avatar successfully');
+        expect(respond.body.data).toHaveProperty('avatarid');
+        return respond.body.data.avatarid;
+      }
+      PreAvatarId = await uploadAvatar();
+      UpdateAvatarId = await uploadAvatar();
+    });
     it(`should send an email and register a user ${TestUsername}`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
@@ -78,6 +93,7 @@ describe('Profile Submodule of User Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
+          avatar: PreAvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual('Register successfully.');
@@ -86,17 +102,6 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.data.accessToken).toBeDefined();
       TestToken = respond.body.data.accessToken;
       TestUserId = respond.body.data.user.id;
-    });
-    it('should upload an avatar', async () => {
-      const respond1 = await request(app.getHttpServer())
-        .post('/avatars')
-        .attach('avatar', 'resources/default.jpg')
-        .set('authorization', 'Bearer ' + TestToken);
-      //.set('User-Agent', 'PostmanRuntime/7.26.8');
-      expect(respond1.status).toBe(201);
-      expect(respond1.body.message).toBe('Upload avatar successfully');
-      expect(respond1.body.data).toHaveProperty('avatarid');
-      AvatarId = respond1.body.data.avatarid;
     });
   });
 
@@ -108,7 +113,6 @@ describe('Profile Submodule of User Module', () => {
         .set('authorization', 'Bearer ' + TestToken)
         .send({
           nickname: 'test_user_updated',
-          avatar: AvatarId.toString(),
           intro: 'test user updated',
         });
       expect(respond.body.message).toBe('Update user successfully.');
@@ -122,7 +126,6 @@ describe('Profile Submodule of User Module', () => {
         .set('authorization', 'Bearer ' + TestToken + '1')
         .send({
           nickname: 'test_user_updated',
-          avatar: AvatarId.toString(),
           intro: 'test user updated',
         });
       expect(respond.body.message).toMatch(/^InvalidTokenError: /);
@@ -135,7 +138,6 @@ describe('Profile Submodule of User Module', () => {
         //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           nickname: 'test_user_updated',
-          avatar: AvatarId.toString(),
           intro: 'test user updated',
         });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
@@ -143,7 +145,43 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.code).toBe(401);
     });
   });
-
+  describe('update user profile avatar', () => {
+    it('should update user profile avatar', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/users/${TestUserId}/avatar`)
+        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .set('authorization', 'Bearer ' + TestToken)
+        .send({
+          avatar: UpdateAvatarId,
+        });
+      expect(respond.body.message).toBe('Update user avatar successfully.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+    });
+    it('should return InvalidTokenError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/users/${TestUserId}/avatar`)
+        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .set('authorization', 'Bearer ' + TestToken + '1')
+        .send({
+          avatar: UpdateAvatarId,
+        });
+      expect(respond.body.message).toMatch(/^InvalidTokenError: /);
+      expect(respond.status).toBe(401);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/users/${TestUserId}/avatar`)
+        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .send({
+          avatar: UpdateAvatarId,
+        });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.status).toBe(401);
+      expect(respond.body.code).toBe(401);
+    });
+  });
   describe('get user profile', () => {
     it('should get modified user profile', async () => {
       const respond = await request(app.getHttpServer())
@@ -155,7 +193,7 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user_updated');
-      expect(respond.body.data.user.avatar).toBe(AvatarId.toString());
+      expect(respond.body.data.user.avatar).toBe(UpdateAvatarId);
       expect(respond.body.data.user.intro).toBe('test user updated');
       expect(respond.body.data.user.follow_count).toBe(0);
       expect(respond.body.data.user.fans_count).toBe(0);
@@ -174,7 +212,7 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.user.username).toBe(TestUsername);
       expect(respond.body.data.user.nickname).toBe('test_user_updated');
-      expect(respond.body.data.user.avatar).toBe(AvatarId.toString());
+      expect(respond.body.data.user.avatar).toBe(UpdateAvatarId);
       expect(respond.body.data.user.intro).toBe('test user updated');
       expect(respond.body.data.user.follow_count).toBe(0);
       expect(respond.body.data.user.fans_count).toBe(0);

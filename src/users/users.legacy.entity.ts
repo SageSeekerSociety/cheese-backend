@@ -32,7 +32,6 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
-  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -120,11 +119,12 @@ export class UserProfile {
   @Column()
   nickname: string;
 
-  @Column()
-  avatar: number;
+  @ManyToOne(() => Avatar)
+  avatar: Avatar;
 
-  @OneToMany(() => Avatar, (avatar) => avatar.userProfile)
-  avatars: Avatar[];
+  @Column()
+  @Index({ unique: false })
+  avatarId: number;
 
   @Column()
   intro: string;

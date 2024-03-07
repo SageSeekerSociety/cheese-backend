@@ -5,11 +5,12 @@ export class UpdateUserRequestDto {
   @IsString()
   nickname: string;
 
-  @IsInt()
-  avatar: number;
-
   @IsString()
   intro: string;
+}
+export class UpdateUserAvatarRequestDto {
+  @IsInt()
+  avatar: number;
 }
 
 export class UpdateUserRespondDto extends BaseRespondDto {}

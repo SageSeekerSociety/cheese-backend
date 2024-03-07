@@ -25,7 +25,7 @@ import {
   UserResetPasswordLog,
 } from './users.legacy.entity';
 import { UsersService } from './users.service';
-import { Avatar } from '../avatars/avatars.legacy.entity';
+import { AvatarsModule } from '../avatars/avatars.module';
 
 @Module({
   imports: [
@@ -40,10 +40,10 @@ import { Avatar } from '../avatars/avatars.legacy.entity';
       UserResetPasswordLog,
       Question,
       Answer,
-      Avatar,
     ]),
     PrismaModule,
     AuthModule,
+    AvatarsModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, EmailService],

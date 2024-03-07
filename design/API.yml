@@ -303,6 +303,9 @@ components:
         intro:
           type: string
           default: ""
+        avatar:
+          type: integer
+          format: int64
         owner:
           $ref: "#/components/schemas/User"
         created_at:
@@ -330,6 +333,7 @@ components:
         - id
         - name
         - intro
+        - avatar
     GroupTarget:
       type: object
       description: 小组目标
@@ -571,12 +575,15 @@ components:
           type: string
         emailCode:
           type: string
+        avatar:
+          type: int
       required:
         - username
         - nickname
         - password
         - email
         - emailCode
+        - avatar
     RegisterResponse:
       allOf:
         - $ref: "#/components/schemas/CommonResponse"
@@ -802,13 +809,10 @@ paths:
               properties:
                 nickname:
                   type: string
-                avatar:
-                  type: int
                 intro:
                   type: string
               required:
                 - nickname
-                - avatar
                 - intro
       responses:
         "200":
@@ -817,6 +821,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
+  /users/{id}/avatar:
+    put:
+      summary: 更新用户头像信息
+      operationId: updateUserAvatarInfo
+      parameters:
+        - name: id
+          in: path
+          description: 用户 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: int
+              required:
+                - avatar
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+
   /users/{id}/questions:
     get:
       summary: 获取用户提问列表
@@ -2237,14 +2273,11 @@ paths:
                   type: string
                 intro:
                   type: string
-                avatar:
-                  type: integer
                 cover:
                   type: string
               required:
                 - name
                 - intro
-                - avatar
                 - cover
       responses:
         "200":
@@ -2269,6 +2302,37 @@ paths:
       responses:
         "204":
           description: No Content
+  /groups/{id}/avatar:
+    put:
+      summary: 更新圈子头像
+      operationId: updateGroupAvatar
+      parameters:
+        - name: id
+          in: path
+          description: 圈子 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: integer
+              required:
+                - avatar
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
   /groups/{id}/members:
     get:
       summary: 获取圈子成员列表
@@ -3434,19 +3498,10 @@ paths:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
   
-  /avatars/{ownerType}/{ownerId}:
+  /avatars:
     post:
-      summary: Upload an avatar for a specific owner type and ID
+      summary: Upload an avatar 
       operationId: uploadAvatar
-      parameters: 
-        - name: ownerType
-          in: path
-          required: true
-          description:Avatar type(user or group)
-        - name: ownerId
-          in: path
-          required: true
-          description:userid or groupid which will own the avatar
       requestBody:
         content:
           multipart/form-data:
@@ -3485,6 +3540,25 @@ paths:
               schema:
                 type: string
                 format: binary
+  /avatars/default/ids:
+    get:
+      summary:Get default avatar ids
+      operationId: getDefaultAvatarIds
+      responses:
+        '200':
+          description: Get default avatarIds successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarIds:
+                        type: array
+                        items:
+                          type: number
                     
                           
 

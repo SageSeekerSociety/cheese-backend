@@ -7,8 +7,6 @@ import { AuthModule } from '../auth/auth.module';
 import { AvatarsController } from './avatars.controller';
 import { Avatar } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
-import { GroupsModule } from '../groups/groups.module';
-import { UsersModule } from '../users/users.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Avatar]),
@@ -32,8 +30,6 @@ import { UsersModule } from '../users/users.module';
       },
     }),
     AuthModule,
-    GroupsModule,
-    UsersModule,
   ],
   controllers: [AvatarsController],
   providers: [AvatarsService],

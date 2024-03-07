@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsInt, IsString } from 'class-validator';
 import { LoginRespondDto } from './login.dto';
 
 export class RegisterRequestDto {
@@ -16,6 +16,9 @@ export class RegisterRequestDto {
 
   @IsString()
   emailCode: string;
+
+  @IsInt()
+  avatar: number;
 }
 
 export class RegisterResponseDto extends LoginRespondDto {}

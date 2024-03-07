@@ -50,6 +50,7 @@ import {
   SendEmailVerifyCodeResponseDto,
 } from './DTO/send-email-verify-code.dto';
 import {
+  UpdateUserAvatarRequestDto,
   UpdateUserRequestDto,
   UpdateUserRespondDto,
 } from './DTO/update-user.dto';
@@ -91,6 +92,7 @@ export class UsersController {
       request.password,
       request.email,
       request.emailCode,
+      request.avatar,
       ip,
       userAgent,
     );
@@ -308,12 +310,31 @@ export class UsersController {
     await this.usersService.updateUserProfile(
       id,
       request.nickname,
-      request.avatar,
       request.intro,
     );
     return {
       code: 200,
       message: 'Update user successfully.',
+    };
+  }
+
+  @Put('/:id/avatar')
+  async updateUserAvatar(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() request: UpdateUserAvatarRequestDto,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<UpdateUserRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      id,
+      'users/profile',
+      undefined,
+    );
+    await this.usersService.updateUserAvatar(id, request.avatar);
+    return {
+      code: 200,
+      message: 'Update user avatar successfully.',
     };
   }
 

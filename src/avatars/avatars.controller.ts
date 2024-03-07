@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  Headers,
   NotFoundException,
   Param,
   Post,
@@ -13,31 +12,19 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import * as fs from 'fs';
-import { AuthService } from '../auth/auth.service';
 import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
 import { AvatarsService } from './avatars.service';
 
 @Controller('/avatars')
 export class AvatarsController {
-  constructor(
-    private readonly avatarsService: AvatarsService,
-    private readonly authService: AuthService,
-  ) {}
-  @Post('/:ownerType/:ownerId')
+  constructor(private readonly avatarsService: AvatarsService) {}
+  @Post()
   @UseInterceptors(FileInterceptor('avatar'))
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
-    @Headers('Authorization') auth: string,
-    @Param('ownerType') type: string,
-    @Param('ownerId') id: number,
   ): Promise<UploadAvatarRespondDto> {
-    const userid = this.authService.verify(auth).userId;
-    const avatar = await this.avatarsService.save(
-      file.filename,
-      userid,
-      type,
-      id,
-    );
+    //const userid = this.authService.verify(auth).userId;
+    const avatar = await this.avatarsService.save(file.path, file.filename);
     return {
       code: 201,
       message: 'Upload avatar successfully',
@@ -63,5 +50,16 @@ export class AvatarsController {
     } else {
       throw new NotFoundException('Avatar not found');
     }
+  }
+  @Get('/default/ids')
+  async getDefaultAvatarIds() {
+    const Ids = await this.avatarsService.getDefaultAvatarIds();
+    return {
+      code: 200,
+      message: 'Get default avatarIds successfully',
+      data: {
+        avatarIds: Ids,
+      },
+    };
   }
 }

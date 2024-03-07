@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsInt, IsString } from 'class-validator';
 
 export class CreateGroupDto {
   @IsString()
@@ -6,4 +6,7 @@ export class CreateGroupDto {
 
   @IsString()
   readonly intro: string;
+
+  @IsInt()
+  readonly avatar: number;
 }

@@ -49,7 +49,7 @@ describe('Users Module', () => {
 
   it('should return UserIdNotFoundError', async () => {
     await expect(
-      usersService.updateUserProfile(-1, 'nick', 'ava', 'int'),
+      usersService.updateUserProfile(-1, 'nick', 'int'),
     ).rejects.toThrow(new UserIdNotFoundError(-1));
   });
 

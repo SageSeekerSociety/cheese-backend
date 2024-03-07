@@ -8,10 +8,11 @@ export class UpdateGroupDto {
   @IsString()
   readonly intro: string;
 
+  // todo: add cover
+}
+export class UpdateGroupAvatarDto {
   @IsInt()
   readonly avatar: number;
-
-  // todo: add cover
 }
 
 export class UpdateGroupRespondDto extends BaseRespondDto {}

@@ -3,8 +3,9 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
+  Index,
   JoinColumn,
-  OneToMany,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -20,11 +21,12 @@ export class GroupProfile {
   @Column()
   intro: string;
 
-  @Column()
-  avatar: number;
+  @ManyToOne(() => Avatar)
+  avatar: Avatar;
 
-  @OneToMany(() => Avatar, (avatar) => avatar.userProfile)
-  avatars: Avatar[];
+  @Column()
+  @Index({ unique: false })
+  avatarId: number;
 
   @OneToOne(() => Group, (group) => group.profile)
   @JoinColumn()

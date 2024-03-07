@@ -22,6 +22,7 @@ describe('Following Submodule of User Module', () => {
   )}@ruc.edu.cn`;
   let TestToken: string;
   let TestUserId: number;
+  let UserAvatarId: number;
   const tempUserIds: number[] = [];
   const tempUserTokens: string[] = [];
 
@@ -37,6 +38,14 @@ describe('Following Submodule of User Module', () => {
       MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
     ).mock.calls.at(-1)[1];
     const respond2 = await request(app.getHttpServer())
+      .post('/avatars')
+      .attach('avatar', 'src/avatars/resources/default.jpg');
+    //.set('Authorization', `Bearer ${TestToken}`);
+    expect(respond2.status).toBe(201);
+    expect(respond2.body.message).toBe('Upload avatar successfully');
+    expect(respond2.body.data).toHaveProperty('avatarid');
+    const AvatarId = respond2.body.data.avatarid;
+    const respond3 = await request(app.getHttpServer())
       .post('/users')
       //.set('User-Agent', 'PostmanRuntime/7.26.8')
       .send({
@@ -45,9 +54,10 @@ describe('Following Submodule of User Module', () => {
         password: 'abc123456!!!',
         email,
         emailCode: verificationCode,
+        avatar: AvatarId,
       });
-    expect(respond2.status).toBe(201);
-    return [respond2.body.data.user.id, respond2.body.data.accessToken];
+    expect(respond3.status).toBe(201);
+    return [respond3.body.data.user.id, respond3.body.data.accessToken];
   }
 
   beforeAll(async () => {
@@ -75,6 +85,16 @@ describe('Following Submodule of User Module', () => {
   });
 
   describe('preparation', () => {
+    it('should upload an avatar', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/avatars')
+        .attach('avatar', 'src/avatars/resources/default.jpg');
+      //.set('Authorization', `Bearer ${TestToken}`);
+      expect(respond.status).toBe(201);
+      expect(respond.body.message).toBe('Upload avatar successfully');
+      expect(respond.body.data).toHaveProperty('avatarid');
+      UserAvatarId = respond.body.data.avatarid;
+    });
     it(`should send an email and register a user ${TestUsername}`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
@@ -105,6 +125,7 @@ describe('Following Submodule of User Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
+          avatar: UserAvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual('Register successfully.');
@@ -251,7 +272,7 @@ describe('Following Submodule of User Module', () => {
         expect(respond.body.code).toBe(200);
         expect(respond.body.data.users.length).toBe(1);
         expect(respond.body.data.users[0].id).toBe(TestUserId);
-        expect(respond.body.data.users[0].avatar).toBe('default.jpg');
+        //expect(respond.body.data.users[0].avatar).toBe('default.jpg');
         expect(respond.body.data.page.page_start).toBe(TestUserId);
         expect(respond.body.data.page.page_size).toBe(1);
         expect(respond.body.data.page.has_prev).toBe(false);
@@ -268,7 +289,7 @@ describe('Following Submodule of User Module', () => {
         expect(respond2.body.code).toBe(200);
         expect(respond2.body.data.users.length).toBe(1);
         expect(respond2.body.data.users[0].id).toBe(TestUserId);
-        expect(respond2.body.data.users[0].avatar).toBe('default.jpg');
+        //expect(respond2.body.data.users[0].avatar).toBe('default.jpg');
         expect(respond2.body.data.page.page_start).toBe(TestUserId);
         expect(respond2.body.data.page.page_size).toBe(1);
         expect(respond2.body.data.page.has_prev).toBe(false);

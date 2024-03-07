@@ -23,7 +23,7 @@ describe('User Module', () => {
   let TestRefreshTokenOld: string;
   let TestRefreshToken: string;
   let TestToken: string;
-
+  let AvatarId: number;
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -47,7 +47,18 @@ describe('User Module', () => {
       MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
     ).mock.results.length = 0;
   });
-
+  describe('preparation', () => {
+    it('should upload an avatar', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/avatars')
+        .attach('avatar', 'src/avatars/resources/default.jpg');
+      //.set('Authorization', `Bearer ${TestToken}`);
+      expect(respond.status).toBe(201);
+      expect(respond.body.message).toBe('Upload avatar successfully');
+      expect(respond.body.data).toHaveProperty('avatarid');
+      AvatarId = respond.body.data.avatarid;
+    });
+  });
   describe('register logic', () => {
     it('should return InvalidEmailAddressError', () => {
       return (
@@ -135,6 +146,7 @@ describe('User Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
+          avatar: AvatarId,
         });
       expect(respond2.body.message).toMatch(/^CodeNotMatchError: /);
       expect(respond2.body.code).toEqual(422);
@@ -177,6 +189,7 @@ describe('User Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
+          avatar: AvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual('Register successfully.');
@@ -233,6 +246,7 @@ describe('User Module', () => {
             password: 'abc123456!!!',
             email: 'another-' + TestEmail,
             emailCode: verificationCode,
+            avatar: AvatarId,
           })
           .expect({
             code: 409,
@@ -251,6 +265,7 @@ describe('User Module', () => {
           password: 'abc123456!!!',
           email: 'abc123',
           emailCode: '000000',
+          avatar: AvatarId,
         });
       expect(respond.body.message).toMatch(/^InvalidEmailAddressError: /);
       expect(respond.body.code).toEqual(422);
@@ -266,6 +281,7 @@ describe('User Module', () => {
           password: 'abc123456!!!',
           email: 'abc123@123.com',
           emailCode: '000000',
+          avatar: AvatarId,
         });
       expect(respond.body.message).toMatch(/^InvalidEmailSuffixError: /);
       expect(respond.body.code).toEqual(422);
@@ -301,6 +317,7 @@ describe('User Module', () => {
           password: 'abc123456!!!',
           email: 'another-' + TestEmail,
           emailCode: verificationCode,
+          avatar: AvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
@@ -341,6 +358,7 @@ describe('User Module', () => {
           password: 'abc123456!!!',
           email: 'another-' + TestEmail,
           emailCode: verificationCode,
+          avatar: AvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
@@ -379,6 +397,7 @@ describe('User Module', () => {
           password: '123456',
           email: 'another-' + TestEmail,
           emailCode: verificationCode,
+          avatar: AvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
@@ -417,6 +436,7 @@ describe('User Module', () => {
           password: 'abc123456!!!',
           email: 'another-' + TestEmail,
           emailCode: verificationCode + '1',
+          avatar: AvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
@@ -426,6 +446,45 @@ describe('User Module', () => {
       );
       expect(respond.body.code).toEqual(422);
       req.expect(422);
+    });
+    it(`should return AvatarNotFoundError`, async () => {
+      const respond1 = await request(app.getHttpServer())
+        .post('/users/verify/email')
+        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .send({
+          email: 'another-' + TestEmail,
+        });
+      expect(respond1.body).toStrictEqual({
+        code: 201,
+        message: 'Send email successfully.',
+      });
+      expect(respond1.status).toBe(201);
+      expect(
+        MockedEmailService.mock.instances[0].sendRegisterCode,
+      ).toHaveReturnedTimes(1);
+      expect(
+        MockedEmailService.mock.instances[0].sendRegisterCode,
+      ).toHaveBeenCalledWith('another-' + TestEmail, expect.any(String));
+      const verificationCode = (
+        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      ).mock.calls[0][1];
+      const req = request(app.getHttpServer())
+        .post('/users')
+        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .send({
+          username: TestUsername,
+          nickname: 'test_user',
+          password: 'abc123456!!!',
+          email: 'another-' + TestEmail,
+          emailCode: verificationCode,
+          avatar: AvatarId + 20,
+        });
+      const respond = await req;
+      expect(respond.body.message).toStrictEqual(
+        `AvatarNotFoundError: Avatar ${AvatarId + 20} Not Found`,
+      );
+      expect(respond.body.code).toEqual(404);
+      req.expect(404);
     });
   });
 
