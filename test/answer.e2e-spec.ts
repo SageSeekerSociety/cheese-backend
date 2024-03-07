@@ -167,7 +167,7 @@ describe('Answers Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${testQuestionId}/answers`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send(content);
+        .send({ content });
       expect(respond.body.message).toBe('Answer created successfully.');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(201);
@@ -190,11 +190,11 @@ describe('Answers Module', () => {
     await request(app.getHttpServer())
       .post(`/questions/${TestQuestionId}/answers`)
       .set('Authorization', `Bearer ${auxAccessToken}`)
-      .send(content);
+      .send({ content });
     const respond = await request(app.getHttpServer())
       .post(`/questions/${TestQuestionId}/answers`)
       .set('Authorization', `Bearer ${auxAccessToken}`)
-      .send(content);
+      .send({ content });
     expect(respond.body.message).toMatch(/QuestionAlreadyAnsweredError: /);
     expect(respond.body.code).toBe(400);
   });
