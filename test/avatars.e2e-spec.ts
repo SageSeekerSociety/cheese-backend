@@ -43,9 +43,9 @@ describe('Avatar Module', () => {
     });
     it('should return AvatarNotFoundError when an avatar is not found', async () => {
       const respond = await request(app.getHttpServer())
-        .get('/avatars/100')
+        .get('/avatars/1000')
         .send();
-      expect(respond.body.message).toContain('Avatar 100 Not Found');
+      expect(respond.body.message).toContain('Avatar 1000 Not Found');
       expect(respond.status).toBe(404);
     });
   });

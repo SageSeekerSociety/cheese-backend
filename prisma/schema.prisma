@@ -225,7 +225,9 @@ model avatar {
   usageCount    Int             @default(0)
   group_profile group_profile[]
   user_profile  user_profile[]
+}
 
+//
 // comment.legacy.prisma
 //
 
