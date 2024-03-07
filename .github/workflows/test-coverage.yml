@@ -12,8 +12,8 @@ jobs:
     strategy:
       # only one run
       matrix:
-        # See supported MySQL versions at https://hub.docker.com/_/mysql
-        mysql-version: [latest]
+        postgresql-version: [latest]
+        elasticsearch-version: [8.12.2]
         node-version: [18.x]
         pnpm-version: [8]
 
@@ -28,10 +28,11 @@ jobs:
       TYPEORM_DB_USERNAME: postgres
       TYPEORM_DB_PASSWORD: postgres
       TYPEORM_DB_NAME: postgres
-      TYPEORM_DB_SYNCHRONIZE: true
+      TYPEORM_DB_SYNCHRONIZE: false
       TYPEORM_DB_AUTO_LOAD_ENTITIES: true
       TYPEORM_DB_CONNECT_TIMEOUT: 60000
-      TYPEORM_DB_LOGGING: false
+      TYPEORM_DB_LOGGING_ALL: false
+      TYPEORM_DB_LOGGING_ERROR: true
       ELASTICSEARCH_NODE: http://127.0.0.1:9200/
       ELASTICSEARCH_MAX_RETRIES: 10
       ELASTICSEARCH_REQUEST_TIMEOUT: 60000
@@ -45,7 +46,7 @@ jobs:
       # Label used to access the service container
       postgres:
         # Docker Hub image
-        image: postgres
+        image: postgres:${{ matrix.postgresql-version }}
         # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
@@ -59,7 +60,7 @@ jobs:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
       elasticsearch: # See: https://discuss.elastic.co/t/set-password-and-user-with-docker-compose/225075
-        image: docker.elastic.co/elasticsearch/elasticsearch:8.12.1
+        image: docker.elastic.co/elasticsearch/elasticsearch:${{ matrix.elasticsearch-version }}
         env:
           discovery.type: single-node
           xpack.security.enabled: true

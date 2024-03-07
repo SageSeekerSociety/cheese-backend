@@ -3,12 +3,105 @@ info:
   title: Cheese Community API
   version: "1.0"
 servers:
-  - url: http://localhost:8080/api/{version}
+  - url: http://localhost:7777/api/{version}
     description: Local server
     variables:
       version:
         default: v1
 components:
+  parameters:
+    questionId:
+      name: questionId
+      in: path
+      description: 问题 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    userId:
+      name: userId
+      in: path
+      description: 用户 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    groupId:
+      name: groupId
+      in: path
+      description: 圈子 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    answerId:
+      name: answerId
+      in: path
+      description: 回答 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    insightId:
+      name: insightId
+      in: path
+      description: 灵感 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    targetId:
+      name: targetId
+      in: path
+      description: 圈子目标 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    commentId:
+      name: commentId
+      in: path
+      description: 评论 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    commentableId:
+      name: commentableId
+      in: path
+      description: 评论对象 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    commentableType:
+      name: commentableType
+      in: path
+      description: 评论对象类型
+      required: true
+      schema:
+        type: string
+        enum:
+          - ANSWER
+          - COMMENT
+          - INSIGHT
+          - QUESTION
+    page_start:
+      name: page_start
+      in: query
+      description: 该页第一个 item 的 ID，留空即为从头开始
+      schema:
+        type: integer
+        format: int64
+    page_size:
+      name: page_size
+      in: query
+      description: 每页 item 数量
+      schema:
+        type: integer
+        format: int64
+        default: 20
+
   securitySchemes:
     bearerAuth:
       description: The access token is used in this way.
@@ -251,20 +344,14 @@ components:
           type: integer
           format: int64
           description: 评论 ID
-        answer_id:
+        commentable_id:
           type: integer
           format: int64
-          description: 评论所属的回答 ID
-        quote:
-          type: object
-          description: 回复的评论
-          properties:
-            id:
-              type: integer
-              format: int64
-              description: 评论 ID
-            user:
-              $ref: "#/components/schemas/User"
+          description: 评论对象 ID
+        commentable_type:
+          type: string
+          description: 评论对象，大写
+          example: ANSWER
         content:
           type: string
           description: 评论内容
@@ -274,19 +361,27 @@ components:
           type: integer
           format: int64
           description: 创建时间（时间戳）
-        agree_type:
-          type: integer
-          description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
+        attitude_type:
+          type: string
+          description: attitude类型，UNDEFINED表示未操作，AGREE表示赞同，DISAGREE表示反对
           enum:
-            - 0
-            - 1
-            - 2
+            - AGREE
+            - DISAGREE
+            - UNDEFINED
         agree_count:
           type: integer
           description: 赞同数量
+        disagree_count:
+          type: integer
+          description: 反对数量
+        #sub_comments:
+        #  type: array
+        #  items:
+        #    $ref: "#/components/schemas/Comment"
       required:
         - id
-        - answer_id
+        - commentable_id
+        - commentable_type
         - content
         - user
         - created_at
@@ -759,18 +854,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
-  /users/{id}:
+  /users/{userId}:
     get:
       summary: 获取用户信息
       operationId: getUserInfo
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/userId"
       responses:
         "200":
           description: OK
@@ -792,13 +881,7 @@ paths:
       summary: 更新用户信息
       operationId: updateUserInfo
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/userId"
       security:
         - bearerAuth: []
       requestBody:
@@ -821,18 +904,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
-  /users/{id}/avatar:
+  /users/{userId}/avatar:
     put:
       summary: 更新用户头像信息
       operationId: updateUserAvatarInfo
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/userId"
       security:
         - bearerAuth: []
       requestBody:
@@ -852,32 +929,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
-
-  /users/{id}/questions:
+  /users/{userId}/questions:
     get:
       summary: 获取用户提问列表
       operationId: getUserQuestions
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个问题的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页问题数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -900,31 +959,14 @@ paths:
                             $ref: "#/components/schemas/Page"
                     required:
                       - data
-  /users/{id}/answers:
+  /users/{userId}/answers:
     get:
       summary: 获取用户回答列表
       operationId: getUserAnswers
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个回答的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页回答数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -947,31 +989,14 @@ paths:
                             $ref: "#/components/schemas/Page"
                     required:
                       - data
-  /users/{id}/followers:
+  /users/{userId}/followers:
     get:
       summary: 获取用户粉丝列表
       operationId: getUserFollowers
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个用户的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页用户数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -998,13 +1023,7 @@ paths:
       summary: 关注用户
       operationId: followUser
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/userId"
       security:
         - bearerAuth: []
       responses:
@@ -1032,13 +1051,7 @@ paths:
       summary: 取消关注用户
       operationId: unfollowUser
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/userId"
       security:
         - bearerAuth: []
       responses:
@@ -1062,31 +1075,14 @@ paths:
                           - follow_count
                     required:
                       - data
-  /users/{id}/follow/questions:
+  /users/{userId}/follow/questions:
     get:
       summary: 获取用户关注的问题列表
       operationId: getUserFollowQuestions
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个问题的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页问题数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -1109,31 +1105,14 @@ paths:
                             $ref: "#/components/schemas/Page"
                     required:
                       - data
-  /users/{id}/follow/users:
+  /users/{userId}/follow/users:
     get:
       summary: 获取用户关注的用户列表
       operationId: getUserFollowUsers
       parameters:
-        - name: id
-          in: path
-          description: 用户 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个用户的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页用户数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -1167,19 +1146,8 @@ paths:
           required: true
           schema:
             type: string
-        - name: page_start
-          in: query
-          description: 该页第一个问题的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页问题数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -1252,18 +1220,12 @@ paths:
                             format: int64
                     required:
                       - data
-  /questions/{id}:
+  /questions/{questionId}:
     get:
       summary: 获取问题详情
       operationId: getQuestionDetail
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
       responses:
         "200":
           description: OK
@@ -1285,13 +1247,7 @@ paths:
       summary: 更新问题
       operationId: updateQuestion
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
       security:
         - bearerAuth: []
       requestBody:
@@ -1328,43 +1284,20 @@ paths:
       summary: 删除问题
       operationId: deleteQuestion
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
       security:
         - bearerAuth: []
       responses:
         "204":
           description: No Content
-  /questions/{id}/followers:
+  /questions/{questionId}/followers:
     get:
       summary: 获取问题关注者列表
       operationId: getQuestionFollowers
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个用户的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页用户数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -1390,13 +1323,7 @@ paths:
       summary: 关注问题
       operationId: followQuestion
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
       security:
         - bearerAuth: []
       responses:
@@ -1423,13 +1350,7 @@ paths:
       summary: 取消关注问题
       operationId: unfollowQuestion
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
       security:
         - bearerAuth: []
       responses:
@@ -1452,31 +1373,14 @@ paths:
                           - follow_count
                     required:
                       - data
-  /questions/{id}/answers:
+  /questions/{questionId}/answers:
     get:
       summary: 获取问题回答列表
       operationId: getQuestionAnswers
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个回答的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页回答数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -1541,25 +1445,13 @@ paths:
                           - id
                     required:
                       - data
-  /questions/{id}/answers/{answer_id}:
+  /questions/{questionId}/answers/{answerId}:
     get:
       summary: 获取回答详情
       operationId: getAnswerDetail
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       responses:
         "200":
           description: OK
@@ -1583,20 +1475,8 @@ paths:
       summary: 更新回答
       operationId: updateAnswer
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       requestBody:
@@ -1620,20 +1500,8 @@ paths:
       summary: 删除回答
       operationId: deleteAnswer
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       responses:
@@ -1643,25 +1511,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
-  /questions/{id}/answers/{answer_id}/agree:
+  /questions/{questionId}/answers/{answerId}/agree:
     put:
       summary: 赞同回答
       operationId: agreeAnswer
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       requestBody:
@@ -1699,25 +1555,13 @@ paths:
                           - agree_count
                     required:
                       - data
-  /questions/{id}/answers/{answer_id}/favorite:
+  /questions/{questionId}/answers/{answerId}/favorite:
     put:
       summary: 收藏回答
       operationId: favoriteAnswer
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       responses:
@@ -1731,57 +1575,22 @@ paths:
       summary: 取消收藏回答
       operationId: unfavoriteAnswer
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       responses:
         "204":
           description: No Content
-  /questions/{id}/answers/{answer_id}/comments:
+  /comments/{commentableType}/{commentableId}:
     get:
-      summary: 获取回答评论列表
-      operationId: getAnswerComments
+      summary: 获取对象评论列表
+      operationId: getComments
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个评论的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页评论数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/commentableId"
+        - $ref: "#/components/parameters/commentableType"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -1801,37 +1610,14 @@ paths:
                               type: object
                               allOf:
                                 - $ref: "#/components/schemas/Comment"
-                                - type: object
-                                  properties:
-                                    sub_comment_count:
-                                      type: integer
-                                      description: 子评论数量
-                                    sub_comments:
-                                      type: array
-                                      items:
-                                        $ref: "#/components/schemas/Comment"
                           page:
                             $ref: "#/components/schemas/Page"
     post:
-      summary: 评论回答
-      operationId: commentAnswer
+      summary: 创建评论
+      operationId: createComment
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-      security:
-        - bearerAuth: []
+        - $ref: "#/components/parameters/commentableId"
+        - $ref: "#/components/parameters/commentableType"
       requestBody:
         content:
           application/json:
@@ -1840,11 +1626,10 @@ paths:
               properties:
                 content:
                   type: string
-                reply_id:
-                  type: integer
-                  format: int64
               required:
                 - content
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -1863,47 +1648,15 @@ paths:
                             format: int64
                         required:
                           - id
-                    required:
-                      - data
-  /questions/{id}/answers/{answer_id}/comments/{comment_id}:
+                required:
+                  - data
+
+  /comments/{commentId}:
     get:
       summary: 获取评论详情
       operationId: getCommentDetail
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: comment_id
-          in: path
-          description: 评论 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个子评论的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页子评论数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/commentId"
       responses:
         "200":
           description: OK
@@ -1919,70 +1672,24 @@ paths:
                         properties:
                           comment:
                             $ref: "#/components/schemas/Comment"
-                          sub_comments:
-                            type: array
-                            items:
-                              $ref: "#/components/schemas/Comment"
-                          page:
-                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     delete:
       summary: 删除评论
       operationId: deleteComment
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: comment_id
-          in: path
-          description: 评论 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/commentId"
       security:
         - bearerAuth: []
       responses:
         "204":
           description: No Content
-  /questions/{id}/answers/{answer_id}/comments/{comment_id}/agree:
+  /comments/{comment_id}/attitude:
     put:
-      summary: 赞同评论
-      operationId: agreeComment
+      summary: 对评论表态
+      operationId: attitudeComment
       parameters:
-        - name: id
-          in: path
-          description: 问题 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: answer_id
-          in: path
-          description: 回答 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: comment_id
-          in: path
-          description: 评论 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/commentId"
       security:
         - bearerAuth: []
       requestBody:
@@ -1991,15 +1698,15 @@ paths:
             schema:
               type: object
               properties:
-                agree_type:
+                attitude_type:
                   type: integer
-                  description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
+                  description: 类型
                   enum:
-                    - 0
-                    - 1
-                    - 2
+                    - UNDEFINED
+                    - AGREE
+                    - DISAGREE
               required:
-                - agree_type
+                - attitude_type
       responses:
         "200":
           description: OK
@@ -2007,6 +1714,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
+
   /topics:
     get:
       summary: 获取话题列表
@@ -2018,19 +1726,8 @@ paths:
           required: true
           schema:
             type: string
-        - name: page_start
-          in: query
-          description: 该页第一个话题的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页话题数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -2092,7 +1789,7 @@ paths:
       parameters:
         - name: id
           in: path
-          description: 问题 ID
+          description: 话题 ID
           required: true
           schema:
             type: integer
@@ -2124,19 +1821,8 @@ paths:
           description: 搜索关键词，留空即为获取全部圈子
           schema:
             type: string
-        - name: page_start
-          in: query
-          description: 该页第一个圈子的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页圈子数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
         - name: sort
           in: query
           description: 排序方式
@@ -2221,18 +1907,12 @@ paths:
                             format: int64
                     required:
                       - data
-  /groups/{id}:
+  /groups/{groupId}:
     get:
       summary: 获取圈子详情
       operationId: getGroupDetail
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
       responses:
         "200":
           description: OK
@@ -2254,13 +1934,7 @@ paths:
       summary: 更新圈子
       operationId: updateGroup
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2290,30 +1964,18 @@ paths:
       summary: 删除圈子
       operationId: deleteGroup
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       responses:
         "204":
           description: No Content
-  /groups/{id}/avatar:
+  /groups/{groupId}/avatar:
     put:
       summary: 更新圈子头像
       operationId: updateGroupAvatar
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2333,31 +1995,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
-  /groups/{id}/members:
+  /groups/{groupId}/members:
     get:
       summary: 获取圈子成员列表
       operationId: getGroupMembers
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个用户的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页用户数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -2384,13 +2029,7 @@ paths:
       summary: 加入圈子
       operationId: joinGroup
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2431,13 +2070,7 @@ paths:
       summary: 退出圈子
       operationId: quitGroup
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       responses:
@@ -2459,31 +2092,14 @@ paths:
                             description: 新的成员数量
                     required:
                       - data
-  /groups/{id}/questions:
+  /groups/{groupId}/questions:
     get:
       summary: 获取圈子问题列表
       operationId: getGroupQuestions
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个问题的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页问题数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -2506,34 +2122,17 @@ paths:
                             $ref: "#/components/schemas/Page"
                     required:
                       - data
-  /groups/{id}/targets:
+  /groups/{groupId}/targets:
     get:
       summary: 获取圈子目标列表
       operationId: getGroupTargets
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+        - name: sort
           in: query
-          description: 该页第一个目标的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页目标数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
-        - name: type
-          in: query
-          description: 目标类型
+          description: 排序方式
           schema:
             type: string
             enum:
@@ -2566,6 +2165,8 @@ paths:
     post:
       summary: 创建圈子目标
       operationId: createGroupTarget
+      parameters:
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2615,25 +2216,13 @@ paths:
                             format: int64
                     required:
                       - data
-  /groups/{id}/targets/{target_id}:
+  /groups/{groupId}/targets/{targetId}:
     get:
       summary: 获取圈子目标详情
       operationId: getGroupTargetDetail
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: target_id
-          in: path
-          description: 目标 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
       responses:
         "200":
           description: OK
@@ -2645,20 +2234,8 @@ paths:
       summary: 更新圈子目标
       operationId: updateGroupTarget
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: target_id
-          in: path
-          description: 目标 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2704,44 +2281,20 @@ paths:
       summary: 删除圈子目标
       operationId: deleteGroupTarget
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: target_id
-          in: path
-          description: 目标 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
       security:
         - bearerAuth: []
       responses:
         "204":
           description: No Content
-  /groups/{id}/targets/{target_id}/attend:
+  /groups/{groupId}/targets/{targetId}/attend:
     post:
       summary: 打卡
       operationId: attendGroupTarget
       parameters:
-        - name: id
-          in: path
-          description: 圈子 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: target_id
-          in: path
-          description: 目标 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
       security:
         - bearerAuth: []
       responses:
@@ -2756,18 +2309,8 @@ paths:
       summary: 获取动态列表
       operationId: getFeedList
       parameters:
-        - name: page_start
-          in: query
-          description: 该页第一个动态的 ID，留空即为加载最新动态
-          schema:
-            type: string
-        - name: page_size
-          in: query
-          description: 每页动态数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       security:
         - bearerAuth: []
       responses:
@@ -2877,19 +2420,8 @@ paths:
               - user
               - topic
             default: question
-        - name: page_start
-          in: query
-          description: 该页第一个搜索结果的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页搜索结果数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -3014,18 +2546,12 @@ paths:
                           - id
                     required:
                       - data
-  /insights/{id}:
+  /insights/{insightId}:
     get:
       summary: 获取灵感详情
       operationId: getInsightDetail
       parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/insightId"
       responses:
         "200":
           description: OK
@@ -3047,13 +2573,7 @@ paths:
       summary: 更新灵感
       operationId: updateInsight
       parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/insightId"
       security:
         - bearerAuth: []
       requestBody:
@@ -3077,43 +2597,20 @@ paths:
       summary: 删除灵感
       operationId: deleteInsight
       parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/insightId"
       security:
         - bearerAuth: []
       responses:
         "204":
           description: No Content
-  /insights/{id}/likes:
+  /insights/{insightId}/likes:
     get:
       summary: 获取点赞用户列表
       operationId: getInsightLikes
       parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个点赞用户的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页点赞用户数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
+        - $ref: "#/components/parameters/insightId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
         "200":
           description: OK
@@ -3139,13 +2636,7 @@ paths:
       summary: 点赞灵感
       operationId: likeInsight
       parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/insightId"
       security:
         - bearerAuth: []
       responses:
@@ -3159,345 +2650,12 @@ paths:
       summary: 取消点赞灵感
       operationId: unlikeInsight
       parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/insightId"
       security:
         - bearerAuth: []
       responses:
         "204":
           description: No Content
-  /insights/{id}/comments:
-    get:
-      summary: 获取灵感评论列表
-      operationId: getInsightComments
-      parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个评论的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页评论数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/CommonResponse"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          comments:
-                            type: array
-                            items:
-                              type: object
-                              allOf:
-                                - $ref: "#/components/schemas/Comment"
-                                - type: object
-                                  properties:
-                                    sub_comment_count:
-                                      type: integer
-                                      description: 子评论数量
-                                    sub_comments:
-                                      type: array
-                                      items:
-                                        $ref: "#/components/schemas/Comment"
-                          page:
-                            $ref: "#/components/schemas/Page"
-                    required:
-                      - data
-    post:
-      summary: 评论灵感
-      operationId: commentInsight
-      parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                content:
-                  type: string
-                reply_id:
-                  type: integer
-                  format: int64
-              required:
-                - content
-      responses:
-        "201":
-          description: Comment for insight created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/CommonResponse"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          id:
-                            type: integer
-                            format: int64
-                        required:
-                          - id
-                    required:
-                      - data
-  /insights/{id}/comments/{comment_id}:
-    get:
-      summary: 获取评论详情
-      operationId: getInsightCommentDetail
-      parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: comment_id
-          in: path
-          description: 评论 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个子评论的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页子评论数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/CommonResponse"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          comment:
-                            $ref: "#/components/schemas/Comment"
-                          sub_comments:
-                            type: array
-                            items:
-                              $ref: "#/components/schemas/Comment"
-                          page:
-                            $ref: "#/components/schemas/Page"
-                    required:
-                      - data
-    post:
-      summary: 回复评论
-      operationId: replyInsightComment
-      parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: comment_id
-          in: path
-          description: 评论 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                content:
-                  type: string
-              required:
-                - content
-      responses:
-        "201":
-          description: Reply for insight comment created successfully
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/CommonResponse"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          id:
-                            type: integer
-                            format: int64
-                        required:
-                          - id
-                    required:
-                      - data
-    delete:
-      summary: 删除评论
-      operationId: deleteInsightComment
-      parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: comment_id
-          in: path
-          description: 评论 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-      security:
-        - bearerAuth: []
-      responses:
-        "204":
-          description: No Content
-  /insights/{id}/comments/{comment_id}/agrees:
-    get:
-      summary: 获取赞同用户列表
-      operationId: getInsightCommentAgrees
-      parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: comment_id
-          in: path
-          description: 评论 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: page_start
-          in: query
-          description: 该页第一个赞同用户的 ID，留空即为从头开始
-          schema:
-            type: integer
-            format: int64
-        - name: page_size
-          in: query
-          description: 每页赞同用户数量
-          schema:
-            type: integer
-            format: int64
-            default: 20
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/CommonResponse"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          agrees:
-                            type: array
-                            items:
-                              $ref: "#/components/schemas/User"
-                          page:
-                            $ref: "#/components/schemas/Page"
-                    required:
-                      - data
-    put:
-      summary: 赞同评论
-      operationId: agreeInsightComment
-      parameters:
-        - name: id
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - name: comment_id
-          in: path
-          description: 评论 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                agree_type:
-                  type: integer
-                  description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
-                  enum:
-                    - 0
-                    - 1
-                    - 2
-              required:
-                - agree_type
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CommonResponse"
-  
   /avatars:
     post:
       summary: Upload an avatar 
@@ -3559,6 +2717,3 @@ paths:
                         type: array
                         items:
                           type: number
-                    
-                          
-

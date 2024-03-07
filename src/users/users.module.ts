@@ -8,7 +8,7 @@
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Answer } from '../answer/answer.entity';
+import { Answer } from '../answer/answer.legacy.entity';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { Question } from '../questions/questions.legacy.entity';

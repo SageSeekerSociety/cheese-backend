@@ -27,7 +27,7 @@ import { GetAnswerDetailRespondDto } from './DTO/get-answer-detail.dto';
 import { GetAnswersRespondDto } from './DTO/get-answers.dto';
 import { UpdateAnswerRequestDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
-@Controller('/question/:id/answers')
+@Controller('/questions/:id/answers')
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
 export class AnswerController {

@@ -1,5 +1,3 @@
-//返回dto，不要返回实体——参见API的answer，就是要返回dto
-//看group怎么拿Id
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
@@ -18,7 +16,7 @@ import {
   AnswerQueryLog,
   AnswerUpdateLog,
   AnswerUserAttitude,
-} from './answer.entity';
+} from './answer.legacy.entity';
 import {
   AlreadyHasSameAttitudeError,
   AnswerNotFavoriteError,
@@ -316,5 +314,9 @@ export class AnswerService {
     }
 
     await this.answerRepository.save(answer);
+  }
+
+  async isAnswerExists(answerId: number): Promise<boolean> {
+    return (await this.answerRepository.countBy({ id: answerId })) > 0;
   }
 }
