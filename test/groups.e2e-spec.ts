@@ -31,11 +31,12 @@ describe('Groups Module', () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let auxAdminUserDto: any;
 
-  const GroupIds: number[] = [];
-  const TestGroupPrefix = `G${Math.floor(Math.random() * 1000000)}`;
+  const groupIds: number[] = [];
+  const testGroupPrefix = `G${Math.floor(Math.random() * 1000000)}`;
 
-  async function createAuxiliaryUser(): Promise<[number, string]> {
-    // returns [userId, accessToken]
+  // ! This function is not the same as the ones in other test files.
+  // ! Returns [userDto, accessToken]
+  async function createAuxiliaryUser(): Promise<[any, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
     const respond = await request(app.getHttpServer())
       .post('/users/verify/email')
@@ -43,7 +44,7 @@ describe('Groups Module', () => {
       .send({ email });
     expect(respond.status).toBe(201);
     const verificationCode = (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
     ).mock.calls.at(-1)[1];
     const respond2 = await request(app.getHttpServer())
       .post('/users')
@@ -69,17 +70,13 @@ describe('Groups Module', () => {
   }, 20000);
 
   beforeEach(() => {
+    const mockedEmailService = MockedEmailService.mock.instances[0]!;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.calls.length = 0;
+    (mockedEmailService.sendRegisterCode as jest.Mock).mock.results.length = 0;
+    (mockedEmailService.sendPasswordResetEmail as jest.Mock).mock.calls.length =
+      0;
     (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-    ).mock.results.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-    ).mock.calls.length = 0;
-    (
-      MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
+      mockedEmailService.sendPasswordResetEmail as jest.Mock
     ).mock.results.length = 0;
   });
 
@@ -97,13 +94,13 @@ describe('Groups Module', () => {
       });
       expect(respond1.status).toBe(201);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveReturnedTimes(1);
       expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
+        MockedEmailService.mock.instances[0]?.sendRegisterCode,
       ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        MockedEmailService.mock.instances[0]?.sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
@@ -129,7 +126,7 @@ describe('Groups Module', () => {
         const respond = await request(app.getHttpServer())
           .post('/groups')
           .set('Authorization', `Bearer ${TestToken}`)
-          .send({ name: TestGroupPrefix + name, intro, avatar });
+          .send({ name: testGroupPrefix + name, intro, avatar });
         expect(respond.body.message).toBe('Group created successfully');
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
@@ -147,7 +144,7 @@ describe('Groups Module', () => {
         expect(groupDto.is_owner).toBe(true);
         expect(groupDto.is_public).toBe(true);
         expect(groupDto.intro).toBe(intro);
-        GroupIds.push(groupDto.id);
+        groupIds.push(groupDto.id);
       }
       await createGroup('数学之神膜膜喵', '不如原神', '🥸');
       await createGroup('ICS膜膜膜', 'pwb txdy!', '🐂');
@@ -358,7 +355,7 @@ describe('Groups Module', () => {
 
   describe('get group', () => {
     it('should get a group', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -382,7 +379,7 @@ describe('Groups Module', () => {
     });
 
     it('should get a group for another user', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -418,7 +415,10 @@ describe('Groups Module', () => {
 
   describe('join group', () => {
     it('should join a group', async () => {
-      async function joinGroup(groupId: number) {
+      async function joinGroup(groupId: number | undefined) {
+        if (groupId == null) {
+          throw new Error('groupId is undefined');
+        }
         const respond = await request(app.getHttpServer())
           .post(`/groups/${groupId}/members`)
           .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -427,11 +427,11 @@ describe('Groups Module', () => {
         expect(respond.status).toBe(201);
         expect(respond.body.code).toBe(201);
       }
-      await joinGroup(GroupIds[0]);
-      await joinGroup(GroupIds[1]);
+      await joinGroup(groupIds[0]);
+      await joinGroup(groupIds[1]);
     });
     it('should return a group with is_member true', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -463,7 +463,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(404);
     });
     it('should return GroupAlreadyJoinedError when user is already in the group', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .post(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -476,12 +476,12 @@ describe('Groups Module', () => {
 
   describe('update group', () => {
     it('should update a group', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
-          name: TestGroupPrefix + '关注幻城谢谢喵',
+          name: testGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
@@ -490,7 +490,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(200);
     });
     it('should return a group with updated info from another user', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -517,7 +517,7 @@ describe('Groups Module', () => {
         .put('/groups/0')
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
-          name: TestGroupPrefix + '关注幻城谢谢喵',
+          name: testGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
@@ -526,12 +526,12 @@ describe('Groups Module', () => {
       expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
     });
     it('should return GroupNameAlreadyUsedError when group name is already used', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
-          name: TestGroupPrefix + 'ICS膜膜膜',
+          name: testGroupPrefix + 'ICS膜膜膜',
           intro: '湾原审万德',
           avatar: '🤣',
         });
@@ -541,12 +541,12 @@ describe('Groups Module', () => {
     });
     // TODO: add permission control
     it('should return CannotDeleteGroupError when user is not the owner', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .put(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({
-          name: TestGroupPrefix + '关注幻城谢谢喵',
+          name: testGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
           avatar: '🤣',
         });
@@ -558,7 +558,7 @@ describe('Groups Module', () => {
 
   describe('leave group', () => {
     it('should leave a group', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .delete(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -568,7 +568,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(200);
     });
     it('should return a group with is_member false', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -600,7 +600,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(404);
     }, 10000);
     it('should return GroupNotJoinedError when user is not in the group', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .delete(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -614,7 +614,7 @@ describe('Groups Module', () => {
 
   describe('delete group', () => {
     it('should delete a group', async () => {
-      const TestGroupId = GroupIds[3];
+      const TestGroupId = groupIds[3];
       const respond = await request(app.getHttpServer())
         .delete(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -624,7 +624,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(200);
     });
     it('should return GroupIdNotFoundError after deletion', async () => {
-      const TestGroupId = GroupIds[3];
+      const TestGroupId = groupIds[3];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -643,7 +643,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(404);
     });
     it('should return CannotDeleteGroupError when user is not the owner', async () => {
-      const TestGroupId = GroupIds[1];
+      const TestGroupId = groupIds[1];
       const respond = await request(app.getHttpServer())
         .delete(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -656,7 +656,7 @@ describe('Groups Module', () => {
 
   describe('get group members', () => {
     it('should get group members', async () => {
-      const TestGroupId = GroupIds[1];
+      const TestGroupId = groupIds[1];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -675,7 +675,7 @@ describe('Groups Module', () => {
       expect(respond.body.data.page.next_start).toBe(auxUserDto.id);
     });
     it('should get group members from a specific user', async () => {
-      const TestGroupId = GroupIds[1];
+      const TestGroupId = groupIds[1];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -694,7 +694,7 @@ describe('Groups Module', () => {
       expect(respond.body.data.page.next_start).toBeFalsy();
     });
     it('should get group members from a specific user even quited', async () => {
-      const TestGroupId = GroupIds[0];
+      const TestGroupId = groupIds[0];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -712,7 +712,7 @@ describe('Groups Module', () => {
       expect(respond.body.data.page.next_start).toBeFalsy();
     });
     it('should get group members for another user', async () => {
-      const TestGroupId = GroupIds[1];
+      const TestGroupId = groupIds[1];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -740,7 +740,7 @@ describe('Groups Module', () => {
       expect(respond.body.code).toBe(404);
     });
     it('should return empty list when page_size is not positive', async () => {
-      const TestGroupId = GroupIds[1];
+      const TestGroupId = groupIds[1];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}/members`)
         .set('Authorization', `Bearer ${TestToken}`)

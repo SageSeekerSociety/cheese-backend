@@ -110,7 +110,7 @@ export class PageHelper {
     prevStart: number,
     idGetter: (item: TData) => number,
   ): [TData[], PageRespondDto] {
-    if (data.length == 0 || pageSize < 0) {
+    if (data[0] == null || pageSize < 0) {
       return [
         [],
         {

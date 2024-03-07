@@ -159,13 +159,9 @@ export class UsersController {
       .json(data);
   }
 
-  @Post('/auth/refresh-token')
-  async refreshToken(
-    @Headers('cookie') cookieHeader: string,
-    @Res() res: Response,
-    @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
-  ): Promise<Response> {
+  private async getRefreshTokenFromCookieHeader(
+    cookieHeader: string | undefined,
+  ): Promise<string> {
     if (cookieHeader == undefined) {
       throw new AuthenticationRequiredError();
     }
@@ -177,6 +173,21 @@ export class UsersController {
       throw new AuthenticationRequiredError();
     }
     const refreshToken = refreshTokenCookie.split('=')[1];
+    if (refreshToken == undefined) {
+      throw new AuthenticationRequiredError();
+    }
+    return refreshToken;
+  }
+
+  @Post('/auth/refresh-token')
+  async refreshToken(
+    @Headers('cookie') cookieHeader: string | undefined,
+    @Res() res: Response,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+  ): Promise<Response> {
+    const refreshToken =
+      await this.getRefreshTokenFromCookieHeader(cookieHeader);
     const [newRefreshToken, accessToken] =
       await this.sessionService.refreshSession(refreshToken);
     const newRefreshTokenExpire = new Date(
@@ -209,19 +220,10 @@ export class UsersController {
 
   @Post('/auth/logout')
   async logout(
-    @Headers('cookie') cookieHeader: string,
+    @Headers('cookie') cookieHeader: string | undefined,
   ): Promise<BaseRespondDto> {
-    if (cookieHeader == undefined) {
-      throw new AuthenticationRequiredError();
-    }
-    const cookies = cookieHeader.split(';').map((cookie) => cookie.trim());
-    const refreshTokenCookie = cookies.find((cookie) =>
-      cookie.startsWith('REFRESH_TOKEN='),
-    );
-    if (refreshTokenCookie == undefined) {
-      throw new AuthenticationRequiredError();
-    }
-    const refreshToken = refreshTokenCookie.split('=')[1];
+    const refreshToken =
+      await this.getRefreshTokenFromCookieHeader(cookieHeader);
     await this.sessionService.revokeSession(refreshToken);
     return {
       code: 201,
