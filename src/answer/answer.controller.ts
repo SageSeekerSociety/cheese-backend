@@ -82,7 +82,7 @@ export class AnswerController {
     const userId = this.authService.verify(auth).userId;
     const answerId = await this.answerService.createAnswer(id, userId, content);
     return {
-      code: 200,
+      code: 201,
       message: 'Answer created successfully.',
       data: {
         id: answerId,

@@ -201,6 +201,11 @@ export class QuestionsService {
     return await this.questionQueryLogRepository.countBy({ questionId });
   }
 
+  // async getAnswerInfo(questionId: number){
+  //   const questionDto = await this.getQuestionDto(questionId);
+  //   return [questionDto.is_answered, questionDto.my_answer_id];
+  // }
+
   async getQuestionDto(
     questionId: number,
     viewerId?: number, // optional
@@ -247,12 +252,8 @@ export class QuestionsService {
     const answer = await this.answerRepository.findOne({
       where: { questionId, createdById: viewerId },
     });
-    let is_answered = false,
-      answer_id = undefined;
-    if (answer) {
-      is_answered = true;
-      answer_id = answer.id;
-    }
+    const is_answered = !!answer;
+    const answer_id = answer?.id;
 
     return {
       id: question.id,
@@ -265,7 +266,7 @@ export class QuestionsService {
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
       is_like: false, // TODO: Implement this.
-      is_answered: is_answered,
+      is_answered,
       my_answer_id: answer_id,
       answer_count: 0, // TODO: Implement this.
       comment_count: 0, // TODO: Implement this.
