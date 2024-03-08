@@ -54,7 +54,6 @@ model user {
   AttitudeLog                                                              AttitudeLog[]
 }
 
-
 model user_following_relationship {
   id                                                Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
   followeeId                                        Int

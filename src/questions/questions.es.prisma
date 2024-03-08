@@ -1,4 +1,4 @@
-import { question } from "../../prisma/schema"
+import { question } from "questions.legacy"
 
 model QuestionElasticsearchRelation {
   id              Int      @id @default(autoincrement())
