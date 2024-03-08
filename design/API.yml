@@ -146,7 +146,7 @@ components:
           type: string
           description: 昵称
           example: "芝士"
-        avatar:
+        avatarId:
           type: integer
           description: 头像 id
         intro:
@@ -184,7 +184,7 @@ components:
         - id
         - username
         - nickname
-        - avatar
+        - avatarId
         - intro
         - follow_count
         - fans_count
@@ -398,7 +398,7 @@ components:
         intro:
           type: string
           default: ""
-        avatar:
+        avatarId:
           type: integer
           format: int64
         owner:
@@ -428,7 +428,7 @@ components:
         - id
         - name
         - intro
-        - avatar
+        - avatarId
     GroupTarget:
       type: object
       description: 小组目标
@@ -670,15 +670,12 @@ components:
           type: string
         emailCode:
           type: string
-        avatar:
-          type: int
       required:
         - username
         - nickname
         - password
         - email
         - emailCode
-        - avatar
     RegisterResponse:
       allOf:
         - $ref: "#/components/schemas/CommonResponse"
@@ -894,34 +891,12 @@ paths:
                   type: string
                 intro:
                   type: string
+                avatarId:
+                  type: int
               required:
                 - nickname
                 - intro
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CommonResponse"
-  /users/{userId}/avatar:
-    put:
-      summary: 更新用户头像信息
-      operationId: updateUserAvatarInfo
-      parameters:
-        - $ref: "#/components/parameters/userId"
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                avatar:
-                  type: int
-              required:
-                - avatar
+                - avatarId
       responses:
         "200":
           description: OK
@@ -1880,14 +1855,14 @@ paths:
                   type: string
                 intro:
                   type: string
-                avatar:
+                avatarId:
                   type: integer
                 public:
                   type: boolean
               required:
                 - name
                 - intro
-                - avatar
+                - avatarId
                 - public
       responses:
         "201":
@@ -1947,11 +1922,14 @@ paths:
                   type: string
                 intro:
                   type: string
+                avatarId:
+                  type: int
                 cover:
                   type: string
               required:
                 - name
                 - intro
+                - avatarId
                 - cover
       responses:
         "200":
@@ -1970,31 +1948,6 @@ paths:
       responses:
         "204":
           description: No Content
-  /groups/{groupId}/avatar:
-    put:
-      summary: 更新圈子头像
-      operationId: updateGroupAvatar
-      parameters:
-        - $ref: "#/components/parameters/groupId"
-      security:
-        - bearerAuth: []
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                avatar:
-                  type: integer
-              required:
-                - avatar
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CommonResponse"
   /groups/{groupId}/members:
     get:
       summary: 获取圈子成员列表
@@ -2698,13 +2651,31 @@ paths:
               schema:
                 type: string
                 format: binary
-  /avatars/default/ids:
+  /avatars/default/id:
     get:
-      summary:Get default avatar ids
-      operationId: getDefaultAvatarIds
+      summary:Get default avatar id
+      operationId: getDefaultAvatarId
       responses:
         '200':
-          description: Get default avatarIds successfully
+          description: Get default avatarId successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarId:
+                        type: number
+                        description:Default avatarId
+  /avatars/predefined/id:
+    get:
+      summary:Get predefined avatarIds
+      operationId: getPreDefinedIds
+      responses:
+        '200':
+          description: Get  Pre Defined AvatarIds successfully
           content:
             application/json:
               schema:
@@ -2716,4 +2687,5 @@ paths:
                       avatarIds:
                         type: array
                         items:
-                          type: number
+                          -type: number
+                        description:Predefined avatarIds

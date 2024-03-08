@@ -5,3 +5,13 @@ export class AvatarNotFoundError extends BaseError {
     super('AvatarNotFoundError', `Avatar ${avatarid} Not Found`, 404);
   }
 }
+
+export class CorrespondentFileNotExistError extends BaseError {
+  constructor(public readonly avatarid: number) {
+    super(
+      'CorrespondentFileNotExistError',
+      `File of Avatar ${avatarid} Not Found`,
+      404,
+    );
+  }
+}

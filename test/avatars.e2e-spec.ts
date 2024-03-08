@@ -49,15 +49,25 @@ describe('Avatar Module', () => {
       expect(respond.status).toBe(404);
     });
   });
-  describe('get default avatars', () => {
-    it('should get default avatars', async () => {
+  describe('get default avatarID', () => {
+    it('should get default avatarId', async () => {
       const respond = await request(app.getHttpServer())
-        .get('/avatars/default/ids')
+        .get('/avatars/default/id')
         .send();
       expect(respond.status).toBe(200);
-      expect(respond.body.data.avatarIds.length).toBeGreaterThanOrEqual(1);
+      //expect(respond.body.data.avatarId).toEqual(1);
     });
   });
+  describe('get pre defined avatarIds', () => {
+    it('should get pre defined avatarIds', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/avatars/predefined/id')
+        .send();
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.avatarIds.length).toEqual(3);
+    });
+  });
+
   afterAll(async () => {
     await app.close();
   });

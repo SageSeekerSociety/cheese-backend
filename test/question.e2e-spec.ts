@@ -30,7 +30,6 @@ describe('Questions Module', () => {
   const questionIds: number[] = [];
   let auxUserId: number;
   let auxAccessToken: string;
-  let UserAvatarId: number;
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     // returns [userId, accessToken]
@@ -44,14 +43,6 @@ describe('Questions Module', () => {
       MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
     ).mock.calls.at(-1)[1];
     const respond2 = await request(app.getHttpServer())
-      .post('/avatars')
-      .attach('avatar', 'src/avatars/resources/default.jpg');
-    //.set('Authorization', `Bearer ${TestToken}`);
-    expect(respond2.status).toBe(201);
-    expect(respond2.body.message).toBe('Upload avatar successfully');
-    expect(respond2.body.data).toHaveProperty('avatarid');
-    const AvatarId = respond2.body.data.avatarid;
-    const respond3 = await request(app.getHttpServer())
       .post('/users')
       //.set('User-Agent', 'PostmanRuntime/7.26.8')
       .send({
@@ -60,10 +51,9 @@ describe('Questions Module', () => {
         password: 'abc123456!!!',
         email,
         emailCode: verificationCode,
-        avatar: AvatarId,
       });
-    expect(respond3.status).toBe(201);
-    return [respond3.body.data.user.id, respond3.body.data.accessToken];
+    expect(respond2.status).toBe(201);
+    return [respond2.body.data.user.id, respond2.body.data.accessToken];
   }
 
   beforeAll(async () => {
@@ -91,16 +81,6 @@ describe('Questions Module', () => {
   });
 
   describe('preparation', () => {
-    it('should upload an avatar', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/avatars')
-        .attach('avatar', 'src/avatars/resources/default.jpg');
-      //.set('Authorization', `Bearer ${TestToken}`);
-      expect(respond.status).toBe(201);
-      expect(respond.body.message).toBe('Upload avatar successfully');
-      expect(respond.body.data).toHaveProperty('avatarid');
-      UserAvatarId = respond.body.data.avatarid;
-    });
     it(`should send an email and register a user ${TestUsername}`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
@@ -131,7 +111,6 @@ describe('Questions Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
-          avatar: UserAvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual('Register successfully.');

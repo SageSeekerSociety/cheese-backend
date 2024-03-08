@@ -1,7 +1,6 @@
 import {
   Controller,
   Get,
-  NotFoundException,
   Param,
   Post,
   Res,
@@ -14,6 +13,8 @@ import { Response } from 'express';
 import * as fs from 'fs';
 import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
 import { AvatarsService } from './avatars.service';
+import path from 'path';
+import { CorrespondentFileNotExistError } from './avatars.error';
 
 @Controller('/avatars')
 export class AvatarsController {
@@ -38,27 +39,39 @@ export class AvatarsController {
     @Param('id') id: number,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const avatar = await this.avatarsService.findOne(id);
-    const path = __dirname + '//images//' + avatar.name;
-    const file = fs.createReadStream(path);
-    if (fs.existsSync(path)) {
+    const avatarPath = await this.avatarsService.getAvatarPath(id);
+    const file = fs.createReadStream(avatarPath);
+    if (fs.existsSync(avatarPath)) {
       res.set({
         'Content-Type': 'application/octet-stream',
-        'Content-Disposition': 'attachment; filename=' + avatar.name,
+        'Content-Disposition':
+          'attachment; filename=' + path.parse(avatarPath).base,
       });
       return new StreamableFile(file);
-    } else {
-      throw new NotFoundException('Avatar not found');
-    }
+    } else throw new CorrespondentFileNotExistError(id);
   }
-  @Get('/default/ids')
-  async getDefaultAvatarIds() {
-    const Ids = await this.avatarsService.getDefaultAvatarIds();
+
+  @Get('/default/id')
+  async getDefaultAvatarId() {
+    const DefaultAvatarId = await this.avatarsService.getDefaultAvatarId();
     return {
       code: 200,
       message: 'Get default avatarIds successfully',
       data: {
-        avatarIds: Ids,
+        avatarId: DefaultAvatarId,
+      },
+    };
+  }
+
+  @Get('/predefined/id')
+  async getPreDefinedAvatarId() {
+    const PreDefinedAvatarIds =
+      await this.avatarsService.getPreDefinedAvatarIds();
+    return {
+      code: 200,
+      message: 'Get default avatarIds successfully',
+      data: {
+        avatarIds: PreDefinedAvatarIds,
       },
     };
   }

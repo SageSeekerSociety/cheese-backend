@@ -55,12 +55,13 @@ export class GroupNotJoinedError extends BaseError {
     super('GroupNotJoinedError', `Group ${groupId} not joined`, 409);
   }
 }
-export class UpdateAvatarError extends BaseError {
-  constructor() {
+
+export class GroupProfileNotFoundError extends BaseError {
+  constructor(public readonly groupId: number) {
     super(
-      'UpdateAvatarError',
-      `Can only use avatars uploaded by this group`,
-      403,
+      'GroupProfileNotFoundError',
+      `Group ${groupId}'s profile not found`,
+      404,
     );
   }
 }

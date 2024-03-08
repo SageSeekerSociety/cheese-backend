@@ -8,5 +8,5 @@ export class CreateGroupDto {
   readonly intro: string;
 
   @IsInt()
-  readonly avatar: number;
+  readonly avatarId: number;
 }

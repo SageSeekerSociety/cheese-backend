@@ -3,7 +3,6 @@ import {
   CreateDateColumn,
   DeleteDateColumn,
   Entity,
-  Index,
   JoinColumn,
   ManyToOne,
   OneToOne,
@@ -25,7 +24,6 @@ export class GroupProfile {
   avatar: Avatar;
 
   @Column()
-  @Index({ unique: false })
   avatarId: number;
 
   @OneToOne(() => Group, (group) => group.profile)

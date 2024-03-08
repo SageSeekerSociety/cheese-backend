@@ -23,7 +23,6 @@ describe('Topic Module', () => {
   const TestTopicCode = Math.floor(Math.random() * 10000000000).toString();
   const TestTopicPrefix = `[Test(${TestTopicCode}) Topic]`;
   let TestToken: string;
-  let UserAvatarId: number;
   const TopicIds: number[] = [];
 
   beforeAll(async () => {
@@ -51,16 +50,6 @@ describe('Topic Module', () => {
   });
 
   describe('preparation', () => {
-    it('should upload an avatar', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/avatars')
-        .attach('avatar', 'src/avatars/resources/default.jpg');
-      //.set('Authorization', `Bearer ${TestToken}`);
-      expect(respond.status).toBe(201);
-      expect(respond.body.message).toBe('Upload avatar successfully');
-      expect(respond.body.data).toHaveProperty('avatarid');
-      UserAvatarId = respond.body.data.avatarid;
-    });
     it(`should send an email and register a user ${TestUsername}`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
@@ -91,7 +80,6 @@ describe('Topic Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
-          avatar: UserAvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual('Register successfully.');

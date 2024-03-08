@@ -4,6 +4,13 @@ import {
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+
+export enum AvatarType {
+  Default = 'default',
+  PreDefined = 'predefined',
+  Upload = 'upload',
+}
+
 @Entity()
 export class Avatar {
   @PrimaryGeneratedColumn()
@@ -15,11 +22,11 @@ export class Avatar {
   @Column()
   name: string;
 
-  @Column({ default: false })
-  isDefault: boolean;
-
   @Column({ default: 0 })
   usageCount: number;
+
+  @Column()
+  avatarType: AvatarType;
 
   @CreateDateColumn()
   createdAt: Date;

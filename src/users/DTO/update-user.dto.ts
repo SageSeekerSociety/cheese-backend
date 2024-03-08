@@ -7,10 +7,9 @@ export class UpdateUserRequestDto {
 
   @IsString()
   intro: string;
-}
-export class UpdateUserAvatarRequestDto {
+
   @IsInt()
-  avatar: number;
+  avatarId: number;
 }
 
 export class UpdateUserRespondDto extends BaseRespondDto {}

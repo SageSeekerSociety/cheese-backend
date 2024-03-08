@@ -33,11 +33,7 @@ import { GetGroupQuestionsRespondDto } from './DTO/get-questions.dto';
 import { GroupRespondDto } from './DTO/group.dto';
 import { JoinGroupDto, JoinGroupRespondDto } from './DTO/join-group.dto';
 import { QuitGroupRespondDto } from './DTO/quit-group.dto';
-import {
-  UpdateGroupAvatarDto,
-  UpdateGroupDto,
-  UpdateGroupRespondDto,
-} from './DTO/update-group.dto';
+import { UpdateGroupDto, UpdateGroupRespondDto } from './DTO/update-group.dto';
 import { GroupQueryType, GroupsService } from './groups.service';
 
 @Controller('/groups')
@@ -59,7 +55,7 @@ export class GroupsController {
       req.name,
       userId,
       req.intro,
-      req.avatar,
+      req.avatarId,
     );
     return {
       code: 201,
@@ -123,24 +119,16 @@ export class GroupsController {
     @Body() req: UpdateGroupDto,
   ): Promise<UpdateGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
-    await this.groupsService.updateGroup(userId, id, req.name, req.intro);
+    await this.groupsService.updateGroup(
+      userId,
+      id,
+      req.name,
+      req.intro,
+      req.avatarId,
+    );
     return {
       code: 200,
       message: 'Group updated successfully.',
-    };
-  }
-
-  @Put('/:id/avatar')
-  async updateGroupAvatar(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() request: UpdateGroupAvatarDto,
-    @Headers('Authorization') auth: string | undefined,
-  ): Promise<UpdateGroupRespondDto> {
-    const userId = this.authService.verify(auth).userId;
-    await this.groupsService.updateGroupAvatar(userId, id, request.avatar);
-    return {
-      code: 200,
-      message: 'Group avatar updated successfully.',
     };
   }
 

@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Answer } from '../answer/answer.legacy.entity';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
@@ -19,7 +20,6 @@ import {
   AuthorizedAction,
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
-import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
@@ -57,7 +57,6 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { Answer } from '../answer/answer.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -230,7 +229,6 @@ export class UsersService {
     password: string,
     email: string,
     emailCode: string,
-    avatar: number,
     ip: string,
     userAgent: string,
   ): Promise<UserDto> {
@@ -300,10 +298,6 @@ export class UsersService {
               `4. We are under attack!`,
           );
         }
-        // Verify whether the username exists.
-        if ((await this.avatarsService.findOne(avatar)) == undefined) {
-          throw new AvatarNotFoundError(avatar);
-        }
         // Verify whether the username is registered.
         if ((await this.userRepository.findOneBy({ username })) != undefined) {
           const log = this.userRegisterLogRepository.create({
@@ -326,12 +320,12 @@ export class UsersService {
           email: email,
         });
         await this.userRepository.save(user);
-        await this.avatarsService.plusUsageCount(avatar);
+        const avatarId = await this.avatarsService.getDefaultAvatarId();
         const profile = this.userProfileRepository.create({
           user: user,
           nickname: nickname,
-          avatarId: avatar,
           intro: this.defaultIntro,
+          avatarId,
         });
         await this.userProfileRepository.save(profile);
         const log = this.userRegisterLogRepository.create({
@@ -346,7 +340,7 @@ export class UsersService {
           id: user.id,
           username: user.username,
           nickname: profile.nickname,
-          avatar: profile.avatarId,
+          avatarId: profile.avatarId,
           intro: profile.intro,
           follow_count: 0,
           fans_count: 0,
@@ -397,7 +391,7 @@ export class UsersService {
       id: user.id,
       username: user.username,
       nickname: profile.nickname,
-      avatar: profile.avatarId,
+      avatarId: profile.avatarId,
       intro: profile.intro,
       follow_count: await this.getFollowingCount(userId),
       fans_count: await this.getFollowedCount(userId),
@@ -668,27 +662,20 @@ export class UsersService {
     userId: number,
     nickname: string,
     intro: string,
+    avatar: number,
   ): Promise<void> {
     const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
     }
+    const avatarId = (await this.avatarsService.getOne(avatar)).id;
+    const preAvatarId = profile.avatarId;
+    await this.avatarsService.plusUsageCount(avatarId);
+    await this.avatarsService.minusUsageCount(preAvatarId);
+    profile.avatarId = avatarId;
     profile.nickname = nickname;
     profile.intro = intro;
     await this.userProfileRepository.save(profile);
-  }
-  async updateUserAvatar(userId: number, avatar: number): Promise<void> {
-    const profile = await this.userProfileRepository.findOneBy({ userId });
-    if (profile == undefined) {
-      throw new UserIdNotFoundError(userId);
-    }
-    const avatarId = (await this.avatarsService.findOne(avatar)).id;
-    const preAvatarId = profile.avatarId;
-    profile.avatarId = avatarId;
-    await this.avatarsService.plusUsageCount(avatarId);
-    await this.avatarsService.minusUsageCount(preAvatarId);
-    await this.userProfileRepository.save(profile);
-    return;
   }
 
   async addFollowRelationship(

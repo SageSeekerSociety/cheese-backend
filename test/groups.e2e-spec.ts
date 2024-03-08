@@ -30,7 +30,6 @@ describe('Groups Module', () => {
   let auxAdminAccessToken: string;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let auxAdminUserDto: any;
-  let UserAvatarId: number;
   let PreAvatarId: number;
   let UpdateAvatarId: number;
   const GroupIds: number[] = [];
@@ -48,14 +47,6 @@ describe('Groups Module', () => {
       MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
     ).mock.calls.at(-1)[1];
     const respond2 = await request(app.getHttpServer())
-      .post('/avatars')
-      .attach('avatar', 'src/avatars/resources/default.jpg');
-    //.set('Authorization', `Bearer ${TestToken}`);
-    expect(respond2.status).toBe(201);
-    expect(respond2.body.message).toBe('Upload avatar successfully');
-    expect(respond2.body.data).toHaveProperty('avatarid');
-    const AvatarId = respond2.body.data.avatarid;
-    const respond3 = await request(app.getHttpServer())
       .post('/users')
       //.set('User-Agent', 'PostmanRuntime/7.26.8')
       .send({
@@ -64,10 +55,9 @@ describe('Groups Module', () => {
         password: 'abc123456!!!',
         email,
         emailCode: verificationCode,
-        avatar: AvatarId,
       });
-    expect(respond3.status).toBe(201);
-    return [respond3.body.data.user, respond3.body.data.accessToken];
+    expect(respond2.status).toBe(201);
+    return [respond2.body.data.user, respond2.body.data.accessToken];
   }
 
   beforeAll(async () => {
@@ -95,7 +85,7 @@ describe('Groups Module', () => {
   });
 
   describe('preparation', () => {
-    it('should upload an avatar', async () => {
+    it('should upload two avatars for creating and updating', async () => {
       async function uploadAvatar() {
         const respond = await request(app.getHttpServer())
           .post('/avatars')
@@ -106,9 +96,7 @@ describe('Groups Module', () => {
         expect(respond.body.data).toHaveProperty('avatarid');
         return respond.body.data.avatarid;
       }
-      UserAvatarId = await uploadAvatar();
       PreAvatarId = await uploadAvatar();
-      console.log(PreAvatarId);
       UpdateAvatarId = await uploadAvatar();
     });
     it(`should send an email and register a user ${TestUsername}`, async () => {
@@ -141,7 +129,6 @@ describe('Groups Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
-          avatar: UserAvatarId,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual('Register successfully.');
@@ -158,7 +145,7 @@ describe('Groups Module', () => {
         const respond = await request(app.getHttpServer())
           .post('/groups')
           .set('Authorization', `Bearer ${TestToken}`)
-          .send({ name: TestGroupPrefix + name, intro, avatar: PreAvatarId });
+          .send({ name: TestGroupPrefix + name, intro, avatarId: PreAvatarId });
         expect(respond.body.message).toBe('Group created successfully');
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
@@ -512,6 +499,7 @@ describe('Groups Module', () => {
         .send({
           name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
+          avatarId: UpdateAvatarId,
         });
       expect(respond.body.message).toBe('Group updated successfully.');
       expect(respond.status).toBe(200);
@@ -530,6 +518,7 @@ describe('Groups Module', () => {
       expect(groupDto.id).toBe(TestGroupId);
       expect(groupDto.name).toContain('关注幻城谢谢喵');
       expect(groupDto.intro).toBe('湾原审万德');
+      expect(groupDto.avatarId).toBe(UpdateAvatarId);
       expect(groupDto.owner).toStrictEqual(TestUserDto);
       expect(groupDto.created_at).toBeDefined();
       expect(groupDto.updated_at).toBeDefined();
@@ -546,6 +535,7 @@ describe('Groups Module', () => {
         .send({
           name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
+          avatarId: UpdateAvatarId,
         });
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
@@ -559,6 +549,7 @@ describe('Groups Module', () => {
         .send({
           name: TestGroupPrefix + 'ICS膜膜膜',
           intro: '湾原审万德',
+          avatarId: UpdateAvatarId,
         });
       expect(respond.body.message).toMatch(/^GroupNameAlreadyUsedError: /);
       expect(respond.status).toBe(409);
@@ -573,70 +564,14 @@ describe('Groups Module', () => {
         .send({
           name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
+          avatarId: UpdateAvatarId,
         });
       expect(respond.body.message).toMatch(/^CannotDeleteGroupError: /);
       expect(respond.status).toBe(403);
       expect(respond.body.code).toBe(403);
     });
   });
-  describe('update group avatar', () => {
-    it('should update a group avatar', async () => {
-      const TestGroupId = GroupIds[0];
-      const respond = await request(app.getHttpServer())
-        .put(`/groups/${TestGroupId}/avatar`)
-        .set('Authorization', `Bearer ${TestToken}`)
-        .send({
-          avatar: UpdateAvatarId,
-        });
-      expect(respond.body.message).toBe('Group avatar updated successfully.');
-      expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
-    });
-    it('should return a group with updated info from another user', async () => {
-      const TestGroupId = GroupIds[0];
-      const respond = await request(app.getHttpServer())
-        .get(`/groups/${TestGroupId}`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send();
-      expect(respond.body.message).toBe('Group fetched successfully.');
-      expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
-      const groupDto = respond.body.data.group;
-      expect(groupDto.id).toBe(TestGroupId);
-      expect(groupDto.avatarId).toBe(UpdateAvatarId);
-      expect(groupDto.owner).toStrictEqual(TestUserDto);
-      expect(groupDto.created_at).toBeDefined();
-      expect(groupDto.updated_at).toBeDefined();
-      expect(groupDto.member_count).toBe(2);
-      expect(groupDto.question_count).toBe(0);
-      expect(groupDto.answer_count).toBe(0);
-      expect(groupDto.is_member).toBe(true);
-      expect(groupDto.is_owner).toBe(false);
-    });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
-      const respond = await request(app.getHttpServer())
-        .put('/groups/0/avatar')
-        .set('Authorization', `Bearer ${TestToken}`)
-        .send({
-          avatar: UpdateAvatarId,
-        });
-      expect(respond.status).toBe(404);
-      expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
-    });
-    it('should return CannotDeleteGroupError when user is not the owner', async () => {
-      const TestGroupId = GroupIds[0];
-      const respond = await request(app.getHttpServer())
-        .put(`/groups/${TestGroupId}/avatar`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({
-          avatar: UpdateAvatarId,
-        });
-      expect(respond.body.message).toMatch(/^CannotDeleteGroupError: /);
-      expect(respond.status).toBe(403);
-      expect(respond.body.code).toBe(403);
-    });
-  });
+
   describe('leave group', () => {
     it('should leave a group', async () => {
       const TestGroupId = GroupIds[0];

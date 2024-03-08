@@ -2,7 +2,7 @@ export class UserDto {
   id: number;
   username: string;
   nickname: string;
-  avatar: number;
+  avatarId: number;
   intro: string;
   follow_count: number;
   fans_count: number;

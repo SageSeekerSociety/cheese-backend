@@ -123,7 +123,6 @@ export class UserProfile {
   avatar: Avatar;
 
   @Column()
-  @Index({ unique: false })
   avatarId: number;
 
   @Column()

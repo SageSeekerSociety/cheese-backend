@@ -3,6 +3,6 @@ model avatar {
   url       String   @db.VarChar
   name      String   @db.VarChar
   createdAt DateTime @default(now()) @db.Timestamp(6)
-  isDefault Boolean  @default(false)
+  avatarType String  @db.VarChar
   usageCount Int     @default(0)
 }
