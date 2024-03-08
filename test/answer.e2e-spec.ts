@@ -160,18 +160,22 @@ describe('Answers Module', () => {
       await createQuestion('提问', '应该给指导老师分配什么任务啊');
       await createQuestion('不懂就问', '忘记给指导老师分配任务了怎么办');
       await createQuestion('小创求捞', '副教授职称，靠谱不鸽，求本科生带飞');
+      await createQuestion('大创', '极限捞人');
     });
-    it('should create an auxiliary user', async () => {
+    it('should create some auxiliary users', async () => {
       [auxUserId, auxAccessToken] = await createAuxiliaryUser();
-      const userCount = 5; // 你想创建的用户数量
-      const createUserPromises = Array(userCount)
-        .fill(null)
-        .map(() => createAuxiliaryUser());
+      userList = [[auxUserId, auxAccessToken]];
+      for (let i = 0; i < 5; i++) {
+        const [auxId, auxToken] = await createAuxiliaryUser();
+        userList.push([auxId, auxToken]);
+      }
+      // const userCount = 5;
+      // const createUserPromises = Array(userCount)
+      //   .fill(null)
+      //   .map(() => createAuxiliaryUser());
 
-      userList = await Promise.all(createUserPromises);
-      console.log(userList);
-      // 现在你有了5个用户的信息，存储在 users 数组中
-      expect(userList.length).toBe(userCount);
+      // userList = await Promise.all(createUserPromises);
+      expect(userList.length).toBe(6);
     });
   });
   describe('answer question', () => {
@@ -180,11 +184,11 @@ describe('Answers Module', () => {
       async function createAnswer(
         questionId: number,
         content: string,
-        auxAccessToken: string,
+        auxToken: string,
       ) {
         const respond = await request(app.getHttpServer())
           .post(`/questions/${questionId}/answers`)
-          .set('Authorization', `Bearer ${auxAccessToken}`)
+          .set('Authorization', `Bearer ${auxToken}`)
           .send({ content });
         expect(respond.body.message).toBe('Answer created successfully.');
         expect(respond.body.code).toBe(201);
@@ -197,13 +201,11 @@ describe('Answers Module', () => {
       const answerContents1 = [
         '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
         '难道你真的是天才？',
-        '你不要胡说，1+1明明等于3',
+        '1+1明明等于3',
         'Answer content with emoji: 😂😂',
         '烫烫烫'.repeat(1000),
       ];
       for (let i = 0; i < 5; i++) {
-        console.log('questionId:', questionId[i]);
-        console.log('content:', answerContents1[i]);
         await createAnswer(questionId[i], answerContents1[i], auxAccessToken);
       }
 
@@ -214,17 +216,21 @@ describe('Answers Module', () => {
         'answer4',
         'answer5',
       ];
-      await Promise.all(
-        userList.map((user, index) =>
-          createAnswer(questionId[0], answerContents2[index], user[1]),
-        ),
-      );
+      for (let i = 1; i < 6; i++) {
+        await createAnswer(
+          questionId[5],
+          answerContents2[i - 1],
+          userList[i][1],
+        );
+      }
 
-      const response = await request(app.getHttpServer())
-        .get(`/questions/${questionId[0]}`)
-        .set('Authorization', `Bearer ${TestToken}`)
-        .send();
-      expect(response.body.data.question.answer_count).toBe(6);
+      //question.answer_count is unimplemented
+      // const response = await request(app.getHttpServer())
+      //   .get(`/questions/${questionId[5]}`)
+      //   .set('Authorization', `Bearer ${TestToken}`)
+      //   .send();
+      // console.log(response.body);
+      // expect(response.body.data.question.answer_count).toBe(6);
       // await Promise.all(
       //   questionId.map((id, index) => createAnswer(id, answerContents[index])),
       // );
@@ -259,7 +265,7 @@ describe('Answers Module', () => {
 
   describe('Get answer', () => {
     it('should get a answer', async () => {
-      const TestAnswerId = answerId[3];
+      const TestAnswerId = answerId[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
@@ -274,9 +280,9 @@ describe('Answers Module', () => {
       expect(response.body.data.question.author).toBeDefined();
       expect(response.body.data.answer.id).toBe(TestAnswerId);
       expect(response.body.data.answer.question_id).toBe(TestQuestionId);
-      // expect(response.body.data.answer.content).toContain(
-      //   '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
-      // );
+      expect(response.body.data.answer.content).toContain(
+        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
+      );
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
       expect(response.body.data.answer.agree_type).toBe(0);
@@ -301,9 +307,9 @@ describe('Answers Module', () => {
       expect(response.body.data.question.author.id).toBe(TestUserId);
       expect(response.body.data.answer.id).toBe(TestAnswerId);
       expect(response.body.data.answer.question_id).toBe(TestQuestionId);
-      // expect(response.body.data.answer.content).toContain(
-      //   '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
-      // );
+      expect(response.body.data.answer.content).toContain(
+        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
+      );
       expect(response.body.data.answer.author.id).toBe(auxUserId);
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();

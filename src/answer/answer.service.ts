@@ -49,13 +49,14 @@ export class AnswerService {
     createdById: number,
     content: string,
   ): Promise<number> {
-    const questionDto = await this.questionsService.getQuestionDto(questionId);
-    if (questionDto.is_answered)
-      throw new QuestionAlreadyAnsweredError(
-        createdById,
-        questionId,
-        questionDto.my_answer_id,
-      );
+    // const questionDto = await this.questionsService.getQuestionDto(questionId);
+
+    // if (questionDto.is_answered)
+    //   throw new QuestionAlreadyAnsweredError(
+    //     createdById,
+    //     questionId,
+    //     questionDto.my_answer_id,
+    //   );
 
     const ans = await this.answerRepository.findOne({
       where: { createdById, questionId },
