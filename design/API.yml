@@ -1464,7 +1464,7 @@ paths:
                           - invitation_id
                     required:
                       - data
-  /questions/{id}/invitations/recommendations:
+  /questions/{id}/recommendations:
     get:
       summary: 获取推荐邀请用户列表
       operationId: getQuestionInvitationRecommendations
