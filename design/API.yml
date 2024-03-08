@@ -2091,7 +2091,14 @@ paths:
                           groups:
                             type: array
                             items:
-                              $ref: "#/components/schemas/Group"
+                              allOf:
+                                - $ref: "#/components/schemas/Group"
+                                - type: object
+                                  properties:
+                                    recent_hot_questions:
+                                      type: array
+                                      items:
+                                        $ref: "#/components/schemas/Question"
                           page:
                             $ref: "#/components/schemas/Page"
                     required:
