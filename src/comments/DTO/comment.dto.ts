@@ -1,4 +1,4 @@
-import { AttitudeType } from '@prisma/client';
+import { AttitudeStateDto } from '../../attitude/attitude-state-dto.dto';
 import { UserDto } from '../../users/DTO/user.dto';
 import { CommentableType } from '../commentable.enum';
 
@@ -9,8 +9,5 @@ export class CommentDto {
   content: string;
   user: UserDto;
   created_at: number;
-  attitude_type: AttitudeType;
-  agree_count: number;
-  disagree_count: number;
-  // sub_comments: CommentDto[];
+  attitudes: AttitudeStateDto;
 }

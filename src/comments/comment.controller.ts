@@ -14,12 +14,11 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { AttitudeType } from '@prisma/client';
 import { parseAttitude } from '../attitude/attitude.enum';
-import { InvalidAttitudeTypeError } from '../attitude/attitude.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { AttitudeCommentDto } from './DTO/attitude-comment.dto';
 import { CreateCommentResponseDto } from './DTO/create-comment.dto';
 import { GetCommentDetailResponseDto } from './DTO/get-comment-detail.dto';
 import { GetCommentsResponseDto } from './DTO/get-comments.dto';
@@ -124,24 +123,12 @@ export class CommentsController {
     };
   }
 
-  private parseAttitudeTypeForComment(attitude: string): AttitudeType {
-    const attitudeParsed = parseAttitude(attitude);
-    const allowed: AttitudeType[] = [
-      AttitudeType.UNDEFINED,
-      AttitudeType.AGREE,
-      AttitudeType.DISAGREE,
-    ];
-    if (allowed.indexOf(attitudeParsed) == -1)
-      throw new InvalidAttitudeTypeError(attitude);
-    return attitudeParsed;
-  }
-
   @Put('/:commentId/attitude')
   async attitudeToComment(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Body('attitude_type') attitude: string,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<AttitudeCommentDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -150,14 +137,17 @@ export class CommentsController {
       'comment/attitude',
       commentId,
     );
-    await this.commentsService.setAttitudeToComment(
+    const attitudes = await this.commentsService.setAttitudeToComment(
       commentId,
       userId,
-      this.parseAttitudeTypeForComment(attitude),
+      parseAttitude(attitude),
     );
     return {
       code: 200,
       message: 'You have expressed your attitude towards the comment',
+      data: {
+        attitudes,
+      },
     };
   }
 

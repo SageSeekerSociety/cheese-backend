@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { AttitudableType, AttitudeType } from '@prisma/client';
 import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 import { AnswerService } from '../answer/answer.service';
-import { parseAttitude } from '../attitude/attitude.enum';
 import { AttitudeService } from '../attitude/attitude.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
@@ -20,6 +19,7 @@ import {
   CommentQueryLog,
 } from './comment.legacy.entity';
 import { CommentableType } from './commentable.enum';
+import { AttitudeStateDto } from '../attitude/attitude-state-dto.dto';
 
 @Injectable()
 export class CommentsService {
@@ -117,25 +117,12 @@ export class CommentsService {
         ip,
         userAgent,
       ),
-      agree_count: await this.attitudeService.countAttitude(
-        AttitudableType.COMMENT,
-        comment.id,
-        AttitudeType.AGREE,
-      ),
-      disagree_count: await this.attitudeService.countAttitude(
-        AttitudableType.COMMENT,
-        comment.id,
-        AttitudeType.DISAGREE,
-      ),
       created_at: comment.createdAt.getTime(),
-      attitude_type:
-        viewerId == undefined
-          ? AttitudeType.UNDEFINED
-          : await this.attitudeService.getAttitude(
-              viewerId,
-              AttitudableType.COMMENT,
-              comment.id,
-            ),
+      attitudes: await this.attitudeService.getAttitudeStatusDto(
+        AttitudableType.COMMENT,
+        commentId,
+        viewerId,
+      ),
     };
     if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.commentQueryLogRepository.create({
@@ -212,15 +199,20 @@ export class CommentsService {
   async setAttitudeToComment(
     commentId: number,
     userId: number,
-    attitudeType: string,
-  ): Promise<void> {
+    attitudeType: AttitudeType,
+  ): Promise<AttitudeStateDto> {
     const commment = await this.commentRepository.findOneBy({ id: commentId });
     if (commment == null) throw new CommentNotFoundError(commentId);
     await this.attitudeService.setAttitude(
       userId,
       AttitudableType.COMMENT,
       commentId,
-      parseAttitude(attitudeType),
+      attitudeType,
+    );
+    return await this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.COMMENT,
+      commentId,
+      userId,
     );
   }
 
