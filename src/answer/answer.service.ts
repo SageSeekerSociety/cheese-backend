@@ -12,7 +12,6 @@ import {
   AlreadyHasSameAttitudeError,
   AnswerNotFavoriteError,
   AnswerNotFoundError,
-  AnswerQuestionNotMatchError,
   QuestionAlreadyAnsweredError,
 } from './answer.error';
 import {
@@ -49,19 +48,16 @@ export class AnswerService {
     createdById: number,
     content: string,
   ): Promise<number> {
-    const questionDto = await this.questionsService.getQuestionDto(questionId);
-    if (questionDto.is_answered)
+    const existingAnswerId = await this.questionsService.getAnswerIdOfCreatedBy(
+      questionId,
+      createdById,
+    );
+    if (existingAnswerId != null) {
       throw new QuestionAlreadyAnsweredError(
         createdById,
         questionId,
-        questionDto.my_answer_id,
+        existingAnswerId,
       );
-
-    const ans = await this.answerRepository.findOne({
-      where: { createdById, questionId },
-    });
-    if (ans) {
-      throw new QuestionAlreadyAnsweredError(createdById, questionId, ans.id);
     }
 
     const answer = this.answerRepository.create({
@@ -89,13 +85,7 @@ export class AnswerService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(
-            questionId,
-            entity.id,
-            viewerId,
-            userAgent,
-            ip,
-          );
+          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
         }),
       );
       return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
@@ -122,13 +112,7 @@ export class AnswerService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(
-            questionId,
-            entity.id,
-            viewerId,
-            userAgent,
-            ip,
-          );
+          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
         }),
       );
       return PageHelper.PageMiddle(
@@ -147,7 +131,18 @@ export class AnswerService {
     });
   }
 
-  async getAnswerQuestionId(answerId: number): Promise<number> {
+  async isAnswerMatchQuestion(
+    answerId: number,
+    questionId: number,
+  ): Promise<boolean> {
+    return (
+      (await this.answerRepository.findOne({
+        where: { id: answerId, questionId: questionId },
+      })) != undefined
+    );
+  }
+
+  async getQuestionIdByAnswerId(answerId: number): Promise<number> {
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
     });
@@ -188,17 +183,16 @@ export class AnswerService {
   }
 
   async getAnswerDto(
-    questionId: number,
     answerId: number,
     viewerId?: number,
     userAgent?: string,
     ip?: string,
   ): Promise<AnswerDto> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId, questionId: questionId },
+      where: { id: answerId },
     });
     if (!answer) {
-      throw new AnswerQuestionNotMatchError(questionId, answerId);
+      throw new AnswerNotFoundError(answerId);
     }
     const authorDto = await this.usersService.getUserDtoById(
       answer.createdById,
@@ -288,7 +282,7 @@ export class AnswerService {
       throw new AnswerNotFoundError(id);
     }
 
-    // maybe need to check if the user has already agreed or disagreed
+    // check if the user has already agreed or disagreed
     const userAttitude = await this.userAttitudeRepository.findOne({
       where: { userId, answerId: id },
     });

@@ -16,8 +16,6 @@ describe('Answers Module', () => {
   const TestTopicPrefix = `[Test(${TestTopicCode}) Question]`;
   const TestQuestionCode = Math.floor(Math.random() * 10000000000).toString();
   const TestQuestionPrefix = `[Test(${TestQuestionCode}) Question]`;
-  // const TestAnswerCode = Math.floor(Math.random() * 10000000000).toString();
-  // const TestAnswerPrefix = `[Test(${TestAnswerCode}) Question]`;
   let TestToken: string;
   let TestUserId: number;
   const TopicIds: number[] = [];
@@ -26,6 +24,7 @@ describe('Answers Module', () => {
   let auxAccessToken: string;
   const answerId: number[] = [];
   const AnswerQuestionMap: { [key: number]: number } = {};
+  let userList: [number, string][];
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
@@ -150,44 +149,71 @@ describe('Answers Module', () => {
         expect(respond.body.data.id).toBeDefined();
         questionId.push(respond.body.data.id);
       }
+
       await createQuestion(
         '我这个哥德巴赫猜想的证明对吗？',
         '哥德巴赫猜想又名1+1=2，而显然1+1=2是成立的，所以哥德巴赫猜想是成立的。',
       );
+      await createQuestion('求助', '给指导老师分配了任务，老师不干活怎么办？');
+      await createQuestion('提问', '应该给指导老师分配什么任务啊');
+      await createQuestion('不懂就问', '忘记给指导老师分配任务了怎么办');
+      await createQuestion('小创求捞', '副教授职称，靠谱不鸽，求本科生带飞');
+      await createQuestion('大创', '极限捞人');
     });
-
-    it('should create an auxiliary user', async () => {
+    it('should create some auxiliary users', async () => {
       [auxUserId, auxAccessToken] = await createAuxiliaryUser();
+      userList = [[auxUserId, auxAccessToken]];
+      for (let i = 0; i < 5; i++) {
+        const [auxId, auxToken] = await createAuxiliaryUser();
+        userList.push([auxId, auxToken]);
+      }
+
+      expect(userList.length).toBe(6);
     });
   });
 
   describe('answer question', () => {
     it('should create some answers', async () => {
-      const testQuestionId = questionId[1];
-      async function createAnswer(content: string) {
-        console.log('questionId:', questionId);
+      async function createAnswer(
+        questionId: number,
+        content: string,
+        auxToken: string,
+      ) {
         const respond = await request(app.getHttpServer())
-          .post(`/questions/${testQuestionId}/answers`)
-          .set('Authorization', `Bearer ${auxAccessToken}`)
+          .post(`/questions/${questionId}/answers`)
+          .set('Authorization', `Bearer ${auxToken}`)
           .send({ content });
         expect(respond.body.message).toBe('Answer created successfully.');
-        expect(respond.body.code).toBe(200);
+        expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
-        console.log('respond.body.data.id:', respond.body.data.id);
         expect(typeof respond.body.data.id).toBe('number');
         answerId.push(respond.body.data.id);
         AnswerQuestionMap[respond.body.data.id] = questionId;
       }
-      await createAnswer(
+
+      const answerContents1 = [
         '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
-      ); // this should be firstly executed and will be checked further
-      await Promise.all([
-        createAnswer('难道你真的是天才？'),
-        createAnswer('你不要胡说，1+1明明等于3'),
-        createAnswer('Answer content with emoji: 😂😂'),
-        createAnswer('烫烫烫'.repeat(1000)),
-      ]);
-    }, 6000);
+        '难道你真的是天才？',
+        '1+1明明等于3',
+        'Answer content with emoji: 😂😂',
+        '烫烫烫'.repeat(1000),
+      ];
+      for (let i = 0; i < 5; i++) {
+        await createAnswer(questionId[i], answerContents1[i], auxAccessToken);
+      }
+
+      const answerContents2 = [
+        'answer1',
+        'answer2',
+        'answer3',
+        'answer4',
+        'answer5',
+        'answer6',
+      ];
+      for (let i = 0; i < 6; i++) {
+        await createAnswer(questionId[5], answerContents2[i], userList[i][1]);
+      }
+    }, 60000);
     it('should return QuestionAlreadyAnsweredError when user answer the same question', async () => {
       const TestQuestionId = questionId[0];
       const content = 'content';
@@ -202,24 +228,23 @@ describe('Answers Module', () => {
       expect(respond.body.message).toMatch(/QuestionAlreadyAnsweredError: /);
       expect(respond.body.code).toBe(400);
     });
-    it('should return updated statistic info when getting user', async () => {
+    it('should return updated statistic info when getting user who not log in', async () => {
       const respond = await request(app.getHttpServer()).get(
         `/users/${auxUserId}`,
       );
-      expect(respond.body.data.user.answer_count).toBeDefined();
+      expect(respond.body.data.user.answer_count).toBe(6);
     });
     it('should return updated statistic info when getting user', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/users/${auxUserId}`)
         .set('authorization', 'Bearer ' + TestToken);
-      expect(respond.body.data.user.answer_count).toBeDefined();
+      expect(respond.body.data.user.answer_count).toBe(6);
     });
   });
 
   describe('Get answer', () => {
     it('should get a answer', async () => {
-      // const TestQuestionId = questionId[0];
-      const TestAnswerId = answerId[3];
+      const TestAnswerId = answerId[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
@@ -234,9 +259,9 @@ describe('Answers Module', () => {
       expect(response.body.data.question.author).toBeDefined();
       expect(response.body.data.answer.id).toBe(TestAnswerId);
       expect(response.body.data.answer.question_id).toBe(TestQuestionId);
-      // expect(response.body.data.answer.content).toContain(
-      //   '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
-      // );
+      expect(response.body.data.answer.content).toContain(
+        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
+      );
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
       expect(response.body.data.answer.agree_type).toBe(0);
@@ -261,9 +286,9 @@ describe('Answers Module', () => {
       expect(response.body.data.question.author.id).toBe(TestUserId);
       expect(response.body.data.answer.id).toBe(TestAnswerId);
       expect(response.body.data.answer.question_id).toBe(TestQuestionId);
-      // expect(response.body.data.answer.content).toContain(
-      //   '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
-      // );
+      expect(response.body.data.answer.content).toContain(
+        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
+      );
       expect(response.body.data.answer.author.id).toBe(auxUserId);
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
@@ -352,8 +377,8 @@ describe('Answers Module', () => {
 
   describe('Update Answer', () => {
     it('should successfully update an answer', async () => {
-      const testQuestionId = questionId[0];
       const testAnswerId = answerId[1];
+      const testQuestionId = AnswerQuestionMap[testAnswerId];
       const updatedContent = '--------更新----------';
       const response = await request(app.getHttpServer())
         .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
@@ -365,7 +390,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFoundError when trying to update a non-existent answer', async () => {
-      const nonExistentAnswerId = 0;
+      const nonExistentAnswerId = 999999;
       const testQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
         .put(`/questions/${testQuestionId}/answers/${nonExistentAnswerId}`)
@@ -375,12 +400,25 @@ describe('Answers Module', () => {
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
     });
+
+    it('should throw AnswerQuestionNotMatchError', async () => {
+      const testAnswerId = answerId[0];
+      const testQuestionId = AnswerQuestionMap[testAnswerId] + 1;
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ content: 'Some content' });
+
+      expect(response.body.message).toMatch(/AnswerQuestionNotMatchError: /);
+      expect(response.status).toBe(404);
+      expect(response.body.code).toBe(404);
+    });
   });
 
   describe('Delete Answer', () => {
     it('should successfully delete an answer', async () => {
-      const testQuestionId = questionId[0];
       const TestAnswerId = answerId[2];
+      const testQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${testQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`);
@@ -405,8 +443,8 @@ describe('Answers Module', () => {
 
   describe('Agree Answer', () => {
     it('should successfully create user attitude on first attempt', async () => {
-      const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[1];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -421,8 +459,8 @@ describe('Answers Module', () => {
     });
 
     it('should successfully agree to an answer', async () => {
-      const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[3];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -436,8 +474,8 @@ describe('Answers Module', () => {
     });
 
     it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
-      const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[3];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -467,19 +505,18 @@ describe('Answers Module', () => {
   describe('Favorite Answer', () => {
     it('should successfully favorite an answer', async () => {
       const TestAnswerId = answerId[1];
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(response.body.message).toBe('Answer favorited successfully.');
       expect(response.status).toBe(200);
-      // expect(response.body.data.answer.favorite_count).toBe(1);
     });
 
     it('should successfully unfavorite an answer', async () => {
       const TestAnswerId = answerId[1];
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -488,14 +525,14 @@ describe('Answers Module', () => {
         .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(response.body.message).toBe('No Content.');
+      expect(response.body.message).toBe('No Content');
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(204);
     });
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
       const TestAnswerId = answerId[4];
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -505,7 +542,6 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(400);
     });
     it('should throw AnswerNotFoundError when trying to favorite a non-existent answer', async () => {
-      // const TestAnswerId = answerId[0];
       const TestQuestionId = questionId[0];
       const nonExistentAnswerId = 99999;
       const response = await request(app.getHttpServer())
@@ -521,7 +557,6 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(404);
     });
     it('should throw AnswerNotFoundError when trying to unfavorite a non-existent answer', async () => {
-      // const TestAnswerId = answerId[0];
       const TestQuestionId = questionId[0];
       const nonExistentAnswerId = 99998;
       const response = await request(app.getHttpServer())
