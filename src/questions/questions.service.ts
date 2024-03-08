@@ -23,7 +23,7 @@ import { UsersService } from '../users/users.service';
 import { QuestionInvitationDetailDto } from './DTO/get-invitation-detail.dto';
 import { QuestionInvitationDto } from './DTO/get-question-invitation.dto';
 import { GetRecommentdations } from './DTO/get-recommendations.dto';
-import { inviteUsersAnswerDto } from './DTO/invite-user-answer.dto';
+import { InviteUsersAnswerDto } from './DTO/invite-user-answer.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
   AlreadyAnsweredError,
@@ -543,7 +543,7 @@ export class QuestionsService {
   async inviteUsersToAnswerQuestion(
     questionId: number,
     userId: number,
-  ): Promise<inviteUsersAnswerDto> {
+  ): Promise<InviteUsersAnswerDto> {
     const questionDto = await this.getQuestionDto(questionId);
     const userdto = await this.userService.getUserDtoById(userId);
     const haveBeenInvited =
@@ -570,7 +570,6 @@ export class QuestionsService {
       });
     return {
       userId,
-      success: true,
       invitationId: Invitation.id,
     };
   }
@@ -601,20 +600,26 @@ export class QuestionsService {
     const currentPage = Math.floor(pageStart / pageSize) + 1;
     const hasPrev = currentPage > 1;
     const hasNext = totalCount > currentPage * pageSize;
-
-    return {
-      Invitations: questionInvitations.map((invitation) => ({
-        id: invitation.id,
-        questionId: invitation.questionId,
-        userId: invitation.userId,
-        createAt: invitation.createdAt,
-        updateAt: invitation.updatedAt,
-        isAnswered: questionDto.is_answered,
-      })),
-      page_start: pageStart,
-      has_prev: hasPrev,
-      has_more: hasNext,
-    };
+    return Promise.all(
+      questionInvitations.map(async (invitation) => {
+        const user = await this.userService.getUserDtoById(invitation.userId);
+        return {
+          id: invitation.id,
+          questionId: invitation.questionId,
+          user,
+          createAt: invitation.createdAt,
+          updateAt: invitation.updatedAt,
+          isAnswered: questionDto.is_answered,
+        };
+      }),
+    ).then((invitations) => {
+      return {
+        Invitations: invitations,
+        page_start: pageStart,
+        has_prev: hasPrev,
+        has_more: hasNext,
+      };
+    });
   }
   async getQuestionInvitationRecommendations(
     questionId: number,
@@ -679,7 +684,7 @@ export class QuestionsService {
     }
     await this.prismaService.questionInvitationRelation.delete({
       where: {
-        id: invitationId, // 根据实际情况设置要删除的记录的条件
+        id: invitationId,
       },
     });
   }

@@ -34,7 +34,7 @@ import {
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
-  UpdateDateColumn
+  UpdateDateColumn,
 } from 'typeorm';
 import { GroupQuestionRelationship } from '../groups/groups.legacy.entity';
 import { Topic } from '../topics/topics.legacy.entity';
@@ -253,28 +253,3 @@ export class QuestionInvitation {
   @DeleteDateColumn()
   deletedAt?: Date;
 }
-
-// @Entity()
-// export class InvitedUser {
-//   @PrimaryGeneratedColumn()
-//   id: number;
-
-//   @ManyToOne(
-//     () => QuestionInvitation,
-//     (questionInvitation) => questionInvitation.invitedUsers,
-//   )
-//   questionInvitation: QuestionInvitation;
-
-//   @ManyToOne(() => User)
-//   @JoinColumn({ name: 'userId' })
-//   user: User;
-
-//   @CreateDateColumn()
-//   createAt: Date;
-
-//   @UpdateDateColumn()
-//   updateAt: Date;
-
-//   @DeleteDateColumn()
-//   deletedAt?: Date;
-// }

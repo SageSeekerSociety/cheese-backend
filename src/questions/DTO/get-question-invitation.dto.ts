@@ -1,6 +1,7 @@
 import { IsBoolean, IsInt } from 'class-validator';
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 import { PageRespondDto } from '../../common/DTO/page-respond.dto';
+import { UserDto } from '../../users/DTO/user.dto';
 
 export class QuestionInvitationDto {
   @IsInt()
@@ -10,7 +11,7 @@ export class QuestionInvitationDto {
   questionId: number;
 
   @IsInt()
-  userId: number;
+  user: UserDto;
 
   @IsInt()
   createAt: Date;

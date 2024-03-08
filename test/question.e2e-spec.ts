@@ -613,7 +613,7 @@ describe('Questions Module', () => {
     });
   });
 
-  describe('invite user to answer question', () => {
+  describe('invite somebody to answer', () => {
     it('should invite some users to answer question', async () => {
       const userIds: sendIdDto = { id: TestUserId };
       const respond = await request(app.getHttpServer())
@@ -694,7 +694,7 @@ describe('Questions Module', () => {
     //   expect(respond.body.code).toBe(201);
     // });
   });
-  describe('it should cancel the invitations', () => {
+  describe('it will cancel the invitations', () => {
     it('should cancel the invitations', async () => {
       const invitationId: sendIdDto = { id: invitaionIds[0] };
       const respond = await request(app.getHttpServer())
@@ -737,7 +737,7 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(400);
     });
   });
-  describe('it should get some details', () => {
+  describe('it may get some details', () => {
     it('should get some details', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/questions/${questionIds[1]}/invitations/${invitaionIds[1]}`)
@@ -768,7 +768,7 @@ describe('Questions Module', () => {
     });
   });
 
-  describe('it should get recommendation', () => {
+  describe('get recommendation function test', () => {
     it('should get recommendation', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/questions/${questionIds[1]}/invitation/recommendations`)

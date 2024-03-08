@@ -1,12 +1,9 @@
-import { IsBoolean, IsInt, IsOptional } from 'class-validator';
+import { IsInt, IsOptional } from 'class-validator';
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
-export class inviteUsersAnswerDto {
+export class InviteUsersAnswerDto {
   @IsInt()
   userId: number;
-
-  @IsBoolean()
-  success: boolean;
 
   @IsInt()
   @IsOptional()
@@ -14,5 +11,5 @@ export class inviteUsersAnswerDto {
 }
 
 export class inviteUsersAnswerResponseDto extends BaseRespondDto {
-  data: inviteUsersAnswerDto;
+  data: InviteUsersAnswerDto;
 }

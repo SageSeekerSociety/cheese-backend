@@ -53,8 +53,8 @@ import { QuestionsService } from './questions.service';
 @UseFilters(new BaseErrorExceptionFilter())
 export class QuestionsController {
   constructor(
-    private readonly questionsService: QuestionsService,
-    private readonly authService: AuthService,
+    readonly questionsService: QuestionsService,
+    readonly authService: AuthService,
   ) {}
 
   @Get('/')
@@ -320,6 +320,13 @@ export class QuestionsController {
     @Headers('Authorization') auth: string | undefined,
     @Body() userIds: sendIdDto,
   ): Promise<inviteUsersAnswerResponseDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
     const userId = await this.authService.verify(auth).userId;
     const inviteUserAnswer =
       await this.questionsService.inviteUsersToAnswerQuestion(id, userIds.id);
