@@ -2557,6 +2557,8 @@ paths:
               - hot
               - new
             default: recommend
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -2597,6 +2599,8 @@ paths:
               - hot
               - new
             default: recommend
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -2681,6 +2685,8 @@ paths:
       parameters:
         - $ref: "#/components/parameters/groupId"
         - $ref: "#/components/parameters/targetId"
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -2810,6 +2816,8 @@ paths:
               - continuous_count
               - max_continuous_count
               - total_count
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -2851,6 +2859,8 @@ paths:
         - $ref: "#/components/parameters/targetId"
         - $ref: "#/components/parameters/page_start"
         - $ref: "#/components/parameters/page_size"
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
