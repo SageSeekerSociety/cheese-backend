@@ -44,6 +44,7 @@ import { GetQuestionResponseDto } from './DTO/get-question.dto';
 import { GetRecommentdationsRespondDto } from './DTO/get-recommendations.dto';
 import { inviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
+import { sendIdDto } from './DTO/send-id.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
 
@@ -317,11 +318,11 @@ export class QuestionsController {
   async inviteUserAnswerQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-    @Body() userIds: number[],
+    @Body() userIds: sendIdDto,
   ): Promise<inviteUsersAnswerResponseDto> {
     const userId = await this.authService.verify(auth).userId;
     const inviteUserAnswer =
-      await this.questionsService.inviteUsersToAnswerQuestion(id, userIds[0]);
+      await this.questionsService.inviteUsersToAnswerQuestion(id, userIds.id);
     return {
       code: 201,
       message: 'Invited',
@@ -333,13 +334,33 @@ export class QuestionsController {
   async cancelInvition(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-    @Body() InvitationId: number[],
+    @Body() InvitationId: sendIdDto,
   ): Promise<cancelInvitationResponseDto> {
     const userId = this.authService.verify(auth).userId;
-    await this.questionsService.cancelInvitation(id, InvitationId[0]);
+    await this.questionsService.cancelInvitation(id, InvitationId.id);
     return {
       code: 204,
       message: 'successfully cancelled',
+    };
+  }
+
+  //don't change the position of the below two functions
+  //because if the order is swapped, the route is incorrectly identified
+  @Get('/:id/invitation/recommendations')
+  async getRecommendations(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    pageSize: number,
+  ): Promise<GetRecommentdationsRespondDto> {
+    const users =
+      await this.questionsService.getQuestionInvitationRecommendations(
+        id,
+        pageSize,
+      );
+    return {
+      code: 200,
+      message: 'successfully',
+      data: users,
     };
   }
 
@@ -356,24 +377,6 @@ export class QuestionsController {
       code: 200,
       message: 'successfully',
       data: InvitationDetail,
-    };
-  }
-
-  @Get('/:id/recommendations')
-  async getRecommendations(
-    @Param('id', ParseIntPipe) id: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number,
-  ): Promise<GetRecommentdationsRespondDto> {
-    const users =
-      await this.questionsService.getQuestionInvitationRecommendations(
-        id,
-        pageSize,
-      );
-    return {
-      code: 200,
-      message: 'successfully',
-      data: users,
     };
   }
 }

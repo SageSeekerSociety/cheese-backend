@@ -9,6 +9,11 @@ import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { AnswerDto } from './DTO/answer.dto';
 import {
+  AlreadyHasSameAttitudeError,
+  AnswerNotFavoriteError,
+  AnswerNotFoundError,
+} from './answer.error';
+import {
   Answer,
   AnswerAttitudeAgree,
   AnswerAttitudeUndefined,
@@ -17,11 +22,6 @@ import {
   AnswerUpdateLog,
   AnswerUserAttitude,
 } from './answer.legacy.entity';
-import {
-  AlreadyHasSameAttitudeError,
-  AnswerNotFavoriteError,
-  AnswerNotFoundError,
-} from './answer.error';
 
 @Injectable()
 export class AnswerService {

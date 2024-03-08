@@ -669,6 +669,7 @@ export class QuestionsService {
     questionId: number,
     invitationId: number,
   ): Promise<void> {
+    const questiondto = await this.getQuestionDto(questionId);
     const invitation =
       await this.prismaService.questionInvitationRelation.findFirst({
         where: { id: invitationId, questionId },
