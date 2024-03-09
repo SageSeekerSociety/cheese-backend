@@ -7,13 +7,16 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AttitudeService } from '../attitude/attitude.service';
+import { CommentableType } from '../comments/commentable.enum';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { GroupsService } from '../groups/groups.service';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
@@ -41,6 +44,9 @@ export class QuestionsService {
   constructor(
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
+    private readonly attitudeService: AttitudeService,
+    @Inject(forwardRef(() => GroupsService))
+    private groupService: GroupsService,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
     @InjectRepository(Question)
@@ -208,30 +214,57 @@ export class QuestionsService {
       id: questionId,
     });
     if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+    const userDtoPromise = this.userService.getUserDtoById(
+      question.createdById,
+    );
     const topicsPromise = this.getTopicDtosOfQuestion(questionId);
     const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
     const followCountPromise = this.getFollowCountOfQuestion(questionId);
     const viewCountPromise = this.getViewCountOfQuestion(questionId);
+    const attitudeDtoPromise = this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.QUESTION,
+      questionId,
+      viewerId,
+    );
+    const answerCountPromise = this.prismaService.answer.count({
+      where: {
+        deletedAt: null,
+        questionId,
+      },
+    });
+    const commentCountPromise = this.prismaService.comment.count({
+      where: {
+        deletedAt: null,
+        commentableType: CommentableType.QUESTION,
+        commentableId: questionId,
+      },
+    });
+    const groupDtoPromise =
+      question.groupId == undefined
+        ? Promise.resolve(undefined)
+        : this.groupService.getGroupDtoById(undefined, question.groupId);
 
-    const [topics, hasFollowed, followCount, viewCount] = await Promise.all([
+    const [
+      userDto,
+      topics,
+      hasFollowed,
+      followCount,
+      viewCount,
+      attitudeDto,
+      answerCount,
+      commentCount,
+      groupDto,
+    ] = await Promise.all([
+      userDtoPromise,
       topicsPromise,
       hasFollowedPromise,
       followCountPromise,
       viewCountPromise,
+      attitudeDtoPromise,
+      answerCountPromise,
+      commentCountPromise,
+      groupDtoPromise,
     ]);
-    let user: UserDto = undefined!; // For case that user is deleted.
-    try {
-      user = await this.userService.getUserDtoById(
-        question.createdById,
-        viewerId,
-        ip,
-        userAgent,
-      );
-    } catch (e) {
-      // If user is undefined, it means that one user created this question, but the user
-      // does not exist now. This is NOT a data integrity problem, since user can be
-      // deleted. So we just return a undefined and not throw an error.
-    }
     if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.questionQueryLogRepository.create({
         viewerId,
@@ -245,20 +278,19 @@ export class QuestionsService {
       id: question.id,
       title: question.title,
       content: question.content,
-      author: user,
+      author: userDto,
       type: question.type,
       topics,
       created_at: question.createdAt.getTime(),
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
-      is_like: false, // TODO: Implement this.
-      answer_count: 0, // TODO: Implement this.
-      comment_count: 0, // TODO: Implement this.
+      answer_count: answerCount,
+      comment_count: commentCount,
       follow_count: followCount,
-      like_count: 0, // TODO: Implement this.
+      attitudes: attitudeDto,
       view_count: viewCount,
-      is_group: question.groupId != undefined,
-      group: undefined!, // TODO: Implement this.
+      is_group: groupDto != undefined,
+      group: groupDto,
     };
   }
 

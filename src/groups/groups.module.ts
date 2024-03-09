@@ -6,8 +6,9 @@
  *
  */
 
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AnswerModule } from '../answer/answer.module';
 import { AuthModule } from '../auth/auth.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { UsersModule } from '../users/users.module';
@@ -32,9 +33,11 @@ import { GroupsService } from './groups.service';
     ]),
     AuthModule,
     UsersModule,
-    QuestionsModule,
+    forwardRef(() => QuestionsModule),
+    forwardRef(() => AnswerModule),
   ],
   controllers: [GroupsController],
   providers: [GroupsService],
+  exports: [GroupsService],
 })
 export class GroupsModule {}

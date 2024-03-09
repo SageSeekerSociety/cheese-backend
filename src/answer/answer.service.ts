@@ -1,13 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 //mport { AnswerModule } from './answer.module';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { QuestionIdNotFoundError } from '../questions/questions.error';
+import { QuestionsService } from '../questions/questions.service';
 import { UserIdNotFoundError } from '../users/users.error';
 import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { AnswerDto } from './DTO/answer.dto';
+import {
+  AlreadyHasSameAttitudeError,
+  AnswerNotFavoriteError,
+  AnswerNotFoundError,
+} from './answer.error';
 import {
   Answer,
   AnswerAttitudeAgree,
@@ -17,17 +24,13 @@ import {
   AnswerUpdateLog,
   AnswerUserAttitude,
 } from './answer.legacy.entity';
-import {
-  AlreadyHasSameAttitudeError,
-  AnswerNotFavoriteError,
-  AnswerNotFoundError,
-} from './answer.error';
 
 @Injectable()
 export class AnswerService {
   constructor(
     private usersService: UsersService,
-    //private questionsService: QuestionsService,
+    @Inject(forwardRef(() => QuestionsService))
+    private questionsService: QuestionsService,
     @InjectRepository(Answer)
     private answerRepository: Repository<Answer>,
     @InjectRepository(AnswerUserAttitude)
@@ -318,5 +321,13 @@ export class AnswerService {
 
   async isAnswerExists(answerId: number): Promise<boolean> {
     return (await this.answerRepository.countBy({ id: answerId })) > 0;
+  }
+
+  async countQuestionAnswers(questionId: number): Promise<number> {
+    if ((await this.questionsService.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    return this.answerRepository.countBy({
+      questionId: questionId,
+    });
   }
 }

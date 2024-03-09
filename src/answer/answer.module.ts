@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Entity } from 'typeorm';
 import { AuthModule } from '../auth/auth.module';
@@ -28,7 +28,7 @@ import { AnswerService } from './answer.service';
     ]),
     AuthModule,
     UsersModule,
-    QuestionsModule,
+    forwardRef(() => QuestionsModule),
   ],
   providers: [AnswerService],
   controllers: [AnswerController],
