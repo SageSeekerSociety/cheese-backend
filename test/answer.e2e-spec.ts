@@ -160,43 +160,56 @@ describe('Answers Module', () => {
     });
   });
 
-  // describe('answer question', () => {
-  it('should create some answers', async () => {
-    const testQuestionId = questionId[0];
-    async function createAnswer(content: string) {
+  describe('answer question', () => {
+    it('should create some answers', async () => {
+      const testQuestionId = questionId[0];
+      async function createAnswer(content: string) {
+        const respond = await request(app.getHttpServer())
+          .post(`/questions/${testQuestionId}/answers`)
+          .set('Authorization', `Bearer ${auxAccessToken}`)
+          .send({
+            content: content,
+          });
+        expect(respond.body.message).toBe('Answer created successfully.');
+        expect(respond.body.code).toBe(200);
+        expect(respond.status).toBe(201);
+        expect(typeof respond.body.data.id).toBe('number');
+        answerId.push(respond.body.data.id);
+      }
+      await createAnswer(
+        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
+      ); // this should be firstly executed and will be checked further
+      await Promise.all([
+        createAnswer('难道你真的是天才？'),
+        createAnswer('你不要胡说，1+1明明等于3'),
+        createAnswer('Answer content with emoji: 😂😂'),
+        createAnswer('烫烫烫'.repeat(1000)),
+      ]);
+    }, 6000);
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${auxUserId}`,
+      );
+      expect(respond.body.data.user.answer_count).toBe(5);
+    });
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.answer_count).toBe(5);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const testQuestionId = questionId[1];
+      console.log(testQuestionId);
+      const content = 'a content';
       const respond = await request(app.getHttpServer())
         .post(`/questions/${testQuestionId}/answers`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({
           content: content,
         });
-      expect(respond.body.message).toBe('Answer created successfully.');
-      expect(respond.body.code).toBe(200);
-      expect(respond.status).toBe(201);
-      expect(typeof respond.body.data.id).toBe('number');
-      answerId.push(respond.body.data.id);
-    }
-    await createAnswer(
-      '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
-    ); // this should be firstly executed and will be checked further
-    await Promise.all([
-      createAnswer('难道你真的是天才？'),
-      createAnswer('你不要胡说，1+1明明等于3'),
-      createAnswer('Answer content with emoji: 😂😂'),
-      createAnswer('烫烫烫'.repeat(1000)),
-    ]);
-  }, 6000);
-  it('should return updated statistic info when getting user', async () => {
-    const respond = await request(app.getHttpServer()).get(
-      `/users/${auxUserId}`,
-    );
-    expect(respond.body.data.user.answer_count).toBe(5);
-  });
-  it('should return updated statistic info when getting user', async () => {
-    const respond = await request(app.getHttpServer())
-      .get(`/users/${auxUserId}`)
-      .set('authorization', 'Bearer ' + TestToken);
-    expect(respond.body.data.user.answer_count).toBe(5);
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
   });
 
   describe('Get answer', () => {
@@ -355,6 +368,17 @@ describe('Answers Module', () => {
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
     });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const testQuestionId = questionId[0];
+      const testAnswerId = answerId[1];
+      const updatedContent = '--------更新----------';
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
+        .send({ content: updatedContent });
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
+    });
   });
 
   describe('Delete Answer', () => {
@@ -380,6 +404,17 @@ describe('Answers Module', () => {
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
+    });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const testQuestionId = questionId[0];
+      const TestAnswerId = answerId[2];
+      const response = await request(app.getHttpServer()).delete(
+        `/questions/${testQuestionId}/answers/${TestAnswerId}`,
+      );
+
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
     });
   });
 
@@ -441,6 +476,17 @@ describe('Answers Module', () => {
         .send({ agree_type: 1 });
       expect(response.body.message).toMatch(/AnswerNotFoundError/);
       expect(response.status).toBe(404);
+    });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const TestQuestionId = questionId[0];
+      const TestAnswerId = answerId[3];
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
+
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
     });
   });
 
@@ -515,6 +561,17 @@ describe('Answers Module', () => {
       expect(response.status).toBe(404);
 
       expect(response.body.code).toBe(404);
+    });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const TestAnswerId = answerId[1];
+      const TestQuestionId = questionId[0];
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
+        .send();
+
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
     });
   });
 

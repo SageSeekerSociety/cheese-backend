@@ -14,7 +14,7 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { AuthService } from '../auth/auth.service';
+import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { QuestionsService } from '../questions/questions.service';
@@ -80,6 +80,13 @@ export class AnswerController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<CreateAnswerRespondDto> {
     const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.create,
+      userId,
+      'answer',
+      undefined,
+    );
     const answerId = await this.answerService.createAnswer(id, userId, content);
     return {
       code: 200,
@@ -132,6 +139,13 @@ export class AnswerController {
     @Body() req: UpdateAnswerRequestDto,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      userId,
+      'answer',
+      undefined,
+    );
     await this.answerService.updateAnswer(userId, answerId, req.content);
     return {
       code: 200,
@@ -145,6 +159,13 @@ export class AnswerController {
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.delete,
+      userId,
+      'answer',
+      undefined,
+    );
     await this.answerService.deleteAnswer(answerId, userId);
     return {
       code: 200,
@@ -159,6 +180,13 @@ export class AnswerController {
     @Body() req: AgreeAnswerRequestDto,
   ): Promise<AgreeAnswerRespondDto> {
     const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.other,
+      userId,
+      'answer/attitude',
+      undefined,
+    );
     await this.answerService.agreeAnswer(answerId, userId, req.agree_type);
     return {
       code: 200,
@@ -175,6 +203,13 @@ export class AnswerController {
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.other,
+      userId,
+      'answer/attitude',
+      undefined,
+    );
     await this.answerService.favoriteAnswer(answerId, userId);
     return {
       code: 200,
@@ -188,6 +223,13 @@ export class AnswerController {
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.other,
+      userId,
+      'answer/attitude',
+      undefined,
+    );
     await this.answerService.unfavoriteAnswer(answerId, userId);
     return {
       code: 200,

@@ -500,6 +500,30 @@ export class UsersService {
           },
         },
         {
+          // An user can control the answer he/she created.
+          authorizedActions: [
+            AuthorizedAction.create,
+            AuthorizedAction.delete,
+            AuthorizedAction.modify,
+            AuthorizedAction.query,
+            AuthorizedAction.other,
+          ],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['answer'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          // An user can set attitude to any answer
+          authorizedActions: [AuthorizedAction.other],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['answer/attitude'],
+            resourceIds: undefined,
+          },
+        },
+        {
           // An user can create and delete comment.
           authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
           authorizedResource: {
