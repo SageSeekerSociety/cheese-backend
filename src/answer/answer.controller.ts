@@ -106,7 +106,6 @@ export class AnswerController {
       // The user is not logged in.
     }
     const answerDto = await this.answerService.getAnswerDto(
-      id,
       answerId,
       userId,
       userAgent,
@@ -115,6 +114,7 @@ export class AnswerController {
     const questionDto = await this.questionsService.getQuestionDto(
       answerDto.question_id,
     );
+    await this.answerService.isAnswerMatchQuestion(answerId, id);
     return {
       code: 200,
       message: 'Answer fetched successfully.',
@@ -134,6 +134,7 @@ export class AnswerController {
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
     await this.answerService.updateAnswer(userId, answerId, req.content);
+    await this.answerService.isAnswerMatchQuestion(answerId, id);
     return {
       code: 200,
       message: 'Answer updated successfully.',

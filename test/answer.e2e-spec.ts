@@ -398,8 +398,8 @@ describe('Answers Module', () => {
 
   describe('Update Answer', () => {
     it('should successfully update an answer', async () => {
-      const testQuestionId = questionId[0];
       const testAnswerId = answerId[1];
+      const testQuestionId = AnswerQuestionMap[testAnswerId];
       const updatedContent = '--------更新----------';
       const response = await request(app.getHttpServer())
         .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
@@ -425,8 +425,8 @@ describe('Answers Module', () => {
 
   describe('Delete Answer', () => {
     it('should successfully delete an answer', async () => {
-      const testQuestionId = questionId[0];
       const TestAnswerId = answerId[2];
+      const testQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${testQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -453,8 +453,8 @@ describe('Answers Module', () => {
 
   describe('Agree Answer', () => {
     it('should successfully create user attitude on first attempt', async () => {
-      const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[1];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -469,8 +469,8 @@ describe('Answers Module', () => {
     });
 
     it('should successfully agree to an answer', async () => {
-      const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[3];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -484,8 +484,8 @@ describe('Answers Module', () => {
     });
 
     it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
-      const TestQuestionId = questionId[0];
       const TestAnswerId = answerId[3];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -515,7 +515,7 @@ describe('Answers Module', () => {
   describe('Favorite Answer', () => {
     it('should successfully favorite an answer', async () => {
       const TestAnswerId = answerId[1];
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -527,7 +527,7 @@ describe('Answers Module', () => {
 
     it('should successfully unfavorite an answer', async () => {
       const TestAnswerId = answerId[1];
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -543,7 +543,7 @@ describe('Answers Module', () => {
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
       const TestAnswerId = answerId[4];
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)

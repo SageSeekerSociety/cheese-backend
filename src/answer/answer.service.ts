@@ -90,13 +90,7 @@ export class AnswerService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(
-            questionId,
-            entity.id,
-            viewerId,
-            userAgent,
-            ip,
-          );
+          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
         }),
       );
       return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
@@ -123,13 +117,7 @@ export class AnswerService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(
-            questionId,
-            entity.id,
-            viewerId,
-            userAgent,
-            ip,
-          );
+          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
         }),
       );
       return PageHelper.PageMiddle(
@@ -148,7 +136,17 @@ export class AnswerService {
     });
   }
 
-  async getAnswerQuestionId(answerId: number): Promise<number> {
+  async isAnswerMatchQuestion(
+    answerId: number,
+    questionId: number,
+  ): Promise<void> {
+    const answer = await this.answerRepository.findOne({
+      where: { id: answerId, questionId: questionId },
+    });
+    if (!answer) throw new AnswerQuestionNotMatchError(questionId, answerId);
+  }
+
+  async getQuestionIdByAnswerId(answerId: number): Promise<number> {
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
     });
@@ -189,17 +187,16 @@ export class AnswerService {
   }
 
   async getAnswerDto(
-    questionId: number,
     answerId: number,
     viewerId?: number,
     userAgent?: string,
     ip?: string,
   ): Promise<AnswerDto> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId, questionId: questionId },
+      where: { id: answerId },
     });
     if (!answer) {
-      throw new AnswerQuestionNotMatchError(questionId, answerId);
+      throw new AnswerNotFoundError(answerId);
     }
     const authorDto = await this.usersService.getUserDtoById(
       answer.createdById,
