@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { AttitudableType, AttitudeType } from '@prisma/client';
 import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 import { AnswerService } from '../answer/answer.service';
+import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
@@ -19,7 +20,6 @@ import {
   CommentQueryLog,
 } from './comment.legacy.entity';
 import { CommentableType } from './commentable.enum';
-import { AttitudeStateDto } from '../attitude/attitude-state-dto.dto';
 
 @Injectable()
 export class CommentsService {

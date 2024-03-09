@@ -1,4 +1,4 @@
-import { AttitudeStateDto } from '../../attitude/attitude-state-dto.dto';
+import { AttitudeStateDto } from '../../attitude/DTO/attitude-state.dto';
 import { UserDto } from '../../users/DTO/user.dto';
 import { CommentableType } from '../commentable.enum';
 

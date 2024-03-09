@@ -351,25 +351,25 @@ describe('comments Module', () => {
     it('should agree to a comment', async () => {
       const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'PosiTIVE' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(200);
+      expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(200);
     });
     it('should agree to a comment', async () => {
       const commentId = CommentIds[4];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'pOsItIvE' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(200);
+      expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(200);
     });
     it('should get some difference from others', async () => {
@@ -417,13 +417,13 @@ describe('comments Module', () => {
     it('should disagree to a comment', async () => {
       const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'NEGATIVE' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(200);
+      expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(200);
     });
     it('should get some difference from others', async () => {
@@ -471,7 +471,7 @@ describe('comments Module', () => {
     it('should return to InvalidAttitudeTypeError', async () => {
       const commentId = CommentIds[1];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'LIKE' });
       expect(respond.body.message).toContain('InvalidAttitudeTypeError:');
@@ -481,7 +481,7 @@ describe('comments Module', () => {
     it('should return CommentNotFoundError', async () => {
       const commentId = 114514;
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'agree' });
       expect(respond.body.message).toContain('CommentNotFoundError:');
@@ -491,7 +491,7 @@ describe('comments Module', () => {
     it('should return AuthenticationRequiredError', async () => {
       const commentId = CommentIds[1];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .send({ attitude_type: 'disagree' });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
