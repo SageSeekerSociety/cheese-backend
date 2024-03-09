@@ -421,6 +421,19 @@ describe('Answers Module', () => {
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
     });
+
+    it('should throw AnswerQuestionNotMatchError', async () => {
+      const testAnswerId = answerId[0];
+      const testQuestionId = AnswerQuestionMap[testAnswerId] + 1;
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ content: 'Some content' });
+
+      expect(response.body.message).toMatch(/AnswerQuestionNotMatchError: /);
+      expect(response.status).toBe(404);
+      expect(response.body.code).toBe(404);
+    });
   });
 
   describe('Delete Answer', () => {
