@@ -24,7 +24,7 @@ describe('Answers Module', () => {
   const questionId: number[] = [];
   let auxUserId: number;
   let auxAccessToken: string;
-  const answerId: number[] = [];
+  let answerId: number[] = [];
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
@@ -185,6 +185,9 @@ describe('Answers Module', () => {
         createAnswer('Answer content with emoji: 😂😂'),
         createAnswer('烫烫烫'.repeat(1000)),
       ]);
+
+      // the sequence of 'answerId.push()' may not represent the create sequece.
+      answerId = answerId.sort((n1, n2) => n1 - n2);
     }, 6000);
     it('should return updated statistic info when getting user', async () => {
       const respond = await request(app.getHttpServer()).get(
@@ -273,9 +276,6 @@ describe('Answers Module', () => {
       const TestQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers`)
-        .query({
-          questionId: TestQuestionId,
-        })
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(response.body.message).toBe('Answers fetched successfully.');
@@ -293,8 +293,10 @@ describe('Answers Module', () => {
         expect(response.body.data.answers[i].question_id).toBe(questionId[0]);
       }
       expect(
-        response.body.data.answers.map((x: any) => x.id).sort(),
-      ).toStrictEqual(answerId.sort());
+        response.body.data.answers
+          .map((x: any) => x.id)
+          .sort((n1: number, n2: number) => n1 - n2),
+      ).toStrictEqual(answerId);
     });
 
     it('should successfully get all answers by question ID', async () => {
@@ -304,7 +306,6 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers`)
         .query({
-          questionId: TestQuestionId,
           page_start: pageStart,
           page_size: pageSize,
         })
@@ -325,8 +326,10 @@ describe('Answers Module', () => {
         expect(response.body.data.answers[i].question_id).toBe(questionId[0]);
       }
       expect(
-        response.body.data.answers.map((x: any) => x.id).sort(),
-      ).toStrictEqual(answerId.sort());
+        response.body.data.answers
+          .map((x: any) => x.id)
+          .sort((n1: number, n2: number) => n1 - n2),
+      ).toStrictEqual(answerId);
     });
 
     it('should successfully get all answers by question ID', async () => {
@@ -336,12 +339,12 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers`)
         .query({
-          questionId: TestQuestionId,
           page_start: pageStart,
           page_size: pageSize,
         })
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+
       expect(response.body.message).toBe('Answers fetched successfully.');
 
       expect(response.status).toBe(200);
@@ -366,7 +369,6 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers`)
         .query({
-          questionId: TestQuestionId,
           page_start: pageStart,
           page_size: pageSize,
         })

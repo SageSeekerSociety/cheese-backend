@@ -70,7 +70,7 @@ export class AnswerService {
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
         where: { questionId },
-        order: { createdAt: 'ASC' },
+        order: { id: 'ASC' },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
@@ -87,17 +87,17 @@ export class AnswerService {
       const prevPage = await this.answerRepository.find({
         where: {
           questionId,
-          createdAt: LessThan(start.createdAt),
+          id: LessThan(pageStart),
         },
-        order: { createdAt: 'DESC' },
+        order: { id: 'DESC' },
         take: pageSize,
       });
       const currPage = await this.answerRepository.find({
         where: {
           questionId,
-          createdAt: MoreThanOrEqual(start.createdAt),
+          id: MoreThanOrEqual(pageStart),
         },
-        order: { createdAt: 'ASC' },
+        order: { id: 'ASC' },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(

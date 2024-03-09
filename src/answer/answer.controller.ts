@@ -57,7 +57,7 @@ export class AnswerController {
     }
     const [answers, page] = await this.answerService.getQuestionAnswers(
       id,
-      pageStart ?? undefined,
+      pageStart,
       pageSize,
       userId,
       userAgent,
@@ -126,7 +126,6 @@ export class AnswerController {
 
   @Put('/:answer_id')
   async updateAnswer(
-    @Param('id', ParseIntPipe) id: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
     @Headers('Authorization') auth: string | undefined,
     @Body() req: UpdateAnswerRequestDto,
