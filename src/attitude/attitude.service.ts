@@ -16,7 +16,7 @@ import {
 import { PrismaService } from '../common/prisma/prisma.service';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
-import { AttitudeStateDto } from './attitude-state-dto.dto';
+import { AttitudeStateDto } from './DTO/attitude-state.dto';
 
 @Injectable()
 export class AttitudeService {

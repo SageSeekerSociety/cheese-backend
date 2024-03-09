@@ -130,6 +130,7 @@ model answer_user_attitude {
 
 enum AttitudableType {
   COMMENT
+  QUESTION
 
   @@map("attitudable_type")
 }

@@ -160,43 +160,44 @@ describe('Answers Module', () => {
     });
   });
 
-  // describe('answer question', () => {
-  it('should create some answers', async () => {
-    const testQuestionId = questionId[0];
-    async function createAnswer(content: string) {
+  describe('answer question', () => {
+    it('should create some answers', async () => {
+      const testQuestionId = questionId[0];
+      async function createAnswer(content: string) {
+        const respond = await request(app.getHttpServer())
+          .post(`/questions/${testQuestionId}/answers`)
+          .set('Authorization', `Bearer ${auxAccessToken}`)
+          .send({
+            content: content,
+          });
+        expect(respond.body.message).toBe('Answer created successfully.');
+        expect(respond.body.code).toBe(200);
+        expect(respond.status).toBe(201);
+        expect(typeof respond.body.data.id).toBe('number');
+        answerId.push(respond.body.data.id);
+      }
+      await createAnswer(
+        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
+      ); // this should be firstly executed and will be checked further
+      await Promise.all([
+        createAnswer('难道你真的是天才？'),
+        createAnswer('你不要胡说，1+1明明等于3'),
+        createAnswer('Answer content with emoji: 😂😂'),
+        createAnswer('烫烫烫'.repeat(1000)),
+      ]);
+    }, 6000);
+    it('should return updated statistic info when getting user', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${auxUserId}`,
+      );
+      expect(respond.body.data.user.answer_count).toBe(5);
+    });
+    it('should return updated statistic info when getting user', async () => {
       const respond = await request(app.getHttpServer())
-        .post(`/questions/${testQuestionId}/answers`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({
-          content: content,
-        });
-      expect(respond.body.message).toBe('Answer created successfully.');
-      expect(respond.body.code).toBe(200);
-      expect(respond.status).toBe(201);
-      expect(typeof respond.body.data.id).toBe('number');
-      answerId.push(respond.body.data.id);
-    }
-    await createAnswer(
-      '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，后面忘了',
-    ); // this should be firstly executed and will be checked further
-    await Promise.all([
-      createAnswer('难道你真的是天才？'),
-      createAnswer('你不要胡说，1+1明明等于3'),
-      createAnswer('Answer content with emoji: 😂😂'),
-      createAnswer('烫烫烫'.repeat(1000)),
-    ]);
-  }, 6000);
-  it('should return updated statistic info when getting user', async () => {
-    const respond = await request(app.getHttpServer()).get(
-      `/users/${auxUserId}`,
-    );
-    expect(respond.body.data.user.answer_count).toBe(5);
-  });
-  it('should return updated statistic info when getting user', async () => {
-    const respond = await request(app.getHttpServer())
-      .get(`/users/${auxUserId}`)
-      .set('authorization', 'Bearer ' + TestToken);
-    expect(respond.body.data.user.answer_count).toBe(5);
+        .get(`/users/${auxUserId}`)
+        .set('authorization', 'Bearer ' + TestToken);
+      expect(respond.body.data.user.answer_count).toBe(5);
+    });
   });
 
   describe('Get answer', () => {
@@ -270,6 +271,34 @@ describe('Answers Module', () => {
   describe('Get Answers By Question ID', () => {
     it('should successfully get all answers by question ID', async () => {
       const TestQuestionId = questionId[0];
+      const response = await request(app.getHttpServer())
+        .get(`/questions/${TestQuestionId}/answers`)
+        .query({
+          questionId: TestQuestionId,
+        })
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(response.body.message).toBe('Answers fetched successfully.');
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.page.page_start).toBe(answerId[0]);
+      expect(response.body.data.page.page_size).toBe(answerId.length);
+      expect(response.body.data.page.has_prev).toBe(false);
+      expect(response.body.data.page.prev_start).toBe(0);
+      expect(response.body.data.page.has_more).toBe(false);
+      expect(response.body.data.page.next_start).toBe(0);
+      expect(response.body.data.answers.length).toBe(answerId.length);
+      for (let i = 0; i < answerId.length; i++) {
+        expect(response.body.data.answers[i].question_id).toBe(questionId[0]);
+      }
+      expect(
+        response.body.data.answers.map((x: any) => x.id).sort(),
+      ).toStrictEqual(answerId.sort());
+    });
+
+    it('should successfully get all answers by question ID', async () => {
+      const TestQuestionId = questionId[0];
       const pageStart = answerId[0];
       const pageSize = 20;
       const response = await request(app.getHttpServer())
@@ -286,12 +315,48 @@ describe('Answers Module', () => {
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
       expect(response.body.data.page.page_start).toBe(pageStart);
-      // expect(response.body.data.page.page_size).toBe(20);
-      // expect(response.body.data.page.has_prev).toBe(true);
-      // expect(response.body.data.page.prev_start).toBeFalsy();
-      // expect(response.body.data.page.has_more).toBe(false);
-      // expect(response.body.data.page.next_start).toBe(answerId[1]);
-      // expect(response.body.data.answers.question_id).toBe(TestQuestionId);
+      expect(response.body.data.page.page_size).toBe(answerId.length);
+      expect(response.body.data.page.has_prev).toBe(false);
+      expect(response.body.data.page.prev_start).toBe(0);
+      expect(response.body.data.page.has_more).toBe(false);
+      expect(response.body.data.page.next_start).toBe(0);
+      expect(response.body.data.answers.length).toBe(answerId.length);
+      for (let i = 0; i < answerId.length; i++) {
+        expect(response.body.data.answers[i].question_id).toBe(questionId[0]);
+      }
+      expect(
+        response.body.data.answers.map((x: any) => x.id).sort(),
+      ).toStrictEqual(answerId.sort());
+    });
+
+    it('should successfully get all answers by question ID', async () => {
+      const TestQuestionId = questionId[0];
+      const pageStart = answerId[2];
+      const pageSize = 2;
+      const response = await request(app.getHttpServer())
+        .get(`/questions/${TestQuestionId}/answers`)
+        .query({
+          questionId: TestQuestionId,
+          page_start: pageStart,
+          page_size: pageSize,
+        })
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(response.body.message).toBe('Answers fetched successfully.');
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.page.page_start).toBe(pageStart);
+      expect(response.body.data.page.page_size).toBe(2);
+      expect(response.body.data.page.has_prev).toBe(true);
+      expect(response.body.data.page.prev_start).toBe(answerId[0]);
+      expect(response.body.data.page.has_more).toBe(true);
+      expect(response.body.data.page.next_start).toBe(answerId[4]);
+      expect(response.body.data.answers.length).toBe(2);
+      expect(response.body.data.answers[0].question_id).toBe(questionId[0]);
+      expect(response.body.data.answers[1].question_id).toBe(questionId[0]);
+      expect(response.body.data.answers[0].id).toBe(answerId[2]);
+      expect(response.body.data.answers[1].id).toBe(answerId[3]);
     });
 
     it('should successfully get all answers by question ID without token', async () => {

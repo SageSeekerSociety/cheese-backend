@@ -10,7 +10,9 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
+import { AttitudableType, AttitudeType } from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
 import { CommentableType } from '../comments/commentable.enum';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
@@ -562,5 +564,25 @@ export class QuestionsService {
 
   async isQuestionExists(questionId: number): Promise<boolean> {
     return (await this.questionRepository.countBy({ id: questionId })) > 0;
+  }
+
+  async setAttitudeToQuestion(
+    questionId: number,
+    userId: number,
+    attitudeType: AttitudeType,
+  ): Promise<AttitudeStateDto> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    await this.attitudeService.setAttitude(
+      userId,
+      AttitudableType.QUESTION,
+      questionId,
+      attitudeType,
+    );
+    return this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.QUESTION,
+      questionId,
+      userId,
+    );
   }
 }

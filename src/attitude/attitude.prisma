@@ -10,6 +10,7 @@ import { user } from "../users/users.legacy"
 
 enum AttitudableType {
   COMMENT
+  QUESTION
 
   @@map("attitudable_type")
 }
