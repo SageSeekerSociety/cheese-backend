@@ -25,6 +25,7 @@ import {
   UserResetPasswordLog,
 } from './users.legacy.entity';
 import { UsersService } from './users.service';
+import { UsersPermissionService } from './users-permission.service';
 
 @Module({
   imports: [
@@ -44,7 +45,7 @@ import { UsersService } from './users.service';
     AuthModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService, EmailService],
+  providers: [UsersService, UsersPermissionService, EmailService],
   exports: [UsersService],
 })
 export class UsersModule {}

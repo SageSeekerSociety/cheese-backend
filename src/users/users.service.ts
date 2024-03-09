@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Answer } from '../answer/answer.legacy.entity';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
@@ -25,6 +26,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { Question } from '../questions/questions.legacy.entity';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
+import { UsersPermissionService } from './users-permission.service';
 import {
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
@@ -55,7 +57,6 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { Answer } from '../answer/answer.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -63,6 +64,7 @@ export class UsersService {
     private readonly emailService: EmailService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly usersPermissionService: UsersPermissionService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)
@@ -439,86 +441,9 @@ export class UsersService {
     ];
   }
 
-  private createSession(userId: number): Promise<string> {
-    const authorization: Authorization = {
-      userId: userId,
-      permissions: [
-        {
-          authorizedActions: [AuthorizedAction.query],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: undefined,
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.modify],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['users/profile'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['users/following'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can control the questions he/she created.
-          authorizedActions: [
-            AuthorizedAction.create,
-            AuthorizedAction.delete,
-            AuthorizedAction.modify,
-            AuthorizedAction.query,
-            AuthorizedAction.other,
-          ],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions/following'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // Everyone can create a topic.
-          authorizedActions: [AuthorizedAction.create],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['topics'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can create and delete comment.
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['comment'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can set attitude to any comment
-          authorizedActions: [AuthorizedAction.other],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['comment/attitude'],
-            resourceIds: undefined,
-          },
-        },
-      ],
-    };
+  private async createSession(userId: number): Promise<string> {
+    const authorization: Authorization =
+      await this.usersPermissionService.getAuthorizationForUser(userId);
     return this.sessionService.createSession(userId, authorization);
   }
 
