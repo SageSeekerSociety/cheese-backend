@@ -1,3 +1,3 @@
-export class sendIdDto {
+export class SendIdDto {
   id: number;
 }

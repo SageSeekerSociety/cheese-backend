@@ -44,7 +44,7 @@ import { GetQuestionResponseDto } from './DTO/get-question.dto';
 import { GetRecommentdationsRespondDto } from './DTO/get-recommendations.dto';
 import { inviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
-import { sendIdDto } from './DTO/send-id.dto';
+import { SendIdDto } from './DTO/send-id.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
 
@@ -318,7 +318,7 @@ export class QuestionsController {
   async inviteUserAnswerQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-    @Body() userIds: sendIdDto,
+    @Body() userIds: SendIdDto,
   ): Promise<inviteUsersAnswerResponseDto> {
     this.authService.audit(
       auth,
@@ -341,9 +341,16 @@ export class QuestionsController {
   async cancelInvition(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-    @Body() InvitationId: sendIdDto,
+    @Body() InvitationId: SendIdDto,
   ): Promise<cancelInvitationResponseDto> {
     const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.delete,
+      userId,
+      'questions',
+      undefined,
+    );
     await this.questionsService.cancelInvitation(id, InvitationId.id);
     return {
       code: 204,

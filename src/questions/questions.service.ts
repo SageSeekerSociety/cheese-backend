@@ -38,7 +38,6 @@ import { QuestionElasticsearchDocument } from './questions.es-doc';
 import {
   Question,
   QuestionFollowerRelation,
-  QuestionInvitation,
   QuestionQueryLog,
   QuestionSearchLog,
   QuestionTopicRelation,
@@ -61,8 +60,6 @@ export class QuestionsService {
     private readonly questionFollowRelationRepository: Repository<QuestionFollowerRelation>,
     @InjectRepository(QuestionSearchLog)
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
-    @InjectRepository(QuestionInvitation)
-    private readonly questionInvitationRepository: Repository<QuestionInvitation>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
   ) {}
@@ -590,7 +587,7 @@ export class QuestionsService {
     const questionInvitations =
       await this.prismaService.questionInvitationRelation.findMany({
         where: { questionId },
-        orderBy: { createdAt: orderField }, // 使用正确的字段名
+        orderBy: { createdAt: orderField },
         take: pageSize,
         skip: pageStart,
       });

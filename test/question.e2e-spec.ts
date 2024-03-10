@@ -10,7 +10,7 @@ import { INestApplication, Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { sendIdDto } from '../src/questions/DTO/send-id.dto';
+import { SendIdDto } from '../src/questions/DTO/send-id.dto';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
 
@@ -615,7 +615,7 @@ describe('Questions Module', () => {
 
   describe('invite somebody to answer', () => {
     it('should invite some users to answer question', async () => {
-      const userIds: sendIdDto = { id: TestUserId };
+      const userIds: SendIdDto = { id: TestUserId };
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -627,7 +627,7 @@ describe('Questions Module', () => {
       invitaionIds.push(respond.body.data.invitationId);
     });
     it('should invite some users to answer question', async () => {
-      const userIds: sendIdDto = { id: auxUserId };
+      const userIds: SendIdDto = { id: auxUserId };
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -639,7 +639,7 @@ describe('Questions Module', () => {
       invitaionIds.push(respond.body.data.invitationId);
     });
     it('should return AuthenticationRequiredError', async () => {
-      const userIds: sendIdDto = { id: TestUserId };
+      const userIds: SendIdDto = { id: TestUserId };
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .send(userIds);
@@ -647,7 +647,7 @@ describe('Questions Module', () => {
       expect(respond.body.code).toBe(401);
     });
     it('should return UserIdNotFoundError', async () => {
-      const userIds: sendIdDto = { id: 114514 };
+      const userIds: SendIdDto = { id: 114514 };
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -656,7 +656,7 @@ describe('Questions Module', () => {
       expect(respond.body.code).toBe(404);
     });
     it('should return QuestionIdNotFoundError', async () => {
-      const userIds: sendIdDto = { id: TestUserId };
+      const userIds: SendIdDto = { id: TestUserId };
       const respond = await request(app.getHttpServer())
         .post(`/questions/114514/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -666,7 +666,7 @@ describe('Questions Module', () => {
     });
 
     it('should get userInvited', async () => {
-      const userIds: sendIdDto = { id: TestUserId };
+      const userIds: SendIdDto = { id: TestUserId };
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -696,7 +696,7 @@ describe('Questions Module', () => {
   });
   describe('it will cancel the invitations', () => {
     it('should cancel the invitations', async () => {
-      const invitationId: sendIdDto = { id: invitaionIds[0] };
+      const invitationId: SendIdDto = { id: invitaionIds[0] };
       const respond = await request(app.getHttpServer())
         .delete(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -706,7 +706,7 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(200);
     });
     it('should return AuthenticationRequiredError', async () => {
-      const invitationId: sendIdDto = { id: 1919810 };
+      const invitationId: SendIdDto = { id: 1919810 };
       const respond = await request(app.getHttpServer())
         .delete(`/questions/${questionIds[1]}/invitations`)
         .send(invitationId);
@@ -715,7 +715,7 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(401);
     });
     it('should return QuestionIdNotFoundError', async () => {
-      const invitationId: sendIdDto = { id: invitaionIds[0] };
+      const invitationId: SendIdDto = { id: invitaionIds[0] };
       const respond = await request(app.getHttpServer())
         .delete(`/questions/789456123/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -725,7 +725,7 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(404);
     });
     it('should return QuestionInvitationIdNotFoundError', async () => {
-      const invitationId: sendIdDto = { id: 1919810 };
+      const invitationId: SendIdDto = { id: 1919810 };
       const respond = await request(app.getHttpServer())
         .delete(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
