@@ -24,7 +24,7 @@ describe('Answers Module', () => {
   let auxAccessToken: string;
   const answerId: number[] = [];
   const AnswerQuestionMap: { [key: number]: number } = {};
-  let userList: [number, string][];
+  const userList: [number, string][] = [];
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
@@ -162,10 +162,9 @@ describe('Answers Module', () => {
     });
     it('should create some auxiliary users', async () => {
       [auxUserId, auxAccessToken] = await createAuxiliaryUser();
-      userList = [[auxUserId, auxAccessToken]];
+      userList.push([auxUserId, auxAccessToken]);
       for (let i = 0; i < 5; i++) {
-        const [auxId, auxToken] = await createAuxiliaryUser();
-        userList.push([auxId, auxToken]);
+        userList.push(await createAuxiliaryUser());
       }
 
       expect(userList.length).toBe(6);

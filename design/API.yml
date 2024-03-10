@@ -264,12 +264,10 @@ components:
         is_like:
           type: boolean
           description: 是否点赞问题
-        is_answered:
-          type: boolean
-          description: 当前登录用户是否回答了该问题
         my_answer_id:
           type: integer
           format: int64
+          nullable: true
           description: 当前登录用户的回答 ID
         answer_count:
           type: integer
@@ -442,8 +440,6 @@ components:
         is_member:
           type: boolean
         is_owner:
-          type: boolean
-        is_public:
           type: boolean
       required:
         - id
@@ -1877,13 +1873,10 @@ paths:
                   type: string
                 avatar:
                   type: string
-                public:
-                  type: boolean
               required:
                 - name
                 - intro
                 - avatar
-                - public
       responses:
         "201":
           description: Group created successfully
