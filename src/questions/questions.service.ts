@@ -11,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Answer } from '../answer/answer.legacy.entity';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -55,6 +56,8 @@ export class QuestionsService {
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
+    @InjectRepository(Answer)
+    private answerRepository: Repository<Answer>,
   ) {}
 
   async addTopicToQuestion(
@@ -198,11 +201,21 @@ export class QuestionsService {
     return await this.questionQueryLogRepository.countBy({ questionId });
   }
 
+  async getAnswerIdOfCreatedBy(
+    questionId: number,
+    createdById: number,
+  ): Promise<number | null> {
+    const answer = await this.answerRepository.findOne({
+      where: { questionId, createdById },
+    });
+    return answer?.id ?? null;
+  }
+
   async getQuestionDto(
     questionId: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId?: number,
+    ip?: string,
+    userAgent?: string,
   ): Promise<QuestionDto> {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
@@ -219,7 +232,7 @@ export class QuestionsService {
       followCountPromise,
       viewCountPromise,
     ]);
-    let user: UserDto = undefined!; // For case that user is deleted.
+    let user: UserDto | null = null; // For case that user is deleted.
     try {
       user = await this.userService.getUserDtoById(
         question.createdById,
@@ -228,9 +241,9 @@ export class QuestionsService {
         userAgent,
       );
     } catch (e) {
-      // If user is undefined, it means that one user created this question, but the user
+      // If user is null, it means that one user created this question, but the user
       // does not exist now. This is NOT a data integrity problem, since user can be
-      // deleted. So we just return a undefined and not throw an error.
+      // deleted. So we just return a null and not throw an error.
     }
     if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.questionQueryLogRepository.create({
@@ -241,6 +254,11 @@ export class QuestionsService {
       });
       await this.questionQueryLogRepository.save(log);
     }
+    const my_answer_id =
+      viewerId == undefined
+        ? undefined // If the viewer is not logged in, then the field should be missing.
+        : await this.getAnswerIdOfCreatedBy(questionId, viewerId); // If the viewer is logged in, then the field should be a number or null.
+
     return {
       id: question.id,
       title: question.title,
@@ -252,6 +270,7 @@ export class QuestionsService {
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
       is_like: false, // TODO: Implement this.
+      my_answer_id,
       answer_count: 0, // TODO: Implement this.
       comment_count: 0, // TODO: Implement this.
       follow_count: followCount,
