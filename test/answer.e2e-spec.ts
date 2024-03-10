@@ -20,11 +20,9 @@ describe('Answers Module', () => {
   let TestUserId: number;
   const TopicIds: number[] = [];
   const questionId: number[] = [];
-  let auxUserId: number;
-  let auxAccessToken: string;
   const answerId: number[] = [];
   const AnswerQuestionMap: { [key: number]: number } = {};
-  let userList: [number, string][];
+  const userList: [number, string][] = [];
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
@@ -161,9 +159,9 @@ describe('Answers Module', () => {
       await createQuestion('大创', '极限捞人');
     });
     it('should create some auxiliary users', async () => {
-      [auxUserId, auxAccessToken] = await createAuxiliaryUser();
-      userList = [[auxUserId, auxAccessToken]];
-      for (let i = 0; i < 5; i++) {
+      // [auxUserId, auxAccessToken] = await createAuxiliaryUser();
+      // userList = [[auxUserId, auxAccessToken]];
+      for (let i = 0; i < 6; i++) {
         const [auxId, auxToken] = await createAuxiliaryUser();
         userList.push([auxId, auxToken]);
       }
@@ -198,7 +196,7 @@ describe('Answers Module', () => {
         '烫烫烫'.repeat(1000),
       ];
       for (let i = 0; i < 5; i++) {
-        await createAnswer(questionId[i], answerContents1[i], auxAccessToken);
+        await createAnswer(questionId[i], answerContents1[i], userList[0][1]);
       }
 
       const answerContents2 = [
@@ -215,6 +213,7 @@ describe('Answers Module', () => {
     }, 60000);
     it('should return QuestionAlreadyAnsweredError when user answer the same question', async () => {
       const TestQuestionId = questionId[0];
+      const auxAccessToken = userList[0][1];
       const content = 'content';
       await request(app.getHttpServer())
         .post(`/questions/${TestQuestionId}/answers`)
@@ -228,12 +227,14 @@ describe('Answers Module', () => {
       expect(respond.body.code).toBe(400);
     });
     it('should return updated statistic info when getting user who not log in', async () => {
+      const auxUserId = userList[0][0];
       const respond = await request(app.getHttpServer()).get(
         `/users/${auxUserId}`,
       );
       expect(respond.body.data.user.answer_count).toBe(6);
     });
     it('should return updated statistic info when getting user', async () => {
+      const auxUserId = userList[0][0];
       const respond = await request(app.getHttpServer())
         .get(`/users/${auxUserId}`)
         .set('authorization', 'Bearer ' + TestToken);
@@ -243,6 +244,7 @@ describe('Answers Module', () => {
 
   describe('Get answer', () => {
     it('should get a answer', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -270,7 +272,7 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.view_count).toBeDefined();
     });
     it('should get a answer even without token', async () => {
-      // const TestQuestionId = questionId[0];
+      const auxUserId = userList[0][0];
       const TestAnswerId = answerId[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -299,6 +301,7 @@ describe('Answers Module', () => {
     });
 
     it('should return AnswerQuestionNotMatchError', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId] + 1;
       const response = await request(app.getHttpServer())
@@ -313,6 +316,7 @@ describe('Answers Module', () => {
 
   describe('Get Answers By Question ID', () => {
     it('should successfully get all answers by question ID', async () => {
+      const auxAccessToken = userList[0][1];
       const TestQuestionId = questionId[0];
       const pageStart = answerId[0];
       const pageSize = 20;
@@ -376,6 +380,7 @@ describe('Answers Module', () => {
 
   describe('Update Answer', () => {
     it('should successfully update an answer', async () => {
+      const auxAccessToken = userList[0][1];
       const testAnswerId = answerId[1];
       const testQuestionId = AnswerQuestionMap[testAnswerId];
       const updatedContent = '--------更新----------';
@@ -389,6 +394,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFoundError when trying to update a non-existent answer', async () => {
+      const auxAccessToken = userList[0][1];
       const nonExistentAnswerId = 999999;
       const testQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
@@ -401,6 +407,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerQuestionNotMatchError', async () => {
+      const auxAccessToken = userList[0][1];
       const testAnswerId = answerId[0];
       const testQuestionId = AnswerQuestionMap[testAnswerId] + 1;
       const response = await request(app.getHttpServer())
@@ -416,6 +423,7 @@ describe('Answers Module', () => {
 
   describe('Delete Answer', () => {
     it('should successfully delete an answer', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[2];
       const testQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -429,6 +437,7 @@ describe('Answers Module', () => {
     });
 
     it('should return a not found error when trying to delete a non-existent answer', async () => {
+      const auxAccessToken = userList[0][1];
       const testQuestionId = questionId[0];
       const nonExistentAnswerId = 0;
       const response = await request(app.getHttpServer())
@@ -444,6 +453,8 @@ describe('Answers Module', () => {
 
   describe('Agree Answer', () => {
     it('should successfully create user attitude on first attempt', async () => {
+      const auxAccessToken = userList[0][1];
+      const auxUserId = userList[0][0];
       const TestAnswerId = answerId[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -455,11 +466,11 @@ describe('Answers Module', () => {
       expect(response.body.userAttitudeRepository).toBeUndefined();
       expect(response.body.code).toBe(200);
       expect(response.body.data.agree_count).toBe(1);
-      // expect(response.body.data.disagree_count).toBe(0);
-      // expect(response.body.data.question_id).toBe(TestQuestionId);
     });
 
     it('should successfully agree to an answer', async () => {
+      const auxAccessToken = userList[0][1];
+      const auxUserId = userList[0][0];
       const TestAnswerId = answerId[3];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -475,6 +486,8 @@ describe('Answers Module', () => {
     });
 
     it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
+      const auxAccessToken = userList[0][1];
+      const auxUserId = userList[0][0];
       const TestAnswerId = answerId[3];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
@@ -490,6 +503,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFoundError when trying to agree to a non-existent answer', async () => {
+      const auxAccessToken = userList[0][1];
       const nonExistentAnswerId = 9999; // TODO: change to a 100% non-existent answer ID
       const TestQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
@@ -505,6 +519,7 @@ describe('Answers Module', () => {
 
   describe('Favorite Answer', () => {
     it('should successfully favorite an answer', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -516,6 +531,7 @@ describe('Answers Module', () => {
     });
 
     it('should successfully unfavorite an answer', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
@@ -532,6 +548,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[4];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -543,6 +560,7 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(400);
     });
     it('should throw AnswerNotFoundError when trying to favorite a non-existent answer', async () => {
+      const auxAccessToken = userList[0][1];
       const TestQuestionId = questionId[0];
       const nonExistentAnswerId = 99999;
       const response = await request(app.getHttpServer())
@@ -559,6 +577,7 @@ describe('Answers Module', () => {
     });
     it('should throw AnswerNotFoundError when trying to unfavorite a non-existent answer', async () => {
       const TestQuestionId = questionId[0];
+      const auxAccessToken = userList[0][1];
       const nonExistentAnswerId = 99998;
       const response = await request(app.getHttpServer())
         .delete(
