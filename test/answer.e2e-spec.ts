@@ -16,8 +16,6 @@ describe('Answers Module', () => {
   const TestTopicPrefix = `[Test(${TestTopicCode}) Question]`;
   const TestQuestionCode = Math.floor(Math.random() * 10000000000).toString();
   const TestQuestionPrefix = `[Test(${TestQuestionCode}) Question]`;
-  // const TestAnswerCode = Math.floor(Math.random() * 10000000000).toString();
-  // const TestAnswerPrefix = `[Test(${TestAnswerCode}) Question]`;
   let TestToken: string;
   let TestUserId: number;
   const TopicIds: number[] = [];
@@ -169,18 +167,12 @@ describe('Answers Module', () => {
         const [auxId, auxToken] = await createAuxiliaryUser();
         userList.push([auxId, auxToken]);
       }
-      // const userCount = 5;
-      // const createUserPromises = Array(userCount)
-      //   .fill(null)
-      //   .map(() => createAuxiliaryUser());
 
-      // userList = await Promise.all(createUserPromises);
       expect(userList.length).toBe(6);
     });
   });
   describe('answer question', () => {
     it('should create some answers', async () => {
-      // const testQuestionId = questionId[0];
       async function createAnswer(
         questionId: number,
         content: string,
@@ -215,25 +207,11 @@ describe('Answers Module', () => {
         'answer3',
         'answer4',
         'answer5',
+        'answer6',
       ];
-      for (let i = 1; i < 6; i++) {
-        await createAnswer(
-          questionId[5],
-          answerContents2[i - 1],
-          userList[i][1],
-        );
+      for (let i = 0; i < 6; i++) {
+        await createAnswer(questionId[5], answerContents2[i], userList[i][1]);
       }
-
-      //question.answer_count is unimplemented
-      // const response = await request(app.getHttpServer())
-      //   .get(`/questions/${questionId[5]}`)
-      //   .set('Authorization', `Bearer ${TestToken}`)
-      //   .send();
-      // console.log(response.body);
-      // expect(response.body.data.question.answer_count).toBe(6);
-      // await Promise.all(
-      //   questionId.map((id, index) => createAnswer(id, answerContents[index])),
-      // );
     }, 60000);
     it('should return QuestionAlreadyAnsweredError when user answer the same question', async () => {
       const TestQuestionId = questionId[0];
@@ -253,13 +231,13 @@ describe('Answers Module', () => {
       const respond = await request(app.getHttpServer()).get(
         `/users/${auxUserId}`,
       );
-      expect(respond.body.data.user.answer_count).toBe(5);
+      expect(respond.body.data.user.answer_count).toBe(6);
     });
     it('should return updated statistic info when getting user', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/users/${auxUserId}`)
         .set('authorization', 'Bearer ' + TestToken);
-      expect(respond.body.data.user.answer_count).toBe(5);
+      expect(respond.body.data.user.answer_count).toBe(6);
     });
   });
 
@@ -411,7 +389,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFoundError when trying to update a non-existent answer', async () => {
-      const nonExistentAnswerId = 0;
+      const nonExistentAnswerId = 999999;
       const testQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
         .put(`/questions/${testQuestionId}/answers/${nonExistentAnswerId}`)
@@ -535,7 +513,6 @@ describe('Answers Module', () => {
         .send();
       expect(response.body.message).toBe('Answer favorited successfully.');
       expect(response.status).toBe(200);
-      // expect(response.body.data.answer.favorite_count).toBe(1);
     });
 
     it('should successfully unfavorite an answer', async () => {
@@ -566,7 +543,6 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(400);
     });
     it('should throw AnswerNotFoundError when trying to favorite a non-existent answer', async () => {
-      // const TestAnswerId = answerId[0];
       const TestQuestionId = questionId[0];
       const nonExistentAnswerId = 99999;
       const response = await request(app.getHttpServer())
@@ -582,7 +558,6 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(404);
     });
     it('should throw AnswerNotFoundError when trying to unfavorite a non-existent answer', async () => {
-      // const TestAnswerId = answerId[0];
       const TestQuestionId = questionId[0];
       const nonExistentAnswerId = 99998;
       const response = await request(app.getHttpServer())

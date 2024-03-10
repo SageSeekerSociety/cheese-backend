@@ -12,7 +12,6 @@ import {
   AlreadyHasSameAttitudeError,
   AnswerNotFavoriteError,
   AnswerNotFoundError,
-  AnswerQuestionNotMatchError,
   QuestionAlreadyAnsweredError,
 } from './answer.error';
 import {
@@ -139,11 +138,12 @@ export class AnswerService {
   async isAnswerMatchQuestion(
     answerId: number,
     questionId: number,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const answer = await this.answerRepository.findOne({
       where: { id: answerId, questionId: questionId },
     });
-    if (!answer) throw new AnswerQuestionNotMatchError(questionId, answerId);
+    if (!answer) return false;
+    return true;
   }
 
   async getQuestionIdByAnswerId(answerId: number): Promise<number> {
