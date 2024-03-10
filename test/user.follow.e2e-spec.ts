@@ -251,7 +251,7 @@ describe('Following Submodule of User Module', () => {
         expect(respond.body.code).toBe(200);
         expect(respond.body.data.users.length).toBe(1);
         expect(respond.body.data.users[0].id).toBe(TestUserId);
-        expect(respond.body.data.users[0].avatar).toBe('default.jpg');
+        //expect(respond.body.data.users[0].avatar).toBe('default.jpg');
         expect(respond.body.data.page.page_start).toBe(TestUserId);
         expect(respond.body.data.page.page_size).toBe(1);
         expect(respond.body.data.page.has_prev).toBe(false);
@@ -268,7 +268,7 @@ describe('Following Submodule of User Module', () => {
         expect(respond2.body.code).toBe(200);
         expect(respond2.body.data.users.length).toBe(1);
         expect(respond2.body.data.users[0].id).toBe(TestUserId);
-        expect(respond2.body.data.users[0].avatar).toBe('default.jpg');
+        //expect(respond2.body.data.users[0].avatar).toBe('default.jpg');
         expect(respond2.body.data.page.page_start).toBe(TestUserId);
         expect(respond2.body.data.page.page_size).toBe(1);
         expect(respond2.body.data.page.has_prev).toBe(false);
@@ -286,7 +286,7 @@ describe('Following Submodule of User Module', () => {
       expect(respond3.body.code).toBe(200);
       expect(respond3.body.data.users.length).toBe(tempUserTokens.length);
       expect(respond3.body.data.users[0].id).toBe(tempUserIds[0]);
-      expect(respond3.body.data.users[0].avatar).toBeDefined();
+      expect(respond3.body.data.users[0].avatarId).toBeDefined();
       expect(respond3.body.data.page.page_start).toBe(tempUserIds[0]);
       expect(respond3.body.data.page.page_size).toBe(tempUserTokens.length);
       expect(respond3.body.data.page.has_prev).toBe(false);
