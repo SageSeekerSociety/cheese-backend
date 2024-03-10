@@ -10,6 +10,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AvatarNotFoundError } from '../avatars/avatars.error';
+import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { QuestionIdNotFoundError } from '../questions/questions.error';
@@ -27,6 +29,7 @@ import {
   GroupIdNotFoundError,
   GroupNameAlreadyUsedError,
   GroupNotJoinedError,
+  GroupProfileNotFoundError,
   InvalidGroupNameError,
 } from './groups.error';
 import {
@@ -47,6 +50,7 @@ export class GroupsService {
   constructor(
     private usersService: UsersService,
     private questionsService: QuestionsService,
+    private avatarsService: AvatarsService,
     @InjectRepository(Group)
     private groupsRepository: Repository<Group>,
     @InjectRepository(GroupProfile)
@@ -71,7 +75,7 @@ export class GroupsService {
     name: string,
     userId: number,
     intro: string,
-    avatar: string,
+    avatar: number,
   ): Promise<GroupDto> {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
@@ -80,14 +84,16 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
-
+    if ((await this.avatarsService.getOne(avatar)) == undefined) {
+      throw new AvatarNotFoundError(avatar);
+    }
     const group = this.groupsRepository.create({ name });
     await this.groupsRepository.save(group);
-
+    await this.avatarsService.plusUsageCount(avatar);
     const groupProfile = this.groupProfilesRepository.create({
       groupId: group.id,
       intro,
-      avatar,
+      avatarId: avatar,
     });
     await this.groupProfilesRepository.save(groupProfile);
 
@@ -104,7 +110,7 @@ export class GroupsService {
       id: group.id,
       name: group.name,
       intro: groupProfile.intro,
-      avatar: groupProfile.avatar,
+      avatarId: groupProfile.avatarId,
       owner: userDto,
       created_at: group.createdAt.getTime(),
       updated_at: group.updatedAt.getTime(),
@@ -294,7 +300,7 @@ export class GroupsService {
       id: group.id,
       name: group.name,
       intro: group.profile.intro,
-      avatar: group.profile.avatar,
+      avatarId: group.profile.avatarId,
       owner: ownerDto,
       created_at: group.createdAt.getTime(),
       updated_at: group.updatedAt.getTime(),
@@ -306,13 +312,17 @@ export class GroupsService {
       is_public: true, // todo: implement
     };
   }
-
+  async getGroupProfile(groupId: number): Promise<GroupProfile> {
+    const profile = await this.groupProfilesRepository.findOneBy({ groupId });
+    if (profile == undefined) throw new GroupProfileNotFoundError(groupId);
+    return profile;
+  }
   async updateGroup(
     userId: number,
     groupId: number,
     name: string,
     intro: string,
-    avatar: string,
+    avatar: number,
   ): Promise<void> {
     const group = await this.groupsRepository.findOne({
       where: { id: groupId },
@@ -338,9 +348,13 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
+    const avatarId = (await this.avatarsService.getOne(avatar)).id;
+    const preAvatarId = group.profile.avatarId;
+    await this.avatarsService.plusUsageCount(avatarId);
+    await this.avatarsService.minusUsageCount(preAvatarId);
+    group.profile.avatarId = avatarId;
     group.name = name;
     group.profile.intro = intro;
-    group.profile.avatar = avatar;
     await this.groupsRepository.save(group);
     await this.groupProfilesRepository.save(group.profile);
   }

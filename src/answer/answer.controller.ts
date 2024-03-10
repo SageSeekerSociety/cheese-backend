@@ -26,8 +26,9 @@ import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { GetAnswerDetailRespondDto } from './DTO/get-answer-detail.dto';
 import { GetAnswersRespondDto } from './DTO/get-answers.dto';
 import { UpdateAnswerRequestDto } from './DTO/update-answer.dto';
-import { AnswerService } from './answer.service';
 import { AnswerQuestionNotMatchError } from './answer.error';
+import { AnswerService } from './answer.service';
+
 @Controller('/questions/:id/answers')
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
@@ -122,8 +123,8 @@ export class AnswerController {
     const questionDto = await this.questionsService.getQuestionDto(
       answerDto.question_id,
     );
-    const judge = await this.answerService.isAnswerMatchQuestion(answerId, id);
-    if (!judge) throw new AnswerQuestionNotMatchError(id, answerId);
+    if ((await this.answerService.isAnswerMatchQuestion(answerId, id)) == false)
+      throw new AnswerQuestionNotMatchError(id, answerId);
     return {
       code: 200,
       message: 'Answer fetched successfully.',
@@ -142,9 +143,10 @@ export class AnswerController {
     @Body() req: UpdateAnswerRequestDto,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
+
     await this.answerService.updateAnswer(userId, answerId, req.content);
-    const judge = await this.answerService.isAnswerMatchQuestion(answerId, id);
-    if (!judge) throw new AnswerQuestionNotMatchError(id, answerId);
+    if ((await this.answerService.isAnswerMatchQuestion(answerId, id)) == false)
+      throw new AnswerQuestionNotMatchError(id, answerId);
     return {
       code: 200,
       message: 'Answer updated successfully.',
@@ -231,7 +233,7 @@ export class AnswerController {
     await this.answerService.unfavoriteAnswer(answerId, userId);
     return {
       code: 204,
-      message: 'No Content.',
+      message: 'No Content',
     };
   }
 }

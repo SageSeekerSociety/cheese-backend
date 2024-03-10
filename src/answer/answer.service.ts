@@ -48,20 +48,16 @@ export class AnswerService {
     createdById: number,
     content: string,
   ): Promise<number> {
-    // const questionDto = await this.questionsService.getQuestionDto(questionId);
-
-    // if (questionDto.is_answered)
-    //   throw new QuestionAlreadyAnsweredError(
-    //     createdById,
-    //     questionId,
-    //     questionDto.my_answer_id,
-    //   );
-
-    const ans = await this.answerRepository.findOne({
-      where: { createdById, questionId },
-    });
-    if (ans) {
-      throw new QuestionAlreadyAnsweredError(createdById, questionId, ans.id);
+    const existingAnswerId = await this.questionsService.getAnswerIdOfCreatedBy(
+      questionId,
+      createdById,
+    );
+    if (existingAnswerId != null) {
+      throw new QuestionAlreadyAnsweredError(
+        createdById,
+        questionId,
+        existingAnswerId,
+      );
     }
 
     const answer = this.answerRepository.create({
@@ -139,11 +135,11 @@ export class AnswerService {
     answerId: number,
     questionId: number,
   ): Promise<boolean> {
-    const answer = await this.answerRepository.findOne({
-      where: { id: answerId, questionId: questionId },
-    });
-    if (!answer) return false;
-    return true;
+    return (
+      (await this.answerRepository.findOne({
+        where: { id: answerId, questionId: questionId },
+      })) != undefined
+    );
   }
 
   async getQuestionIdByAnswerId(answerId: number): Promise<number> {
@@ -286,7 +282,7 @@ export class AnswerService {
       throw new AnswerNotFoundError(id);
     }
 
-    // maybe need to check if the user has already agreed or disagreed
+    // check if the user has already agreed or disagreed
     const userAttitude = await this.userAttitudeRepository.findOne({
       where: { userId, answerId: id },
     });
