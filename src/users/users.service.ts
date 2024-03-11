@@ -522,6 +522,15 @@ export class UsersService {
           },
         },
         {
+          // An user can favourite any answer
+          authorizedActions: [AuthorizedAction.other],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['answer/favourite'],
+            resourceIds: undefined,
+          },
+        },
+        {
           // An user can create and delete comment.
           authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
           authorizedResource: {
