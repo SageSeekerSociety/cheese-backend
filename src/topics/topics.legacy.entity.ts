@@ -25,13 +25,13 @@
  */
 
 import {
-    Column,
-    CreateDateColumn,
-    DeleteDateColumn,
-    Entity,
-    Index,
-    ManyToOne,
-    PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  Index,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { isMySQL } from '../common/helper/db.helper';
 import { User } from '../users/users.legacy.entity';

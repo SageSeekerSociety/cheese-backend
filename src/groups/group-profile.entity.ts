@@ -1,12 +1,12 @@
 import {
-    Column,
-    CreateDateColumn,
-    DeleteDateColumn,
-    Entity,
-    JoinColumn,
-    OneToOne,
-    PrimaryGeneratedColumn,
-    UpdateDateColumn,
+  Column,
+  CreateDateColumn,
+  DeleteDateColumn,
+  Entity,
+  JoinColumn,
+  OneToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Group } from './groups.legacy.entity';
 

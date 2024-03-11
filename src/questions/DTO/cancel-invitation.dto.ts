@@ -1,5 +1,3 @@
-import { BaseRespondDto } from "../../common/DTO/base-respond.dto";
+import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
-export class cancelInvitationResponseDto extends BaseRespondDto {
-    
-}
+export class cancelInvitationResponseDto extends BaseRespondDto {}
