@@ -2653,13 +2653,13 @@ paths:
                     description: Unique identifier for the uploaded avatar
   /avatars/{id}:
     get:
-      summary:Get an avatar by id
+      summary: Get an avatar by id
       operationId: getAvatar
       parameters:  
         - name: id
           in: path
           required: true
-           description: Unique identifier for the uploaded avatar
+          description: Unique identifier for the uploaded avatar
       responses:
         '200':
           description: get avatar successfully
@@ -2670,7 +2670,7 @@ paths:
                 format: binary
   /avatars/default/id:
     get:
-      summary:Get default avatar id
+      summary: Get default avatar id
       operationId: getDefaultAvatarId
       responses:
         '200':
@@ -2685,10 +2685,10 @@ paths:
                     properties:
                       avatarId:
                         type: number
-                        description:Default avatarId
+                        description: Default avatarId
   /avatars/predefined/id:
     get:
-      summary:Get predefined avatarIds
+      summary: Get predefined avatarIds
       operationId: getPreDefinedIds
       responses:
         '200':
@@ -2705,4 +2705,4 @@ paths:
                         type: array
                         items:
                           -type: number
-                        description:Predefined avatarIds
+                        description: Predefined avatarIds

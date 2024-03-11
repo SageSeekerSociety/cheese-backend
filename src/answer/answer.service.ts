@@ -1,3 +1,8 @@
+//
+//  In this file, in the parameters of all methods except those whose name is ended with 'AcrossQuestions'
+//  an answer id should always be after a question id, which can be used as the sharding key in the future.
+//
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
@@ -85,7 +90,13 @@ export class AnswerService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
+          return this.getAnswerDto(
+            questionId,
+            entity.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
         }),
       );
       return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
@@ -112,7 +123,13 @@ export class AnswerService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
+          return this.getAnswerDto(
+            questionId,
+            entity.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
         }),
       );
       return PageHelper.PageMiddle(
@@ -125,34 +142,19 @@ export class AnswerService {
     }
   }
 
-  async getViewCountOfAnswer(answerId: number): Promise<number> {
+  // questionId is reserved for sharding
+  async getViewCountOfAnswer(
+    questionId: number,
+    answerId: number,
+  ): Promise<number> {
     return await this.answerQueryLogRepository.count({
       where: { answerId },
     });
   }
 
-  async isAnswerMatchQuestion(
-    answerId: number,
-    questionId: number,
-  ): Promise<boolean> {
-    return (
-      (await this.answerRepository.findOne({
-        where: { id: answerId, questionId: questionId },
-      })) != undefined
-    );
-  }
-
-  async getQuestionIdByAnswerId(answerId: number): Promise<number> {
-    const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
-    });
-    if (!answer) {
-      throw new AnswerNotFoundError(answerId);
-    }
-    return answer.questionId;
-  }
-
+  // questionId is reserved for sharding
   async getAgreeType(
+    questionId: number,
     answerId: number,
     userId: number | undefined,
   ): Promise<number> {
@@ -167,7 +169,9 @@ export class AnswerService {
     }
   }
 
+  // questionId is reserved for sharding
   async isFavorite(
+    questionId: number,
     answerId: number,
     createdById: number | undefined,
   ): Promise<boolean> {
@@ -183,13 +187,17 @@ export class AnswerService {
   }
 
   async getAnswerDto(
+    questionId: number,
     answerId: number,
     viewerId?: number,
     userAgent?: string,
     ip?: string,
   ): Promise<AnswerDto> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: {
+        questionId,
+        id: answerId,
+      },
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
@@ -217,20 +225,24 @@ export class AnswerService {
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
       favorite_count: answer.favoritedBy?.length ?? 0,
-      view_count: await this.getViewCountOfAnswer(answerId),
-      agree_count: await this.getAgreeCount(answerId),
-      agree_type: await this.getAgreeType(answerId, viewerId),
-      is_favorite: await this.isFavorite(answerId, viewerId),
+      view_count: await this.getViewCountOfAnswer(questionId, answerId),
+      agree_count: await this.getAgreeCount(questionId, answerId),
+      agree_type: await this.getAgreeType(questionId, answerId, viewerId),
+      is_favorite: await this.isFavorite(questionId, answerId, viewerId),
     };
   }
 
   async updateAnswer(
-    createdById: number,
+    questionId: number,
     answerId: number,
     content: string,
+    updaterId: number,
   ): Promise<void> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: {
+        questionId,
+        id: answerId,
+      },
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
@@ -241,7 +253,7 @@ export class AnswerService {
     await this.answerRepository.save(answer);
 
     const log = this.answerUpdateLogRepository.create({
-      updaterId: createdById,
+      updaterId,
       answerId,
       oldContent,
       newContent: content,
@@ -249,9 +261,16 @@ export class AnswerService {
     await this.answerUpdateLogRepository.save(log);
   }
 
-  async deleteAnswer(answerId: number, deleterId: number): Promise<void> {
+  async deleteAnswer(
+    questionId: number,
+    answerId: number,
+    deleterId: number,
+  ): Promise<void> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: {
+        questionId,
+        id: answerId,
+      },
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
@@ -266,48 +285,60 @@ export class AnswerService {
     await this.answerDeleteLogRepository.save(log);
   }
 
-  async getAgreeCount(answerId: number): Promise<number> {
+  // questionId is reserved for sharding
+  async getAgreeCount(questionId: number, answerId: number): Promise<number> {
     return await this.userAttitudeRepository.count({
       where: { answerId, type: AnswerAttitudeAgree },
     });
   }
 
   async agreeAnswer(
-    id: number,
+    questionId: number,
+    answerId: number,
     userId: number,
     agreeType: number,
   ): Promise<void> {
-    const answer = await this.answerRepository.findOneBy({ id });
+    const answer = await this.answerRepository.findOneBy({
+      questionId,
+      id: answerId,
+    });
     if (!answer) {
-      throw new AnswerNotFoundError(id);
+      throw new AnswerNotFoundError(answerId);
     }
 
     // check if the user has already agreed or disagreed
     const userAttitude = await this.userAttitudeRepository.findOne({
-      where: { userId, answerId: id },
+      where: { userId, answerId: answerId },
     });
     if (userAttitude) {
       if (userAttitude.type == agreeType) {
-        throw new AlreadyHasSameAttitudeError(userId, id, agreeType);
+        throw new AlreadyHasSameAttitudeError(userId, answerId, agreeType);
       }
       userAttitude.type = agreeType;
       await this.userAttitudeRepository.save(userAttitude);
     } else {
       await this.userAttitudeRepository.save({
         userId,
-        answerId: id,
+        answerId: answerId,
         type: agreeType,
       });
     }
   }
 
-  async favoriteAnswer(id: number, createdById: number): Promise<void> {
+  async favoriteAnswer(
+    questionId: number,
+    answerId: number,
+    createdById: number,
+  ): Promise<void> {
     const answer = await this.answerRepository.findOne({
-      where: { id },
+      where: {
+        questionId,
+        id: answerId,
+      },
       relations: ['favoritedBy'],
     });
     if (!answer) {
-      throw new AnswerNotFoundError(id);
+      throw new AnswerNotFoundError(answerId);
     }
 
     const user = await this.userRepository.findOneBy({ id: createdById });
@@ -323,9 +354,16 @@ export class AnswerService {
     await this.answerRepository.save(answer);
   }
 
-  async unfavoriteAnswer(answerId: number, createdById: number): Promise<void> {
+  async unfavoriteAnswer(
+    questionId: number,
+    answerId: number,
+    createdById: number,
+  ): Promise<void> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: {
+        questionId,
+        id: answerId,
+      },
       relations: ['favoritedBy'],
     });
     if (!answer) {
@@ -350,7 +388,31 @@ export class AnswerService {
     await this.answerRepository.save(answer);
   }
 
-  async isAnswerExists(answerId: number): Promise<boolean> {
-    return (await this.answerRepository.countBy({ id: answerId })) > 0;
+  async isAnswerExists(questionId: number, answerId: number): Promise<boolean> {
+    return (
+      (await this.answerRepository.countBy({
+        questionId,
+        id: answerId,
+      })) > 0
+    );
+  }
+
+  async isAnswerExistsAcrossQuestions(answerId: number): Promise<boolean> {
+    return (
+      (await this.answerRepository.countBy({
+        id: answerId,
+      })) > 0
+    );
+  }
+
+  async getCreatedById(questionId: number, answerId: number): Promise<number> {
+    const answer = await this.answerRepository.findOneBy({
+      questionId,
+      id: answerId,
+    });
+    if (!answer) {
+      throw new AnswerNotFoundError(answerId);
+    }
+    return answer.createdById;
   }
 }
