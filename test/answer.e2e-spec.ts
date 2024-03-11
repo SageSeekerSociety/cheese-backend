@@ -22,7 +22,7 @@ describe('Answers Module', () => {
   const questionIds: number[] = [];
   const answerIds: number[] = [];
   const AnswerQuestionMap: { [key: number]: number } = {};
-  const userList: [number, string][] = [];
+  const userIdTokenPairList: [number, string][] = [];
   let auxUserId: number;
   let auxAccessToken: string;
   let specialQuestionId: number;
@@ -164,15 +164,16 @@ describe('Answers Module', () => {
     });
     it('should create some auxiliary users', async () => {
       [auxUserId, auxAccessToken] = await createAuxiliaryUser();
-      userList.push([auxUserId, auxAccessToken]);
+      userIdTokenPairList.push([auxUserId, auxAccessToken]);
       for (let i = 0; i < 5; i++) {
-        userList.push(await createAuxiliaryUser());
+        userIdTokenPairList.push(await createAuxiliaryUser());
       }
 
-      expect(userList.length).toBe(6);
+      expect(userIdTokenPairList.length).toBe(6);
     });
   });
-  describe('answer question', () => {
+
+  describe('Answer question', () => {
     it('should create some answers', async () => {
       async function createAnswer(
         questionId: number,
@@ -216,7 +217,7 @@ describe('Answers Module', () => {
         const id = await createAnswer(
           questionIds[5],
           answerContents2[i],
-          userList[i][1],
+          userIdTokenPairList[i][1],
         );
         specialAnswerIds.push(id);
       }
@@ -278,13 +279,21 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.content).toContain(
         '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
       );
+      expect(response.body.data.answer.author.id).toBe(auxUserId);
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
-      //expect(response.body.data.answer.agree_type).toBe(0);
+      expect(response.body.data.answer.attitudes).toBeDefined();
+      expect(response.body.data.answer.attitudes.positive_count).toBe(0);
+      expect(response.body.data.answer.attitudes.negative_count).toBe(0);
+      expect(response.body.data.answer.attitudes.difference).toBe(0);
+      expect(response.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
       expect(response.body.data.answer.is_favorite).toBe(false);
-      //expect(response.body.data.answer.agree_count).toBe(0);
+      expect(response.body.data.answer.comment_count).toBe(0);
       expect(response.body.data.answer.favorite_count).toBe(0);
       expect(response.body.data.answer.view_count).toBeDefined();
+      expect(response.body.data.answer.is_group).toBe(false);
     });
     it('should get a answer even without token', async () => {
       // const TestQuestionId = questionId[0];
@@ -386,7 +395,7 @@ describe('Answers Module', () => {
     });
 
     it('should successfully get all answers by question ID', async () => {
-      const auxAccessToken = userList[0][1];
+      const auxAccessToken = userIdTokenPairList[0][1];
       const pageStart = specialAnswerIds[0];
       const pageSize = 20;
       const response = await request(app.getHttpServer())
@@ -533,7 +542,7 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(401);
     });
     it('should throw AnswerNotFoundError', async () => {
-      const auxAccessToken = userList[0][1];
+      const auxAccessToken = userIdTokenPairList[0][1];
       const testAnswerId = answerIds[0];
       const testQuestionId = AnswerQuestionMap[testAnswerId] + 1;
       const response = await request(app.getHttpServer())
@@ -572,7 +581,7 @@ describe('Answers Module', () => {
     });
 
     it('should return a not found error when trying to delete a non-existent answer', async () => {
-      const auxAccessToken = userList[0][1];
+      const auxAccessToken = userIdTokenPairList[0][1];
       const testQuestionId = questionIds[0];
       const nonExistentAnswerId = 0;
       const response = await request(app.getHttpServer())
@@ -599,7 +608,7 @@ describe('Answers Module', () => {
 
   describe('Favorite Answer', () => {
     it('should successfully favorite an answer', async () => {
-      const auxAccessToken = userList[0][1];
+      const auxAccessToken = userIdTokenPairList[0][1];
       const TestAnswerId = answerIds[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -611,7 +620,7 @@ describe('Answers Module', () => {
     });
 
     it('should successfully unfavorite an answer', async () => {
-      const auxAccessToken = userList[0][1];
+      const auxAccessToken = userIdTokenPairList[0][1];
       const TestAnswerId = answerIds[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
@@ -628,7 +637,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
-      const auxAccessToken = userList[0][1];
+      const auxAccessToken = userIdTokenPairList[0][1];
       const TestAnswerId = answerIds[4];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -656,7 +665,7 @@ describe('Answers Module', () => {
     });
     it('should throw AnswerNotFoundError when trying to unfavorite a non-existent answer', async () => {
       const TestQuestionId = questionIds[0];
-      const auxAccessToken = userList[0][1];
+      const auxAccessToken = userIdTokenPairList[0][1];
       const nonExistentAnswerId = 99998;
       const response = await request(app.getHttpServer())
         .delete(
@@ -680,6 +689,171 @@ describe('Answers Module', () => {
 
       expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(response.body.code).toBe(401);
+    });
+  });
+
+  describe('Set Attitude to Answer', () => {
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+      expect(respond.statusCode).toBe(401);
+    });
+    it('should set attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ attitude_type: 'POSITIVE' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the comment',
+      );
+      expect(respond.body.code).toBe(201);
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.attitudes.difference).toBe(1);
+      expect(respond.body.data.attitudes.user_attitude).toBe('POSITIVE');
+    });
+    it('should set attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ attitude_type: 'NEGATIVE' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the comment',
+      );
+      expect(respond.body.code).toBe(201);
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.attitudes.difference).toBe(0);
+      expect(respond.body.data.attitudes.user_attitude).toBe('NEGATIVE');
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe('POSITIVE');
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe('NEGATIVE');
+    });
+    it('should set attitude to positive successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ attitude_type: 'UNDEFINED' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the comment',
+      );
+      expect(respond.body.code).toBe(201);
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.attitudes.difference).toBe(-1);
+      expect(respond.body.data.attitudes.user_attitude).toBe('UNDEFINED');
+    });
+    it('should set attitude to positive successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ attitude_type: 'UNDEFINED' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the comment',
+      );
+      expect(respond.body.code).toBe(201);
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.attitudes.difference).toBe(0);
+      expect(respond.body.data.attitudes.user_attitude).toBe('UNDEFINED');
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
     });
   });
 
