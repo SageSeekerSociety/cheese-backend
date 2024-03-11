@@ -221,6 +221,21 @@ model session_refresh_log {
 }
 
 //
+// avatars.legacy.prisma
+//
+
+model avatar {
+  id            Int             @id @default(autoincrement())
+  url           String          @db.VarChar
+  name          String          @db.VarChar
+  createdAt     DateTime        @default(now()) @db.Timestamp(6)
+  avatarType    String          @db.VarChar
+  usageCount    Int             @default(0)
+  group_profile group_profile[]
+  user_profile  user_profile[]
+}
+
+//
 // comment.legacy.prisma
 //
 
@@ -334,7 +349,8 @@ model group_membership {
 model group_profile {
   id        Int       @id(map: "PK_2a62b59d1bf8a3191c992e8daf4") @default(autoincrement())
   intro     String    @db.VarChar
-  avatar    String    @db.VarChar
+  avatarId  Int?
+  avatar    avatar?   @relation(fields: [avatarId], references: [id])
   groupId   Int       @unique(map: "REL_7359ba99cc116d00cf74e048ed")
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime  @default(now()) @db.Timestamp(6)
@@ -610,12 +626,13 @@ model user_profile {
   id        Int       @id(map: "PK_f44d0cd18cfd80b0fed7806c3b7") @default(autoincrement())
   userId    Int       @unique(map: "IDX_51cb79b5555effaf7d69ba1cff")
   nickname  String    @db.VarChar
-  avatar    String    @db.VarChar
+  avatarId  Int
   intro     String    @db.VarChar
   createdAt DateTime  @default(now()) @db.Timestamp(6)
   updatedAt DateTime  @default(now()) @db.Timestamp(6)
   deletedAt DateTime? @db.Timestamp(6)
-  user      user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_51cb79b5555effaf7d69ba1cff9")
+  user      user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_user_id")
+  avatar    avatar    @relation(fields: [avatarId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_avatar_id")
 }
 
 model user_profile_query_log {

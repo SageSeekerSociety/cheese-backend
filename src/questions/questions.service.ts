@@ -15,6 +15,7 @@ import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
 import { CommentableType } from '../comments/commentable.enum';
+import { Answer } from '../answer/answer.legacy.entity';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -63,6 +64,8 @@ export class QuestionsService {
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
+    @InjectRepository(Answer)
+    private answerRepository: Repository<Answer>,
   ) {}
 
   async addTopicToQuestion(
@@ -206,11 +209,21 @@ export class QuestionsService {
     return await this.questionQueryLogRepository.countBy({ questionId });
   }
 
+  async getAnswerIdOfCreatedBy(
+    questionId: number,
+    createdById: number,
+  ): Promise<number | null> {
+    const answer = await this.answerRepository.findOne({
+      where: { questionId, createdById },
+    });
+    return answer?.id ?? null;
+  }
+
   async getQuestionDto(
     questionId: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId?: number,
+    ip?: string,
+    userAgent?: string,
   ): Promise<QuestionDto> {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
@@ -276,6 +289,11 @@ export class QuestionsService {
       });
       await this.questionQueryLogRepository.save(log);
     }
+    const my_answer_id =
+      viewerId == undefined
+        ? undefined // If the viewer is not logged in, then the field should be missing.
+        : await this.getAnswerIdOfCreatedBy(questionId, viewerId); // If the viewer is logged in, then the field should be a number or null.
+
     return {
       id: question.id,
       title: question.title,
@@ -286,6 +304,7 @@ export class QuestionsService {
       created_at: question.createdAt.getTime(),
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
+      my_answer_id,
       answer_count: answerCount,
       comment_count: commentCount,
       follow_count: followCount,

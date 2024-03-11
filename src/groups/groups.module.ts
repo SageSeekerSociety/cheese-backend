@@ -21,6 +21,7 @@ import {
   GroupTarget,
 } from './groups.legacy.entity';
 import { GroupsService } from './groups.service';
+import { AvatarsModule } from '../avatars/avatars.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { GroupsService } from './groups.service';
     UsersModule,
     forwardRef(() => QuestionsModule),
     forwardRef(() => AnswerModule),
+    AvatarsModule,
   ],
   controllers: [GroupsController],
   providers: [GroupsService],

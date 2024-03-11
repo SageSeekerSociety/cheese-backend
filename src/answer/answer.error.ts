@@ -29,3 +29,17 @@ export class AlreadyHasSameAttitudeError extends BaseError {
     );
   }
 }
+
+export class QuestionAlreadyAnsweredError extends BaseError {
+  constructor(
+    public readonly userId: number,
+    public readonly questionId: number,
+    public readonly id: number | undefined,
+  ) {
+    super(
+      'QuestionAlreadyAnsweredError',
+      `User ${userId} has answered the question ${questionId} with answer ${id}.`,
+      400,
+    );
+  }
+}

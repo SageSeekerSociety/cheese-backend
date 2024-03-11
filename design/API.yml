@@ -174,9 +174,9 @@ components:
           type: string
           description: 昵称
           example: "芝士"
-        avatar:
-          type: string
-          description: 头像 URL
+        avatarId:
+          type: integer
+          description: 头像 id
         intro:
           type: string
           description: 个人简介
@@ -212,7 +212,7 @@ components:
         - id
         - username
         - nickname
-        - avatar
+        - avatarId
         - intro
         - follow_count
         - fans_count
@@ -291,6 +291,11 @@ components:
         is_follow:
           type: boolean
           description: 是否关注问题
+        my_answer_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: 当前登录用户的回答 ID
         answer_count:
           type: integer
           description: 回答数量
@@ -308,6 +313,23 @@ components:
           description: 是否为小组问题
         group:
           $ref: "#/components/schemas/Group"
+      required:
+        - id
+        - title
+        - content
+        - author
+        - type
+        - topics
+        - created_at
+        - updated_at
+        - is_follow
+        - is_like
+        - answer_count
+        - comment_count
+        - follow_count
+        - like_count
+        - view_count
+        - is_group
     Answer:
       type: object
       description: 回答详情
@@ -399,6 +421,9 @@ components:
         intro:
           type: string
           default: ""
+        avatarId:
+          type: integer
+          format: int64
         owner:
           $ref: "#/components/schemas/User"
         created_at:
@@ -420,12 +445,11 @@ components:
           type: boolean
         is_owner:
           type: boolean
-        is_public:
-          type: boolean
       required:
         - id
         - name
         - intro
+        - avatarId
     GroupTarget:
       type: object
       description: 小组目标
@@ -882,14 +906,14 @@ paths:
               properties:
                 nickname:
                   type: string
-                avatar:
-                  type: string
                 intro:
                   type: string
+                avatarId:
+                  type: int
               required:
                 - nickname
-                - avatar
                 - intro
+                - avatarId
       responses:
         "200":
           description: OK
@@ -1900,15 +1924,12 @@ paths:
                   type: string
                 intro:
                   type: string
-                avatar:
-                  type: string
-                public:
-                  type: boolean
+                avatarId:
+                  type: integer
               required:
                 - name
                 - intro
-                - avatar
-                - public
+                - avatarId
       responses:
         "201":
           description: Group created successfully
@@ -1967,14 +1988,14 @@ paths:
                   type: string
                 intro:
                   type: string
-                avatar:
-                  type: string
+                avatarId:
+                  type: int
                 cover:
                   type: string
               required:
                 - name
                 - intro
-                - avatar
+                - avatarId
                 - cover
       responses:
         "200":
@@ -2644,3 +2665,83 @@ paths:
                           - attitudes
                     required:
                       - data
+  /avatars:
+    post:
+      summary: Upload an avatar 
+      operationId: uploadAvatar
+      requestBody:
+        content:
+          multipart/form-data:
+                schema:
+                  type: object
+                  properties:
+                    avatar:
+                    type: file
+                    format: binary
+                    description: The avatar image to upload
+      responses:
+        '201':
+          description: Upload avatar successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: number
+                    description: Unique identifier for the uploaded avatar
+  /avatars/{id}:
+    get:
+      summary: Get an avatar by id
+      operationId: getAvatar
+      parameters:  
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier for the uploaded avatar
+      responses:
+        '200':
+          description: get avatar successfully
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+  /avatars/default/id:
+    get:
+      summary: Get default avatar id
+      operationId: getDefaultAvatarId
+      responses:
+        '200':
+          description: Get default avatarId successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarId:
+                        type: number
+                        description: Default avatarId
+  /avatars/predefined/id:
+    get:
+      summary: Get predefined avatarIds
+      operationId: getPreDefinedIds
+      responses:
+        '200':
+          description: Get  Pre Defined AvatarIds successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarIds:
+                        type: array
+                        items:
+                          -type: number
+                        description: Predefined avatarIds
