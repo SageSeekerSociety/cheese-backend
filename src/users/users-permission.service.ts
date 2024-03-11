@@ -112,7 +112,11 @@ export class UsersPermissionService {
           authorizedActions: [AuthorizedAction.other],
           authorizedResource: {
             ownedByUser: undefined,
-            types: ['comment/attitude', 'questions/attitude'],
+            types: [
+              'comment/attitude',
+              'questions/attitude',
+              'answer/attitude',
+            ],
             resourceIds: undefined,
           },
         },

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AttitudableType, AttitudeType } from '@prisma/client';
 import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
@@ -26,6 +26,7 @@ export class CommentsService {
   constructor(
     private readonly attitudeService: AttitudeService,
     private readonly usersService: UsersService,
+    @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
     private readonly questionService: QuestionsService,
     @InjectRepository(Comment)
@@ -226,5 +227,15 @@ export class CommentsService {
     });
     if (comment == undefined) throw new CommentNotFoundError(commentId);
     return comment.createdById;
+  }
+
+  async countCommentsByCommentable(
+    commentableType: CommentableType,
+    commentableId: number,
+  ): Promise<number> {
+    return this.commentRepository.countBy({
+      commentableType,
+      commentableId,
+    });
   }
 }

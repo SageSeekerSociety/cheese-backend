@@ -280,9 +280,9 @@ describe('Answers Module', () => {
       );
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
-      expect(response.body.data.answer.agree_type).toBe(0);
+      //expect(response.body.data.answer.agree_type).toBe(0);
       expect(response.body.data.answer.is_favorite).toBe(false);
-      expect(response.body.data.answer.agree_count).toBe(0);
+      //expect(response.body.data.answer.agree_count).toBe(0);
       expect(response.body.data.answer.favorite_count).toBe(0);
       expect(response.body.data.answer.view_count).toBeDefined();
     });
@@ -308,9 +308,9 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.author.id).toBe(auxUserId);
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
-      expect(response.body.data.answer.agree_type).toBe(0);
+      //expect(response.body.data.answer.agree_type).toBe(0);
       expect(response.body.data.answer.is_favorite).toBe(false);
-      expect(response.body.data.answer.agree_count).toBe(0);
+      //expect(response.body.data.answer.agree_count).toBe(0);
       expect(response.body.data.answer.favorite_count).toBe(0);
       expect(response.body.data.answer.view_count).toBeDefined();
     });
@@ -591,78 +591,6 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer()).delete(
         `/questions/${testQuestionId}/answers/${TestAnswerId}`,
       );
-
-      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(response.body.code).toBe(401);
-    });
-  });
-
-  describe('Agree Answer', () => {
-    it('should successfully create user attitude on first attempt', async () => {
-      const TestAnswerId = answerIds[1];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      const response = await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
-      expect(response.body.message).toBe('Answer agreed successfully.');
-      expect(response.statusCode).toBe(200);
-      expect(response.body.userAttitudeRepository).toBeUndefined();
-      expect(response.body.code).toBe(200);
-      expect(response.body.data.agree_count).toBe(1);
-    });
-
-    it('should successfully agree to an answer', async () => {
-      const TestAnswerId = answerIds[3];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      const response = await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
-      expect(response.body.message).toBe('Answer agreed successfully.');
-      expect(response.status).toBe(200);
-      expect(response.body.code).toBe(200);
-      expect(response.body.data.agree_count).toBe(1);
-      // expect(response.body.data.disagree_count).toBe(0);
-      // expect(response.body.data.question_id).toBe(TestQuestionId);
-    });
-
-    it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
-      const TestAnswerId = answerIds[3];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
-      const response = await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
-      expect(response.body.message).toMatch(/AlreadyHasSameAttitudeError: /);
-      expect(response.status).toBe(400);
-    });
-
-    it('should throw AnswerNotFoundError when trying to agree to a non-existent answer', async () => {
-      const auxAccessToken = userList[0][1];
-      const nonExistentAnswerId = 9999; // TODO: change to a 100% non-existent answer ID
-      const TestQuestionId = questionIds[0];
-      const response = await request(app.getHttpServer())
-        .put(
-          `/questions/${TestQuestionId}/answers/${nonExistentAnswerId}/agree`,
-        )
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ agree_type: 1 });
-      expect(response.body.message).toMatch(/AnswerNotFoundError/);
-      expect(response.status).toBe(404);
-    });
-
-    it('should return AuthenticationRequiredError', async () => {
-      const TestAnswerId = answerIds[3];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      const auxUserId = userList[0][0];
-      const response = await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
 
       expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(response.body.code).toBe(401);

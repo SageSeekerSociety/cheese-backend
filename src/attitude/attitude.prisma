@@ -11,6 +11,7 @@ import { user } from "../users/users.legacy"
 enum AttitudableType {
   COMMENT
   QUESTION
+  ANSWER
 
   @@map("attitudable_type")
 }
