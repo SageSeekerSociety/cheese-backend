@@ -43,16 +43,3 @@ export class QuestionAlreadyAnsweredError extends BaseError {
     );
   }
 }
-
-export class AnswerQuestionNotMatchError extends BaseError {
-  constructor(
-    public readonly questionId: number,
-    public readonly answerId: number,
-  ) {
-    super(
-      'AnswerQuestionNotMatchError',
-      `Answer ${answerId} doesn't belong to question ${questionId}.`,
-      404,
-    );
-  }
-}

@@ -239,6 +239,15 @@ describe('Answers Module', () => {
         .set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.data.user.answer_count).toBe(6);
     });
+    it('should return AuthenticationRequiredError', async () => {
+      const TestQuestionId = questionId[0];
+      const content = 'content';
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${TestQuestionId}/answers`)
+        .send({ content });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
   });
 
   describe('Get answer', () => {
@@ -298,14 +307,14 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.view_count).toBeDefined();
     });
 
-    it('should return AnswerQuestionNotMatchError', async () => {
+    it('should return AnswerNotFoundError', async () => {
       const TestAnswerId = answerId[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId] + 1;
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(response.body.message).toMatch(/AnswerQuestionNotMatchError: /);
+      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
     });
@@ -313,6 +322,7 @@ describe('Answers Module', () => {
 
   describe('Get Answers By Question ID', () => {
     it('should successfully get all answers by question ID', async () => {
+      const auxAccessToken = userList[0][1];
       const TestQuestionId = questionId[0];
       const pageStart = answerId[0];
       const pageSize = 20;
@@ -375,6 +385,16 @@ describe('Answers Module', () => {
   });
 
   describe('Update Answer', () => {
+    it('should return PermissionDeniedError', async () => {
+      const TestAnswerId = answerId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ content: 'Some content' });
+      expect(response.body.message).toMatch(/PermissionDeniedError: /);
+      expect(response.body.code).toBe(403);
+    });
     it('should successfully update an answer', async () => {
       const testAnswerId = answerId[1];
       const testQuestionId = AnswerQuestionMap[testAnswerId];
@@ -400,7 +420,18 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(404);
     });
 
-    it('should throw AnswerQuestionNotMatchError', async () => {
+    it('should return AuthenticationRequiredError', async () => {
+      const testQuestionId = questionId[0];
+      const testAnswerId = answerId[1];
+      const updatedContent = '--------更新----------';
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
+        .send({ content: updatedContent });
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
+    });
+    it('should throw AnswerNotFoundError', async () => {
+      const auxAccessToken = userList[0][1];
       const testAnswerId = answerId[0];
       const testQuestionId = AnswerQuestionMap[testAnswerId] + 1;
       const response = await request(app.getHttpServer())
@@ -408,19 +439,30 @@ describe('Answers Module', () => {
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ content: 'Some content' });
 
-      expect(response.body.message).toMatch(/AnswerQuestionNotMatchError: /);
+      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
     });
   });
 
   describe('Delete Answer', () => {
+    it('should return PermissionDeniedError', async () => {
+      const TestAnswerId = answerId[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
+      const response = await request(app.getHttpServer())
+        .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(response.body.message).toMatch(/PermissionDeniedError: /);
+      expect(response.body.code).toBe(403);
+    });
     it('should successfully delete an answer', async () => {
       const TestAnswerId = answerId[2];
       const testQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${testQuestionId}/answers/${TestAnswerId}`)
-        .set('Authorization', `Bearer ${auxAccessToken}`);
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
 
       expect(response.body.message).toBe('Answer deleted successfully.');
       expect(response.status).toBe(200);
@@ -428,15 +470,28 @@ describe('Answers Module', () => {
     });
 
     it('should return a not found error when trying to delete a non-existent answer', async () => {
+      const auxAccessToken = userList[0][1];
       const testQuestionId = questionId[0];
       const nonExistentAnswerId = 0;
       const response = await request(app.getHttpServer())
         .delete(`/questions/${testQuestionId}/answers/${nonExistentAnswerId}`)
-        .set('Authorization', `Bearer ${auxAccessToken}`);
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
 
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
+    });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const testQuestionId = questionId[0];
+      const TestAnswerId = answerId[2];
+      const response = await request(app.getHttpServer()).delete(
+        `/questions/${testQuestionId}/answers/${TestAnswerId}`,
+      );
+
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
     });
   });
 
@@ -453,8 +508,6 @@ describe('Answers Module', () => {
       expect(response.body.userAttitudeRepository).toBeUndefined();
       expect(response.body.code).toBe(200);
       expect(response.body.data.agree_count).toBe(1);
-      // expect(response.body.data.disagree_count).toBe(0);
-      // expect(response.body.data.question_id).toBe(TestQuestionId);
     });
 
     it('should successfully agree to an answer', async () => {
@@ -488,6 +541,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFoundError when trying to agree to a non-existent answer', async () => {
+      const auxAccessToken = userList[0][1];
       const nonExistentAnswerId = 9999; // TODO: change to a 100% non-existent answer ID
       const TestQuestionId = questionId[0];
       const response = await request(app.getHttpServer())
@@ -499,10 +553,23 @@ describe('Answers Module', () => {
       expect(response.body.message).toMatch(/AnswerNotFoundError/);
       expect(response.status).toBe(404);
     });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const TestAnswerId = answerId[3];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
+      const auxUserId = userList[0][0];
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
+        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
+
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
+    });
   });
 
   describe('Favorite Answer', () => {
     it('should successfully favorite an answer', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -514,6 +581,7 @@ describe('Answers Module', () => {
     });
 
     it('should successfully unfavorite an answer', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
@@ -530,6 +598,7 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
+      const auxAccessToken = userList[0][1];
       const TestAnswerId = answerId[4];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
@@ -557,6 +626,7 @@ describe('Answers Module', () => {
     });
     it('should throw AnswerNotFoundError when trying to unfavorite a non-existent answer', async () => {
       const TestQuestionId = questionId[0];
+      const auxAccessToken = userList[0][1];
       const nonExistentAnswerId = 99998;
       const response = await request(app.getHttpServer())
         .delete(
@@ -569,6 +639,17 @@ describe('Answers Module', () => {
       expect(response.status).toBe(404);
 
       expect(response.body.code).toBe(404);
+    });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const TestAnswerId = answerId[1];
+      const TestQuestionId = questionId[0];
+      const response = await request(app.getHttpServer())
+        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
+        .send();
+
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
     });
   });
 
