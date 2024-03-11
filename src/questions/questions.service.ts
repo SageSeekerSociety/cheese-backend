@@ -10,6 +10,7 @@
 import { Injectable } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
+import { QuestionInvitationRelation } from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { Answer } from '../answer/answer.legacy.entity';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
@@ -21,10 +22,7 @@ import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
-import { QuestionInvitationDetailDto } from './DTO/get-invitation-detail.dto';
-import { QuestionInvitationDto } from './DTO/get-question-invitation.dto';
-import { GetRecommentdations } from './DTO/get-recommendations.dto';
-import { InviteUsersAnswerDto } from './DTO/invite-user-answer.dto';
+import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
   AlreadyAnsweredError,
@@ -559,12 +557,18 @@ export class QuestionsService {
       );
     }
   }
+
+  // returns:
+  //    invitation id
   async inviteUsersToAnswerQuestion(
     questionId: number,
     userId: number,
-  ): Promise<InviteUsersAnswerDto> {
+  ): Promise<number> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
     if ((await this.userService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
+
     const haveBeenInvited =
       await this.prismaService.questionInvitationRelation.findFirst({
         where: {
@@ -572,16 +576,14 @@ export class QuestionsService {
           userId: userId,
         },
       });
-
     if (haveBeenInvited) {
-      if (
-        (await this.getAnswerIdOfCreatedBy(questionId, userId)) != undefined
-      ) {
+      if (await this.isQuestionAnsweredBy(questionId, userId)) {
         throw new AlreadyAnsweredError(userId);
       } else {
         throw new AlreadyInvitedError(userId);
       }
     }
+
     const Invitation =
       await this.prismaService.questionInvitationRelation.create({
         data: {
@@ -589,63 +591,94 @@ export class QuestionsService {
           userId,
         },
       });
-    return {
-      userId,
-      invitationId: Invitation.id,
-    };
+    return Invitation.id;
   }
 
   async getQuestionInvitations(
     questionId: number,
     sort: '+createdAt' | '-createdAt',
-    pageSize: number,
-    pageStart: number,
-  ): Promise<{
-    Invitations: QuestionInvitationDto[];
-    page_start: number;
-    has_prev: boolean;
-    has_more: boolean;
-  }> {
-    const orderField = sort === '+createdAt' ? 'asc' : 'desc';
-    const questionDto = await this.getQuestionDto(questionId);
-    const questionInvitations =
-      await this.prismaService.questionInvitationRelation.findMany({
-        where: { questionId },
-        orderBy: { createdAt: orderField },
-        take: pageSize,
-        skip: pageStart,
-      });
-
-    const totalCount = questionInvitations.length;
-
-    const currentPage = Math.floor(pageStart / pageSize) + 1;
-    const hasPrev = currentPage > 1;
-    const hasNext = totalCount > currentPage * pageSize;
-    return Promise.all(
-      questionInvitations.map(async (invitation) => {
-        const user = await this.userService.getUserDtoById(invitation.userId);
-        return {
-          id: invitation.id,
-          questionId: invitation.questionId,
-          user,
-          createAt: invitation.createdAt,
-          updateAt: invitation.updatedAt,
-          isAnswered: questionDto.is_answered,
-        };
-      }),
-    ).then((invitations) => {
+    pageStart: number | undefined,
+    pageSize: number | undefined = 20,
+  ): Promise<[QuestionInvitationDto[], PageRespondDto]> {
+    const record2dto = async (
+      invitation: QuestionInvitationRelation,
+    ): Promise<QuestionInvitationDto> => {
       return {
-        Invitations: invitations,
-        page_start: pageStart,
-        has_prev: hasPrev,
-        has_more: hasNext,
+        id: invitation.id,
+        question_id: invitation.questionId,
+        user: await this.userService.getUserDtoById(invitation.userId),
+        created_at: invitation.createdAt.getTime(),
+        updated_at: invitation.updatedAt.getTime(),
+        is_answered: await this.isQuestionAnsweredBy(
+          questionId,
+          invitation.userId,
+        ),
       };
-    });
+    };
+
+    const createdAtOrderField = sort === '+createdAt' ? 'asc' : 'desc';
+    const createdAtOrderFieldReversed = sort === '+createdAt' ? 'asc' : 'desc';
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    if (pageStart == undefined) {
+      const invitations =
+        await this.prismaService.questionInvitationRelation.findMany({
+          where: { questionId },
+          orderBy: { createdAt: createdAtOrderField },
+          take: pageSize + 1,
+        });
+      const invitationDtos: QuestionInvitationDto[] = await Promise.all(
+        invitations.map(record2dto),
+      );
+      return PageHelper.PageStart(invitationDtos, pageSize, (i) => i.id);
+    } else {
+      const cursor =
+        await this.prismaService.questionInvitationRelation.findUnique({
+          where: { id: pageStart },
+        });
+      if (cursor == undefined)
+        throw new QuestionInvitationIdNotFoundError(pageStart);
+      const prev = await this.prismaService.questionInvitationRelation.findMany(
+        {
+          where: {
+            questionId,
+            createdAt:
+              createdAtOrderFieldReversed === 'asc'
+                ? { lt: cursor.createdAt }
+                : { gt: cursor.createdAt },
+          },
+          orderBy: { createdAt: createdAtOrderFieldReversed },
+          take: pageSize,
+        },
+      );
+      const curr = await this.prismaService.questionInvitationRelation.findMany(
+        {
+          where: {
+            questionId,
+            createdAt:
+              createdAtOrderFieldReversed === 'asc'
+                ? { gte: cursor.createdAt }
+                : { lte: cursor.createdAt },
+          },
+          orderBy: { createdAt: createdAtOrderField },
+          take: pageSize + 1,
+        },
+      );
+      const currDtos = await Promise.all(curr.map(record2dto));
+      return PageHelper.PageMiddle(
+        prev,
+        currDtos,
+        pageSize,
+        (i) => i.id,
+        (i) => i.id,
+      );
+    }
   }
+
   async getQuestionInvitationRecommendations(
     questionId: number,
     pageSize = 5,
-  ): Promise<GetRecommentdations> {
+  ): Promise<UserDto[]> {
     const question = await this.questionRepository.findOne({
       where: { id: questionId },
     });
@@ -664,15 +697,14 @@ export class QuestionsService {
       ),
     );
 
-    return {
-      users: userDtos,
-    };
+    return userDtos;
   }
-  async getInvitationDetail(
+  async getQuestionInvitationDto(
     questionId: number,
     invitationId: number,
-  ): Promise<QuestionInvitationDetailDto> {
-    const questionDto = await this.getQuestionDto(questionId);
+  ): Promise<QuestionInvitationDto> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
     const invitation =
       await this.prismaService.questionInvitationRelation.findFirst({
         where: { id: invitationId, questionId },
@@ -683,11 +715,14 @@ export class QuestionsService {
     const userdto = await this.userService.getUserDtoById(invitation.userId);
     return {
       id: invitation.id,
-      questionId: invitation.questionId,
+      question_id: invitation.questionId,
       user: userdto,
-      createdAt: invitation.createdAt,
-      updatedAt: invitation.updatedAt,
-      isAnswered: questionDto.is_answered,
+      created_at: invitation.createdAt.getTime(),
+      updated_at: invitation.updatedAt.getTime(),
+      is_answered: await this.isQuestionAnsweredBy(
+        questionId,
+        invitation.userId,
+      ),
     };
   }
 
@@ -713,5 +748,31 @@ export class QuestionsService {
 
   async isQuestionExists(questionId: number): Promise<boolean> {
     return (await this.questionRepository.countBy({ id: questionId })) > 0;
+  }
+
+  async isQuestionAnsweredBy(
+    questionId: number,
+    userId: number | undefined,
+  ): Promise<boolean> {
+    if (userId == undefined) return false;
+    return (await this.getAnswerIdOfCreatedBy(questionId, userId)) != undefined;
+  }
+
+  async getInvitedById(
+    questionId: number,
+    invitationId: number,
+  ): Promise<number> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    const invitation =
+      await this.prismaService.questionInvitationRelation.findUnique({
+        where: {
+          questionId,
+          id: invitationId,
+        },
+      });
+    if (invitation == undefined)
+      throw new QuestionInvitationIdNotFoundError(invitationId);
+    return invitation.userId;
   }
 }

@@ -32,19 +32,17 @@ import {
   AddQuestionRequestDto,
   AddQuestionResponseDto,
 } from './DTO/add-question.dto';
-import { cancelInvitationResponseDto } from './DTO/cancel-invitation.dto';
 import {
   FollowQuestionResponseDto,
   UnfollowQuestionResponseDto,
 } from './DTO/follow-unfollow-question.dto';
-import { QuestionInvitationDetailResponseDto } from './DTO/get-invitation-detail.dto';
+import { GetQuestionInvitationDetailResponseDto } from './DTO/get-invitation-detail.dto';
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
 import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
-import { GetRecommentdationsRespondDto } from './DTO/get-recommendations.dto';
+import { GetQuestionRecommentdationsRespondDto } from './DTO/get-question-recommendations.dto';
 import { inviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
-import { SendIdDto } from './DTO/send-id.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
 
@@ -286,30 +284,26 @@ export class QuestionsController {
   async getQuestionInvitations(
     @Param('id', ParseIntPipe) id: number,
     @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number,
-    @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
+    pageStart: number | undefined,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    pageSize: number | undefined,
     @Query('sort', new ParseEnumPipe({ optional: true }))
     sort: '+createdAt' | '-createdAt',
   ): Promise<GetQuestionInvitationsResponseDto> {
-    if (pageSize == undefined || pageSize == 0) pageSize = 20;
     if (sort == undefined) sort = '+createdAt';
-    const invitations = await this.questionsService.getQuestionInvitations(
-      id,
-      sort,
-      pageSize,
-      pageStart,
-    );
+    const [invitations, page] =
+      await this.questionsService.getQuestionInvitations(
+        id,
+        sort,
+        pageSize,
+        pageStart,
+      );
     return {
       code: 200,
       message: 'Invited',
       data: {
-        invitations: invitations.Invitations,
-        page: {
-          page_start: invitations.page_start,
-          page_size: pageSize,
-          has_prev: invitations.has_prev,
-          has_more: invitations.has_more,
-        },
+        invitations,
+        page,
       },
     };
   }
@@ -318,40 +312,43 @@ export class QuestionsController {
   async inviteUserAnswerQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-    @Body() userIds: SendIdDto,
+    @Body('id', ParseIntPipe) invitedUserId: number,
   ): Promise<inviteUsersAnswerResponseDto> {
-    this.authService.audit(
-      auth,
-      AuthorizedAction.modify,
-      await this.questionsService.getQuestionCreatedById(id),
-      'questions',
-      id,
-    );
-    const userId = await this.authService.verify(auth).userId;
-    const inviteUserAnswer =
-      await this.questionsService.inviteUsersToAnswerQuestion(id, userIds.id);
-    return {
-      code: 201,
-      message: 'Invited',
-      data: inviteUserAnswer,
-    };
-  }
-
-  @Delete('/:id/invitations')
-  async cancelInvition(
-    @Param('id', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string | undefined,
-    @Body() InvitationId: SendIdDto,
-  ): Promise<cancelInvitationResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
-      AuthorizedAction.delete,
+      AuthorizedAction.create,
       userId,
-      'questions',
+      'questions/invitation',
       undefined,
     );
-    await this.questionsService.cancelInvitation(id, InvitationId.id);
+    const inviteId = await this.questionsService.inviteUsersToAnswerQuestion(
+      id,
+      invitedUserId,
+    );
+    return {
+      code: 201,
+      message: 'Invited',
+      data: {
+        invitation_id: inviteId,
+      },
+    };
+  }
+
+  @Delete('/:id/invitations/:invitation_id')
+  async cancelInvition(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('invitation_id', ParseIntPipe) invitationId: number,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<BaseRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.delete,
+      await this.questionsService.getInvitedById(id, invitationId),
+      'questions/invitation',
+      invitationId,
+    );
+    await this.questionsService.cancelInvitation(id, invitationId);
     return {
       code: 204,
       message: 'successfully cancelled',
@@ -365,7 +362,7 @@ export class QuestionsController {
     @Param('id', ParseIntPipe) id: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
     pageSize: number,
-  ): Promise<GetRecommentdationsRespondDto> {
+  ): Promise<GetQuestionRecommentdationsRespondDto> {
     const users =
       await this.questionsService.getQuestionInvitationRecommendations(
         id,
@@ -374,7 +371,9 @@ export class QuestionsController {
     return {
       code: 200,
       message: 'successfully',
-      data: users,
+      data: {
+        users,
+      },
     };
   }
 
@@ -382,15 +381,17 @@ export class QuestionsController {
   async getInvitationDetail(
     @Param('id', ParseIntPipe) id: number,
     @Param('invitation_id', ParseIntPipe) invitation_id: number,
-  ): Promise<QuestionInvitationDetailResponseDto> {
-    const InvitationDetail = await this.questionsService.getInvitationDetail(
+  ): Promise<GetQuestionInvitationDetailResponseDto> {
+    const invitationDto = await this.questionsService.getQuestionInvitationDto(
       id,
       invitation_id,
     );
     return {
       code: 200,
       message: 'successfully',
-      data: InvitationDetail,
+      data: {
+        invitation: invitationDto,
+      },
     };
   }
 }

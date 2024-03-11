@@ -30,7 +30,6 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
-  JoinColumn,
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
@@ -227,29 +226,4 @@ export class QuestionSearchLog {
 
   @CreateDateColumn()
   createdAt: Date;
-}
-
-@Entity()
-export class QuestionInvitation {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column()
-  questionId: number;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'userId' })
-  user: User;
-
-  @Column()
-  userId: number;
-
-  @CreateDateColumn()
-  createAt: Date;
-
-  @UpdateDateColumn()
-  updateAt: Date;
-
-  @DeleteDateColumn()
-  deletedAt?: Date;
 }

@@ -18,7 +18,6 @@ import { QuestionsController } from './questions.controller';
 import {
   Question,
   QuestionFollowerRelation,
-  QuestionInvitation,
   QuestionQueryLog,
   QuestionSearchLog,
   QuestionTopicRelation,
@@ -33,7 +32,6 @@ import { QuestionsService } from './questions.service';
       QuestionFollowerRelation,
       QuestionQueryLog,
       QuestionSearchLog,
-      QuestionInvitation,
       Answer,
     ]),
     ConfiguredElasticsearchModule,

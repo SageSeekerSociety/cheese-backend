@@ -400,11 +400,13 @@ model QuestionInvitationRelation {
   id         Int      @id @default(autoincrement())
   questionId Int
   question   question @relation(fields: [questionId], references: [id])
-  user       user     @relation(fields: [userId], references: [id])
   userId     Int
+  user       user     @relation(fields: [userId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  @@index([questionId])
+  @@index([userId])
   @@map("question_invitation_relation")
 }
 
