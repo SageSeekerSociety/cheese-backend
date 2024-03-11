@@ -332,6 +332,7 @@ describe('Answers Module', () => {
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
+      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
     });
@@ -550,6 +551,7 @@ describe('Answers Module', () => {
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ content: 'Some content' });
 
+      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);

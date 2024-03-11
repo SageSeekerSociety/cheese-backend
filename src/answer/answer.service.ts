@@ -357,7 +357,7 @@ export class AnswerService {
 
     // check if the user has already agreed or disagreed
     const userAttitude = await this.userAttitudeRepository.findOne({
-      where: { userId, answerId: answerId },
+      where: { userId, answerId },
     });
     if (userAttitude) {
       if (userAttitude.type == agreeType) {
@@ -368,7 +368,7 @@ export class AnswerService {
     } else {
       await this.userAttitudeRepository.save({
         userId,
-        answerId: answerId,
+        answerId,
         type: agreeType,
       });
     }
