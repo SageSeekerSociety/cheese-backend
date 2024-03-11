@@ -11,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Answer } from '../answer/answer.legacy.entity';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -62,6 +63,8 @@ export class QuestionsService {
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
+    @InjectRepository(Answer)
+    private answerRepository: Repository<Answer>,
   ) {}
 
   async addTopicToQuestion(
@@ -205,11 +208,25 @@ export class QuestionsService {
     return await this.questionQueryLogRepository.countBy({ questionId });
   }
 
+  async getAnswerIdOfCreatedBy(
+    questionId: number,
+    createdById: number,
+  ): Promise<number | undefined> {
+    const answer = await this.answerRepository.findOne({
+      where: {
+        deletedAt: undefined,
+        questionId,
+        createdById,
+      },
+    });
+    return answer?.id ?? undefined;
+  }
+
   async getQuestionDto(
     questionId: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId?: number,
+    ip?: string,
+    userAgent?: string,
   ): Promise<QuestionDto> {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
@@ -219,14 +236,20 @@ export class QuestionsService {
     const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
     const followCountPromise = this.getFollowCountOfQuestion(questionId);
     const viewCountPromise = this.getViewCountOfQuestion(questionId);
+    const myAnswerIdPromise =
+      viewerId == undefined
+        ? Promise.resolve(undefined) // If the viewer is not logged in, then the field should be missing.
+        : this.getAnswerIdOfCreatedBy(questionId, viewerId); // If the viewer is logged in, then the field should be a number or null.
 
-    const [topics, hasFollowed, followCount, viewCount] = await Promise.all([
-      topicsPromise,
-      hasFollowedPromise,
-      followCountPromise,
-      viewCountPromise,
-    ]);
-    let user: UserDto = undefined!; // For case that user is deleted.
+    const [topics, hasFollowed, followCount, viewCount, myAnswerId] =
+      await Promise.all([
+        topicsPromise,
+        hasFollowedPromise,
+        followCountPromise,
+        viewCountPromise,
+        myAnswerIdPromise,
+      ]);
+    let user: UserDto | null = null; // For case that user is deleted.
     try {
       user = await this.userService.getUserDtoById(
         question.createdById,
@@ -235,9 +258,9 @@ export class QuestionsService {
         userAgent,
       );
     } catch (e) {
-      // If user is undefined, it means that one user created this question, but the user
+      // If user is null, it means that one user created this question, but the user
       // does not exist now. This is NOT a data integrity problem, since user can be
-      // deleted. So we just return a undefined and not throw an error.
+      // deleted. So we just return a null and not throw an error.
     }
     if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.questionQueryLogRepository.create({
@@ -248,7 +271,6 @@ export class QuestionsService {
       });
       await this.questionQueryLogRepository.save(log);
     }
-
     return {
       id: question.id,
       title: question.title,
@@ -260,8 +282,6 @@ export class QuestionsService {
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
       is_like: false, // TODO: Implement this.
-      is_answered: false, //TODO: Implement this
-      my_answer_id: 0, //TODO: Implement this
       answer_count: 0, // TODO: Implement this.
       comment_count: 0, // TODO: Implement this.
       follow_count: followCount,
@@ -269,6 +289,8 @@ export class QuestionsService {
       view_count: viewCount,
       is_group: question.groupId != undefined,
       group: undefined!, // TODO: Implement this.
+      is_answered: myAnswerId != undefined,
+      my_answer_id: myAnswerId,
     };
   }
 
@@ -541,8 +563,8 @@ export class QuestionsService {
     questionId: number,
     userId: number,
   ): Promise<InviteUsersAnswerDto> {
-    const questionDto = await this.getQuestionDto(questionId);
-    const userdto = await this.userService.getUserDtoById(userId);
+    if ((await this.userService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
     const haveBeenInvited =
       await this.prismaService.questionInvitationRelation.findFirst({
         where: {
@@ -552,7 +574,9 @@ export class QuestionsService {
       });
 
     if (haveBeenInvited) {
-      if (questionDto.is_answered) {
+      if (
+        (await this.getAnswerIdOfCreatedBy(questionId, userId)) != undefined
+      ) {
         throw new AlreadyAnsweredError(userId);
       } else {
         throw new AlreadyInvitedError(userId);
@@ -671,7 +695,8 @@ export class QuestionsService {
     questionId: number,
     invitationId: number,
   ): Promise<void> {
-    const questiondto = await this.getQuestionDto(questionId);
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
     const invitation =
       await this.prismaService.questionInvitationRelation.findFirst({
         where: { id: invitationId, questionId },

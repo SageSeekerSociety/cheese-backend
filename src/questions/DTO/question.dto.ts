@@ -1,4 +1,3 @@
-import { IsOptional } from 'class-validator';
 import { GroupDto } from '../../groups/DTO/group.dto';
 import { TopicDto } from '../../topics/DTO/topic.dto';
 import { UserDto } from '../../users/DTO/user.dto';
@@ -6,7 +5,7 @@ export class QuestionDto {
   id: number;
   title: string;
   content: string;
-  author: UserDto;
+  author: UserDto | null;
   type: number;
   topics: TopicDto[];
   created_at: number; // timestamp
@@ -14,7 +13,6 @@ export class QuestionDto {
   is_follow: boolean;
   is_like: boolean;
   is_answered: boolean;
-  @IsOptional()
   my_answer_id?: number;
   answer_count: number;
   comment_count: number;

@@ -42,7 +42,11 @@ export class CommentsService {
   ): Promise<void> {
     switch (commentableType) {
       case CommentableType.ANSWER:
-        if ((await this.answerService.isAnswerExists(commentableId)) == false)
+        if (
+          (await this.answerService.isAnswerExistsAcrossQuestions(
+            commentableId,
+          )) == false
+        )
           throw new CommentableNotFoundError(commentableType, commentableId);
         break;
       case CommentableType.COMMENT:

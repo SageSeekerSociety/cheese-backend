@@ -308,8 +308,8 @@ export class UsersController {
     await this.usersService.updateUserProfile(
       id,
       request.nickname,
-      request.avatar,
       request.intro,
+      request.avatarId,
     );
     return {
       code: 200,

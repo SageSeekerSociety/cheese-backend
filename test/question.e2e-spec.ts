@@ -681,7 +681,7 @@ describe('Questions Module', () => {
         .post(`/questions/${questionIds[1]}/answers`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ content: 'woc' });
-      expect(respond.body.code).toBe(200);
+      expect(respond.body.code).toBe(201);
     });
 
     // it('should return alreadyAnsweredError', async () => {

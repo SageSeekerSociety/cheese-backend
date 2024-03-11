@@ -8,6 +8,7 @@
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { Answer } from '../answer/answer.legacy.entity';
 import { AuthModule } from '../auth/auth.module';
 import { ConfiguredElasticsearchModule } from '../common/config/elasticsearch.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
@@ -33,6 +34,7 @@ import { QuestionsService } from './questions.service';
       QuestionQueryLog,
       QuestionSearchLog,
       QuestionInvitation,
+      Answer,
     ]),
     ConfiguredElasticsearchModule,
     PrismaModule,
