@@ -2,12 +2,13 @@ import { user } from "../users/users.legacy"
 import { question } from "../questions/questions.legacy"
 
 model QuestionInvitationRelation {
-  id Int @id @default(autoincrement())
+  id         Int      @id @default(autoincrement())
   questionId Int
-  question question @relation(fields: [questionId], references: [id])
-  user user @relation(fields: [userId], references: [id])
-  userId Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  question   question @relation(fields: [questionId], references: [id])
+  user       user     @relation(fields: [userId], references: [id])
+  userId     Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
   @@map("question_invitation_relation")
 }

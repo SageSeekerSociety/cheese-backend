@@ -18,6 +18,7 @@ import { answer, answer_delete_log, answer_favorited_by_user, answer_query_log, 
 import { Attitude } from "../attitude/attitude"
 import { comment, comment_delete_log, comment_query_log } from "../comments/comment.legacy"
 import { AttitudeLog } from "../attitude/attitude"
+import { QuestionInvitationRelation } from "../questions/questions.invitation"
 
 model user {
   id                                                                       Int                           @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
