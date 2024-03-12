@@ -256,7 +256,7 @@ describe('Questions Module', () => {
       expect(respond.body.data.question.follow_count).toBe(0);
       expect(respond.body.data.question.view_count).toBe(0);
       expect(respond.body.data.question.is_group).toBe(false);
-      expect(respond.body.data.question.group).toBe(undefined);
+      expect(respond.body.data.question.group).toBe(null);
     }, 20000);
     it('should get a question without token', async () => {
       const respond = await request(app.getHttpServer())
@@ -295,7 +295,7 @@ describe('Questions Module', () => {
       expect(respond.body.data.question.follow_count).toBe(0);
       expect(respond.body.data.question.comment_count).toBe(0);
       expect(respond.body.data.question.is_group).toBe(false);
-      expect(respond.body.data.question.group).toBe(undefined);
+      expect(respond.body.data.question.group).toBe(null);
     }, 20000);
     it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())

@@ -20,5 +20,5 @@ export class QuestionDto {
   follow_count: number;
   view_count: number;
   is_group: boolean;
-  group?: GroupDto;
+  group: GroupDto | null;
 }

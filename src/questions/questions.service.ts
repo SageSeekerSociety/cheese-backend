@@ -256,7 +256,7 @@ export class QuestionsService {
     });
     const groupDtoPromise =
       question.groupId == undefined
-        ? Promise.resolve(undefined)
+        ? Promise.resolve(null)
         : this.groupService.getGroupDtoById(undefined, question.groupId);
 
     const [
