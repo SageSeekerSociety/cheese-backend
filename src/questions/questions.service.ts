@@ -568,7 +568,13 @@ export class QuestionsService {
       throw new QuestionIdNotFoundError(questionId);
     if ((await this.userService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
-
+    const haveBeenAnswered = await this.getAnswerIdOfCreatedBy(
+      questionId,
+      userId,
+    );
+    if (haveBeenAnswered) {
+      throw new AlreadyAnsweredError(userId);
+    }
     const haveBeenInvited =
       await this.prismaService.questionInvitationRelation.findFirst({
         where: {
@@ -577,11 +583,7 @@ export class QuestionsService {
         },
       });
     if (haveBeenInvited) {
-      if (await this.isQuestionAnsweredBy(questionId, userId)) {
-        throw new AlreadyAnsweredError(userId);
-      } else {
-        throw new AlreadyInvitedError(userId);
-      }
+      throw new AlreadyInvitedError(userId);
     }
 
     const Invitation =
@@ -691,6 +693,7 @@ export class QuestionsService {
         id: 'asc',
       }, //TODO
     });
+
     const userDtos = await Promise.all(
       randomUserEntities.map((entity) =>
         this.userService.getUserDtoById(entity.id),

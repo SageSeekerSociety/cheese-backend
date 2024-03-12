@@ -39,8 +39,8 @@ import {
 import { GetQuestionInvitationDetailResponseDto } from './DTO/get-invitation-detail.dto';
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
 import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
-import { GetQuestionResponseDto } from './DTO/get-question.dto';
 import { GetQuestionRecommentdationsRespondDto } from './DTO/get-question-recommendations.dto';
+import { GetQuestionResponseDto } from './DTO/get-question.dto';
 import { inviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
@@ -368,6 +368,7 @@ export class QuestionsController {
         id,
         pageSize,
       );
+    console.log(users);
     return {
       code: 200,
       message: 'successfully',
