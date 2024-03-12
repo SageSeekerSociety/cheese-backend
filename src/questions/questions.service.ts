@@ -229,9 +229,19 @@ export class QuestionsService {
       id: questionId,
     });
     if (question == undefined) throw new QuestionIdNotFoundError(questionId);
-    const userDtoPromise = this.userService.getUserDtoById(
-      question.createdById,
-    );
+    let userDto: UserDto | null = null; // For case that user is deleted.
+    try {
+      userDto = await this.userService.getUserDtoById(
+        question.createdById,
+        viewerId,
+        ip,
+        userAgent,
+      );
+    } catch (e) {
+      // If user is null, it means that one user created this question, but the user
+      // does not exist now. This is NOT a data integrity problem, since user can be
+      // deleted. So we just return a null and not throw an error.
+    }
     const topicsPromise = this.getTopicDtosOfQuestion(questionId);
     const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
     const followCountPromise = this.getFollowCountOfQuestion(questionId);
@@ -260,7 +270,6 @@ export class QuestionsService {
         : this.groupService.getGroupDtoById(undefined, question.groupId);
 
     const [
-      userDto,
       topics,
       hasFollowed,
       followCount,
@@ -270,7 +279,6 @@ export class QuestionsService {
       commentCount,
       groupDto,
     ] = await Promise.all([
-      userDtoPromise,
       topicsPromise,
       hasFollowedPromise,
       followCountPromise,
