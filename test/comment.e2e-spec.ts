@@ -334,6 +334,7 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.disagree_count).toBe(0);
       expect(respond.body.data.comment.agree_count).toBe(0);
       expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
+      expect(respond.body.data.comment.tag).toContain('IGNORED');
     });
     it('should return CommentNotFoundError due to the invalid id', async () => {
       const respond = await request(app.getHttpServer())
