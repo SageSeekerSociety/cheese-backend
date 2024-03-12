@@ -34,6 +34,13 @@ export class AttitudeService {
     if ((await this.usersService.isUserExists(userId)) == false) {
       throw new UserIdNotFoundError(userId);
     }
+    const attitudeCondition = {
+      attitudableId_userId_attitudableType: {
+        userId,
+        attitudableType,
+        attitudableId,
+      },
+    };
     await this.prismaService.attitudeLog.create({
       data: {
         userId,
@@ -44,13 +51,7 @@ export class AttitudeService {
     });
     if (attitude != AttitudeType.UNDEFINED) {
       await this.prismaService.attitude.upsert({
-        where: {
-          attitudableId_userId_attitudableType: {
-            userId,
-            attitudableType,
-            attitudableId,
-          },
-        },
+        where: attitudeCondition,
         update: {
           attitude,
         },
@@ -63,13 +64,7 @@ export class AttitudeService {
       });
     } else {
       await this.prismaService.attitude.delete({
-        where: {
-          attitudableId_userId_attitudableType: {
-            userId,
-            attitudableType,
-            attitudableId,
-          },
-        },
+        where: attitudeCondition,
       });
     }
   }
