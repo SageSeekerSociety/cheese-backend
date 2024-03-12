@@ -14,7 +14,7 @@ export class AvatarsService implements OnModuleInit {
     this.initialize();
   }
   private async initialize(): Promise<void> {
-    const sourcePath = join(__dirname, '../../src/avatars/resources');
+    const sourcePath = join(__dirname, '../../resources');
     if (
       !(await this.avatarRepository.findOneBy({
         avatarType: AvatarType.Default,
@@ -62,7 +62,13 @@ export class AvatarsService implements OnModuleInit {
   async getAvatarPath(avatarId: number): Promise<string> {
     const file = await this.avatarRepository.findOneBy({ id: avatarId });
     if (file == undefined) throw new AvatarNotFoundError(avatarId);
-    return path.join(__dirname, '//images', file.name);
+    return path.join(
+      __dirname,
+      process.env.NODE_ENV === 'test'
+        ? '../../test/uploads/avatars'
+        : '../../uploads/avatars',
+      file.name,
+    );
   }
 
   async getDefaultAvatarId(): Promise<number> {

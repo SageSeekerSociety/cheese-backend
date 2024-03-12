@@ -20,7 +20,7 @@ describe('Avatar Module', () => {
     it('should upload an avatar', async () => {
       const respond = await request(app.getHttpServer())
         .post('/avatars')
-        .attach('avatar', 'src/avatars/resources/default.jpg');
+        .attach('avatar', 'resources/default.jpg');
       //.set('Authorization', `Bearer ${TestToken}`);
       expect(respond.status).toBe(201);
       expect(respond.body.message).toBe('Upload avatar successfully');
@@ -45,7 +45,7 @@ describe('Avatar Module', () => {
       const respond = await request(app.getHttpServer())
         .get('/avatars/1000')
         .send();
-      expect(respond.body.message).toContain('Avatar 1000 Not Found');
+      expect(respond.body.message).toBe('Avatar 1000 Not Found');
       expect(respond.status).toBe(404);
     });
   });
