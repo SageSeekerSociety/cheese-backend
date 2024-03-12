@@ -631,7 +631,7 @@ describe('Questions Module', () => {
           attitude_type: 'POSITIVE',
         });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the question',
       );
       expect(respond.statusCode).toBe(201);
       expect(respond.body.code).toBe(201);
@@ -648,7 +648,7 @@ describe('Questions Module', () => {
           attitude_type: 'NEGATIVE',
         });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the question',
       );
       expect(respond.statusCode).toBe(201);
       expect(respond.body.code).toBe(201);
@@ -709,7 +709,7 @@ describe('Questions Module', () => {
           attitude_type: 'UNDEFINED',
         });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the question',
       );
       expect(respond.statusCode).toBe(201);
       expect(respond.body.code).toBe(201);
@@ -726,7 +726,7 @@ describe('Questions Module', () => {
           attitude_type: 'UNDEFINED',
         });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the question',
       );
       expect(respond.statusCode).toBe(201);
       expect(respond.body.code).toBe(201);
@@ -789,7 +789,7 @@ describe('Questions Module', () => {
           attitude_type: 'POSITIVE',
         });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the question',
       );
       expect(respond.statusCode).toBe(201);
       expect(respond.body.code).toBe(201);
@@ -806,7 +806,7 @@ describe('Questions Module', () => {
           attitude_type: 'NEGATIVE',
         });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the question',
       );
       expect(respond.statusCode).toBe(201);
       expect(respond.body.code).toBe(201);

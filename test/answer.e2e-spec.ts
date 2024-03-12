@@ -713,7 +713,7 @@ describe('Answers Module', () => {
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ attitude_type: 'POSITIVE' });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the answer',
       );
       expect(respond.body.code).toBe(201);
       expect(respond.statusCode).toBe(201);
@@ -730,7 +730,7 @@ describe('Answers Module', () => {
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'NEGATIVE' });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the answer',
       );
       expect(respond.body.code).toBe(201);
       expect(respond.statusCode).toBe(201);
@@ -787,7 +787,7 @@ describe('Answers Module', () => {
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ attitude_type: 'UNDEFINED' });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the answer',
       );
       expect(respond.body.code).toBe(201);
       expect(respond.statusCode).toBe(201);
@@ -804,7 +804,7 @@ describe('Answers Module', () => {
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'UNDEFINED' });
       expect(respond.body.message).toBe(
-        'You have expressed your attitude towards the comment',
+        'You have expressed your attitude towards the answer',
       );
       expect(respond.body.code).toBe(201);
       expect(respond.statusCode).toBe(201);

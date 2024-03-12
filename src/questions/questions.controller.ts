@@ -298,7 +298,7 @@ export class QuestionsController {
     );
     return {
       code: 201,
-      message: 'You have expressed your attitude towards the comment',
+      message: 'You have expressed your attitude towards the question',
       data: {
         attitudes,
       },

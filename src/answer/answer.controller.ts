@@ -206,7 +206,7 @@ export class AnswerController {
     );
     return {
       code: 201,
-      message: 'You have expressed your attitude towards the comment',
+      message: 'You have expressed your attitude towards the answer',
       data: {
         attitudes,
       },
