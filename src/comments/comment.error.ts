@@ -29,3 +29,13 @@ export class CommentNotFoundError extends BaseError {
     super('CommentNotFoundError', `Comment ID ${commentId} not found`, 404);
   }
 }
+
+export class CommentAlreadySolvedError extends BaseError {
+  constructor(public readonly commentId: number) {
+    super(
+      'CommentAlreadySolvedError',
+      `Comment ${commentId} already solved`,
+      400,
+    );
+  }
+}

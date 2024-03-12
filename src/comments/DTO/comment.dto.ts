@@ -1,6 +1,7 @@
 import { AttitudeType } from '@prisma/client';
+import { IsOptional } from 'class-validator';
 import { UserDto } from '../../users/DTO/user.dto';
-import { CommentableType } from '../commentable.enum';
+import { CommentTag, CommentableType } from '../commentable.enum';
 
 export class CommentDto {
   id: number;
@@ -12,5 +13,8 @@ export class CommentDto {
   attitude_type: AttitudeType;
   agree_count: number;
   disagree_count: number;
-  // sub_comments: CommentDto[];
+  @IsOptional()
+  tag: CommentTag;
+  @IsOptional()
+  sub_comments: CommentDto[];
 }

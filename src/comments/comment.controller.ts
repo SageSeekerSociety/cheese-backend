@@ -6,7 +6,9 @@ import {
   Headers,
   Ip,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
@@ -23,6 +25,10 @@ import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { CreateCommentResponseDto } from './DTO/create-comment.dto';
 import { GetCommentDetailResponseDto } from './DTO/get-comment-detail.dto';
 import { GetCommentsResponseDto } from './DTO/get-comments.dto';
+import {
+  InputUpdateCommentDto,
+  UpdateCommentResponseDto,
+} from './DTO/update-comment.dto';
 import { CommentsService } from './comment.service';
 import { parseCommentable } from './commentable.enum';
 @Controller('/comments')
@@ -43,7 +49,12 @@ export class CommentsController {
     pageStart: number | undefined,
     @Query('page_size', new ParseIntPipe({ optional: true }))
     pageSize: number = 20,
-    @Headers('Authorization') auth: string | undefined,
+    @Query('with_subcomments', new ParseBoolPipe({ optional: true }))
+    withSubcomments: boolean = false,
+    @Query('tag', new ParseBoolPipe({ optional: true }))
+    tag: boolean = false,
+    @Headers('Authorization')
+    auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetCommentsResponseDto> {
@@ -62,6 +73,8 @@ export class CommentsController {
       userId,
       ip,
       userAgent,
+      withSubcomments,
+      tag,
     );
     return {
       code: 200,
@@ -167,6 +180,9 @@ export class CommentsController {
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
+    @Query('with_subcomments', new ParseBoolPipe({ optional: true }))
+    withSubcomments: boolean = false,
+    @Query('tag', new ParseBoolPipe({ optional: true })) tag: boolean = false,
   ): Promise<GetCommentDetailResponseDto> {
     let userId: number | undefined;
     try {
@@ -180,6 +196,8 @@ export class CommentsController {
       userId,
       ip,
       userAgent,
+      withSubcomments,
+      tag,
     );
     return {
       code: 200,
@@ -187,6 +205,31 @@ export class CommentsController {
       data: {
         comment,
       },
+    };
+  }
+
+  @Patch('/:commentId')
+  async updateComment(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body() updateRef: InputUpdateCommentDto,
+  ): Promise<UpdateCommentResponseDto> {
+    const userId = this.authService.verify(auth);
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.commentsService.getCommentCreatedById(commentId),
+      'comment',
+      commentId,
+    );
+    const UpdateComment = await this.commentsService.updateComment(
+      commentId,
+      updateRef.tag,
+    );
+    return {
+      code: 200,
+      message: 'Update successfully',
+      data: UpdateComment,
     };
   }
 }

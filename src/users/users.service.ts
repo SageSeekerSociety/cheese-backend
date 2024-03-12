@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Answer } from '../answer/answer.legacy.entity';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
@@ -55,7 +56,6 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { Answer } from '../answer/answer.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -501,7 +501,11 @@ export class UsersService {
         },
         {
           // An user can create and delete comment.
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
+          authorizedActions: [
+            AuthorizedAction.create,
+            AuthorizedAction.delete,
+            AuthorizedAction.modify,
+          ],
           authorizedResource: {
             ownedByUser: userId,
             types: ['comment'],

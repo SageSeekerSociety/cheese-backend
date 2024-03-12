@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { CommentTag } from '../src/comments/commentable.enum';
 import { EmailService } from '../src/users/email.service';
 jest.mock('../src/users/email.service');
 
@@ -226,6 +227,8 @@ describe('comments Module', () => {
       await createComment(questionIds[2], 'question', 'zfgg???????');
       await createComment(questionIds[3], 'question', '宵宫!');
       await createComment(CommentIds[0], 'comment', '啦啦啦德玛西亚');
+      await createComment(CommentIds[1], 'comment', '你猜我是谁');
+      await createComment(CommentIds[5], 'comment', '滚啊，我怎么知道你是谁');
     }, 80000);
     it('should not create comment due to invalid commentableId', async () => {
       const content = 'what you gonna to know?';
@@ -294,10 +297,11 @@ describe('comments Module', () => {
   // });
 
   describe('get comment list by id', () => {
-    it('should get comment by id', async () => {
+    it('should get comment and its subcomments by id', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/comments/${CommentIds[0]}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
+        .query({ with_subcomments: true, tag: false })
         .send();
       expect(respond.body.message).toBe('Details are as follows');
       expect(respond.status).toBe(200);
@@ -311,6 +315,7 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.disagree_count).toBe(0);
       expect(respond.body.data.comment.agree_count).toBe(0);
       expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
+      expect(respond.body.data.comment.sub_comments.length).toBe(1);
     });
     it('should get comment by id', async () => {
       const respond = await request(app.getHttpServer())
@@ -528,6 +533,51 @@ describe('comments Module', () => {
       expect(respond.body.message).toBe('Comment deleted already');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(204);
+    });
+  });
+  describe('update comment', () => {
+    it('should return CommentNotFoundError', async () => {
+      const commentId = CommentIds[1];
+      const content = '主播，你怎么不说话了';
+      const tag = CommentTag.SOLVED;
+      const respond = await request(app.getHttpServer())
+        .patch(`/comments/${commentId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ content: `${TestCommentPrefix} ${content}`, tag: tag });
+      expect(respond.body.message).toContain('CommentNotFoundError:');
+      expect(respond.status).toBe(404);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should update a comment', async () => {
+      const commentId = CommentIds[3];
+      const tag = CommentTag.SOLVED;
+      const respond = await request(app.getHttpServer())
+        .patch(`/comments/${commentId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ tag: tag });
+      expect(respond.body.message).toContain('Update successfully');
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.tag).toContain('SOLVED');
+    });
+    it('should get comment by id', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/comments/${CommentIds[3]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ tag: true })
+        .send();
+      expect(respond.body.message).toBe('Details are as follows');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.comment.id).toBeDefined();
+      expect(respond.body.data.comment.commentable_id).toBe(questionIds[3]);
+      expect(respond.body.data.comment.commentable_type).toBe('QUESTION');
+      expect(respond.body.data.comment.content).toContain('宵宫!');
+      expect(respond.body.data.comment.tag).toBe('SOLVED');
+      expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
+      expect(respond.body.data.comment.created_at).toBeDefined();
+      expect(respond.body.data.comment.disagree_count).toBe(0);
+      expect(respond.body.data.comment.agree_count).toBe(0);
+      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
     });
   });
   afterAll(async () => {
