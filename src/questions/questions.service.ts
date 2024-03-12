@@ -310,7 +310,6 @@ export class QuestionsService {
       follow_count: followCount,
       attitudes: attitudeDto,
       view_count: viewCount,
-      is_group: groupDto != undefined,
       group: groupDto,
     };
   }

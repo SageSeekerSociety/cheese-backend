@@ -19,6 +19,5 @@ export class QuestionDto {
   comment_count: number;
   follow_count: number;
   view_count: number;
-  is_group: boolean;
   group: GroupDto | null;
 }

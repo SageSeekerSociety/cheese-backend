@@ -308,11 +308,9 @@ components:
         view_count:
           type: integer
           description: 浏览数量
-        is_group:
-          type: boolean
-          description: 是否为小组问题
         group:
           $ref: "#/components/schemas/Group"
+          nullable: true
       required:
         - id
         - title
@@ -322,6 +320,7 @@ components:
         - topics
         - created_at
         - updated_at
+        - attitudes
         - is_follow
         - is_like
         - answer_count
@@ -329,7 +328,7 @@ components:
         - follow_count
         - like_count
         - view_count
-        - is_group
+        - group
     Answer:
       type: object
       description: 回答详情
