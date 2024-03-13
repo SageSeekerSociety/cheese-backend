@@ -617,7 +617,7 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ id: TestUserId });
+        .send({ user_id: TestUserId });
       expect(respond.body.message).toBe('Invited');
       expect(respond.body.code).toBe(201);
       expect(respond.status).toBe(201);
@@ -628,7 +628,7 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ id: auxUserId });
+        .send({ user_id: auxUserId });
       expect(respond.body.message).toBe('Invited');
       expect(respond.body.code).toBe(201);
       expect(respond.status).toBe(201);
@@ -638,7 +638,7 @@ describe('Questions Module', () => {
     it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
-        .send({ id: TestUserId });
+        .send({ user_id: TestUserId });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
     });
@@ -646,7 +646,7 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ id: 114514 });
+        .send({ user_id: 114514 });
       expect(respond.body.message).toContain('UserIdNotFoundError');
       expect(respond.body.code).toBe(404);
     });
@@ -654,7 +654,7 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/114514/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ id: TestUserId });
+        .send({ user_id: TestUserId });
       expect(respond.body.message).toContain('QuestionIdNotFoundError');
       expect(respond.body.code).toBe(404);
     });
@@ -663,7 +663,7 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ id: TestUserId });
+        .send({ user_id: TestUserId });
       expect(respond.body.message).toContain('AlreadyInvited');
       expect(respond.body.code).toBe(400);
     });
@@ -681,7 +681,7 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ id: TestUserId });
+        .send({ user_id: TestUserId });
       expect(respond.body.message).toContain('AlreadyAnswered');
       expect(respond.body.code).toBe(400);
     });

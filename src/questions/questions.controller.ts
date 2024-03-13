@@ -321,7 +321,7 @@ export class QuestionsController {
   async inviteUserAnswerQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-    @Body('id', ParseIntPipe) invitedUserId: number,
+    @Body('user_id', ParseIntPipe) invitedUserId: number,
   ): Promise<InviteUsersAnswerResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
