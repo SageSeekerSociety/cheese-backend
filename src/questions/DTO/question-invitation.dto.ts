@@ -2,9 +2,9 @@ import { UserDto } from '../../users/DTO/user.dto';
 
 export class QuestionInvitationDto {
   id: number;
-  question_id: number;
+  questionId: number;
   user: UserDto;
-  created_at: number; // timestamp
-  updated_at: number; // timestamp
-  is_answered: boolean;
+  createdAt: number; // timestamp
+  updatedAt: number; // timestamp
+  isAnswered: boolean;
 }

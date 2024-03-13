@@ -607,11 +607,11 @@ export class QuestionsService {
     ): Promise<QuestionInvitationDto> => {
       return {
         id: invitation.id,
-        question_id: invitation.questionId,
+        questionId: invitation.questionId,
         user: await this.userService.getUserDtoById(invitation.userId),
-        created_at: invitation.createdAt.getTime(),
-        updated_at: invitation.updatedAt.getTime(),
-        is_answered: await this.isQuestionAnsweredBy(
+        createdAt: invitation.createdAt.getTime(),
+        updatedAt: invitation.updatedAt.getTime(),
+        isAnswered: await this.isQuestionAnsweredBy(
           questionId,
           invitation.userId,
         ),
@@ -619,7 +619,6 @@ export class QuestionsService {
     };
 
     const createdAtOrderField = sort === '+createdAt' ? 'asc' : 'desc';
-    const createdAtOrderFieldReversed = sort === '+createdAt' ? 'asc' : 'desc';
     if ((await this.isQuestionExists(questionId)) == false)
       throw new QuestionIdNotFoundError(questionId);
     if (pageStart == undefined) {
@@ -645,11 +644,11 @@ export class QuestionsService {
           where: {
             questionId,
             createdAt:
-              createdAtOrderFieldReversed === 'asc'
+              createdAtOrderField === 'asc'
                 ? { lt: cursor.createdAt }
                 : { gt: cursor.createdAt },
           },
-          orderBy: { createdAt: createdAtOrderFieldReversed },
+          orderBy: { createdAt: createdAtOrderField },
           take: pageSize,
         },
       );
@@ -658,7 +657,7 @@ export class QuestionsService {
           where: {
             questionId,
             createdAt:
-              createdAtOrderFieldReversed === 'asc'
+              createdAtOrderField === 'asc'
                 ? { gte: cursor.createdAt }
                 : { lte: cursor.createdAt },
           },
@@ -718,11 +717,11 @@ export class QuestionsService {
     const userdto = await this.userService.getUserDtoById(invitation.userId);
     return {
       id: invitation.id,
-      question_id: invitation.questionId,
+      questionId: invitation.questionId,
       user: userdto,
-      created_at: invitation.createdAt.getTime(),
-      updated_at: invitation.updatedAt.getTime(),
-      is_answered: await this.isQuestionAnsweredBy(
+      createdAt: invitation.createdAt.getTime(),
+      updatedAt: invitation.updatedAt.getTime(),
+      isAnswered: await this.isQuestionAnsweredBy(
         questionId,
         invitation.userId,
       ),

@@ -1,7 +1,7 @@
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
-export class inviteUsersAnswerResponseDto extends BaseRespondDto {
+export class InviteUsersAnswerResponseDto extends BaseRespondDto {
   data: {
-    invitation_id: number;
+    invitationId: number;
   };
 }
