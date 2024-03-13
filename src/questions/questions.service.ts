@@ -23,6 +23,7 @@ import { SortPattern } from '../common/pipe/parse-sort-pattern.pipe';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
+import { User } from '../users/users.legacy.entity';
 import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
@@ -684,12 +685,29 @@ export class QuestionsService {
     if (!question) {
       throw new QuestionIdNotFoundError(questionId);
     }
-    const randomUserEntities = await this.prismaService.user.findMany({
-      take: pageSize,
-      orderBy: {
-        id: 'asc',
-      }, //TODO
-    });
+    const randomUserEntities = await this.prismaService.$queryRaw<User[]>`
+      SELECT * FROM "user" WHERE id NOT IN (
+        SELECT "userId" FROM question_invitation_relation
+        WHERE "questionId" = ${questionId}
+      )
+      ORDER BY RANDOM()
+      LIMIT ${pageSize}
+    `;
+    // const randomUserEntities = await this.prismaService.user.findMany({
+    //   take: pageSize,
+    //   orderBy: {
+    //     id: 'asc',
+    //   }, //TODO
+    //   where: {
+    //     NOT: {
+    //       QuestionInvitationRelation: {
+    //         some: {
+    //           questionId,
+    //         },
+    //       }
+    //     }
+    //   }
+    // });
 
     const userDtos = await Promise.all(
       randomUserEntities.map((entity) =>
