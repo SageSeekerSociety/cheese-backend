@@ -231,7 +231,7 @@ export class QuestionsController {
     };
   }
 
-  @Put('/:id/followers')
+  @Post('/:id/followers')
   async followQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
@@ -246,7 +246,7 @@ export class QuestionsController {
     );
     await this.questionsService.followQuestion(userId, id);
     return {
-      code: 200,
+      code: 201,
       message: 'OK',
       data: {
         follow_count: await this.questionsService.getFollowCountOfQuestion(id),

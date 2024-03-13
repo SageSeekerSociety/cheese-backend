@@ -504,25 +504,25 @@ describe('Questions Module', () => {
     });
     it('should follow questions', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/followers`)
+        .post(`/questions/${questionIds[1]}/followers`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toBe('OK');
-      expect(respond.body.code).toBe(200);
-      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(201);
       expect(respond.body.data.follow_count).toBe(1);
       const respond2 = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/followers`)
+        .post(`/questions/${questionIds[1]}/followers`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(respond2.body.message).toBe('OK');
-      expect(respond2.body.code).toBe(200);
-      expect(respond2.status).toBe(200);
+      expect(respond2.body.code).toBe(201);
+      expect(respond2.status).toBe(201);
       expect(respond2.body.data.follow_count).toBe(2);
     });
     it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[0]}/followers`)
+        .post(`/questions/${questionIds[0]}/followers`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
@@ -531,7 +531,7 @@ describe('Questions Module', () => {
     });
     it('should return QuestionAlreadyFollowedError', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/followers`)
+        .post(`/questions/${questionIds[1]}/followers`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toMatch(/^QuestionAlreadyFollowedError: /);
