@@ -15,6 +15,11 @@ import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { Answer } from '../answer/answer.legacy.entity';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import {
+  getCurrWhereBySort,
+  getPrevWhereBySort,
+} from '../common/helper/where.helper';
+import { SortPattern } from '../common/pipe/parse-sort-pattern.pipe';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
@@ -598,7 +603,7 @@ export class QuestionsService {
 
   async getQuestionInvitations(
     questionId: number,
-    sort: '+createdAt' | '-createdAt',
+    sort: SortPattern,
     pageStart: number | undefined,
     pageSize: number | undefined = 20,
   ): Promise<[QuestionInvitationDto[], PageRespondDto]> {
@@ -618,14 +623,13 @@ export class QuestionsService {
       };
     };
 
-    const createdAtOrderField = sort === '+createdAt' ? 'asc' : 'desc';
     if ((await this.isQuestionExists(questionId)) == false)
       throw new QuestionIdNotFoundError(questionId);
     if (pageStart == undefined) {
       const invitations =
         await this.prismaService.questionInvitationRelation.findMany({
           where: { questionId },
-          orderBy: { createdAt: createdAtOrderField },
+          orderBy: sort,
           take: pageSize + 1,
         });
       const invitationDtos: QuestionInvitationDto[] = await Promise.all(
@@ -643,12 +647,9 @@ export class QuestionsService {
         {
           where: {
             questionId,
-            createdAt:
-              createdAtOrderField === 'asc'
-                ? { lt: cursor.createdAt }
-                : { gt: cursor.createdAt },
+            ...getPrevWhereBySort(sort, cursor),
           },
-          orderBy: { createdAt: createdAtOrderField },
+          orderBy: sort,
           take: pageSize,
         },
       );
@@ -656,12 +657,9 @@ export class QuestionsService {
         {
           where: {
             questionId,
-            createdAt:
-              createdAtOrderField === 'asc'
-                ? { gte: cursor.createdAt }
-                : { lte: cursor.createdAt },
+            ...getCurrWhereBySort(sort, cursor),
           },
-          orderBy: { createdAt: createdAtOrderField },
+          orderBy: sort,
           take: pageSize + 1,
         },
       );

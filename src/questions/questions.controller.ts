@@ -16,7 +16,6 @@ import {
   Headers,
   Ip,
   Param,
-  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
@@ -28,6 +27,10 @@ import {
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import {
+  ParseSortPatternPipe,
+  SortPattern,
+} from '../common/pipe/parse-sort-pattern.pipe';
 import {
   AddQuestionRequestDto,
   AddQuestionResponseDto,
@@ -287,16 +290,22 @@ export class QuestionsController {
     pageStart: number | undefined,
     @Query('page_size', new ParseIntPipe({ optional: true }))
     pageSize: number | undefined,
-    @Query('sort', new ParseEnumPipe({ optional: true }))
-    sort: '+createdAt' | '-createdAt',
+    @Query(
+      'sort',
+      new ParseSortPatternPipe({
+        optional: true,
+        allowedFields: ['createdAt'],
+      }),
+    )
+    sort: SortPattern | undefined,
   ): Promise<GetQuestionInvitationsResponseDto> {
-    if (sort == undefined) sort = '+createdAt';
+    if (sort == undefined) sort = { createdAt: 'desc' };
     const [invitations, page] =
       await this.questionsService.getQuestionInvitations(
         id,
         sort,
-        pageSize,
         pageStart,
+        pageSize,
       );
     return {
       code: 200,
