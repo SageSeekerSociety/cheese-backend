@@ -1,0 +1,56 @@
+enum MaterialType {
+  IMAGE
+  FILE
+  AUDIO
+  VIDEO
+}
+model Material {
+  id           Int          @id @default(autoincrement())
+  type         MaterialType
+  url          String
+  name         String
+  imageMeta    ImageMeta?   @relation(fields: [imageMetaId], references: [id])
+  imageMetaId  Int?         @unique
+  videoMeta    VideoMeta?   @relation(fields: [videoMetaId], references: [id])
+  videoMetaId  Int?         @unique
+  audioMeta    AudioMeta?   @relation(fields: [audioMetaId], references: [id])
+  audioMetaId  Int?         @unique
+  fileMeta     FileMeta?    @relation(fields: [fileMetaId], references: [id])
+  fileMetaId   Int?         @unique
+}
+
+
+model ImageMeta {
+  id        Int       @id @default(autoincrement())
+  width     Int
+  height    Int
+  size      Int
+  thumbnail String
+  material  Material?
+}
+
+model VideoMeta {
+  id        Int       @id @default(autoincrement())
+  width     Int
+  height    Int
+  size      Int
+  duration  Int
+  thumbnail String
+  material  Material?
+}
+
+model AudioMeta {
+  id       Int        @id @default(autoincrement())
+  size     Int
+  duration Int
+  material  Material?
+}
+
+model FileMeta {
+  id       Int        @id @default(autoincrement())
+  size     Int
+  name     String
+  mime     String
+  expires  Int
+  material  Material?
+}
