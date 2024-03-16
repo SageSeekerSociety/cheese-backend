@@ -15,6 +15,8 @@ export function parseMaterial(material: string): MaterialType {
       return MaterialType.IMAGE;
     case 'video':
       return MaterialType.VIDEO;
+    case 'audio':
+      return MaterialType.AUDIO;
     case 'file':
       return MaterialType.FILE;
   }

@@ -3,7 +3,7 @@ import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
 export class UploadMaterialRequestDto {
   @IsString()
-  @IsIn(['file', 'image', 'video'])
+  @IsIn(['file', 'image', 'video', 'audio'])
   type: string;
 }
 

@@ -21,6 +21,9 @@ import * as fs from 'fs';
             case 'video':
               uploadPath = './uploads/videos';
               break;
+            case 'audio':
+              uploadPath = './uploads/audios';
+              break;
             case 'file':
               uploadPath = './uploads/files';
               break;

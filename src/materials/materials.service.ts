@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { parseMaterial } from './materials.enum';
-import { MaterialNotFoundError } from './materials.error';
+import {
+  MaterialNotFoundError,
+  MetaIdNotFoundError,
+  MetaNotFoundError,
+} from './materials.error';
 import { MaterialType } from '@prisma/client';
 
 @Injectable()
@@ -49,6 +53,22 @@ export class MaterialsService {
         },
       });
       return newMaterial.id;
+    } else if (type === 'audio') {
+      const audioMeta = await this.prismaService.audioMeta.create({
+        data: {
+          size: 0,
+          duration: 0,
+        },
+      });
+      const newMaterial = await this.prismaService.material.create({
+        data: {
+          url,
+          type: parseMaterial(type),
+          name,
+          audioMetaId: audioMeta.id,
+        },
+      });
+      return newMaterial.id;
     } else {
       const fileMeta = await this.prismaService.fileMeta.create({
         data: {
@@ -79,35 +99,35 @@ export class MaterialsService {
     if (material == null) throw new MaterialNotFoundError(id);
     if (material.type == MaterialType.IMAGE) {
       const imageMetaId = material.imageMetaId;
-      if (imageMetaId == null) throw new Error();
+      if (imageMetaId == null) throw new MetaIdNotFoundError('Image');
       const meta = await this.prismaService.imageMeta.findUnique({
         where: {
           id: imageMetaId,
         },
       });
-      if (meta == null) throw new Error();
+      if (meta == null) throw new MetaNotFoundError('Image', imageMetaId);
       return { material, meta };
     } else if (material.type == MaterialType.VIDEO) {
       const videoMetaId = material.videoMetaId;
-      if (videoMetaId == null) throw new Error();
+      if (videoMetaId == null) throw new MetaIdNotFoundError('Video');
       const meta = await this.prismaService.videoMeta.findUnique({
         where: {
           id: videoMetaId,
         },
       });
-      if (meta == null) throw new Error();
+      if (meta == null) throw new MetaNotFoundError('Video', videoMetaId);
       return { material, meta };
     }
     // else if(material.type==MaterialType.FILE){
     else {
       const fileMetaId = material.fileMetaId;
-      if (fileMetaId == null) throw new Error();
+      if (fileMetaId == null) throw new MetaIdNotFoundError('File');
       const meta = await this.prismaService.fileMeta.findUnique({
         where: {
           id: fileMetaId,
         },
       });
-      if (meta == null) throw new Error();
+      if (meta == null) throw new MetaNotFoundError('File', fileMetaId);
       return { material, meta };
     }
   }
