@@ -1,7 +1,6 @@
 import { GroupDto } from '../../groups/DTO/group.dto';
 import { TopicDto } from '../../topics/DTO/topic.dto';
 import { UserDto } from '../../users/DTO/user.dto';
-
 export class QuestionDto {
   id: number;
   title: string;
@@ -13,7 +12,8 @@ export class QuestionDto {
   updated_at: number; // timestamp
   is_follow: boolean;
   is_like: boolean;
-  my_answer_id: number | null | undefined;
+  is_answered: boolean;
+  my_answer_id?: number;
   answer_count: number;
   comment_count: number;
   follow_count: number;

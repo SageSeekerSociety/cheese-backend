@@ -484,7 +484,15 @@ export class UsersService {
           authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
           authorizedResource: {
             ownedByUser: userId,
-            types: ['questions/following'],
+            types: ['questions/following', 'questions/invitation'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['questions/invitation'],
             resourceIds: undefined,
           },
         },
