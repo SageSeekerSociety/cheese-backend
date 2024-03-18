@@ -113,7 +113,6 @@ components:
       description: The refresh token is used in this way.
       name: REFRESH_TOKEN
       in: cookie
-
   schemas:
     AttitudeType:
       type: string
@@ -311,6 +310,31 @@ components:
         group:
           $ref: "#/components/schemas/Group"
           nullable: true
+    QuestionInvitation:
+      type: object
+      description: 问题邀请
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 邀请 ID
+        question_id:
+          type: integer
+          format: int64
+          description: 问题 ID
+        user:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          format: int64
+          description: 创建时间（时间戳）
+        updated_at:
+          type: integer
+          format: int64
+          description: 最后修改时间（时间戳）
+        is_answered:
+          type: boolean
+          description: 是否已回答
       required:
         - id
         - title
@@ -786,7 +810,6 @@ paths:
                           - accessToken
                     required:
                       - data
-
   /users/auth/logout:
     post:
       summary: 用户退出登录
@@ -1405,7 +1428,203 @@ paths:
                           - attitudes
                     required:
                       - data
-  /questions/{questionId}/answers:
+  /questions/{id}/invitations:
+    get:
+      summary: 获取该问题下被邀请回答的用户
+      operationId: getQuestionInvitations
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_start
+          in: query
+          description: 该页第一个用户的 ID，留空即为从头开始
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页用户数量
+          schema:
+            type: integer
+            format: int64
+            default: 20
+        - name: sort
+          in: query
+          description: 排序方式字符串，例如 "+created_at" 表示按创建时间升序，"-created_at" 表示按创建时间降序，使用逗号来分隔先后多个排序字段
+          schema:
+            type: string
+            example: "+created_at"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitations:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/QuestionInvitation"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 邀请用户回答问题
+      operationId: inviteUserAnswerQuestion
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                  format: int64
+              required:
+                - user_id
+      responses:
+        "201":
+          description: Successfully invited
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitation_id:
+                            type: integer
+                            description: 邀请 ID（如果邀请成功）
+                            format: int64
+                        required:
+                          - invitation_id
+                    required:
+                      - data
+  /questions/{id}/recommendations:
+    get:
+      summary: 获取推荐邀请用户列表
+      operationId: getQuestionInvitationRecommendations
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页用户数量
+          schema:
+            type: integer
+            format: int64
+            default: 5
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                        required:
+                          - users
+                    required:
+                      - data
+  /questions/{id}/invitations/{invitation_id}:
+    get:
+      summary: 获取邀请详情
+      operationId: getInvitationDetail
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: invitation_id
+          in: path
+          description: 邀请 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitation:
+                            $ref: "#/components/schemas/QuestionInvitation"
+                    required:
+                      - data
+    delete:
+      summary: 撤销邀请
+      operationId: cancelInvitation
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: invitation_id
+          in: path
+          description: 邀请 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /questions/{id}/answers:
     get:
       summary: 获取问题回答列表
       operationId: getQuestionAnswers
@@ -1757,7 +1976,6 @@ paths:
                           - attitudes
                     required:
                       - data
-
   /topics:
     get:
       summary: 获取话题列表
@@ -2666,20 +2884,20 @@ paths:
                       - data
   /avatars:
     post:
-      summary: Upload an avatar 
+      summary: Upload an avatar
       operationId: uploadAvatar
       requestBody:
         content:
           multipart/form-data:
-                schema:
-                  type: object
-                  properties:
-                    avatar:
-                    type: file
-                    format: binary
-                    description: The avatar image to upload
+            schema:
+              type: object
+              properties:
+                avatar:
+                type: file
+                format: binary
+                description: The avatar image to upload
       responses:
-        '201':
+        "201":
           description: Upload avatar successfully
           content:
             application/json:
@@ -2693,13 +2911,13 @@ paths:
     get:
       summary: Get an avatar by id
       operationId: getAvatar
-      parameters:  
+      parameters:
         - name: id
           in: path
           required: true
           description: Unique identifier for the uploaded avatar
       responses:
-        '200':
+        "200":
           description: get avatar successfully
           content:
             application/octet-stream:
@@ -2711,7 +2929,7 @@ paths:
       summary: Get default avatar id
       operationId: getDefaultAvatarId
       responses:
-        '200':
+        "200":
           description: Get default avatarId successfully
           content:
             application/json:
@@ -2729,7 +2947,7 @@ paths:
       summary: Get predefined avatarIds
       operationId: getPreDefinedIds
       responses:
-        '200':
+        "200":
           description: Get  Pre Defined AvatarIds successfully
           content:
             application/json:

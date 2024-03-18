@@ -16,6 +16,7 @@ import { user } from "../users/users.legacy"
 import { topic } from "../topics/topics.legacy"
 import { answer } from "../answer/answer.legacy"
 import { QuestionElasticsearchRelation } from "questions.es"
+import { QuestionInvitationRelation } from "questions.invitation"
 
 model question {
   id                            Int                            @id(map: "PK_21e5786aa0ea704ae185a79b2d5") @default(autoincrement())
@@ -34,6 +35,7 @@ model question {
   question_query_log            question_query_log[]
   question_topic_relation       question_topic_relation[]
   QuestionElasticsearchRelation QuestionElasticsearchRelation?
+  questionInvitationRelation    QuestionInvitationRelation[]
 
   @@index([createdById], map: "IDX_187915d8eaa010cde8b053b35d")
   @@index([title, content], map: "IDX_8b24620899a8556c3f22f52145")

@@ -2,7 +2,6 @@ import { AttitudeStateDto } from '../../attitude/DTO/attitude-state.dto';
 import { GroupDto } from '../../groups/DTO/group.dto';
 import { TopicDto } from '../../topics/DTO/topic.dto';
 import { UserDto } from '../../users/DTO/user.dto';
-
 export class QuestionDto {
   id: number;
   title: string;

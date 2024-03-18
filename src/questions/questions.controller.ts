@@ -30,6 +30,10 @@ import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import {
+  ParseSortPatternPipe,
+  SortPattern,
+} from '../common/pipe/parse-sort-pattern.pipe';
+import {
   AddQuestionRequestDto,
   AddQuestionResponseDto,
 } from './DTO/add-question.dto';
@@ -37,8 +41,12 @@ import {
   FollowQuestionResponseDto,
   UnfollowQuestionResponseDto,
 } from './DTO/follow-unfollow-question.dto';
+import { GetQuestionInvitationDetailResponseDto } from './DTO/get-invitation-detail.dto';
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
+import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
+import { GetQuestionRecommendationsRespondDto } from './DTO/get-question-recommendations.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
+import { InviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
@@ -48,8 +56,8 @@ import { QuestionsService } from './questions.service';
 @UseFilters(new BaseErrorExceptionFilter())
 export class QuestionsController {
   constructor(
-    private readonly questionsService: QuestionsService,
-    private readonly authService: AuthService,
+    readonly questionsService: QuestionsService,
+    readonly authService: AuthService,
   ) {}
 
   @Get('/')
@@ -301,6 +309,127 @@ export class QuestionsController {
       message: 'You have expressed your attitude towards the question',
       data: {
         attitudes,
+      },
+    };
+  }
+
+  @Get('/:id/invitations')
+  async getQuestionInvitations(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page_start', new ParseIntPipe({ optional: true }))
+    pageStart: number | undefined,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    pageSize: number | undefined,
+    @Query(
+      'sort',
+      new ParseSortPatternPipe({
+        optional: true,
+        allowedFields: ['createdAt'],
+      }),
+    )
+    sort: SortPattern | undefined,
+  ): Promise<GetQuestionInvitationsResponseDto> {
+    if (sort == undefined) sort = { createdAt: 'desc' };
+    const [invitations, page] =
+      await this.questionsService.getQuestionInvitations(
+        id,
+        sort,
+        pageStart,
+        pageSize,
+      );
+    return {
+      code: 200,
+      message: 'Invited',
+      data: {
+        invitations,
+        page,
+      },
+    };
+  }
+
+  @Post('/:id/invitations')
+  async inviteUserAnswerQuestion(
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body('user_id', ParseIntPipe) invitedUserId: number,
+  ): Promise<InviteUsersAnswerResponseDto> {
+    const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.create,
+      userId,
+      'questions/invitation',
+      undefined,
+    );
+    const inviteId = await this.questionsService.inviteUsersToAnswerQuestion(
+      id,
+      invitedUserId,
+    );
+    return {
+      code: 201,
+      message: 'Invited',
+      data: {
+        invitationId: inviteId,
+      },
+    };
+  }
+
+  @Delete('/:id/invitations/:invitation_id')
+  async cancelInvition(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('invitation_id', ParseIntPipe) invitation_id: number,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<BaseRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.delete,
+      await this.questionsService.getInvitedById(id, invitation_id),
+      'questions/invitation',
+      invitation_id,
+    );
+    await this.questionsService.cancelInvitation(id, invitation_id);
+    return {
+      code: 204,
+      message: 'successfully cancelled',
+    };
+  }
+
+  //don't change the position of the below two functions
+  //because if the order is swapped, the route is incorrectly identified
+  @Get('/:id/invitation/recommendations')
+  async getRecommendations(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page_size', new ParseIntPipe({ optional: true }))
+    pageSize: number,
+  ): Promise<GetQuestionRecommendationsRespondDto> {
+    const users =
+      await this.questionsService.getQuestionInvitationRecommendations(
+        id,
+        pageSize,
+      );
+    return {
+      code: 200,
+      message: 'successfully',
+      data: {
+        users,
+      },
+    };
+  }
+
+  @Get('/:id/invitations/:invitation_id')
+  async getInvitationDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('invitation_id', ParseIntPipe) invitation_id: number,
+  ): Promise<GetQuestionInvitationDetailResponseDto> {
+    const invitationDto = await this.questionsService.getQuestionInvitationDto(
+      id,
+      invitation_id,
+    );
+    return {
+      code: 200,
+      message: 'successfully',
+      data: {
+        invitation: invitationDto,
       },
     };
   }

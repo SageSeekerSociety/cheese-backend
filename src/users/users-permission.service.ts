@@ -57,6 +57,14 @@ export class UsersPermissionService {
           },
         },
         {
+          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['questions/invitation'],
+            resourceIds: undefined,
+          },
+        },
+        {
           // Everyone can create a topic.
           authorizedActions: [AuthorizedAction.create],
           authorizedResource: {
