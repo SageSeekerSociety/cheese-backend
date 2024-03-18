@@ -2713,6 +2713,10 @@ paths:
                             type: object
                             description: 当前用户的打卡情况统计
                             properties:
+                              is_checked_in:
+                                type: boolean
+                                description: 当前登录用户在该目标下本周期内是否已打卡
+                                default: false
                               continuous_count:
                                 type: integer
                                 description: 当前连续打卡天数
