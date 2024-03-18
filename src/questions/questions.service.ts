@@ -11,6 +11,9 @@ import { Injectable } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AnswerNotFoundError } from '../answer/answer.error';
+import { Answer } from '../answer/answer.legacy.entity';
+import { AnswerService } from '../answer/answer.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -26,6 +29,7 @@ import {
   QuestionIdNotFoundError,
   QuestionNotFollowedYetError,
   QuestionNotHasThisTopicError,
+  bountyOutOfLimitError,
 } from './questions.error';
 import { QuestionElasticsearchDocument } from './questions.es-doc';
 import {
@@ -41,6 +45,7 @@ export class QuestionsService {
   constructor(
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
+    private readonly answerService: AnswerService,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
     @InjectRepository(Question)
@@ -53,6 +58,8 @@ export class QuestionsService {
     private readonly questionFollowRelationRepository: Repository<QuestionFollowerRelation>,
     @InjectRepository(QuestionSearchLog)
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
+    @InjectRepository(Answer)
+    private readonly answerRepository: Repository<Answer>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
   ) {}
@@ -212,7 +219,8 @@ export class QuestionsService {
     const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
     const followCountPromise = this.getFollowCountOfQuestion(questionId);
     const viewCountPromise = this.getViewCountOfQuestion(questionId);
-
+    const answer = question.acceptedAnswer;
+    const AnswerDto = await this.answerService.getAnswerDto(answer.id);
     const [topics, hasFollowed, followCount, viewCount] = await Promise.all([
       topicsPromise,
       hasFollowedPromise,
@@ -259,6 +267,10 @@ export class QuestionsService {
       view_count: viewCount,
       is_group: question.groupId != undefined,
       group: undefined!, // TODO: Implement this.
+      has_bounty: question.hasBounty,
+      bounty: question.bounty,
+      is_solved: question.isSolved,
+      accepted_answer: AnswerDto,
     };
   }
 
@@ -530,5 +542,36 @@ export class QuestionsService {
 
   async isQuestionExists(questionId: number): Promise<boolean> {
     return (await this.questionRepository.countBy({ id: questionId })) > 0;
+  }
+
+  async setBounty(questionId: number, bounty: number) {
+    const question = await this.questionRepository.findOneBy({
+      id: questionId,
+    });
+    if (!question) {
+      throw new QuestionIdNotFoundError(questionId);
+    }
+    if (bounty <= 0 || bounty >= 20) {
+      throw new bountyOutOfLimitError(bounty);
+    }
+    question.bounty = bounty;
+    await this.questionRepository.save(question);
+  }
+
+  async acceptAnswer(questionId: number, answerId: number) {
+    const question = await this.questionRepository.findOneBy({
+      id: questionId,
+    });
+    const answer = await this.answerRepository.findOneBy({
+      id: answerId,
+    });
+    if (!question) {
+      throw new QuestionIdNotFoundError(questionId);
+    }
+    if (!answer) {
+      throw new AnswerNotFoundError(answerId);
+    }
+    question.acceptedAnswer = answer;
+    await this.questionRepository.save(question);
   }
 }

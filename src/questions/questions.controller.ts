@@ -274,4 +274,46 @@ export class QuestionsController {
       },
     };
   }
+
+  @Put('/:id/bounty')
+  async setBounty(
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body('boundy') boundy: number,
+  ): Promise<BaseRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      userId,
+      'questions',
+      id,
+    );
+    await this.questionsService.setBounty(id, boundy);
+    return {
+      code: 200,
+      message: 'OK',
+    };
+  }
+
+  @Put('/:id/acceptance')
+  async acceptAnswer(
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Query('answer_id') answer_id: number,
+  ): Promise<BaseRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      userId,
+      'questions',
+      id,
+    );
+    await this.questionsService.acceptAnswer(id, answer_id);
+    return {
+      code: 200,
+      message: 'OK',
+    };
+  }
 }

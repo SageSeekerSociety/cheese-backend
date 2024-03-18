@@ -28,6 +28,7 @@ describe('Questions Module', () => {
   let TestUserId: number;
   const TopicIds: number[] = [];
   const questionIds: number[] = [];
+  const answerIds: number[] = [];
   let auxUserId: number;
   let auxAccessToken: string;
 
@@ -604,6 +605,94 @@ describe('Questions Module', () => {
         .send();
       expect(respond.body.message).toMatch(/^QuestionNotFollowedYetError: /);
       expect(respond.body.code).toBe(400);
+    });
+  });
+
+  describe('Boundy&accept answer test', async () => {
+    it('should set boundy to a question', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/boundy`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ bounty: 15 });
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+    });
+    it('should get the change', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.data.bounty).toBe(15);
+    });
+    it('should return BountyOutOfLimitError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/boundy`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ bounty: 1000 });
+      expect(respond.body.message).toMatch(/^BountyOutOfLimitError: /);
+      expect(respond.body.code).toBe(400);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/boundy`)
+        .send({ bounty: 15 });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should return QuestionIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/1919810/boundy`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ bounty: 15 });
+      expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should answer the question', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/answers`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ content: 'woc' });
+      expect(respond.body.code).toBe(201);
+      answerIds.push(respond.body.data.id);
+    });
+    it('should accept an answer', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/acceptance`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ answerId: answerIds[0] });
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.message).toBe('OK');
+    });
+    it('should get the change', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.data.accepted_answer.id).toBe(answerIds[0]);
+    });
+    it('should return questionIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/1919810/acceptance`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ answerId: answerIds[0] });
+      expect(respond.body.code).toBe(404);
+      expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
+    });
+    it('should return answerIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/acceptance`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ answerId: 1919810 });
+      expect(respond.body.code).toBe(404);
+      expect(respond.body.message).toMatch(/^AnswerNotFoundError: /);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/acceptance`)
+        .query({ answerId: answerIds });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
     });
   });
 

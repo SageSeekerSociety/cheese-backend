@@ -48,3 +48,12 @@ export class QuestionNotHasThisTopicError extends BaseError {
     );
   }
 }
+
+export class bountyOutOfLimitError extends BaseError {
+  constructor(bounty: number) {
+    super(
+      'bountyOutOfLimitError',
+      `Bounty ${bounty} is outside the limit.`,
+      400,
+  }
+}

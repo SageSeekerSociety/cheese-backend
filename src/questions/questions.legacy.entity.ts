@@ -39,6 +39,7 @@ import { GroupQuestionRelationship } from '../groups/groups.legacy.entity';
 import { Topic } from '../topics/topics.legacy.entity';
 import { User } from '../users/users.legacy.entity';
 
+import { Answer } from '../answer/answer.legacy.entity';
 import { isMySQL } from '../common/helper/db.helper';
 
 @Entity()
@@ -68,6 +69,18 @@ export class Question {
 
   @Column()
   type: number;
+
+  @Column()
+  hasBounty: boolean;
+
+  @Column()
+  bounty: number;
+
+  @Column()
+  isSolved: boolean;
+
+  @Column()
+  acceptedAnswer: Answer;
 
   @OneToOne(() => GroupQuestionRelationship, (gqr) => gqr.question)
   groupQuestionRelationship: GroupQuestionRelationship;
