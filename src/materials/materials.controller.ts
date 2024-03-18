@@ -55,25 +55,18 @@ export class MaterialsController {
     @Query('fields') fields: string,
   ): Promise<GetMaterialRespondDto> {
     fields; // ?
-    const { material, meta } = await this.materialsService.getMaterial(id);
+    const material = await this.materialsService.getMaterial(id);
     return {
       code: 200,
       message: 'Get Material successfully',
       data: {
-        material: {
-          id: material.id,
-          type: material.type,
-          url: material.url,
-          meta,
-        },
+        material,
       },
     };
   }
-  @Delete(':/materialId')
-  async deleteMaterial() //@Param('materialId') id: number,
-  {
-    return {
-      code: 204,
-    };
+  @Delete(':/materialId') // to do
+  async deleteMaterial() {
+    //@Param('materialId') id: number,
+    return 204;
   }
 }

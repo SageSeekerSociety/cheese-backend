@@ -11,15 +11,3 @@ export class MaterialNotFoundError extends BaseError {
     super('MaterialNotFoundError', `Material ${materialId} Not Found`, 404);
   }
 }
-
-export class MetaIdNotFoundError extends BaseError {
-  constructor(metaType: string) {
-    super('MetaIdNotFoundError', `${metaType} meta Not Found`, 404);
-  }
-}
-
-export class MetaNotFoundError extends BaseError {
-  constructor(metaType: string, materialId: number) {
-    super('MetaNotFoundError', `${metaType} meta ${materialId} Not Found`, 404);
-  }
-}
