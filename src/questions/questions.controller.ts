@@ -24,6 +24,8 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
+import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
@@ -129,7 +131,7 @@ export class QuestionsController {
 
   @Get('/:id')
   async getQuestion(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -237,7 +239,7 @@ export class QuestionsController {
     };
   }
 
-  @Put('/:id/followers')
+  @Post('/:id/followers')
   async followQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
@@ -252,7 +254,7 @@ export class QuestionsController {
     );
     await this.questionsService.followQuestion(userId, id);
     return {
-      code: 200,
+      code: 201,
       message: 'OK',
       data: {
         follow_count: await this.questionsService.getFollowCountOfQuestion(id),
@@ -279,6 +281,34 @@ export class QuestionsController {
       message: 'OK',
       data: {
         follow_count: await this.questionsService.getFollowCountOfQuestion(id),
+      },
+    };
+  }
+
+  @Post('/:questionId/attitudes')
+  async updateAttitudeToQuestion(
+    @Param('questionId', ParseIntPipe) questionId: number,
+    @Body('attitude_type') attitude: string,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<UpdateAttitudeRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.other,
+      await this.questionsService.getQuestionCreatedById(questionId),
+      'questions/attitude',
+      questionId,
+    );
+    const attitudes = await this.questionsService.setAttitudeToQuestion(
+      questionId,
+      userId,
+      parseAttitude(attitude),
+    );
+    return {
+      code: 201,
+      message: 'You have expressed your attitude towards the question',
+      data: {
+        attitudes,
       },
     };
   }

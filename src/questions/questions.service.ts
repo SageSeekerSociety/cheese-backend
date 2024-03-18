@@ -7,12 +7,19 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
-import { QuestionInvitationRelation } from '@prisma/client';
+import {
+  AttitudableType,
+  AttitudeType,
+  QuestionInvitationRelation,
+} from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { Answer } from '../answer/answer.legacy.entity';
+import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
+import { AttitudeService } from '../attitude/attitude.service';
+import { CommentableType } from '../comments/commentable.enum';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import {
@@ -21,12 +28,13 @@ import {
 } from '../common/helper/where.helper';
 import { SortPattern } from '../common/pipe/parse-sort-pattern.pipe';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { GroupsService } from '../groups/groups.service';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
-import { User } from '../users/users.legacy.entity';
 import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
+import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
@@ -53,6 +61,9 @@ export class QuestionsService {
   constructor(
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
+    private readonly attitudeService: AttitudeService,
+    @Inject(forwardRef(() => GroupsService))
+    private groupService: GroupsService,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
     @InjectRepository(Question)
@@ -236,26 +247,9 @@ export class QuestionsService {
       id: questionId,
     });
     if (question == undefined) throw new QuestionIdNotFoundError(questionId);
-    const topicsPromise = this.getTopicDtosOfQuestion(questionId);
-    const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
-    const followCountPromise = this.getFollowCountOfQuestion(questionId);
-    const viewCountPromise = this.getViewCountOfQuestion(questionId);
-    const myAnswerIdPromise =
-      viewerId == undefined
-        ? Promise.resolve(undefined) // If the viewer is not logged in, then the field should be missing.
-        : this.getAnswerIdOfCreatedBy(questionId, viewerId); // If the viewer is logged in, then the field should be a number or null.
-
-    const [topics, hasFollowed, followCount, viewCount, myAnswerId] =
-      await Promise.all([
-        topicsPromise,
-        hasFollowedPromise,
-        followCountPromise,
-        viewCountPromise,
-        myAnswerIdPromise,
-      ]);
-    let user: UserDto | null = null; // For case that user is deleted.
+    let userDto: UserDto | null = null; // For case that user is deleted.
     try {
-      user = await this.userService.getUserDtoById(
+      userDto = await this.userService.getUserDtoById(
         question.createdById,
         viewerId,
         ip,
@@ -266,6 +260,58 @@ export class QuestionsService {
       // does not exist now. This is NOT a data integrity problem, since user can be
       // deleted. So we just return a null and not throw an error.
     }
+    const topicsPromise = this.getTopicDtosOfQuestion(questionId);
+    const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
+    const followCountPromise = this.getFollowCountOfQuestion(questionId);
+    const viewCountPromise = this.getViewCountOfQuestion(questionId);
+    const myAnswerIdPromise =
+      viewerId == undefined
+        ? Promise.resolve(undefined) // If the viewer is not logged in, then the field should be missing.
+        : this.getAnswerIdOfCreatedBy(questionId, viewerId); // If the viewer is logged in, then the field should be a number or null.
+    const attitudeDtoPromise = this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.QUESTION,
+      questionId,
+      viewerId,
+    );
+    const answerCountPromise = this.prismaService.answer.count({
+      where: {
+        deletedAt: null,
+        questionId,
+      },
+    });
+    const commentCountPromise = this.prismaService.comment.count({
+      where: {
+        deletedAt: null,
+        commentableType: CommentableType.QUESTION,
+        commentableId: questionId,
+      },
+    });
+    const groupDtoPromise =
+      question.groupId == undefined
+        ? Promise.resolve(null)
+        : this.groupService.getGroupDtoById(undefined, question.groupId);
+
+    const [
+      topics,
+      hasFollowed,
+      followCount,
+      viewCount,
+      myAnswerId,
+      attitudeDto,
+      answerCount,
+      commentCount,
+      groupDto,
+    ] = await Promise.all([
+      topicsPromise,
+      hasFollowedPromise,
+      followCountPromise,
+      viewCountPromise,
+      myAnswerIdPromise,
+      attitudeDtoPromise,
+      answerCountPromise,
+      commentCountPromise,
+      groupDtoPromise,
+    ]);
     if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.questionQueryLogRepository.create({
         viewerId,
@@ -279,22 +325,19 @@ export class QuestionsService {
       id: question.id,
       title: question.title,
       content: question.content,
-      author: user,
+      author: userDto,
       type: question.type,
       topics,
       created_at: question.createdAt.getTime(),
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
-      is_like: false, // TODO: Implement this.
-      answer_count: 0, // TODO: Implement this.
-      comment_count: 0, // TODO: Implement this.
-      follow_count: followCount,
-      like_count: 0, // TODO: Implement this.
-      view_count: viewCount,
-      is_group: question.groupId != undefined,
-      group: undefined!, // TODO: Implement this.
-      is_answered: myAnswerId != undefined,
       my_answer_id: myAnswerId,
+      answer_count: answerCount,
+      comment_count: commentCount,
+      follow_count: followCount,
+      attitudes: attitudeDto,
+      view_count: viewCount,
+      group: groupDto,
     };
   }
 
@@ -766,6 +809,26 @@ export class QuestionsService {
 
   async isQuestionExists(questionId: number): Promise<boolean> {
     return (await this.questionRepository.countBy({ id: questionId })) > 0;
+  }
+
+  async setAttitudeToQuestion(
+    questionId: number,
+    userId: number,
+    attitudeType: AttitudeType,
+  ): Promise<AttitudeStateDto> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    await this.attitudeService.setAttitude(
+      userId,
+      AttitudableType.QUESTION,
+      questionId,
+      attitudeType,
+    );
+    return this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.QUESTION,
+      questionId,
+      userId,
+    );
   }
 
   async isQuestionAnsweredBy(

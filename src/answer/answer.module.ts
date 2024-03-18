@@ -1,7 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Entity } from 'typeorm';
+import { AttitudeModule } from '../attitude/attitude.module';
 import { AuthModule } from '../auth/auth.module';
+import { CommentsModule } from '../comments/comment.module';
+import { GroupsModule } from '../groups/groups.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { User } from '../users/users.legacy.entity';
 import { UsersModule } from '../users/users.module';
@@ -28,7 +31,10 @@ import { AnswerService } from './answer.service';
     ]),
     AuthModule,
     UsersModule,
-    QuestionsModule,
+    forwardRef(() => QuestionsModule),
+    forwardRef(() => CommentsModule),
+    forwardRef(() => GroupsModule),
+    AttitudeModule,
   ],
   providers: [AnswerService],
   controllers: [AnswerController],

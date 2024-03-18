@@ -19,12 +19,14 @@ describe('Answers Module', () => {
   let TestToken: string;
   let TestUserId: number;
   const TopicIds: number[] = [];
-  const questionId: number[] = [];
+  const questionIds: number[] = [];
+  const answerIds: number[] = [];
+  const AnswerQuestionMap: { [key: number]: number } = {};
+  const userIdTokenPairList: [number, string][] = [];
   let auxUserId: number;
   let auxAccessToken: string;
-  const answerId: number[] = [];
-  const AnswerQuestionMap: { [key: number]: number } = {};
-  const userList: [number, string][] = [];
+  let specialQuestionId: number;
+  const specialAnswerIds: number[] = [];
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
@@ -147,7 +149,7 @@ describe('Answers Module', () => {
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
         expect(respond.body.data.id).toBeDefined();
-        questionId.push(respond.body.data.id);
+        questionIds.push(respond.body.data.id);
       }
 
       await createQuestion(
@@ -162,22 +164,22 @@ describe('Answers Module', () => {
     });
     it('should create some auxiliary users', async () => {
       [auxUserId, auxAccessToken] = await createAuxiliaryUser();
-      userList.push([auxUserId, auxAccessToken]);
+      userIdTokenPairList.push([auxUserId, auxAccessToken]);
       for (let i = 0; i < 5; i++) {
-        userList.push(await createAuxiliaryUser());
+        userIdTokenPairList.push(await createAuxiliaryUser());
       }
 
-      expect(userList.length).toBe(6);
+      expect(userIdTokenPairList.length).toBe(6);
     });
   });
 
-  describe('answer question', () => {
+  describe('Answer question', () => {
     it('should create some answers', async () => {
       async function createAnswer(
         questionId: number,
         content: string,
         auxToken: string,
-      ) {
+      ): Promise<number> {
         const respond = await request(app.getHttpServer())
           .post(`/questions/${questionId}/answers`)
           .set('Authorization', `Bearer ${auxToken}`)
@@ -186,8 +188,9 @@ describe('Answers Module', () => {
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
         expect(typeof respond.body.data.id).toBe('number');
-        answerId.push(respond.body.data.id);
+        answerIds.push(respond.body.data.id);
         AnswerQuestionMap[respond.body.data.id] = questionId;
+        return respond.body.data.id;
       }
 
       const answerContents1 = [
@@ -198,7 +201,7 @@ describe('Answers Module', () => {
         '烫烫烫'.repeat(1000),
       ];
       for (let i = 0; i < 5; i++) {
-        await createAnswer(questionId[i], answerContents1[i], auxAccessToken);
+        await createAnswer(questionIds[i], answerContents1[i], auxAccessToken);
       }
 
       const answerContents2 = [
@@ -209,12 +212,18 @@ describe('Answers Module', () => {
         'answer5',
         'answer6',
       ];
+      specialQuestionId = questionIds[5];
       for (let i = 0; i < 6; i++) {
-        await createAnswer(questionId[5], answerContents2[i], userList[i][1]);
+        const id = await createAnswer(
+          questionIds[5],
+          answerContents2[i],
+          userIdTokenPairList[i][1],
+        );
+        specialAnswerIds.push(id);
       }
     }, 60000);
     it('should return QuestionAlreadyAnsweredError when user answer the same question', async () => {
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = questionIds[0];
       const content = 'content';
       await request(app.getHttpServer())
         .post(`/questions/${TestQuestionId}/answers`)
@@ -240,7 +249,7 @@ describe('Answers Module', () => {
       expect(respond.body.data.user.answer_count).toBe(6);
     });
     it('should return AuthenticationRequiredError', async () => {
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = questionIds[0];
       const content = 'content';
       const respond = await request(app.getHttpServer())
         .post(`/questions/${TestQuestionId}/answers`)
@@ -252,7 +261,7 @@ describe('Answers Module', () => {
 
   describe('Get answer', () => {
     it('should get a answer', async () => {
-      const TestAnswerId = answerId[0];
+      const TestAnswerId = answerIds[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
@@ -270,17 +279,25 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.content).toContain(
         '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
       );
+      expect(response.body.data.answer.author.id).toBe(auxUserId);
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
-      expect(response.body.data.answer.agree_type).toBe(0);
+      expect(response.body.data.answer.attitudes).toBeDefined();
+      expect(response.body.data.answer.attitudes.positive_count).toBe(0);
+      expect(response.body.data.answer.attitudes.negative_count).toBe(0);
+      expect(response.body.data.answer.attitudes.difference).toBe(0);
+      expect(response.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
       expect(response.body.data.answer.is_favorite).toBe(false);
-      expect(response.body.data.answer.agree_count).toBe(0);
+      expect(response.body.data.answer.comment_count).toBe(0);
       expect(response.body.data.answer.favorite_count).toBe(0);
       expect(response.body.data.answer.view_count).toBeDefined();
+      expect(response.body.data.answer.is_group).toBe(false);
     });
     it('should get a answer even without token', async () => {
       // const TestQuestionId = questionId[0];
-      const TestAnswerId = answerId[0];
+      const TestAnswerId = answerIds[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
@@ -300,20 +317,21 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.author.id).toBe(auxUserId);
       expect(response.body.data.answer.created_at).toBeDefined();
       expect(response.body.data.answer.updated_at).toBeDefined();
-      expect(response.body.data.answer.agree_type).toBe(0);
+      //expect(response.body.data.answer.agree_type).toBe(0);
       expect(response.body.data.answer.is_favorite).toBe(false);
-      expect(response.body.data.answer.agree_count).toBe(0);
+      //expect(response.body.data.answer.agree_count).toBe(0);
       expect(response.body.data.answer.favorite_count).toBe(0);
       expect(response.body.data.answer.view_count).toBeDefined();
     });
 
     it('should return AnswerNotFoundError', async () => {
-      const TestAnswerId = answerId[0];
+      const TestAnswerId = answerIds[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId] + 1;
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
@@ -322,14 +340,68 @@ describe('Answers Module', () => {
 
   describe('Get Answers By Question ID', () => {
     it('should successfully get all answers by question ID', async () => {
-      const auxAccessToken = userList[0][1];
-      const TestQuestionId = questionId[0];
-      const pageStart = answerId[0];
+      const response = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(response.body.message).toBe('Answers fetched successfully.');
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.page.page_start).toBe(specialAnswerIds[0]);
+      expect(response.body.data.page.page_size).toBe(specialAnswerIds.length);
+      expect(response.body.data.page.has_prev).toBe(false);
+      expect(response.body.data.page.prev_start).toBe(0);
+      expect(response.body.data.page.has_more).toBe(false);
+      expect(response.body.data.page.next_start).toBe(0);
+      expect(response.body.data.answers.length).toBe(specialAnswerIds.length);
+      for (let i = 0; i < specialAnswerIds.length; i++) {
+        expect(response.body.data.answers[i].question_id).toBe(
+          specialQuestionId,
+        );
+      }
+      expect(
+        response.body.data.answers
+          .map((x: any) => x.id)
+          .sort((n1: number, n2: number) => n1 - n2),
+      ).toStrictEqual(specialAnswerIds);
+    });
+
+    it('should successfully get all answers by question ID', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(response.body.message).toBe('Answers fetched successfully.');
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.page.page_start).toBe(specialAnswerIds[0]);
+      expect(response.body.data.page.page_size).toBe(specialAnswerIds.length);
+      expect(response.body.data.page.has_prev).toBe(false);
+      expect(response.body.data.page.prev_start).toBe(0);
+      expect(response.body.data.page.has_more).toBe(false);
+      expect(response.body.data.page.next_start).toBe(0);
+      expect(response.body.data.answers.length).toBe(specialAnswerIds.length);
+      for (let i = 0; i < specialAnswerIds.length; i++) {
+        expect(response.body.data.answers[i].question_id).toBe(
+          specialQuestionId,
+        );
+      }
+      expect(
+        response.body.data.answers
+          .map((x: any) => x.id)
+          .sort((n1: number, n2: number) => n1 - n2),
+      ).toStrictEqual(specialAnswerIds);
+    });
+
+    it('should successfully get all answers by question ID', async () => {
+      const auxAccessToken = userIdTokenPairList[0][1];
+      const pageStart = specialAnswerIds[0];
       const pageSize = 20;
       const response = await request(app.getHttpServer())
-        .get(`/questions/${TestQuestionId}/answers`)
+        .get(`/questions/${specialQuestionId}/answers`)
         .query({
-          questionId: TestQuestionId,
           page_start: pageStart,
           page_size: pageSize,
         })
@@ -340,37 +412,77 @@ describe('Answers Module', () => {
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
       // expect(response.body.data.page.page_start).toBe(pageStart);
-      // expect(response.body.data.page.page_size).toBe(20);
-      // expect(response.body.data.page.has_prev).toBe(true);
-      // expect(response.body.data.page.prev_start).toBeFalsy();
-      // expect(response.body.data.page.has_more).toBe(false);
-      // expect(response.body.data.page.next_start).toBe(answerId[1]);
-      // expect(response.body.data.answers.question_id).toBe(TestQuestionId);
+      expect(response.body.data.page.page_size).toBe(specialAnswerIds.length);
+      expect(response.body.data.page.has_prev).toBe(false);
+      expect(response.body.data.page.prev_start).toBe(0);
+      expect(response.body.data.page.has_more).toBe(false);
+      expect(response.body.data.page.next_start).toBe(0);
+      expect(response.body.data.answers.length).toBe(specialAnswerIds.length);
+      for (let i = 0; i < specialAnswerIds.length; i++) {
+        expect(response.body.data.answers[i].question_id).toBe(
+          specialQuestionId,
+        );
+      }
+      expect(
+        response.body.data.answers
+          .map((x: any) => x.id)
+          .sort((n1: number, n2: number) => n1 - n2),
+      ).toStrictEqual(specialAnswerIds);
     });
 
-    it('should successfully get all answers by question ID without token', async () => {
-      const TestQuestionId = questionId[0];
-      const pageStart = answerId[0];
-      const pageSize = 20;
+    it('should successfully get answers by question ID and paging', async () => {
+      const pageSize = 2;
       const response = await request(app.getHttpServer())
-        .get(`/questions/${TestQuestionId}/answers`)
+        .get(`/questions/${specialQuestionId}/answers`)
         .query({
-          questionId: TestQuestionId,
-          page_start: pageStart,
+          page_start: specialAnswerIds[2],
           page_size: pageSize,
         })
+        .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
+
       expect(response.body.message).toBe('Answers fetched successfully.');
 
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
-      // expect(response.body.data.page.page_start).toBe(pageStart);
-      // expect(response.body.data.page.page_size).toBe(20);
-      // expect(response.body.data.page.has_prev).toBe(true);
-      // expect(response.body.data.page.prev_start).toBeFalsy();
-      // expect(response.body.data.page.has_more).toBe(false);
-      // expect(response.body.data.page.next_start).toBe(answerId[1]);
-      // expect(response.body.data.answers.question_id).toBe(TestQuestionId);
+      expect(response.body.data.page.page_start).toBe(specialAnswerIds[2]);
+      expect(response.body.data.page.page_size).toBe(2);
+      expect(response.body.data.page.has_prev).toBe(true);
+      expect(response.body.data.page.prev_start).toBe(specialAnswerIds[0]);
+      expect(response.body.data.page.has_more).toBe(true);
+      expect(response.body.data.page.next_start).toBe(specialAnswerIds[4]);
+      expect(response.body.data.answers.length).toBe(2);
+      expect(response.body.data.answers[0].question_id).toBe(specialQuestionId);
+      expect(response.body.data.answers[1].question_id).toBe(specialQuestionId);
+      expect(response.body.data.answers[0].id).toBe(specialAnswerIds[2]);
+      expect(response.body.data.answers[1].id).toBe(specialAnswerIds[3]);
+    });
+
+    it('should successfully get answers by question ID without token', async () => {
+      const pageSize = 2;
+      const response = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers`)
+        .query({
+          page_start: specialAnswerIds[2],
+          page_size: pageSize,
+        })
+        .send();
+
+      expect(response.body.message).toBe('Answers fetched successfully.');
+
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.page.page_start).toBe(specialAnswerIds[2]);
+      expect(response.body.data.page.page_size).toBe(2);
+      expect(response.body.data.page.has_prev).toBe(true);
+      expect(response.body.data.page.prev_start).toBe(specialAnswerIds[0]);
+      expect(response.body.data.page.has_more).toBe(true);
+      expect(response.body.data.page.next_start).toBe(specialAnswerIds[4]);
+      expect(response.body.data.answers.length).toBe(2);
+      expect(response.body.data.answers[0].question_id).toBe(specialQuestionId);
+      expect(response.body.data.answers[1].question_id).toBe(specialQuestionId);
+      expect(response.body.data.answers[0].id).toBe(specialAnswerIds[2]);
+      expect(response.body.data.answers[1].id).toBe(specialAnswerIds[3]);
     });
 
     it('should return an empty list for a non-existent question ID', async () => {
@@ -386,7 +498,7 @@ describe('Answers Module', () => {
 
   describe('Update Answer', () => {
     it('should return PermissionDeniedError', async () => {
-      const TestAnswerId = answerId[0];
+      const TestAnswerId = answerIds[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
@@ -396,7 +508,7 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(403);
     });
     it('should successfully update an answer', async () => {
-      const testAnswerId = answerId[1];
+      const testAnswerId = answerIds[1];
       const testQuestionId = AnswerQuestionMap[testAnswerId];
       const updatedContent = '--------更新----------';
       const response = await request(app.getHttpServer())
@@ -410,7 +522,7 @@ describe('Answers Module', () => {
 
     it('should throw AnswerNotFoundError when trying to update a non-existent answer', async () => {
       const nonExistentAnswerId = 999999;
-      const testQuestionId = questionId[0];
+      const testQuestionId = questionIds[0];
       const response = await request(app.getHttpServer())
         .put(`/questions/${testQuestionId}/answers/${nonExistentAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -421,8 +533,8 @@ describe('Answers Module', () => {
     });
 
     it('should return AuthenticationRequiredError', async () => {
-      const testQuestionId = questionId[0];
-      const testAnswerId = answerId[1];
+      const testQuestionId = questionIds[0];
+      const testAnswerId = answerIds[1];
       const updatedContent = '--------更新----------';
       const response = await request(app.getHttpServer())
         .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
@@ -431,14 +543,15 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(401);
     });
     it('should throw AnswerNotFoundError', async () => {
-      const auxAccessToken = userList[0][1];
-      const testAnswerId = answerId[0];
+      const auxAccessToken = userIdTokenPairList[0][1];
+      const testAnswerId = answerIds[0];
       const testQuestionId = AnswerQuestionMap[testAnswerId] + 1;
       const response = await request(app.getHttpServer())
         .put(`/questions/${testQuestionId}/answers/${testAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ content: 'Some content' });
 
+      expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
@@ -447,7 +560,7 @@ describe('Answers Module', () => {
 
   describe('Delete Answer', () => {
     it('should return PermissionDeniedError', async () => {
-      const TestAnswerId = answerId[0];
+      const TestAnswerId = answerIds[0];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
@@ -457,7 +570,7 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(403);
     });
     it('should successfully delete an answer', async () => {
-      const TestAnswerId = answerId[2];
+      const TestAnswerId = answerIds[2];
       const testQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${testQuestionId}/answers/${TestAnswerId}`)
@@ -470,8 +583,8 @@ describe('Answers Module', () => {
     });
 
     it('should return a not found error when trying to delete a non-existent answer', async () => {
-      const auxAccessToken = userList[0][1];
-      const testQuestionId = questionId[0];
+      const auxAccessToken = userIdTokenPairList[0][1];
+      const testQuestionId = questionIds[0];
       const nonExistentAnswerId = 0;
       const response = await request(app.getHttpServer())
         .delete(`/questions/${testQuestionId}/answers/${nonExistentAnswerId}`)
@@ -484,8 +597,8 @@ describe('Answers Module', () => {
     });
 
     it('should return AuthenticationRequiredError', async () => {
-      const testQuestionId = questionId[0];
-      const TestAnswerId = answerId[2];
+      const testQuestionId = questionIds[0];
+      const TestAnswerId = answerIds[2];
       const response = await request(app.getHttpServer()).delete(
         `/questions/${testQuestionId}/answers/${TestAnswerId}`,
       );
@@ -495,82 +608,10 @@ describe('Answers Module', () => {
     });
   });
 
-  describe('Agree Answer', () => {
-    it('should successfully create user attitude on first attempt', async () => {
-      const TestAnswerId = answerId[1];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      const response = await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
-      expect(response.body.message).toBe('Answer agreed successfully.');
-      expect(response.statusCode).toBe(200);
-      expect(response.body.userAttitudeRepository).toBeUndefined();
-      expect(response.body.code).toBe(200);
-      expect(response.body.data.agree_count).toBe(1);
-    });
-
-    it('should successfully agree to an answer', async () => {
-      const TestAnswerId = answerId[3];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      const response = await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
-      expect(response.body.message).toBe('Answer agreed successfully.');
-      expect(response.status).toBe(200);
-      expect(response.body.code).toBe(200);
-      expect(response.body.data.agree_count).toBe(1);
-      // expect(response.body.data.disagree_count).toBe(0);
-      // expect(response.body.data.question_id).toBe(TestQuestionId);
-    });
-
-    it('should throw AlreadyHasSameAttitudeError when trying to agree again', async () => {
-      const TestAnswerId = answerId[3];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
-      const response = await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 2 });
-      expect(response.body.message).toMatch(/AlreadyHasSameAttitudeError: /);
-      expect(response.status).toBe(400);
-    });
-
-    it('should throw AnswerNotFoundError when trying to agree to a non-existent answer', async () => {
-      const auxAccessToken = userList[0][1];
-      const nonExistentAnswerId = 9999; // TODO: change to a 100% non-existent answer ID
-      const TestQuestionId = questionId[0];
-      const response = await request(app.getHttpServer())
-        .put(
-          `/questions/${TestQuestionId}/answers/${nonExistentAnswerId}/agree`,
-        )
-        .set('Authorization', `Bearer ${auxAccessToken}`)
-        .send({ agree_type: 1 });
-      expect(response.body.message).toMatch(/AnswerNotFoundError/);
-      expect(response.status).toBe(404);
-    });
-
-    it('should return AuthenticationRequiredError', async () => {
-      const TestAnswerId = answerId[3];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      const auxUserId = userList[0][0];
-      const response = await request(app.getHttpServer())
-        .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/agree`)
-        .send({ id: TestAnswerId, userId: auxUserId, agree_type: 1 });
-
-      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(response.body.code).toBe(401);
-    });
-  });
-
   describe('Favorite Answer', () => {
     it('should successfully favorite an answer', async () => {
-      const auxAccessToken = userList[0][1];
-      const TestAnswerId = answerId[1];
+      const auxAccessToken = userIdTokenPairList[0][1];
+      const TestAnswerId = answerIds[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
@@ -581,8 +622,8 @@ describe('Answers Module', () => {
     });
 
     it('should successfully unfavorite an answer', async () => {
-      const auxAccessToken = userList[0][1];
-      const TestAnswerId = answerId[1];
+      const auxAccessToken = userIdTokenPairList[0][1];
+      const TestAnswerId = answerIds[1];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
@@ -598,8 +639,8 @@ describe('Answers Module', () => {
     });
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
-      const auxAccessToken = userList[0][1];
-      const TestAnswerId = answerId[4];
+      const auxAccessToken = userIdTokenPairList[0][1];
+      const TestAnswerId = answerIds[4];
       const TestQuestionId = AnswerQuestionMap[TestAnswerId];
       const response = await request(app.getHttpServer())
         .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
@@ -610,7 +651,7 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(400);
     });
     it('should throw AnswerNotFoundError when trying to favorite a non-existent answer', async () => {
-      const TestQuestionId = questionId[0];
+      const TestQuestionId = questionIds[0];
       const nonExistentAnswerId = 99999;
       const response = await request(app.getHttpServer())
         .put(
@@ -625,8 +666,8 @@ describe('Answers Module', () => {
       expect(response.body.code).toBe(404);
     });
     it('should throw AnswerNotFoundError when trying to unfavorite a non-existent answer', async () => {
-      const TestQuestionId = questionId[0];
-      const auxAccessToken = userList[0][1];
+      const TestQuestionId = questionIds[0];
+      const auxAccessToken = userIdTokenPairList[0][1];
       const nonExistentAnswerId = 99998;
       const response = await request(app.getHttpServer())
         .delete(
@@ -642,14 +683,179 @@ describe('Answers Module', () => {
     });
 
     it('should return AuthenticationRequiredError', async () => {
-      const TestAnswerId = answerId[1];
-      const TestQuestionId = questionId[0];
+      const TestAnswerId = answerIds[1];
+      const TestQuestionId = questionIds[0];
       const response = await request(app.getHttpServer())
         .put(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .send();
 
       expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(response.body.code).toBe(401);
+    });
+  });
+
+  describe('Set Attitude to Answer', () => {
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+      expect(respond.statusCode).toBe(401);
+    });
+    it('should set attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ attitude_type: 'POSITIVE' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the answer',
+      );
+      expect(respond.body.code).toBe(201);
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.attitudes.difference).toBe(1);
+      expect(respond.body.data.attitudes.user_attitude).toBe('POSITIVE');
+    });
+    it('should set attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ attitude_type: 'NEGATIVE' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the answer',
+      );
+      expect(respond.body.code).toBe(201);
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.attitudes.difference).toBe(0);
+      expect(respond.body.data.attitudes.user_attitude).toBe('NEGATIVE');
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe('POSITIVE');
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe('NEGATIVE');
+    });
+    it('should set attitude to positive successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ attitude_type: 'UNDEFINED' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the answer',
+      );
+      expect(respond.body.code).toBe(201);
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.attitudes.difference).toBe(-1);
+      expect(respond.body.data.attitudes.user_attitude).toBe('UNDEFINED');
+    });
+    it('should set attitude to positive successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(
+          `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
+        )
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ attitude_type: 'UNDEFINED' });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the answer',
+      );
+      expect(respond.body.code).toBe(201);
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.attitudes.difference).toBe(0);
+      expect(respond.body.data.attitudes.user_attitude).toBe('UNDEFINED');
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get answer dto with attitude statics', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('Answer fetched successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.statusCode).toBe(200);
+      expect(respond.body.data.answer.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.answer.attitudes.difference).toBe(0);
+      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
     });
   });
 

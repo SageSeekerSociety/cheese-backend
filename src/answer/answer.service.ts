@@ -3,11 +3,18 @@
 //  an answer id should always be after a question id, which can be used as the sharding key in the future.
 //
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { AttitudableType, AttitudeType } from '@prisma/client';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
+import { AttitudeService } from '../attitude/attitude.service';
+import { CommentsService } from '../comments/comment.service';
+import { CommentableType } from '../comments/commentable.enum';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { GroupsService } from '../groups/groups.service';
+import { QuestionIdNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
 import { UserIdNotFoundError } from '../users/users.error';
 import { User } from '../users/users.legacy.entity';
@@ -33,7 +40,13 @@ import {
 export class AnswerService {
   constructor(
     private usersService: UsersService,
+    @Inject(forwardRef(() => QuestionsService))
     private questionsService: QuestionsService,
+    @Inject(forwardRef(() => CommentsService))
+    private commentsService: CommentsService,
+    @Inject(forwardRef(() => GroupsService))
+    private groupsService: GroupsService,
+    private attitudeService: AttitudeService,
     @InjectRepository(Answer)
     private answerRepository: Repository<Answer>,
     @InjectRepository(AnswerUserAttitude)
@@ -85,7 +98,7 @@ export class AnswerService {
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
         where: { questionId },
-        order: { createdAt: 'ASC' },
+        order: { id: 'ASC' },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
@@ -108,17 +121,17 @@ export class AnswerService {
       const prevPage = await this.answerRepository.find({
         where: {
           questionId,
-          createdAt: LessThan(start.createdAt),
+          id: LessThan(pageStart),
         },
-        order: { createdAt: 'DESC' },
+        order: { id: 'DESC' },
         take: pageSize,
       });
       const currPage = await this.answerRepository.find({
         where: {
           questionId,
-          createdAt: MoreThanOrEqual(start.createdAt),
+          id: MoreThanOrEqual(pageStart),
         },
-        order: { createdAt: 'ASC' },
+        order: { id: 'ASC' },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
@@ -202,12 +215,6 @@ export class AnswerService {
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
-    const authorDto = await this.usersService.getUserDtoById(
-      answer.createdById,
-      viewerId,
-      ip,
-      userAgent,
-    );
 
     const log = this.answerQueryLogRepository.create({
       answerId,
@@ -215,7 +222,47 @@ export class AnswerService {
       userAgent,
       ip,
     });
-    await this.answerQueryLogRepository.save(log);
+    const logSavedPromise = this.answerQueryLogRepository.save(log);
+
+    const authorDtoPromise = this.usersService.getUserDtoById(
+      answer.createdById,
+      viewerId,
+      ip,
+      userAgent,
+    );
+    const attitudeStatusDtoPromise = this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.ANSWER,
+      answerId,
+      viewerId,
+    );
+    const viewCountPromise = this.getViewCountOfAnswer(questionId, answerId);
+    const commentCountPromise = this.commentsService.countCommentsByCommentable(
+      CommentableType.ANSWER,
+      answerId,
+    );
+    const isFavoritePromise = this.isFavorite(questionId, answerId, viewerId);
+    const groupDtoPromise =
+      answer.groupId == undefined
+        ? Promise.resolve(undefined)
+        : this.groupsService.getGroupDtoById(viewerId, answer.groupId);
+
+    const [
+      ,
+      authorDto,
+      attitudeStatusDto,
+      viewCount,
+      commentCount,
+      isFavorite,
+      groupDto,
+    ] = await Promise.all([
+      logSavedPromise,
+      authorDtoPromise,
+      attitudeStatusDtoPromise,
+      viewCountPromise,
+      commentCountPromise,
+      isFavoritePromise,
+      groupDtoPromise,
+    ]);
 
     return {
       id: answer.id,
@@ -224,11 +271,13 @@ export class AnswerService {
       author: authorDto,
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
+      attitudes: attitudeStatusDto,
       favorite_count: answer.favoritedBy?.length ?? 0,
-      view_count: await this.getViewCountOfAnswer(questionId, answerId),
-      agree_count: await this.getAgreeCount(questionId, answerId),
-      agree_type: await this.getAgreeType(questionId, answerId, viewerId),
-      is_favorite: await this.isFavorite(questionId, answerId, viewerId),
+      view_count: viewCount,
+      comment_count: commentCount,
+      is_favorite: isFavorite,
+      is_group: answer.groupId != undefined,
+      group: groupDto,
     };
   }
 
@@ -414,5 +463,39 @@ export class AnswerService {
       throw new AnswerNotFoundError(answerId);
     }
     return answer.createdById;
+  }
+
+  async countQuestionAnswers(questionId: number): Promise<number> {
+    if ((await this.questionsService.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    return this.answerRepository.countBy({
+      questionId: questionId,
+    });
+  }
+
+  async setAttitudeToAnswer(
+    questionId: number,
+    answerId: number,
+    userId: number,
+    attitude: AttitudeType,
+  ): Promise<AttitudeStateDto> {
+    const answer = await this.answerRepository.findOneBy({
+      questionId,
+      id: answerId,
+    });
+    if (!answer) {
+      throw new AnswerNotFoundError(answerId);
+    }
+    await this.attitudeService.setAttitude(
+      userId,
+      AttitudableType.ANSWER,
+      answerId,
+      attitude,
+    );
+    return this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.ANSWER,
+      answerId,
+      userId,
+    );
   }
 }

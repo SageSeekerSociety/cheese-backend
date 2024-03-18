@@ -114,6 +114,34 @@ components:
       name: REFRESH_TOKEN
       in: cookie
   schemas:
+    AttitudeType:
+      type: string
+      description: 态度类型，UNDEFINED表示未操作
+      enum:
+        - POSITIVE
+        - NEGATIVE
+        - UNDEFINED
+
+    AttitudeStats:
+      type: object
+      properties:
+        positive_count:
+          type: integer
+          description: 正面表态数量
+          format: int64
+        negative_count:
+          type: integer
+          description: 负面表态数量
+          format: int64
+        difference:
+          type: integer
+          description: 正面表态数量减去负面表态数量
+          format: int64
+        user_attitude:
+          allOf:
+            - $ref: "#/components/schemas/AttitudeType"
+            - description: 当前登录用户的态度
+
     CommonResponse:
       type: object
       properties:
@@ -257,12 +285,11 @@ components:
           type: integer
           format: int64
           description: 最后修改时间（时间戳）
+        attitudes:
+          $ref: "#/components/schemas/AttitudeStats"
         is_follow:
           type: boolean
           description: 是否关注问题
-        is_like:
-          type: boolean
-          description: 是否点赞问题
         my_answer_id:
           type: integer
           format: int64
@@ -277,17 +304,12 @@ components:
         follow_count:
           type: integer
           description: 关注数量
-        like_count:
-          type: integer
-          description: 点赞数量
         view_count:
           type: integer
           description: 浏览数量
-        is_group:
-          type: boolean
-          description: 是否为小组问题
         group:
           $ref: "#/components/schemas/Group"
+          nullable: true
     QuestionInvitation:
       type: object
       description: 问题邀请
@@ -322,6 +344,7 @@ components:
         - topics
         - created_at
         - updated_at
+        - attitudes
         - is_follow
         - is_like
         - answer_count
@@ -329,7 +352,7 @@ components:
         - follow_count
         - like_count
         - view_count
-        - is_group
+        - group
     Answer:
       type: object
       description: 回答详情
@@ -355,19 +378,11 @@ components:
           type: integer
           format: int64
           description: 最后修改时间（时间戳）
-        agree_type:
-          type: integer
-          description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
-          enum:
-            - 0
-            - 1
-            - 2
+        attitudes:
+          $ref: "#/components/schemas/AttitudeStats"
         is_favorite:
           type: boolean
           description: 是否收藏回答
-        agree_count:
-          type: integer
-          description: 赞同数量
         comment_count:
           type: integer
           description: 评论数量
@@ -407,23 +422,8 @@ components:
           type: integer
           format: int64
           description: 创建时间（时间戳）
-        attitude_type:
-          type: string
-          description: attitude类型，UNDEFINED表示未操作，AGREE表示赞同，DISAGREE表示反对
-          enum:
-            - AGREE
-            - DISAGREE
-            - UNDEFINED
-        agree_count:
-          type: integer
-          description: 赞同数量
-        disagree_count:
-          type: integer
-          description: 反对数量
-        #sub_comments:
-        #  type: array
-        #  items:
-        #    $ref: "#/components/schemas/Comment"
+        attitudes:
+          $ref: "#/components/schemas/AttitudeStats"
       required:
         - id
         - commentable_id
@@ -530,12 +530,8 @@ components:
           type: integer
           description: 最后更新时间
           format: int64
-        is_like:
-          type: boolean
-          description: 当前用户是否点赞
-        like_count:
-          type: integer
-          description: 点赞数量
+        attitudes:
+          $ref: "#/components/schemas/AttitudeStats"
         comment_count:
           type: integer
           description: 评论数量
@@ -1391,6 +1387,47 @@ paths:
                           - follow_count
                     required:
                       - data
+  /questions/{questionId}/attitudes:
+    post:
+      summary: 对问题表态
+      operationId: attitudeQuestion
+      parameters:
+        - name: questionId
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attitude_type:
+                  $ref: "#/components/schemas/AttitudeType"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          attitudes:
+                            $ref: "#/components/schemas/AttitudeStats"
+                        required:
+                          - attitudes
+                    required:
+                      - data
   /questions/{id}/invitations:
     get:
       summary: 获取该问题下被邀请回答的用户
@@ -1725,13 +1762,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
-  /questions/{questionId}/answers/{answerId}/agree:
-    put:
-      summary: 赞同回答
-      operationId: agreeAnswer
+  /questions/{questionId}/answers/{answerId}/attitudes:
+    post:
+      summary: 对回答表态
+      operationId: attitudeAnswer
       parameters:
-        - $ref: "#/components/parameters/questionId"
-        - $ref: "#/components/parameters/answerId"
+        - name: questionId
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: answerId
+          in: path
+          description: 回答 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
       security:
         - bearerAuth: []
       requestBody:
@@ -1740,15 +1789,8 @@ paths:
             schema:
               type: object
               properties:
-                agree_type:
-                  type: integer
-                  description: 赞同类型，0表示未赞同，1表示赞同，2表示反对
-                  enum:
-                    - 0
-                    - 1
-                    - 2
-              required:
-                - agree_type
+                attitude_type:
+                  $ref: "#/components/schemas/AttitudeType"
       responses:
         "200":
           description: OK
@@ -1762,11 +1804,10 @@ paths:
                       data:
                         type: object
                         properties:
-                          agree_count:
-                            type: integer
-                            description: 新的赞同数量
+                          attitudes:
+                            $ref: "#/components/schemas/AttitudeStats"
                         required:
-                          - agree_count
+                          - attitudes
                     required:
                       - data
   /questions/{questionId}/answers/{answerId}/favorite:
@@ -1898,8 +1939,8 @@ paths:
       responses:
         "204":
           description: No Content
-  /comments/{comment_id}/attitude:
-    put:
+  /comments/{comment_id}/attitudes:
+    post:
       summary: 对评论表态
       operationId: attitudeComment
       parameters:
@@ -1913,12 +1954,7 @@ paths:
               type: object
               properties:
                 attitude_type:
-                  type: integer
-                  description: 类型
-                  enum:
-                    - UNDEFINED
-                    - AGREE
-                    - DISAGREE
+                  $ref: "#/components/schemas/AttitudeType"
               required:
                 - attitude_type
       responses:
@@ -1927,7 +1963,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CommonResponse"
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          attitudes:
+                            $ref: "#/components/schemas/AttitudeStats"
+                        required:
+                          - attitudes
+                    required:
+                      - data
   /topics:
     get:
       summary: 获取话题列表
@@ -2791,14 +2839,30 @@ paths:
       responses:
         "204":
           description: No Content
-  /insights/{insightId}/likes:
-    get:
-      summary: 获取点赞用户列表
-      operationId: getInsightLikes
+  /insights/{insightId}/attitudes:
+    post:
+      summary: 对灵感表态
+      operationId: attitudeInsight
       parameters:
-        - $ref: "#/components/parameters/insightId"
-        - $ref: "#/components/parameters/page_start"
-        - $ref: "#/components/parameters/page_size"
+        - name: insightId
+          in: path
+          description: 灵感 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attitude_type:
+                  $ref: "#/components/schemas/AttitudeType"
+              required:
+                - attitude_type
       responses:
         "200":
           description: OK
@@ -2812,38 +2876,12 @@ paths:
                       data:
                         type: object
                         properties:
-                          likes:
-                            type: array
-                            items:
-                              $ref: "#/components/schemas/User"
-                          page:
-                            $ref: "#/components/schemas/Page"
+                          attitudes:
+                            $ref: "#/components/schemas/AttitudeStats"
+                        required:
+                          - attitudes
                     required:
                       - data
-    put:
-      summary: 点赞灵感
-      operationId: likeInsight
-      parameters:
-        - $ref: "#/components/parameters/insightId"
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CommonResponse"
-    delete:
-      summary: 取消点赞灵感
-      operationId: unlikeInsight
-      parameters:
-        - $ref: "#/components/parameters/insightId"
-      security:
-        - bearerAuth: []
-      responses:
-        "204":
-          description: No Content
   /avatars:
     post:
       summary: Upload an avatar
