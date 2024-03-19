@@ -7,12 +7,13 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { Answer } from '../answer/answer.legacy.entity';
+import { AnswerService } from '../answer/answer.service';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
@@ -25,6 +26,7 @@ import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Question } from '../questions/questions.legacy.entity';
+import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import { UsersPermissionService } from './users-permission.service';
@@ -67,6 +69,10 @@ export class UsersService {
     private readonly sessionService: SessionService,
     private readonly usersPermissionService: UsersPermissionService,
     private readonly avatarsService: AvatarsService,
+    @Inject(forwardRef(() => AnswerService))
+    private readonly answerService: AnswerService,
+    @Inject(forwardRef(() => QuestionsService))
+    private readonly questionsService: QuestionsService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)

@@ -6,13 +6,17 @@
  *
  */
 
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Answer } from '../answer/answer.legacy.entity';
+import { AnswerModule } from '../answer/answer.module';
 import { AuthModule } from '../auth/auth.module';
+import { AvatarsModule } from '../avatars/avatars.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { Question } from '../questions/questions.legacy.entity';
+import { QuestionsModule } from '../questions/questions.module';
 import { EmailService } from './email.service';
+import { UsersPermissionService } from './users-permission.service';
 import { UsersController } from './users.controller';
 import {
   User,
@@ -25,8 +29,6 @@ import {
   UserResetPasswordLog,
 } from './users.legacy.entity';
 import { UsersService } from './users.service';
-import { UsersPermissionService } from './users-permission.service';
-import { AvatarsModule } from '../avatars/avatars.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { AvatarsModule } from '../avatars/avatars.module';
     PrismaModule,
     AuthModule,
     AvatarsModule,
+    forwardRef(() => AnswerModule),
+    forwardRef(() => QuestionsModule),
   ],
   controllers: [UsersController],
   providers: [UsersService, UsersPermissionService, EmailService],

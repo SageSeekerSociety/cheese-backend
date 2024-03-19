@@ -39,18 +39,19 @@ import {
 @Injectable()
 export class AnswerService {
   constructor(
-    private usersService: UsersService,
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
     @Inject(forwardRef(() => QuestionsService))
-    private questionsService: QuestionsService,
+    private readonly questionsService: QuestionsService,
     @Inject(forwardRef(() => CommentsService))
-    private commentsService: CommentsService,
+    private readonly commentsService: CommentsService,
     @Inject(forwardRef(() => GroupsService))
-    private groupsService: GroupsService,
-    private attitudeService: AttitudeService,
+    private readonly groupsService: GroupsService,
+    private readonly attitudeService: AttitudeService,
     @InjectRepository(Answer)
-    private answerRepository: Repository<Answer>,
+    private readonly answerRepository: Repository<Answer>,
     @InjectRepository(AnswerUserAttitude)
-    private userAttitudeRepository: Repository<AnswerUserAttitude>,
+    private readonly userAttitudeRepository: Repository<AnswerUserAttitude>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(AnswerQueryLog)

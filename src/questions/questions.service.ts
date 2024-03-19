@@ -59,11 +59,13 @@ import {
 @Injectable()
 export class QuestionsService {
   constructor(
+    @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
+    @Inject(forwardRef(() => AttitudeService))
     private readonly attitudeService: AttitudeService,
     @Inject(forwardRef(() => GroupsService))
-    private groupService: GroupsService,
+    private readonly groupService: GroupsService,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
     @InjectRepository(Question)
