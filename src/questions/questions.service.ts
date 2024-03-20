@@ -858,4 +858,9 @@ export class QuestionsService {
       throw new QuestionInvitationIdNotFoundError(invitationId);
     return invitation.userId;
   }
+
+  async getQuestionCount(userId: number | undefined): Promise<number> {
+    if (userId == undefined) return 0;
+    return await this.questionRepository.countBy({ createdById: userId });
+  }
 }

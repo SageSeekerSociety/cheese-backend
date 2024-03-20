@@ -499,4 +499,9 @@ export class AnswerService {
       userId,
     );
   }
+
+  async getAnswerCount(userId: number | undefined): Promise<number> {
+    if (userId == undefined) return 0;
+    return await this.answerRepository.countBy({ createdById: userId });
+  }
 }
