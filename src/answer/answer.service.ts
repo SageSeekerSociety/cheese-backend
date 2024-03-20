@@ -67,7 +67,7 @@ export class AnswerService {
     createdById: number,
     content: string,
   ): Promise<number> {
-    const existingAnswerId = await this.questionsService.getAnswerIdOfCreatedBy(
+    const existingAnswerId = await this.getAnswerIdOfCreatedBy(
       questionId,
       createdById,
     );
@@ -139,6 +139,70 @@ export class AnswerService {
         currPage.map(async (entity) => {
           return this.getAnswerDto(
             questionId,
+            entity.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
+        }),
+      );
+      return PageHelper.PageMiddle(
+        prevPage,
+        currDto,
+        pageSize,
+        (answer) => answer.id,
+        (answer) => answer.id,
+      );
+    }
+  }
+
+  async getUserAnsweredAnswers(
+    userId: number,
+    pageStart: number | undefined,
+    pageSize: number,
+    viewerId?: number,
+    userAgent?: string,
+    ip?: string,
+  ): Promise<[AnswerDto[], PageRespondDto]> {
+    if (!pageStart) {
+      const currPage = await this.answerRepository.find({
+        where: { createdById: userId },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
+        }),
+      );
+      return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
+    } else {
+      const prevPage = await this.answerRepository.find({
+        where: {
+          createdById: userId,
+          id: LessThan(pageStart),
+        },
+        order: { id: 'DESC' },
+        take: pageSize,
+      });
+      const currPage = await this.answerRepository.find({
+        where: {
+          createdById: userId,
+          id: MoreThanOrEqual(pageStart),
+        },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
             entity.id,
             viewerId,
             userAgent,
@@ -375,6 +439,70 @@ export class AnswerService {
     }
   }
 
+  async getFavoriteAnswer(
+    userId: number,
+    pageStart: number, // undefined if from start
+    pageSize: number,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
+  ): Promise<[AnswerDto[], PageRespondDto]> {
+    if (!pageStart) {
+      const currPage = await this.answerRepository.find({
+        where: { favoritedBy: { id: userId } },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
+        }),
+      );
+      return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
+    } else {
+      const prevPage = await this.answerRepository.find({
+        where: {
+          favoritedBy: { id: userId },
+          id: LessThan(pageStart),
+        },
+        order: { id: 'DESC' },
+        take: pageSize,
+      });
+      const currPage = await this.answerRepository.find({
+        where: {
+          favoritedBy: { id: userId },
+          id: MoreThanOrEqual(pageStart),
+        },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
+        }),
+      );
+      return PageHelper.PageMiddle(
+        prevPage,
+        currDto,
+        pageSize,
+        (answer) => answer.id,
+        (answer) => answer.id,
+      );
+    }
+  }
+
   async favoriteAnswer(
     questionId: number,
     answerId: number,
@@ -503,5 +631,19 @@ export class AnswerService {
   async getAnswerCount(userId: number | undefined): Promise<number> {
     if (userId == undefined) return 0;
     return await this.answerRepository.countBy({ createdById: userId });
+  }
+
+  async getAnswerIdOfCreatedBy(
+    questionId: number,
+    createdById: number,
+  ): Promise<number | undefined> {
+    const answer = await this.answerRepository.findOne({
+      where: {
+        deletedAt: undefined,
+        questionId,
+        createdById,
+      },
+    });
+    return answer?.id ?? undefined;
   }
 }

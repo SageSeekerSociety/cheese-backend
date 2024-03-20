@@ -662,7 +662,7 @@ export class UsersService {
 
   async getFollowers(
     followeeId: number,
-    firstFollowerId: number, // undefined if from start
+    firstFollowerId: number | undefined, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
@@ -715,7 +715,7 @@ export class UsersService {
 
   async getFollowees(
     followerId: number,
-    firstFolloweeId: number, // undefined if from start
+    firstFolloweeId: number | undefined, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
