@@ -9,10 +9,12 @@ import {
   Post,
   Query,
   UploadedFile,
+  UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from '../auth/auth.service';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { GetMaterialRespondDto } from './DTO/get-material.dto';
 import {
   UploadMaterialRequestDto,
@@ -21,6 +23,7 @@ import {
 import { MaterialsService } from './materials.service';
 
 @Controller('/materials')
+@UseFilters(new BaseErrorExceptionFilter())
 export class MaterialsController {
   constructor(
     private readonly materialsService: MaterialsService,
@@ -34,11 +37,11 @@ export class MaterialsController {
     @UploadedFile() file: Express.Multer.File,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UploadMaterialRespondDto> {
+    console.log(req);
     this.authService.verify(auth);
     const materialId = await this.materialsService.uploadMaterial(
       req.type,
-      file.destination,
-      file.filename,
+      file,
     );
     return {
       code: 200,

@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
+import * as fs from 'fs';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { MaterialsController } from './materials.controller';
 import { InvalidMaterialTypeError } from './materials.error';
 import { MaterialsService } from './materials.service';
-import * as fs from 'fs';
 @Module({
   imports: [
     MulterModule.register({
@@ -36,13 +37,48 @@ import * as fs from 'fs';
           callback(null, uploadPath);
         },
         filename: (req, file, callback) => {
-          const randomName = Array(32)
+          /*const randomName = Array(32)
             .fill(null)
             .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');
+            .join('');*/
+          const randomName = uuidv4();
           return callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
+      limits: {
+        fileSize: 1024 * 1024 * 1024, //1GB
+      },
+      fileFilter(req, file, callback) {
+        switch (req.body.type) {
+          case 'image':
+            if (!file.mimetype.includes('image')) {
+              return callback(new Error('11'), false);
+            }
+            break;
+          case 'video':
+            if (!file.mimetype.includes('video')) {
+              return callback(new Error('11'), false);
+            }
+            break;
+          case 'audio':
+            if (!file.mimetype.includes('audio')) {
+              return callback(new Error('11'), false);
+            }
+            break;
+          case 'file':
+            if (
+              !file.mimetype.includes('application') &&
+              !file.mimetype.includes('text')
+            ) {
+              return callback(new Error('11'), false);
+            }
+            break;
+          default:
+            throw new InvalidMaterialTypeError();
+        }
+
+        callback(null, true);
+      },
     }),
     PrismaModule,
     AuthModule,
