@@ -448,7 +448,7 @@ export class UsersController {
     };
   }
 
-  @Get('/:userId/questions')
+  @Get('/:user_id/questions')
   async getUserAskedQuestions(
     @Param('user_id', ParseIntPipe) userId: number,
     @Query('page_start', new ParseIntPipe({ optional: true }))
@@ -485,7 +485,7 @@ export class UsersController {
     };
   }
 
-  @Get('/:userId/answers')
+  @Get('/:user_id/answers')
   async getUserAnsweredAnswers(
     @Param('user_id', ParseIntPipe) userId: number,
     @Query('page_start', new ParseIntPipe({ optional: true }))
@@ -504,14 +504,15 @@ export class UsersController {
     } catch {
       // the user is not logged in
     }
-    const [answers, page] = await this.answerService.getUserAnsweredAnswers(
-      userId,
-      pageStart,
-      pageSize,
-      viewerId,
-      ip,
-      userAgent,
-    );
+    const [answers, page] =
+      await this.answerService.getUserAnsweredAnswersAcrossQuestions(
+        userId,
+        pageStart,
+        pageSize,
+        viewerId,
+        ip,
+        userAgent,
+      );
     return {
       code: 200,
       message: 'Query asked questions successfully.',
@@ -522,7 +523,7 @@ export class UsersController {
     };
   }
 
-  @Get('/:id/follow/questions')
+  @Get('/:user_id/follow/questions')
   async getFollowedQuestions(
     @Param('user_id', ParseIntPipe) userId: number,
     @Query('page_start', new ParseIntPipe({ optional: true }))

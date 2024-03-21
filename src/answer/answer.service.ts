@@ -93,8 +93,8 @@ export class AnswerService {
     pageStart: number | undefined,
     pageSize: number,
     viewerId?: number,
-    userAgent?: string,
     ip?: string,
+    userAgent?: string,
   ): Promise<[AnswerDto[], PageRespondDto]> {
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
@@ -108,8 +108,8 @@ export class AnswerService {
             questionId,
             entity.id,
             viewerId,
-            userAgent,
             ip,
+            userAgent,
           );
         }),
       );
@@ -141,8 +141,8 @@ export class AnswerService {
             questionId,
             entity.id,
             viewerId,
-            userAgent,
             ip,
+            userAgent,
           );
         }),
       );
@@ -156,14 +156,16 @@ export class AnswerService {
     }
   }
 
-  async getUserAnsweredAnswers(
+  async getUserAnsweredAnswersAcrossQuestions(
     userId: number,
     pageStart: number | undefined,
     pageSize: number,
     viewerId?: number,
-    userAgent?: string,
     ip?: string,
+    userAgent?: string,
   ): Promise<[AnswerDto[], PageRespondDto]> {
+    if ((await this.usersService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
         where: { createdById: userId },
@@ -176,8 +178,8 @@ export class AnswerService {
             entity.questionId,
             entity.id,
             viewerId,
-            userAgent,
             ip,
+            userAgent,
           );
         }),
       );
@@ -205,8 +207,8 @@ export class AnswerService {
             entity.questionId,
             entity.id,
             viewerId,
-            userAgent,
             ip,
+            userAgent,
           );
         }),
       );
@@ -268,8 +270,8 @@ export class AnswerService {
     questionId: number,
     answerId: number,
     viewerId?: number,
-    userAgent?: string,
     ip?: string,
+    userAgent?: string,
   ): Promise<AnswerDto> {
     const answer = await this.answerRepository.findOne({
       where: {
@@ -439,7 +441,7 @@ export class AnswerService {
     }
   }
 
-  async getFavoriteAnswer(
+  async getFavoriteAnswers(
     userId: number,
     pageStart: number, // undefined if from start
     pageSize: number,
@@ -447,6 +449,8 @@ export class AnswerService {
     ip?: string, // optional
     userAgent?: string, // optional
   ): Promise<[AnswerDto[], PageRespondDto]> {
+    if ((await this.usersService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
         where: { favoritedBy: { id: userId } },
@@ -459,8 +463,8 @@ export class AnswerService {
             entity.questionId,
             entity.id,
             viewerId,
-            userAgent,
             ip,
+            userAgent,
           );
         }),
       );
@@ -488,8 +492,8 @@ export class AnswerService {
             entity.questionId,
             entity.id,
             viewerId,
-            userAgent,
             ip,
+            userAgent,
           );
         }),
       );

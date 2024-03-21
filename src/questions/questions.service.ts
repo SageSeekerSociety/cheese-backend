@@ -538,6 +538,8 @@ export class QuestionsService {
     ip?: string, // optional
     userAgent?: string, // optional
   ): Promise<[QuestionDto[], PageRespondDto]> {
+    if ((await this.userService.isUserExists(followerId)) == false)
+      throw new UserIdNotFoundError(followerId);
     if (firstQuestionId == undefined) {
       const relations = await this.questionFollowRelationRepository.find({
         where: { followerId },
@@ -551,33 +553,31 @@ export class QuestionsService {
       );
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
-      const prevRelationshipsPromise =
-        this.questionFollowRelationRepository.find({
-          where: {
-            followerId,
-            questionId: LessThan(firstQuestionId),
-          },
-          take: pageSize,
-          order: { questionId: 'DESC' },
-        });
-      const queriedRelationsPromise =
-        this.questionFollowRelationRepository.find({
-          where: {
-            followerId,
-            questionId: MoreThanOrEqual(firstQuestionId),
-          },
-          take: pageSize + 1,
-          order: { questionId: 'ASC' },
-        });
-      const DTOs = await Promise.all(
-        (await queriedRelationsPromise).map((r) => {
-          return this.getQuestionDto(r.questionId, viewerId, ip, userAgent);
-        }),
+      const prevPromise = this.questionFollowRelationRepository.find({
+        where: {
+          followerId,
+          questionId: LessThan(firstQuestionId),
+        },
+        take: pageSize,
+        order: { questionId: 'DESC' },
+      });
+      const currPromise = this.questionFollowRelationRepository.find({
+        where: {
+          followerId,
+          questionId: MoreThanOrEqual(firstQuestionId),
+        },
+        take: pageSize + 1,
+        order: { questionId: 'ASC' },
+      });
+      const [prev, curr] = await Promise.all([prevPromise, currPromise]);
+      const currDTOs = await Promise.all(
+        curr.map((record) =>
+          this.getQuestionDto(record.questionId, viewerId, ip, userAgent),
+        ),
       );
-      const prev = await prevRelationshipsPromise;
       return PageHelper.PageMiddle(
         prev,
-        DTOs,
+        currDTOs,
         pageSize,
         (i) => i.questionId,
         (i) => i.id,
@@ -916,6 +916,8 @@ export class QuestionsService {
     userAgent?: string,
     ip?: string,
   ): Promise<[QuestionDto[], PageRespondDto]> {
+    if ((await this.userService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
     if (!pageStart) {
       const currPage = await this.questionRepository.find({
         where: { createdById: userId },
