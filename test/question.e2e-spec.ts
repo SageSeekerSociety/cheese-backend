@@ -340,6 +340,28 @@ describe('Questions Module', () => {
         expect(respond.body.data.questions[i].id).toBe(questionIds[i]);
       }
     });
+    it('should get all the questions asked by the user', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${TestUserId}/questions`)
+        .query({
+          page_start: questionIds[1],
+          page_size: 1000,
+        })
+        .send();
+      expect(respond.body.message).toBe('Query asked questions successfully.');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.page.page_size).toBe(questionIds.length - 1);
+      expect(respond.body.data.page.page_start).toBe(questionIds[1]);
+      expect(respond.body.data.page.has_prev).toBe(true);
+      expect(respond.body.data.page.prev_start).toBe(questionIds[0]);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
+      expect(respond.body.data.questions.length).toBe(questionIds.length - 1);
+      for (let i = 1; i < questionIds.length; i++) {
+        expect(respond.body.data.questions[i - 1].id).toBe(questionIds[i]);
+      }
+    });
     it('should get paged questions asked by the user', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/users/${TestUserId}/questions`)
@@ -605,6 +627,30 @@ describe('Questions Module', () => {
       expect(respond2.body.code).toBe(201);
       expect(respond2.status).toBe(201);
       expect(respond2.body.data.follow_count).toBe(2);
+      const respond3 = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[2]}/followers`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond3.body.message).toBe('OK');
+      expect(respond3.body.code).toBe(201);
+      expect(respond3.status).toBe(201);
+      expect(respond3.body.data.follow_count).toBe(1);
+      const respond4 = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[3]}/followers`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond4.body.message).toBe('OK');
+      expect(respond4.body.code).toBe(201);
+      expect(respond4.status).toBe(201);
+      expect(respond4.body.data.follow_count).toBe(1);
+      const respond5 = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[4]}/followers`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond5.body.message).toBe('OK');
+      expect(respond5.body.code).toBe(201);
+      expect(respond5.status).toBe(201);
+      expect(respond5.body.data.follow_count).toBe(1);
     });
     it('should get followed questions', async () => {
       const respond = await request(app.getHttpServer())
@@ -634,14 +680,63 @@ describe('Questions Module', () => {
       );
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
-      expect(respond.body.data.page.page_size).toBe(1);
+      expect(respond.body.data.page.page_size).toBe(4);
       expect(respond.body.data.page.page_start).toBe(questionIds[1]);
       expect(respond.body.data.page.has_prev).toBe(false);
       expect(respond.body.data.page.prev_start).toBe(0);
       expect(respond.body.data.page.has_more).toBe(false);
       expect(respond.body.data.page.next_start).toBe(0);
-      expect(respond.body.data.questions.length).toBe(1);
+      expect(respond.body.data.questions.length).toBe(4);
       expect(respond.body.data.questions[0].id).toBe(questionIds[1]);
+      expect(respond.body.data.questions[1].id).toBe(questionIds[2]);
+      expect(respond.body.data.questions[2].id).toBe(questionIds[3]);
+      expect(respond.body.data.questions[3].id).toBe(questionIds[4]);
+    });
+    it('should get followed questions', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}/follow/questions`)
+        .query({
+          page_start: questionIds[2],
+          page_size: 1000,
+        })
+        .send();
+      expect(respond.body.message).toBe(
+        'Query followed questions successfully.',
+      );
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.page.page_size).toBe(3);
+      expect(respond.body.data.page.page_start).toBe(questionIds[2]);
+      expect(respond.body.data.page.has_prev).toBe(true);
+      expect(respond.body.data.page.prev_start).toBe(questionIds[1]);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
+      expect(respond.body.data.questions.length).toBe(3);
+      expect(respond.body.data.questions[0].id).toBe(questionIds[2]);
+      expect(respond.body.data.questions[1].id).toBe(questionIds[3]);
+      expect(respond.body.data.questions[2].id).toBe(questionIds[4]);
+    });
+    it('should get followed questions', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}/follow/questions`)
+        .query({
+          page_start: questionIds[2],
+          page_size: 1,
+        })
+        .send();
+      expect(respond.body.message).toBe(
+        'Query followed questions successfully.',
+      );
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.page.page_size).toBe(1);
+      expect(respond.body.data.page.page_start).toBe(questionIds[2]);
+      expect(respond.body.data.page.has_prev).toBe(true);
+      expect(respond.body.data.page.prev_start).toBe(questionIds[1]);
+      expect(respond.body.data.page.has_more).toBe(true);
+      expect(respond.body.data.page.next_start).toBe(questionIds[3]);
+      expect(respond.body.data.questions.length).toBe(1);
+      expect(respond.body.data.questions[0].id).toBe(questionIds[2]);
     });
     it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
@@ -1009,8 +1104,13 @@ describe('Questions Module', () => {
     expect(respond.body.data.page.has_more).toBe(false);
     expect(respond.body.data.page.next_start).toBe(0);
     expect(respond.body.data.invitations.length).toBe(2);
-    expect(respond.body.data.invitations[0].questionId).toBe(questionIds[1]);
-    expect(respond.body.data.invitations[1].questionId).toBe(questionIds[1]);
+    expect(respond.body.data.invitations[0].question_id).toBe(questionIds[1]);
+    expect(typeof respond.body.data.invitations[0].id).toBe('number');
+    expect(respond.body.data.invitations[0].user).toBeDefined();
+    expect(typeof respond.body.data.invitations[0].created_at).toBe('number');
+    expect(typeof respond.body.data.invitations[0].updated_at).toBe('number');
+    expect(typeof respond.body.data.invitations[0].is_answered).toBe('boolean');
+    expect(respond.body.data.invitations[1].question_id).toBe(questionIds[1]);
   });
   it('should get invitations', async () => {
     const respond = await request(app.getHttpServer())
@@ -1028,9 +1128,9 @@ describe('Questions Module', () => {
     expect(respond.body.data.page.has_more).toBe(false);
     expect(respond.body.data.page.next_start).toBe(0);
     expect(respond.body.data.invitations.length).toBe(2);
-    expect(respond.body.data.invitations[0].questionId).toBe(questionIds[1]);
+    expect(respond.body.data.invitations[0].question_id).toBe(questionIds[1]);
     expect(respond.body.data.invitations[0].user.id).toBe(TestUserId);
-    expect(respond.body.data.invitations[1].questionId).toBe(questionIds[1]);
+    expect(respond.body.data.invitations[1].question_id).toBe(questionIds[1]);
     expect(respond.body.data.invitations[1].user.id).toBe(auxUserId);
   });
   it('should get invitations', async () => {
@@ -1049,7 +1149,7 @@ describe('Questions Module', () => {
     expect(respond.body.data.page.prev_start).toBe(0);
     expect(respond.body.data.page.has_more).toBe(true);
     expect(respond.body.data.invitations.length).toBe(1);
-    expect(respond.body.data.invitations[0].questionId).toBe(questionIds[1]);
+    expect(respond.body.data.invitations[0].question_id).toBe(questionIds[1]);
     expect(respond.body.data.invitations[0].user.id).toBe(TestUserId);
     const next = respond.body.data.page.next_start;
     const respond2 = await request(app.getHttpServer())
@@ -1070,7 +1170,7 @@ describe('Questions Module', () => {
     );
     expect(respond2.body.data.page.has_more).toBe(false);
     expect(respond2.body.data.invitations.length).toBe(1);
-    expect(respond2.body.data.invitations[0].questionId).toBe(questionIds[1]);
+    expect(respond2.body.data.invitations[0].question_id).toBe(questionIds[1]);
     expect(respond2.body.data.invitations[0].user.id).toBe(auxUserId);
   });
   it('should get invitations', async () => {
@@ -1089,9 +1189,9 @@ describe('Questions Module', () => {
     expect(respond.body.data.page.has_more).toBe(false);
     expect(respond.body.data.page.next_start).toBe(0);
     expect(respond.body.data.invitations.length).toBe(2);
-    expect(respond.body.data.invitations[0].questionId).toBe(questionIds[1]);
+    expect(respond.body.data.invitations[0].question_id).toBe(questionIds[1]);
     expect(respond.body.data.invitations[0].user.id).toBe(auxUserId);
-    expect(respond.body.data.invitations[1].questionId).toBe(questionIds[1]);
+    expect(respond.body.data.invitations[1].question_id).toBe(questionIds[1]);
     expect(respond.body.data.invitations[1].user.id).toBe(TestUserId);
   });
   it('should get invitations', async () => {
@@ -1110,7 +1210,7 @@ describe('Questions Module', () => {
     expect(respond.body.data.page.prev_start).toBe(0);
     expect(respond.body.data.page.has_more).toBe(true);
     expect(respond.body.data.invitations.length).toBe(1);
-    expect(respond.body.data.invitations[0].questionId).toBe(questionIds[1]);
+    expect(respond.body.data.invitations[0].question_id).toBe(questionIds[1]);
     expect(respond.body.data.invitations[0].user.id).toBe(auxUserId);
     const next = respond.body.data.page.next_start;
     const respond2 = await request(app.getHttpServer())
@@ -1131,7 +1231,7 @@ describe('Questions Module', () => {
     );
     expect(respond2.body.data.page.has_more).toBe(false);
     expect(respond2.body.data.invitations.length).toBe(1);
-    expect(respond2.body.data.invitations[0].questionId).toBe(questionIds[1]);
+    expect(respond2.body.data.invitations[0].question_id).toBe(questionIds[1]);
     expect(respond2.body.data.invitations[0].user.id).toBe(TestUserId);
   });
   describe('should deal with the Q&A function', () => {
@@ -1208,7 +1308,7 @@ describe('Questions Module', () => {
         .get(`/questions/${questionIds[1]}/invitations/${invitationIds[1]}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.data.invitation.questionId).toBe(questionIds[1]);
+      expect(respond.body.data.invitation.question_id).toBe(questionIds[1]);
       expect(respond.body.data.invitation.id).toBe(invitationIds[1]);
       expect(respond.body.code).toBe(200);
     });

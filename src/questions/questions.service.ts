@@ -699,11 +699,11 @@ export class QuestionsService {
     ): Promise<QuestionInvitationDto> => {
       return {
         id: invitation.id,
-        questionId: invitation.questionId,
+        question_id: invitation.questionId,
         user: await this.userService.getUserDtoById(invitation.userId),
-        createdAt: invitation.createdAt.getTime(),
-        updatedAt: invitation.updatedAt.getTime(),
-        isAnswered: await this.isQuestionAnsweredBy(
+        created_at: invitation.createdAt.getTime(),
+        updated_at: invitation.updatedAt.getTime(),
+        is_answered: await this.isQuestionAnsweredBy(
           questionId,
           invitation.userId,
         ),
@@ -819,11 +819,11 @@ export class QuestionsService {
     const userdto = await this.userService.getUserDtoById(invitation.userId);
     return {
       id: invitation.id,
-      questionId: invitation.questionId,
+      question_id: invitation.questionId,
       user: userdto,
-      createdAt: invitation.createdAt.getTime(),
-      updatedAt: invitation.updatedAt.getTime(),
-      isAnswered: await this.isQuestionAnsweredBy(
+      created_at: invitation.createdAt.getTime(),
+      updated_at: invitation.updatedAt.getTime(),
+      is_answered: await this.isQuestionAnsweredBy(
         questionId,
         invitation.userId,
       ),
