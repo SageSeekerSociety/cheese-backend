@@ -1001,7 +1001,7 @@ describe('Questions Module', () => {
     });
   });
 
-  describe('Bounty&accept answer test', () => {
+  describe('Bounty test', () => {
     it('should set bounty to a question', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/bounty`)
@@ -1019,12 +1019,20 @@ describe('Questions Module', () => {
       console.log(respond.body.data);
       expect(respond.body.data.question.bounty).toBe(15);
     });
+    it('should return LowerBountyError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/bounty`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ bounty: 10 });
+      expect(respond.body.message).toMatch(/^LowerBountyError: /);
+      expect(respond.body.code).toBe(400);
+    });
     it('should return BountyOutOfLimitError', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/bounty`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ bounty: 1000 });
-      expect(respond.body.message).toMatch(/^bountyOutOfLimitError: /);
+      expect(respond.body.message).toMatch(/^BountyOutOfLimitError: /);
       expect(respond.body.code).toBe(400);
     });
     it('should return AuthenticationRequiredError', async () => {
@@ -1042,7 +1050,8 @@ describe('Questions Module', () => {
       expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
       expect(respond.body.code).toBe(404);
     });
-
+  });
+  describe('Accpet answer test', () => {
     it('should accept an answer', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/acceptance`)

@@ -58,10 +58,10 @@ export class QuestionNotHasThisTopicError extends BaseError {
   }
 }
 
-export class bountyOutOfLimitError extends BaseError {
+export class BountyOutOfLimitError extends BaseError {
   constructor(bounty: number) {
     super(
-      'bountyOutOfLimitError',
+      'BountyOutOfLimitError',
       `Bounty ${bounty} is outside the limit.`,
       400,
     );
@@ -78,6 +78,16 @@ export class AlreadyAnsweredError extends BaseError {
     super(
       'AlreadyAnsweredError',
       `User with id ${id} has already answered the question.`,
+      400,
+    );
+  }
+}
+
+export class LowerBountyError extends BaseError {
+  constructor(id: number, bounty: number) {
+    super(
+      'LowerBountyError',
+      `Bounty ${bounty} is lower than the current bounty of question ${id}.`,
       400,
     );
   }

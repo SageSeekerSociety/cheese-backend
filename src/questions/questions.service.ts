@@ -44,12 +44,13 @@ import { QuestionDto } from './DTO/question.dto';
 import {
   AlreadyAnsweredError,
   AlreadyInvitedError,
+  BountyOutOfLimitError,
+  LowerBountyError,
   QuestionAlreadyFollowedError,
   QuestionIdNotFoundError,
   QuestionInvitationIdNotFoundError,
   QuestionNotFollowedYetError,
   QuestionNotHasThisTopicError,
-  bountyOutOfLimitError,
 } from './questions.error';
 import { QuestionElasticsearchDocument } from './questions.es-doc';
 import {
@@ -895,8 +896,13 @@ export class QuestionsService {
     if (!question) {
       throw new QuestionIdNotFoundError(questionId);
     }
-    if (bounty <= 0 || bounty >= 20) {
-      throw new bountyOutOfLimitError(bounty);
+    if (bounty <= 0 || bounty > 20) {
+      throw new BountyOutOfLimitError(bounty);
+    }
+    if (question.bounty) {
+      if (question.bounty > bounty) {
+        throw new LowerBountyError(questionId, bounty);
+      }
     }
     question.bounty = bounty;
     await this.questionRepository.save(question);
