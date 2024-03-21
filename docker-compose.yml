@@ -47,11 +47,11 @@ services:
       test:
         ["CMD-SHELL",
         "curl -s --user elastic:${ELASTICSEARCH_AUTH_PASSWORD} -X GET http://localhost:9200/_cluster/health?pretty | grep status | grep -E 'green|yello'"]
-      start_period: 30s
+      start_period: 60s
       start_interval: 3s
       interval: 5m
       timeout: 10s
-      retries: 10
+      retries: 20
     
 
 volumes:
