@@ -23,10 +23,10 @@ FROM dev AS test
 WORKDIR /app
 RUN pnpm lint && pnpm test && pnpm test:cov
 
-FROM base AS prod-deps
+FROM dev-deps AS prod-deps
 WORKDIR /app
 ENV NODE_ENV="production"
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm prune --prod
 
 # note that we need to use development deps to build the product
 FROM dev-deps AS prod-build
