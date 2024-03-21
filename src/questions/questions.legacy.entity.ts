@@ -71,16 +71,10 @@ export class Question {
   type: number;
 
   @Column()
-  hasBounty: boolean;
-
-  @Column()
   bounty: number;
 
-  @Column()
-  isSolved: boolean;
-
-  @Column()
-  acceptedAnswer: Answer;
+  @OneToOne(() => Answer, (answer) => answer.question)
+  acceptedAnswer: Answer | null;
 
   @OneToOne(() => GroupQuestionRelationship, (gqr) => gqr.question)
   groupQuestionRelationship: GroupQuestionRelationship;

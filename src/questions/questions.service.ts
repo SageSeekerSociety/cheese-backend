@@ -7,26 +7,46 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
+import {
+  AttitudableType,
+  AttitudeType,
+  QuestionInvitationRelation,
+} from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AnswerDto } from '../answer/DTO/answer.dto';
 import { AnswerNotFoundError } from '../answer/answer.error';
 import { Answer } from '../answer/answer.legacy.entity';
 import { AnswerService } from '../answer/answer.service';
+import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
+import { AttitudeService } from '../attitude/attitude.service';
+import { CommentableType } from '../comments/commentable.enum';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import {
+  getCurrWhereBySort,
+  getPrevWhereBySort,
+} from '../common/helper/where.helper';
+import { SortPattern } from '../common/pipe/parse-sort-pattern.pipe';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { GroupsService } from '../groups/groups.service';
 import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
+import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
+import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
+  AlreadyAnsweredError,
+  AlreadyInvitedError,
   QuestionAlreadyFollowedError,
   QuestionIdNotFoundError,
+  QuestionInvitationIdNotFoundError,
   QuestionNotFollowedYetError,
   QuestionNotHasThisTopicError,
   bountyOutOfLimitError,
@@ -45,6 +65,10 @@ export class QuestionsService {
   constructor(
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
+    private readonly attitudeService: AttitudeService,
+    @Inject(forwardRef(() => GroupsService))
+    private groupService: GroupsService,
+    @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
@@ -58,10 +82,10 @@ export class QuestionsService {
     private readonly questionFollowRelationRepository: Repository<QuestionFollowerRelation>,
     @InjectRepository(QuestionSearchLog)
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
-    @InjectRepository(Answer)
-    private readonly answerRepository: Repository<Answer>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
+    @InjectRepository(Answer)
+    private readonly answerRepository: Repository<Answer>,
   ) {}
 
   async addTopicToQuestion(
@@ -106,7 +130,7 @@ export class QuestionsService {
     });
     if (relation == null)
       throw new QuestionNotHasThisTopicError(questionId, topicId);
-    await questionTopicRelationRepository.softDelete({ id: relation.id });
+    await questionTopicRelationRepository.softRemove({ id: relation.id });
   }
 
   // returns: question id
@@ -133,6 +157,7 @@ export class QuestionsService {
           content,
           type,
           groupId,
+          bounty: 0,
         });
         await questionRepository.save(question);
         const questionTopicRelationRepository = entityManager.getRepository(
@@ -205,41 +230,99 @@ export class QuestionsService {
     return await this.questionQueryLogRepository.countBy({ questionId });
   }
 
+  async getAnswerIdOfCreatedBy(
+    questionId: number,
+    createdById: number,
+  ): Promise<number | undefined> {
+    const answer = await this.prismaService.answer.findFirst({
+      where: {
+        deletedAt: undefined,
+        questionId,
+        createdById,
+      },
+    });
+    return answer?.id ?? undefined;
+  }
+
   async getQuestionDto(
     questionId: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId?: number,
+    ip?: string,
+    userAgent?: string,
   ): Promise<QuestionDto> {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
+    const question = await this.prismaService.question.findUnique({
+      where: { id: questionId },
+      include: {
+        accepted_answer: true,
+      },
     });
-    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
-    const topicsPromise = this.getTopicDtosOfQuestion(questionId);
-    const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
-    const followCountPromise = this.getFollowCountOfQuestion(questionId);
-    const viewCountPromise = this.getViewCountOfQuestion(questionId);
-    const answer = question.acceptedAnswer;
-    const AnswerDto = await this.answerService.getAnswerDto(answer.id);
-    const [topics, hasFollowed, followCount, viewCount] = await Promise.all([
-      topicsPromise,
-      hasFollowedPromise,
-      followCountPromise,
-      viewCountPromise,
-    ]);
-    let user: UserDto = undefined!; // For case that user is deleted.
+    if (question == undefined || question.deletedAt)
+      throw new QuestionIdNotFoundError(questionId);
+    let userDto: UserDto | null = null; // For case that user is deleted.
     try {
-      user = await this.userService.getUserDtoById(
+      userDto = await this.userService.getUserDtoById(
         question.createdById,
         viewerId,
         ip,
         userAgent,
       );
     } catch (e) {
-      // If user is undefined, it means that one user created this question, but the user
+      // If user is null, it means that one user created this question, but the user
       // does not exist now. This is NOT a data integrity problem, since user can be
-      // deleted. So we just return a undefined and not throw an error.
+      // deleted. So we just return a null and not throw an error.
     }
+    const topicsPromise = this.getTopicDtosOfQuestion(questionId);
+    const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
+    const followCountPromise = this.getFollowCountOfQuestion(questionId);
+    const viewCountPromise = this.getViewCountOfQuestion(questionId);
+    const myAnswerIdPromise =
+      viewerId == undefined
+        ? Promise.resolve(undefined) // If the viewer is not logged in, then the field should be missing.
+        : this.getAnswerIdOfCreatedBy(questionId, viewerId); // If the viewer is logged in, then the field should be a number or null.
+    const attitudeDtoPromise = this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.QUESTION,
+      questionId,
+      viewerId,
+    );
+    const answerCountPromise = this.prismaService.answer.count({
+      where: {
+        deletedAt: null,
+        questionId,
+      },
+    });
+    const commentCountPromise = this.prismaService.comment.count({
+      where: {
+        deletedAt: null,
+        commentableType: CommentableType.QUESTION,
+        commentableId: questionId,
+      },
+    });
+    const groupDtoPromise =
+      question.groupId == undefined
+        ? Promise.resolve(null)
+        : this.groupService.getGroupDtoById(undefined, question.groupId);
+
+    const [
+      topics,
+      hasFollowed,
+      followCount,
+      viewCount,
+      myAnswerId,
+      attitudeDto,
+      answerCount,
+      commentCount,
+      groupDto,
+    ] = await Promise.all([
+      topicsPromise,
+      hasFollowedPromise,
+      followCountPromise,
+      viewCountPromise,
+      myAnswerIdPromise,
+      attitudeDtoPromise,
+      answerCountPromise,
+      commentCountPromise,
+      groupDtoPromise,
+    ]);
     if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.questionQueryLogRepository.create({
         viewerId,
@@ -249,28 +332,44 @@ export class QuestionsService {
       });
       await this.questionQueryLogRepository.save(log);
     }
+    const question1 = await this.questionRepository.findOne({
+      where: { id: questionId },
+      relations: {
+        acceptedAnswer: true,
+      },
+    });
+    let answerDto: AnswerDto | null;
+    if (question1?.acceptedAnswer?.id != null) {
+      answerDto = await this.answerService.getAnswerDto(
+        questionId,
+        question1?.acceptedAnswer?.id,
+        viewerId,
+        userAgent,
+        ip,
+      );
+    } else {
+      answerDto = null;
+    }
+
     return {
       id: question.id,
       title: question.title,
       content: question.content,
-      author: user,
+      author: userDto,
       type: question.type,
       topics,
       created_at: question.createdAt.getTime(),
       updated_at: question.updatedAt.getTime(),
       is_follow: hasFollowed,
-      is_like: false, // TODO: Implement this.
-      answer_count: 0, // TODO: Implement this.
-      comment_count: 0, // TODO: Implement this.
+      my_answer_id: myAnswerId,
+      answer_count: answerCount,
+      comment_count: commentCount,
       follow_count: followCount,
-      like_count: 0, // TODO: Implement this.
+      attitudes: attitudeDto,
       view_count: viewCount,
-      is_group: question.groupId != undefined,
-      group: undefined!, // TODO: Implement this.
-      has_bounty: question.hasBounty,
-      bounty: question.bounty,
-      is_solved: question.isSolved,
-      accepted_answer: AnswerDto,
+      group: groupDto,
+      bounty: question.bounty == null ? 0 : question.bounty,
+      accepted_answer: answerDto,
     };
   }
 
@@ -540,10 +639,255 @@ export class QuestionsService {
     }
   }
 
+  // returns:
+  //    invitation id
+  async inviteUsersToAnswerQuestion(
+    questionId: number,
+    userId: number,
+  ): Promise<number> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    if ((await this.userService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
+    const haveBeenAnswered = await this.getAnswerIdOfCreatedBy(
+      questionId,
+      userId,
+    );
+    if (haveBeenAnswered) {
+      throw new AlreadyAnsweredError(userId);
+    }
+    const haveBeenInvited =
+      await this.prismaService.questionInvitationRelation.findFirst({
+        where: {
+          questionId: questionId,
+          userId: userId,
+        },
+      });
+    if (haveBeenInvited) {
+      throw new AlreadyInvitedError(userId);
+    }
+
+    const Invitation =
+      await this.prismaService.questionInvitationRelation.create({
+        data: {
+          questionId,
+          userId,
+        },
+      });
+    return Invitation.id;
+  }
+
+  async getQuestionInvitations(
+    questionId: number,
+    sort: SortPattern,
+    pageStart: number | undefined,
+    pageSize: number | undefined = 20,
+  ): Promise<[QuestionInvitationDto[], PageRespondDto]> {
+    const record2dto = async (
+      invitation: QuestionInvitationRelation,
+    ): Promise<QuestionInvitationDto> => {
+      return {
+        id: invitation.id,
+        questionId: invitation.questionId,
+        user: await this.userService.getUserDtoById(invitation.userId),
+        createdAt: invitation.createdAt.getTime(),
+        updatedAt: invitation.updatedAt.getTime(),
+        isAnswered: await this.isQuestionAnsweredBy(
+          questionId,
+          invitation.userId,
+        ),
+      };
+    };
+
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    if (pageStart == undefined) {
+      const invitations =
+        await this.prismaService.questionInvitationRelation.findMany({
+          where: { questionId },
+          orderBy: sort,
+          take: pageSize + 1,
+        });
+      const invitationDtos: QuestionInvitationDto[] = await Promise.all(
+        invitations.map(record2dto),
+      );
+      return PageHelper.PageStart(invitationDtos, pageSize, (i) => i.id);
+    } else {
+      const cursor =
+        await this.prismaService.questionInvitationRelation.findUnique({
+          where: { id: pageStart },
+        });
+      if (cursor == undefined)
+        throw new QuestionInvitationIdNotFoundError(pageStart);
+      const prev = await this.prismaService.questionInvitationRelation.findMany(
+        {
+          where: {
+            questionId,
+            ...getPrevWhereBySort(sort, cursor),
+          },
+          orderBy: sort,
+          take: pageSize,
+        },
+      );
+      const curr = await this.prismaService.questionInvitationRelation.findMany(
+        {
+          where: {
+            questionId,
+            ...getCurrWhereBySort(sort, cursor),
+          },
+          orderBy: sort,
+          take: pageSize + 1,
+        },
+      );
+      const currDtos = await Promise.all(curr.map(record2dto));
+      return PageHelper.PageMiddle(
+        prev,
+        currDtos,
+        pageSize,
+        (i) => i.id,
+        (i) => i.id,
+      );
+    }
+  }
+
+  async getQuestionInvitationRecommendations(
+    questionId: number,
+    pageSize = 5,
+  ): Promise<UserDto[]> {
+    const question = await this.questionRepository.findOne({
+      where: { id: questionId },
+    });
+    if (!question) {
+      throw new QuestionIdNotFoundError(questionId);
+    }
+    const randomUserEntities = await this.prismaService.$queryRaw<User[]>`
+      SELECT * FROM "user" WHERE id NOT IN (
+        SELECT "userId" FROM question_invitation_relation
+        WHERE "questionId" = ${questionId}
+      )
+      ORDER BY RANDOM()
+      LIMIT ${pageSize}
+    `;
+    // const randomUserEntities = await this.prismaService.user.findMany({
+    //   take: pageSize,
+    //   orderBy: {
+    //     id: 'asc',
+    //   }, //TODO
+    //   where: {
+    //     NOT: {
+    //       QuestionInvitationRelation: {
+    //         some: {
+    //           questionId,
+    //         },
+    //       }
+    //     }
+    //   }
+    // });
+
+    const userDtos = await Promise.all(
+      randomUserEntities.map((entity) =>
+        this.userService.getUserDtoById(entity.id),
+      ),
+    );
+
+    return userDtos;
+  }
+  async getQuestionInvitationDto(
+    questionId: number,
+    invitationId: number,
+  ): Promise<QuestionInvitationDto> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    const invitation =
+      await this.prismaService.questionInvitationRelation.findFirst({
+        where: { id: invitationId, questionId },
+      });
+    if (!invitation) {
+      throw new QuestionInvitationIdNotFoundError(invitationId);
+    }
+    const userdto = await this.userService.getUserDtoById(invitation.userId);
+    return {
+      id: invitation.id,
+      questionId: invitation.questionId,
+      user: userdto,
+      createdAt: invitation.createdAt.getTime(),
+      updatedAt: invitation.updatedAt.getTime(),
+      isAnswered: await this.isQuestionAnsweredBy(
+        questionId,
+        invitation.userId,
+      ),
+    };
+  }
+
+  async cancelInvitation(
+    questionId: number,
+    invitationId: number,
+  ): Promise<void> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    const invitation =
+      await this.prismaService.questionInvitationRelation.findFirst({
+        where: { id: invitationId, questionId },
+      });
+    if (!invitation) {
+      throw new QuestionInvitationIdNotFoundError(invitationId);
+    }
+    await this.prismaService.questionInvitationRelation.delete({
+      where: {
+        id: invitationId,
+      },
+    });
+  }
+
   async isQuestionExists(questionId: number): Promise<boolean> {
     return (await this.questionRepository.countBy({ id: questionId })) > 0;
   }
 
+  async setAttitudeToQuestion(
+    questionId: number,
+    userId: number,
+    attitudeType: AttitudeType,
+  ): Promise<AttitudeStateDto> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    await this.attitudeService.setAttitude(
+      userId,
+      AttitudableType.QUESTION,
+      questionId,
+      attitudeType,
+    );
+    return this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.QUESTION,
+      questionId,
+      userId,
+    );
+  }
+
+  async isQuestionAnsweredBy(
+    questionId: number,
+    userId: number | undefined,
+  ): Promise<boolean> {
+    if (userId == undefined) return false;
+    return (await this.getAnswerIdOfCreatedBy(questionId, userId)) != undefined;
+  }
+
+  async getInvitedById(
+    questionId: number,
+    invitationId: number,
+  ): Promise<number> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    const invitation =
+      await this.prismaService.questionInvitationRelation.findUnique({
+        where: {
+          questionId,
+          id: invitationId,
+        },
+      });
+    if (invitation == undefined)
+      throw new QuestionInvitationIdNotFoundError(invitationId);
+    return invitation.userId;
+  }
   async setBounty(questionId: number, bounty: number) {
     const question = await this.questionRepository.findOneBy({
       id: questionId,

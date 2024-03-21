@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnswerModule } from './answer/answer.module';
+import { AvatarsModule } from './avatars/avatars.module';
 import { CommentsModule } from './comments/comment.module';
 import configuration, {
   databaseConfigFactory,
@@ -9,6 +10,7 @@ import configuration, {
 import { GroupsModule } from './groups/groups.module';
 import { QuestionsModule } from './questions/questions.module';
 import { UsersModule } from './users/users.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration] }),
@@ -21,6 +23,7 @@ import { UsersModule } from './users/users.module';
     QuestionsModule,
     AnswerModule,
     GroupsModule,
+    AvatarsModule,
     CommentsModule,
   ],
   controllers: [],

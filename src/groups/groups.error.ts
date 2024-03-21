@@ -55,3 +55,13 @@ export class GroupNotJoinedError extends BaseError {
     super('GroupNotJoinedError', `Group ${groupId} not joined`, 409);
   }
 }
+
+export class GroupProfileNotFoundError extends BaseError {
+  constructor(public readonly groupId: number) {
+    super(
+      'GroupProfileNotFoundError',
+      `Group ${groupId}'s profile not found`,
+      404,
+    );
+  }
+}

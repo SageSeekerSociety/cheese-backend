@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator';
+import { IsInt, IsString } from 'class-validator';
 import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
 export class UpdateGroupDto {
@@ -8,8 +8,8 @@ export class UpdateGroupDto {
   @IsString()
   readonly intro: string;
 
-  @IsString()
-  readonly avatar: string;
+  @IsInt()
+  readonly avatarId: number;
 
   // todo: add cover
 }

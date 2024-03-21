@@ -1,3 +1,5 @@
+import { AttitudeStateDto } from '../../attitude/DTO/attitude-state.dto';
+import { GroupDto } from '../../groups/DTO/group.dto';
 import { UserDto } from '../../users/DTO/user.dto';
 
 export class AnswerDto {
@@ -7,9 +9,11 @@ export class AnswerDto {
   author: UserDto;
   created_at: number; // timestamp
   updated_at: number; // timestamp
-  agree_type: number;
+  attitudes: AttitudeStateDto;
   is_favorite: boolean;
-  agree_count: number;
+  comment_count: number;
   favorite_count: number;
   view_count: number;
+  is_group: boolean;
+  group?: GroupDto;
 }

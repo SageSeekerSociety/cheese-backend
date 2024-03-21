@@ -8,10 +8,15 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { AttitudableType, AttitudeType } from '@prisma/client';
+import {
+  AttitudableType,
+  AttitudeType,
+  AttitudeTypeNotUndefined,
+} from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { UsersService } from '../users/users.service';
 import { UserIdNotFoundError } from '../users/users.error';
+import { UsersService } from '../users/users.service';
+import { AttitudeStateDto } from './DTO/attitude-state.dto';
 
 @Injectable()
 export class AttitudeService {
@@ -29,6 +34,13 @@ export class AttitudeService {
     if ((await this.usersService.isUserExists(userId)) == false) {
       throw new UserIdNotFoundError(userId);
     }
+    const attitudeCondition = {
+      attitudableId_userId_attitudableType: {
+        userId,
+        attitudableType,
+        attitudableId,
+      },
+    };
     await this.prismaService.attitudeLog.create({
       data: {
         userId,
@@ -37,24 +49,24 @@ export class AttitudeService {
         attitude,
       },
     });
-    await this.prismaService.attitude.upsert({
-      where: {
-        attitudableId_userId_attitudableType: {
+    if (attitude != AttitudeType.UNDEFINED) {
+      await this.prismaService.attitude.upsert({
+        where: attitudeCondition,
+        update: {
+          attitude,
+        },
+        create: {
           userId,
           attitudableType,
           attitudableId,
+          attitude,
         },
-      },
-      update: {
-        attitude,
-      },
-      create: {
-        userId,
-        attitudableType,
-        attitudableId,
-        attitude,
-      },
-    });
+      });
+    } else {
+      await this.prismaService.attitude.delete({
+        where: attitudeCondition,
+      });
+    }
   }
 
   async getAttitude(
@@ -77,7 +89,7 @@ export class AttitudeService {
   async countAttitude(
     attitudableType: AttitudableType,
     attitudableId: number,
-    attitude: AttitudeType,
+    attitude: AttitudeTypeNotUndefined,
   ): Promise<number> {
     return await this.prismaService.attitude.count({
       where: {
@@ -86,5 +98,27 @@ export class AttitudeService {
         attitude,
       },
     });
+  }
+
+  async getAttitudeStatusDto(
+    attitudableType: AttitudableType,
+    attitudableId: number,
+    userId?: number | undefined,
+  ): Promise<AttitudeStateDto> {
+    const positiveCount = await this.countAttitude(
+      attitudableType,
+      attitudableId,
+      AttitudeType.POSITIVE,
+    );
+    const negativeCount = await this.countAttitude(
+      attitudableType,
+      attitudableId,
+      AttitudeType.NEGATIVE,
+    );
+    const userAttitude =
+      userId == null
+        ? AttitudeType.UNDEFINED
+        : await this.getAttitude(userId, attitudableType, attitudableId);
+    return new AttitudeStateDto(positiveCount, negativeCount, userAttitude);
   }
 }

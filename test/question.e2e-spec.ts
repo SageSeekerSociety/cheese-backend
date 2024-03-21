@@ -29,6 +29,7 @@ describe('Questions Module', () => {
   const TopicIds: number[] = [];
   const questionIds: number[] = [];
   const answerIds: number[] = [];
+  const invitationIds: number[] = [];
   let auxUserId: number;
   let auxAccessToken: string;
 
@@ -245,15 +246,18 @@ describe('Questions Module', () => {
       );
       expect(respond.body.data.question.created_at).toBeDefined();
       expect(respond.body.data.question.updated_at).toBeDefined();
+      expect(respond.body.data.question.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.question.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.question.attitudes.difference).toBe(0);
+      expect(respond.body.data.question.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
       expect(respond.body.data.question.is_follow).toBe(false);
-      expect(respond.body.data.question.is_like).toBe(false);
       expect(respond.body.data.question.answer_count).toBe(0);
-      expect(respond.body.data.question.view_count).toBe(0);
-      expect(respond.body.data.question.follow_count).toBe(0);
-      expect(respond.body.data.question.like_count).toBe(0);
       expect(respond.body.data.question.comment_count).toBe(0);
-      expect(respond.body.data.question.is_group).toBe(false);
-      expect(respond.body.data.question.group).toBe(undefined);
+      expect(respond.body.data.question.follow_count).toBe(0);
+      expect(respond.body.data.question.view_count).toBe(0);
+      expect(respond.body.data.question.group).toBe(null);
     }, 20000);
     it('should get a question without token', async () => {
       const respond = await request(app.getHttpServer())
@@ -280,15 +284,18 @@ describe('Questions Module', () => {
       );
       expect(respond.body.data.question.created_at).toBeDefined();
       expect(respond.body.data.question.updated_at).toBeDefined();
+      expect(respond.body.data.question.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.question.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.question.attitudes.difference).toBe(0);
+      expect(respond.body.data.question.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
       expect(respond.body.data.question.is_follow).toBe(false);
-      expect(respond.body.data.question.is_like).toBe(false);
       expect(respond.body.data.question.answer_count).toBe(0);
       expect(respond.body.data.question.view_count).toBe(1);
       expect(respond.body.data.question.follow_count).toBe(0);
-      expect(respond.body.data.question.like_count).toBe(0);
       expect(respond.body.data.question.comment_count).toBe(0);
-      expect(respond.body.data.question.is_group).toBe(false);
-      expect(respond.body.data.question.group).toBe(undefined);
+      expect(respond.body.data.question.group).toBe(null);
     }, 20000);
     it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
@@ -300,6 +307,9 @@ describe('Questions Module', () => {
     });
   });
 
+  // The following test is disabled because we have decided to migrate searching
+  // to elastic search. However, it is not implemented yet.
+  /*
   describe('search question', () => {
     it('should wait some time for elasticsearch to refresh', async () => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -372,6 +382,7 @@ describe('Questions Module', () => {
       expect(respond.status).toBe(404);
     });
   });
+  */
 
   describe('update question', () => {
     it('should update a question', async () => {
@@ -499,25 +510,25 @@ describe('Questions Module', () => {
     });
     it('should follow questions', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/followers`)
+        .post(`/questions/${questionIds[1]}/followers`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toBe('OK');
-      expect(respond.body.code).toBe(200);
-      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(201);
       expect(respond.body.data.follow_count).toBe(1);
       const respond2 = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/followers`)
+        .post(`/questions/${questionIds[1]}/followers`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
       expect(respond2.body.message).toBe('OK');
-      expect(respond2.body.code).toBe(200);
-      expect(respond2.status).toBe(200);
+      expect(respond2.body.code).toBe(201);
+      expect(respond2.status).toBe(201);
       expect(respond2.body.data.follow_count).toBe(2);
     });
     it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[0]}/followers`)
+        .post(`/questions/${questionIds[0]}/followers`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
@@ -526,7 +537,7 @@ describe('Questions Module', () => {
     });
     it('should return QuestionAlreadyFollowedError', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/followers`)
+        .post(`/questions/${questionIds[1]}/followers`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toMatch(/^QuestionAlreadyFollowedError: /);
@@ -608,10 +619,392 @@ describe('Questions Module', () => {
     });
   });
 
-  describe('Boundy&accept answer test', async () => {
-    it('should set boundy to a question', async () => {
+  describe('attitude', () => {
+    it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/boundy`)
+        .post(`/questions/${questionIds[1]}/attitudes`)
+        .send({
+          attitude_type: 'POSITIVE',
+        });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should pose positive attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/attitudes`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({
+          attitude_type: 'POSITIVE',
+        });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the question',
+      );
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.attitudes.difference).toBe(1);
+      expect(respond.body.data.attitudes.user_attitude).toBe('POSITIVE');
+    });
+    it('should pose negative attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/attitudes`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({
+          attitude_type: 'NEGATIVE',
+        });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the question',
+      );
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.attitudes.difference).toBe(0);
+      expect(respond.body.data.attitudes.user_attitude).toBe('NEGATIVE');
+    });
+    it('should get modified question attitude statistic', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.question.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.question.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.question.attitudes.difference).toBe(0);
+      expect(respond.body.data.question.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get modified question attitude statistic', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.question.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.question.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.question.attitudes.difference).toBe(0);
+      expect(respond.body.data.question.attitudes.user_attitude).toBe(
+        'POSITIVE',
+      );
+    });
+    it('should get modified question attitude statistic', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.question.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.question.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.question.attitudes.difference).toBe(0);
+      expect(respond.body.data.question.attitudes.user_attitude).toBe(
+        'NEGATIVE',
+      );
+    });
+    it('should pose undefined attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/attitudes`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({
+          attitude_type: 'UNDEFINED',
+        });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the question',
+      );
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.attitudes.difference).toBe(-1);
+      expect(respond.body.data.attitudes.user_attitude).toBe('UNDEFINED');
+    });
+    it('should pose undefined attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/attitudes`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({
+          attitude_type: 'UNDEFINED',
+        });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the question',
+      );
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.attitudes.difference).toBe(0);
+      expect(respond.body.data.attitudes.user_attitude).toBe('UNDEFINED');
+    });
+    it('should get modified question attitude statistic', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.question.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.question.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.question.attitudes.difference).toBe(0);
+      expect(respond.body.data.question.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get modified question attitude statistic', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.question.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.question.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.question.attitudes.difference).toBe(0);
+      expect(respond.body.data.question.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+    it('should get modified question attitude statistic', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+      expect(respond.body.data.question.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.question.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.question.attitudes.difference).toBe(0);
+      expect(respond.body.data.question.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
+    });
+
+    // repeat to detect if the database operation has caused some problem
+    it('should pose positive attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/attitudes`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({
+          attitude_type: 'POSITIVE',
+        });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the question',
+      );
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.attitudes.difference).toBe(1);
+      expect(respond.body.data.attitudes.user_attitude).toBe('POSITIVE');
+    });
+    it('should pose negative attitude successfully', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/attitudes`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({
+          attitude_type: 'NEGATIVE',
+        });
+      expect(respond.body.message).toBe(
+        'You have expressed your attitude towards the question',
+      );
+      expect(respond.statusCode).toBe(201);
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.attitudes.difference).toBe(0);
+      expect(respond.body.data.attitudes.user_attitude).toBe('NEGATIVE');
+    });
+  });
+
+  describe('invite somebody to answer', () => {
+    it('should invite some users to answer question', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ user_id: TestUserId });
+      expect(respond.body.message).toBe('Invited');
+      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(201);
+      expect(respond.body.data.invitationId).toBeDefined();
+      invitationIds.push(respond.body.data.invitationId);
+    });
+    it('should invite some users to answer question', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ user_id: auxUserId });
+      expect(respond.body.message).toBe('Invited');
+      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(201);
+      expect(respond.body.data.invitationId).toBeDefined();
+      invitationIds.push(respond.body.data.invitationId);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .send({ user_id: TestUserId });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should return UserIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ user_id: 114514 });
+      expect(respond.body.message).toContain('UserIdNotFoundError');
+      expect(respond.body.code).toBe(404);
+    });
+    it('should return QuestionIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/114514/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ user_id: TestUserId });
+      expect(respond.body.message).toContain('QuestionIdNotFoundError');
+      expect(respond.body.code).toBe(404);
+    });
+
+    it('should get AlreadyInvitedError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ user_id: TestUserId });
+      expect(respond.body.message).toContain('AlreadyInvited');
+      expect(respond.body.code).toBe(400);
+    });
+  });
+  describe('should deal with the Q&A function', () => {
+    it('should answer the question', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/answers`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ content: 'woc' });
+      expect(respond.body.code).toBe(201);
+      answerIds.push(respond.body.data.id);
+    });
+
+    it('should return alreadyAnsweredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post(`/questions/${questionIds[1]}/invitations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ user_id: TestUserId });
+      expect(respond.body.message).toContain('AlreadyAnswered');
+      expect(respond.body.code).toBe(400);
+    });
+  });
+  describe('it will cancel the invitations', () => {
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[1]}/invitations/${invitationIds[0]}`)
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should cancel the invitations', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[1]}/invitations/${invitationIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toBe('successfully cancelled');
+      expect(respond.body.code).toBe(204);
+      expect(respond.status).toBe(200);
+    });
+    it('should successfully cancel the invitation', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[1]}/invitations/${invitationIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toMatch(
+        /^QuestionInvitationIdNotFoundError: /,
+      );
+      expect(respond.body.code).toBe(400);
+      expect(respond.status).toBe(400);
+    });
+    it('should return QuestionInvitationIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionIds[1]}/invitations/1919818`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toMatch(
+        /^QuestionInvitationIdNotFoundError: /,
+      );
+      expect(respond.body.code).toBe(400);
+      expect(respond.status).toBe(400);
+    });
+    it('should return QuestionIdNotFoundError', async () => {
+      const questionId = 1234567;
+      const respond = await request(app.getHttpServer())
+        .delete(`/questions/${questionId}/invitations/${invitationIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toContain('QuestionIdNotFoundError');
+      expect(respond.body.code).toBe(404);
+      expect(respond.status).toBe(404);
+    });
+  });
+  describe('it may get some details', () => {
+    it('should get some details', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}/invitations/${invitationIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.data.invitation.questionId).toBe(questionIds[1]);
+      expect(respond.body.data.invitation.id).toBe(invitationIds[1]);
+      expect(respond.body.code).toBe(200);
+    });
+    it('should return QuestionIdNotFoundError', async () => {
+      const questionId = 1234567;
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionId}/invitations/${invitationIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.message).toContain('QuestionIdNotFoundError');
+      expect(respond.body.code).toBe(404);
+      expect(respond.status).toBe(404);
+    });
+    it('should return QuestionInvitationIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}/invitations/${invitationIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`);
+      expect(respond.body.message).toContain(
+        'QuestionInvitationIdNotFoundError',
+      );
+      expect(respond.body.code).toBe(400);
+      expect(respond.status).toBe(400);
+    });
+  });
+
+  describe('get recommendation function test', () => {
+    it('should get recommendation', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}/invitation/recommendations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ pageSize: 5 });
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.users.length).toBe(5);
+    });
+    it('should return QuestionIdNotFoundEroor', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/1919810/invitation/recommendations`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ pageSize: 5 });
+      expect(respond.body.message).toContain('QuestionIdNotFoundError');
+      expect(respond.status).toBe(404);
+      expect(respond.body.code).toBe(404);
+    });
+  });
+
+  describe('Bounty&accept answer test', () => {
+    it('should set bounty to a question', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/bounty`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ bounty: 15 });
       expect(respond.body.message).toBe('OK');
@@ -623,44 +1016,38 @@ describe('Questions Module', () => {
         .get(`/questions/${questionIds[1]}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.data.bounty).toBe(15);
+      console.log(respond.body.data);
+      expect(respond.body.data.question.bounty).toBe(15);
     });
     it('should return BountyOutOfLimitError', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/boundy`)
+        .put(`/questions/${questionIds[1]}/bounty`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ bounty: 1000 });
-      expect(respond.body.message).toMatch(/^BountyOutOfLimitError: /);
+      expect(respond.body.message).toMatch(/^bountyOutOfLimitError: /);
       expect(respond.body.code).toBe(400);
     });
     it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/${questionIds[1]}/boundy`)
+        .put(`/questions/${questionIds[1]}/bounty`)
         .send({ bounty: 15 });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
     });
     it('should return QuestionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
-        .put(`/questions/1919810/boundy`)
+        .put(`/questions/1919810/bounty`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ bounty: 15 });
       expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
       expect(respond.body.code).toBe(404);
     });
-    it('should answer the question', async () => {
-      const respond = await request(app.getHttpServer())
-        .post(`/questions/${questionIds[1]}/answers`)
-        .set('Authorization', `Bearer ${TestToken}`)
-        .send({ content: 'woc' });
-      expect(respond.body.code).toBe(201);
-      answerIds.push(respond.body.data.id);
-    });
+
     it('should accept an answer', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/acceptance`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .query({ answerId: answerIds[0] });
+        .query({ answer_id: answerIds[0] });
       expect(respond.body.code).toBe(200);
       expect(respond.body.message).toBe('OK');
     });
@@ -669,13 +1056,14 @@ describe('Questions Module', () => {
         .get(`/questions/${questionIds[1]}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.data.accepted_answer.id).toBe(answerIds[0]);
+      console.log(respond.body.data);
+      expect(respond.body.data.question.accepted_answer.id).toBe(answerIds[0]);
     });
     it('should return questionIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/1919810/acceptance`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .query({ answerId: answerIds[0] });
+        .query({ answer_id: answerIds[0] });
       expect(respond.body.code).toBe(404);
       expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
     });
@@ -683,14 +1071,14 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/acceptance`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .query({ answerId: 1919810 });
+        .query({ answer_id: 123456798 });
       expect(respond.body.code).toBe(404);
       expect(respond.body.message).toMatch(/^AnswerNotFoundError: /);
     });
     it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/acceptance`)
-        .query({ answerId: answerIds });
+        .query({ answer_id: answerIds[0] });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
     });

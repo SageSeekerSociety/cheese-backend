@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { Answer } from '../answer/answer.legacy.entity';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
@@ -19,12 +20,14 @@ import {
   AuthorizedAction,
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
+import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { Question } from '../questions/questions.legacy.entity';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
+import { UsersPermissionService } from './users-permission.service';
 import {
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
@@ -55,7 +58,6 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { Answer } from '../answer/answer.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -63,6 +65,8 @@ export class UsersService {
     private readonly emailService: EmailService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly usersPermissionService: UsersPermissionService,
+    private readonly avatarsService: AvatarsService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)
@@ -217,10 +221,6 @@ export class UsersService {
     );
   }
 
-  get defaultAvatar(): string {
-    return 'default.jpg';
-  }
-
   get defaultIntro(): string {
     return 'This user has not set an introduction yet.';
   }
@@ -300,7 +300,6 @@ export class UsersService {
               `4. We are under attack!`,
           );
         }
-
         // Verify whether the username is registered.
         if ((await this.userRepository.findOneBy({ username })) != undefined) {
           const log = this.userRegisterLogRepository.create({
@@ -323,11 +322,12 @@ export class UsersService {
           email: email,
         });
         await this.userRepository.save(user);
+        const avatarId = await this.avatarsService.getDefaultAvatarId();
         const profile = this.userProfileRepository.create({
           user: user,
           nickname: nickname,
-          avatar: this.defaultAvatar,
           intro: this.defaultIntro,
+          avatarId,
         });
         await this.userProfileRepository.save(profile);
         const log = this.userRegisterLogRepository.create({
@@ -342,7 +342,7 @@ export class UsersService {
           id: user.id,
           username: user.username,
           nickname: profile.nickname,
-          avatar: profile.avatar,
+          avatarId: profile.avatarId,
           intro: profile.intro,
           follow_count: 0,
           fans_count: 0,
@@ -393,7 +393,7 @@ export class UsersService {
       id: user.id,
       username: user.username,
       nickname: profile.nickname,
-      avatar: profile.avatar,
+      avatarId: profile.avatarId,
       intro: profile.intro,
       follow_count: await this.getFollowingCount(userId),
       fans_count: await this.getFollowedCount(userId),
@@ -439,86 +439,9 @@ export class UsersService {
     ];
   }
 
-  private createSession(userId: number): Promise<string> {
-    const authorization: Authorization = {
-      userId: userId,
-      permissions: [
-        {
-          authorizedActions: [AuthorizedAction.query],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: undefined,
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.modify],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['users/profile'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['users/following'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can control the questions he/she created.
-          authorizedActions: [
-            AuthorizedAction.create,
-            AuthorizedAction.delete,
-            AuthorizedAction.modify,
-            AuthorizedAction.query,
-            AuthorizedAction.other,
-          ],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions/following'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // Everyone can create a topic.
-          authorizedActions: [AuthorizedAction.create],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['topics'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can create and delete comment.
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['comment'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can set attitude to any comment
-          authorizedActions: [AuthorizedAction.other],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['comment/attitude'],
-            resourceIds: undefined,
-          },
-        },
-      ],
-    };
+  private async createSession(userId: number): Promise<string> {
+    const authorization: Authorization =
+      await this.usersPermissionService.getAuthorizationForUser(userId);
     return this.sessionService.createSession(userId, authorization);
   }
 
@@ -663,15 +586,19 @@ export class UsersService {
   async updateUserProfile(
     userId: number,
     nickname: string,
-    avatar: string,
     intro: string,
+    avatar: number,
   ): Promise<void> {
     const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
     }
+    const avatarId = (await this.avatarsService.getOne(avatar)).id;
+    const preAvatarId = profile.avatarId;
+    await this.avatarsService.plusUsageCount(avatarId);
+    await this.avatarsService.minusUsageCount(preAvatarId);
+    profile.avatarId = avatarId;
     profile.nickname = nickname;
-    profile.avatar = avatar;
     profile.intro = intro;
     await this.userProfileRepository.save(profile);
   }

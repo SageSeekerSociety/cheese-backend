@@ -19,7 +19,6 @@ enum comment_commentabletype_enum {
   QUESTION
 }
 
-
 model comment {
   id                 Int                          @id(map: "PK_0b0e4bbc8415ec426f87f3a88e2") @default(autoincrement())
   commentableType    comment_commentabletype_enum
