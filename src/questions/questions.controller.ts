@@ -33,6 +33,7 @@ import {
   ParseSortPatternPipe,
   SortPattern,
 } from '../common/pipe/parse-sort-pattern.pipe';
+import { SnakeCaseToCamelCasePipe } from '../common/pipe/snake-case-to-camel-case.pipe';
 import {
   AddQuestionRequestDto,
   AddQuestionResponseDto,
@@ -322,6 +323,7 @@ export class QuestionsController {
     pageSize: number | undefined,
     @Query(
       'sort',
+      new SnakeCaseToCamelCasePipe({ prefixIgnorePattern: '[+-]' }),
       new ParseSortPatternPipe({
         optional: true,
         allowedFields: ['createdAt'],
@@ -339,7 +341,7 @@ export class QuestionsController {
       );
     return {
       code: 200,
-      message: 'Invited',
+      message: 'OK',
       data: {
         invitations,
         page,
