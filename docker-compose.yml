@@ -1,17 +1,7 @@
 services:
   backend:
-    image: cheese_backend_dev
-    build:
-      context: .
-      target: dev
+    image: ghcr.io/sageseekersociety/cheese-backend:dev
     env_file: .env
-    develop:
-      watch:
-        - action: sync
-          path: .
-          target: /app
-        - action: rebuild
-          path: pnpm-lock.yaml
     depends_on:
       database:
         condition: service_healthy
@@ -25,6 +15,9 @@ services:
       - type: volume
         source: cheese_db_pg
         target: /var/lib/postgresql/data
+      - type: bind
+        source: ./prisma/migrations/20240321040602_init/migration.sql
+        target: /docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       start_period: 30s
@@ -54,11 +47,11 @@ services:
       test:
         ["CMD-SHELL",
         "curl -s --user elastic:${ELASTICSEARCH_AUTH_PASSWORD} -X GET http://localhost:9200/_cluster/health?pretty | grep status | grep -E 'green|yello'"]
-      start_period: 30s
+      start_period: 60s
       start_interval: 3s
       interval: 5m
       timeout: 10s
-      retries: 10
+      retries: 20
     
 
 volumes:
