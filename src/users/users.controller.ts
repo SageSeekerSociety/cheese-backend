@@ -22,6 +22,7 @@ import {
   Query,
   Res,
   UseFilters,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
   forwardRef,
@@ -33,6 +34,7 @@ import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
 import {
   FollowRespondDto as FollowUserRespondDto,
@@ -63,8 +65,9 @@ import {
 import { UsersService } from './users.service';
 
 @Controller('/users')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,

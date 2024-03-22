@@ -21,6 +21,7 @@ import {
   Put,
   Query,
   UseFilters,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -29,6 +30,7 @@ import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import {
   ParseSortPatternPipe,
   SortPattern,
@@ -53,8 +55,9 @@ import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
 
 @Controller('/questions')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class QuestionsController {
   constructor(
     readonly questionsService: QuestionsService,
@@ -398,7 +401,7 @@ export class QuestionsController {
 
   //don't change the position of the below two functions
   //because if the order is swapped, the route is incorrectly identified
-  @Get('/:id/invitation/recommendations')
+  @Get('/:id/invitations/recommendations')
   async getRecommendations(
     @Param('id', ParseIntPipe) id: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
