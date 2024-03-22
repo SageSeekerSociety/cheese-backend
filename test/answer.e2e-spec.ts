@@ -700,7 +700,7 @@ describe('Answers Module', () => {
         .post(
           `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
         )
-        .send();
+        .send({ attitude_type: 'POSITIVE' });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
       expect(respond.statusCode).toBe(401);

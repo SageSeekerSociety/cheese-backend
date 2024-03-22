@@ -6,6 +6,7 @@ import {
   Headers,
   Ip,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
@@ -15,18 +16,18 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { AttitudeType } from '@prisma/client';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
-import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
 import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { GetAnswerDetailRespondDto } from './DTO/get-answer-detail.dto';
 import { GetAnswersRespondDto } from './DTO/get-answers.dto';
 import { UpdateAnswerRequestDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
-import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 
 @Controller('/questions/:question_id/answers')
 @UsePipes(ValidationPipe)
@@ -190,7 +191,8 @@ export class AnswerController {
   async updateAttitudeToAnswer(
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
-    @Body('attitude_type') attitude: string,
+    @Body('attitude_type', new ParseEnumPipe(AttitudeType))
+    attitude: AttitudeType,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateAttitudeRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -205,7 +207,7 @@ export class AnswerController {
       questionId,
       answerId,
       userId,
-      parseAttitude(attitude),
+      attitude,
     );
     return {
       code: 201,

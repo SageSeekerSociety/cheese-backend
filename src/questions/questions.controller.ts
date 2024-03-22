@@ -16,6 +16,7 @@ import {
   Headers,
   Ip,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
@@ -25,8 +26,8 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { AttitudeType } from '@prisma/client';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
-import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
@@ -291,7 +292,8 @@ export class QuestionsController {
   @Post('/:questionId/attitudes')
   async updateAttitudeToQuestion(
     @Param('questionId', ParseIntPipe) questionId: number,
-    @Body('attitude_type') attitude: string,
+    @Body('attitude_type', new ParseEnumPipe(AttitudeType))
+    attitude: AttitudeType,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateAttitudeRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -305,7 +307,7 @@ export class QuestionsController {
     const attitudes = await this.questionsService.setAttitudeToQuestion(
       questionId,
       userId,
-      parseAttitude(attitude),
+      attitude,
     );
     return {
       code: 201,
