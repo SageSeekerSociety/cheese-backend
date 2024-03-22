@@ -9,6 +9,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Answer } from '../answer/answer.legacy.entity';
+import { AnswerModule } from '../answer/answer.module';
 import { AttitudeModule } from '../attitude/attitude.module';
 import { AuthModule } from '../auth/auth.module';
 import { ConfiguredElasticsearchModule } from '../common/config/elasticsearch.module';
@@ -39,10 +40,11 @@ import { QuestionsService } from './questions.service';
     ConfiguredElasticsearchModule,
     PrismaModule,
     AuthModule,
-    UsersModule,
+    forwardRef(() => UsersModule),
     TopicsModule,
-    AttitudeModule,
+    forwardRef(() => AttitudeModule),
     forwardRef(() => GroupsModule),
+    forwardRef(() => AnswerModule),
   ],
   controllers: [QuestionsController],
   providers: [QuestionsService],

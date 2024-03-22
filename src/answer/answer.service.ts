@@ -39,18 +39,19 @@ import {
 @Injectable()
 export class AnswerService {
   constructor(
-    private usersService: UsersService,
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
     @Inject(forwardRef(() => QuestionsService))
-    private questionsService: QuestionsService,
+    private readonly questionsService: QuestionsService,
     @Inject(forwardRef(() => CommentsService))
-    private commentsService: CommentsService,
+    private readonly commentsService: CommentsService,
     @Inject(forwardRef(() => GroupsService))
-    private groupsService: GroupsService,
-    private attitudeService: AttitudeService,
+    private readonly groupsService: GroupsService,
+    private readonly attitudeService: AttitudeService,
     @InjectRepository(Answer)
-    private answerRepository: Repository<Answer>,
+    private readonly answerRepository: Repository<Answer>,
     @InjectRepository(AnswerUserAttitude)
-    private userAttitudeRepository: Repository<AnswerUserAttitude>,
+    private readonly userAttitudeRepository: Repository<AnswerUserAttitude>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(AnswerQueryLog)
@@ -66,7 +67,7 @@ export class AnswerService {
     createdById: number,
     content: string,
   ): Promise<number> {
-    const existingAnswerId = await this.questionsService.getAnswerIdOfCreatedBy(
+    const existingAnswerId = await this.getAnswerIdOfCreatedBy(
       questionId,
       createdById,
     );
@@ -92,8 +93,8 @@ export class AnswerService {
     pageStart: number | undefined,
     pageSize: number,
     viewerId?: number,
-    userAgent?: string,
     ip?: string,
+    userAgent?: string,
   ): Promise<[AnswerDto[], PageRespondDto]> {
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
@@ -107,8 +108,8 @@ export class AnswerService {
             questionId,
             entity.id,
             viewerId,
-            userAgent,
             ip,
+            userAgent,
           );
         }),
       );
@@ -140,8 +141,74 @@ export class AnswerService {
             questionId,
             entity.id,
             viewerId,
-            userAgent,
             ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageMiddle(
+        prevPage,
+        currDto,
+        pageSize,
+        (answer) => answer.id,
+        (answer) => answer.id,
+      );
+    }
+  }
+
+  async getUserAnsweredAnswersAcrossQuestions(
+    userId: number,
+    pageStart: number | undefined,
+    pageSize: number,
+    viewerId?: number,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<[AnswerDto[], PageRespondDto]> {
+    if ((await this.usersService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
+    if (!pageStart) {
+      const currPage = await this.answerRepository.find({
+        where: { createdById: userId },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
+    } else {
+      const prevPage = await this.answerRepository.find({
+        where: {
+          createdById: userId,
+          id: LessThan(pageStart),
+        },
+        order: { id: 'DESC' },
+        take: pageSize,
+      });
+      const currPage = await this.answerRepository.find({
+        where: {
+          createdById: userId,
+          id: MoreThanOrEqual(pageStart),
+        },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
           );
         }),
       );
@@ -203,8 +270,8 @@ export class AnswerService {
     questionId: number,
     answerId: number,
     viewerId?: number,
-    userAgent?: string,
     ip?: string,
+    userAgent?: string,
   ): Promise<AnswerDto> {
     const answer = await this.answerRepository.findOne({
       where: {
@@ -374,6 +441,72 @@ export class AnswerService {
     }
   }
 
+  async getFavoriteAnswers(
+    userId: number,
+    pageStart: number, // undefined if from start
+    pageSize: number,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
+  ): Promise<[AnswerDto[], PageRespondDto]> {
+    if ((await this.usersService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
+    if (!pageStart) {
+      const currPage = await this.answerRepository.find({
+        where: { favoritedBy: { id: userId } },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
+    } else {
+      const prevPage = await this.answerRepository.find({
+        where: {
+          favoritedBy: { id: userId },
+          id: LessThan(pageStart),
+        },
+        order: { id: 'DESC' },
+        take: pageSize,
+      });
+      const currPage = await this.answerRepository.find({
+        where: {
+          favoritedBy: { id: userId },
+          id: MoreThanOrEqual(pageStart),
+        },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageMiddle(
+        prevPage,
+        currDto,
+        pageSize,
+        (answer) => answer.id,
+        (answer) => answer.id,
+      );
+    }
+  }
+
   async favoriteAnswer(
     questionId: number,
     answerId: number,
@@ -497,5 +630,23 @@ export class AnswerService {
       answerId,
       userId,
     );
+  }
+
+  async getAnswerCount(userId: number): Promise<number> {
+    return await this.answerRepository.countBy({ createdById: userId });
+  }
+
+  async getAnswerIdOfCreatedBy(
+    questionId: number,
+    createdById: number,
+  ): Promise<number | undefined> {
+    const answer = await this.answerRepository.findOne({
+      where: {
+        deletedAt: undefined,
+        questionId,
+        createdById,
+      },
+    });
+    return answer?.id; // return undefined if answer == undefined
   }
 }
