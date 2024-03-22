@@ -414,6 +414,8 @@ model QuestionElasticsearchRelation {
   questionId      Int      @unique @map("question_id")
   elasticsearchId String   @map("elasticsearch_id")
 
+  @@index([questionId])
+  @@index([elasticsearchId])
   @@map("question_elasticsearch_relation")
 }
 
