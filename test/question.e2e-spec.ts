@@ -981,7 +981,7 @@ describe('Questions Module', () => {
   describe('get recommendation function test', () => {
     it('should get recommendation', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/questions/${questionIds[1]}/invitation/recommendations`)
+        .get(`/questions/${questionIds[1]}/invitations/recommendations`)
         .set('Authorization', `Bearer ${TestToken}`)
         .query({ pageSize: 5 });
       expect(respond.status).toBe(200);
@@ -990,7 +990,7 @@ describe('Questions Module', () => {
     });
     it('should return QuestionIdNotFoundEroor', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/questions/1919810/invitation/recommendations`)
+        .get(`/questions/1919810/invitations/recommendations`)
         .set('Authorization', `Bearer ${TestToken}`)
         .query({ pageSize: 5 });
       expect(respond.body.message).toContain('QuestionIdNotFoundError');
