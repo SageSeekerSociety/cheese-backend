@@ -770,13 +770,11 @@ export class UsersService {
     return (await this.prismaService.user.count({ where: { id: userId } })) > 0;
   }
 
-  async getFollowingCount(followerId: number | undefined): Promise<number> {
-    if (followerId == undefined) return 0;
+  async getFollowingCount(followerId: number): Promise<number> {
     return await this.userFollowingRepository.countBy({ followerId });
   }
 
-  async getFollowedCount(followeeId: number | undefined): Promise<number> {
-    if (followeeId == undefined) return 0;
+  async getFollowedCount(followeeId: number): Promise<number> {
     return await this.userFollowingRepository.countBy({ followeeId });
   }
 

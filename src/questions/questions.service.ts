@@ -903,8 +903,7 @@ export class QuestionsService {
     return invitation.userId;
   }
 
-  async getQuestionCount(userId: number | undefined): Promise<number> {
-    if (userId == undefined) return 0;
+  async getQuestionCount(userId: number): Promise<number> {
     return await this.questionRepository.countBy({ createdById: userId });
   }
 

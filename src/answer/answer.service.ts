@@ -632,8 +632,7 @@ export class AnswerService {
     );
   }
 
-  async getAnswerCount(userId: number | undefined): Promise<number> {
-    if (userId == undefined) return 0;
+  async getAnswerCount(userId: number): Promise<number> {
     return await this.answerRepository.countBy({ createdById: userId });
   }
 
@@ -648,6 +647,6 @@ export class AnswerService {
         createdById,
       },
     });
-    return answer?.id ?? undefined;
+    return answer?.id; // return undefined if answer == undefined
   }
 }
