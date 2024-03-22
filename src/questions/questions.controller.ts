@@ -399,7 +399,7 @@ export class QuestionsController {
 
   //don't change the position of the below two functions
   //because if the order is swapped, the route is incorrectly identified
-  @Get('/:id/invitation/recommendations')
+  @Get('/:id/invitations/recommendations')
   async getRecommendations(
     @Param('id', ParseIntPipe) id: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
