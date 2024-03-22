@@ -7,12 +7,12 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
-import { Answer } from '../answer/answer.legacy.entity';
+import { AnswerService } from '../answer/answer.service';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
@@ -24,7 +24,7 @@ import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { Question } from '../questions/questions.legacy.entity';
+import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
 import { UsersPermissionService } from './users-permission.service';
@@ -67,6 +67,10 @@ export class UsersService {
     private readonly sessionService: SessionService,
     private readonly usersPermissionService: UsersPermissionService,
     private readonly avatarsService: AvatarsService,
+    @Inject(forwardRef(() => AnswerService))
+    private readonly answerService: AnswerService,
+    @Inject(forwardRef(() => QuestionsService))
+    private readonly questionsService: QuestionsService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)
@@ -84,10 +88,6 @@ export class UsersService {
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
     private readonly prismaService: PrismaService,
-    @InjectRepository(Question)
-    private readonly questionRepository: Repository<Question>,
-    @InjectRepository(Answer)
-    private readonly answerRepository: Repository<Answer>,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -389,17 +389,30 @@ export class UsersService {
       });
       await this.userProfileQueryLogRepository.save(log);
     }
+    const followCountPromise = this.getFollowingCount(userId);
+    const fansCountPromise = this.getFollowedCount(userId);
+    const ifFollowPromise = this.isUserFollowUser(viewerId, userId);
+    const answerCountPromise = this.answerService.getAnswerCount(userId);
+    const questionCountPromise = this.questionsService.getQuestionCount(userId);
+    const [followCount, fansCount, isFollow, answerCount, questionCount] =
+      await Promise.all([
+        followCountPromise,
+        fansCountPromise,
+        ifFollowPromise,
+        answerCountPromise,
+        questionCountPromise,
+      ]);
     return {
       id: user.id,
       username: user.username,
       nickname: profile.nickname,
       avatarId: profile.avatarId,
       intro: profile.intro,
-      follow_count: await this.getFollowingCount(userId),
-      fans_count: await this.getFollowedCount(userId),
-      question_count: await this.getQuestionCount(userId),
-      answer_count: await this.getAnswerCount(userId),
-      is_follow: await this.isUserFollowUser(viewerId, userId),
+      follow_count: followCount,
+      fans_count: fansCount,
+      is_follow: isFollow,
+      question_count: questionCount,
+      answer_count: answerCount,
     };
   }
 
@@ -649,7 +662,7 @@ export class UsersService {
 
   async getFollowers(
     followeeId: number,
-    firstFollowerId: number, // undefined if from start
+    firstFollowerId: number | undefined, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
@@ -702,7 +715,7 @@ export class UsersService {
 
   async getFollowees(
     followerId: number,
-    firstFolloweeId: number, // undefined if from start
+    firstFolloweeId: number | undefined, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
@@ -757,24 +770,12 @@ export class UsersService {
     return (await this.prismaService.user.count({ where: { id: userId } })) > 0;
   }
 
-  async getFollowingCount(followerId: number | undefined): Promise<number> {
-    if (followerId == undefined) return 0;
+  async getFollowingCount(followerId: number): Promise<number> {
     return await this.userFollowingRepository.countBy({ followerId });
   }
 
-  async getFollowedCount(followeeId: number | undefined): Promise<number> {
-    if (followeeId == undefined) return 0;
+  async getFollowedCount(followeeId: number): Promise<number> {
     return await this.userFollowingRepository.countBy({ followeeId });
-  }
-
-  async getQuestionCount(userId: number | undefined): Promise<number> {
-    if (userId == undefined) return 0;
-    return await this.questionRepository.countBy({ createdById: userId });
-  }
-
-  async getAnswerCount(userId: number | undefined): Promise<number> {
-    if (userId == undefined) return 0;
-    return await this.answerRepository.countBy({ createdById: userId });
   }
 
   async isUserFollowUser(

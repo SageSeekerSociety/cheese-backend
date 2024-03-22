@@ -62,8 +62,8 @@ export class AnswerController {
       pageStart,
       pageSize,
       userId,
-      userAgent,
       ip,
+      userAgent,
     );
     return {
       code: 200,
@@ -122,8 +122,8 @@ export class AnswerController {
       questionId,
       answerId,
       userId,
-      userAgent,
       ip,
+      userAgent,
     );
     const questionDto = await this.questionsService.getQuestionDto(
       answerDto.question_id,

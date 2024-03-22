@@ -27,6 +27,7 @@ describe('Answers Module', () => {
   let auxAccessToken: string;
   let specialQuestionId: number;
   const specialAnswerIds: number[] = [];
+  const auxUserAskedAnswerIds: number[] = [];
 
   async function createAuxiliaryUser(): Promise<[number, string]> {
     const email = `test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
@@ -178,6 +179,7 @@ describe('Answers Module', () => {
       async function createAnswer(
         questionId: number,
         content: string,
+        userId: number,
         auxToken: string,
       ): Promise<number> {
         const respond = await request(app.getHttpServer())
@@ -190,6 +192,8 @@ describe('Answers Module', () => {
         expect(typeof respond.body.data.id).toBe('number');
         answerIds.push(respond.body.data.id);
         AnswerQuestionMap[respond.body.data.id] = questionId;
+        if (userId == auxUserId)
+          auxUserAskedAnswerIds.push(respond.body.data.id);
         return respond.body.data.id;
       }
 
@@ -201,7 +205,12 @@ describe('Answers Module', () => {
         '烫烫烫'.repeat(1000),
       ];
       for (let i = 0; i < 5; i++) {
-        await createAnswer(questionIds[i], answerContents1[i], auxAccessToken);
+        await createAnswer(
+          questionIds[i],
+          answerContents1[i],
+          auxUserId,
+          auxAccessToken,
+        );
       }
 
       const answerContents2 = [
@@ -217,6 +226,7 @@ describe('Answers Module', () => {
         const id = await createAnswer(
           questionIds[5],
           answerContents2[i],
+          userIdTokenPairList[i][0],
           userIdTokenPairList[i][1],
         );
         specialAnswerIds.push(id);
@@ -493,6 +503,83 @@ describe('Answers Module', () => {
       expect(response.body.message).toBe('Answers fetched successfully.');
       expect(response.status).toBe(200);
       expect(response.body.code).toBe(200);
+    });
+  });
+
+  describe('Get Answers By Asker ID', () => {
+    it('should return UserIdNotFoundError', async () => {
+      const noneExistUserId = -1;
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${noneExistUserId}/answers`)
+        .send();
+      expect(respond.body.message).toMatch(/UserIdNotFoundError: /);
+      expect(respond.status).toBe(404);
+      expect(respond.body.code).toBe(404);
+    });
+    it('should get answers asked by auxUser', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}/answers`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(response.body.message).toBe('Query asked questions successfully.');
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.page.page_start).toBe(auxUserAskedAnswerIds[0]);
+      expect(response.body.data.page.page_size).toBe(
+        auxUserAskedAnswerIds.length,
+      );
+      expect(response.body.data.page.has_prev).toBe(false);
+      expect(response.body.data.page.prev_start).toBe(0);
+      expect(response.body.data.page.has_more).toBe(false);
+      expect(response.body.data.page.next_start).toBe(0);
+      expect(response.body.data.answers.length).toBe(
+        auxUserAskedAnswerIds.length,
+      );
+      for (let i = 0; i < auxUserAskedAnswerIds.length; i++) {
+        expect(response.body.data.answers[i].id).toBe(auxUserAskedAnswerIds[i]);
+      }
+    });
+    it('should get answers asked by auxUser', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}/answers`)
+        .query({
+          page_start: auxUserAskedAnswerIds[0],
+          page_size: 2,
+        })
+        .send();
+      expect(response.body.message).toBe('Query asked questions successfully.');
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.page.page_start).toBe(auxUserAskedAnswerIds[0]);
+      expect(response.body.data.page.page_size).toBe(2);
+      expect(response.body.data.page.has_prev).toBe(false);
+      expect(response.body.data.page.prev_start).toBe(0);
+      expect(response.body.data.page.has_more).toBe(true);
+      expect(response.body.data.page.next_start).toBe(auxUserAskedAnswerIds[2]);
+      expect(response.body.data.answers.length).toBe(2);
+      expect(response.body.data.answers[0].id).toBe(auxUserAskedAnswerIds[0]);
+      expect(response.body.data.answers[1].id).toBe(auxUserAskedAnswerIds[1]);
+    });
+    it('should get answers asked by auxUser', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}/answers`)
+        .query({
+          page_start: auxUserAskedAnswerIds[2],
+          page_size: 2,
+        })
+        .send();
+      expect(response.body.message).toBe('Query asked questions successfully.');
+      expect(response.status).toBe(200);
+      expect(response.body.code).toBe(200);
+      expect(response.body.data.page.page_start).toBe(auxUserAskedAnswerIds[2]);
+      expect(response.body.data.page.page_size).toBe(2);
+      expect(response.body.data.page.has_prev).toBe(true);
+      expect(response.body.data.page.prev_start).toBe(auxUserAskedAnswerIds[0]);
+      expect(response.body.data.page.has_more).toBe(true);
+      expect(response.body.data.page.next_start).toBe(auxUserAskedAnswerIds[4]);
+      expect(response.body.data.answers.length).toBe(2);
+      expect(response.body.data.answers[0].id).toBe(auxUserAskedAnswerIds[2]);
+      expect(response.body.data.answers[1].id).toBe(auxUserAskedAnswerIds[3]);
     });
   });
 
