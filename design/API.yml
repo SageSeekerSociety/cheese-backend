@@ -2883,72 +2883,21 @@ paths:
                     required:
                       - data
   /avatars:
-    post:
-      summary: Upload an avatar
-      operationId: uploadAvatar
-      requestBody:
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              properties:
-                avatar:
-                type: file
-                format: binary
-                description: The avatar image to upload
-      responses:
-        "201":
-          description: Upload avatar successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: number
-                    description: Unique identifier for the uploaded avatar
-  /avatars/{id}:
     get:
-      summary: Get an avatar by id
-      operationId: getAvatar
+      summary: Get available avatarIds
+      operationId: getAvailableAvatarIds
       parameters:
-        - name: id
-          in: path
-          required: true
-          description: Unique identifier for the uploaded avatar
+        - name: type
+          in: query
+          description: Avatar type
+          schema:
+            type: string
+            enum:
+              - predefined
+            default: predefined
       responses:
         "200":
-          description: get avatar successfully
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-  /avatars/default/id:
-    get:
-      summary: Get default avatar id
-      operationId: getDefaultAvatarId
-      responses:
-        "200":
-          description: Get default avatarId successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    type: object
-                    properties:
-                      avatarId:
-                        type: number
-                        description: Default avatarId
-  /avatars/predefined/id:
-    get:
-      summary: Get predefined avatarIds
-      operationId: getPreDefinedIds
-      responses:
-        "200":
-          description: Get  Pre Defined AvatarIds successfully
+          description: Get available avatarIds successfully
           content:
             application/json:
               schema:
@@ -2960,5 +2909,63 @@ paths:
                       avatarIds:
                         type: array
                         items:
-                          -type: number
-                        description: Predefined avatarIds
+                          type: number
+                          format: int64
+                        description: Available avatarIds
+    post:
+      summary: Upload an avatar
+      operationId: uploadAvatar
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+                  description: The avatar image to upload
+      responses:
+        "201":
+          description: Upload avatar successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: number
+                    description: Unique identifier for the uploaded avatar
+  /avatars/default:
+    get:
+      summary: Get default avatar
+      operationId: getDefaultAvata
+      responses:
+        "200":
+          description: Get default avatar successfully
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+  /avatars/{id}:
+    get:
+      summary: Get an avatar by id
+      operationId: getAvatar
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier for the uploaded avatar
+          schema:
+            type: number
+            format: int64
+            minimum: 1
+      responses:
+        "200":
+          description: get avatar successfully
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
