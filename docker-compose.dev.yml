@@ -1,6 +1,6 @@
 services:
   backend:
-    image: cheese_backend_dev
+    image: ghcr.io/sageseekersociety/cheese-backend-dev:dev
     build:
       context: .
       target: dev

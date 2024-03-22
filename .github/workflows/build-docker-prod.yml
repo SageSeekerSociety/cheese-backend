@@ -9,7 +9,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: SageSeekerSociety/cheese_backend_prod
+  IMAGE_NAME: SageSeekerSociety/cheese-backend
 
 jobs:
   build-and-push-image:
