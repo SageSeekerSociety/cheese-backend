@@ -7,7 +7,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { MaterialsController } from './materials.controller';
-import { InvalidMaterialTypeError } from './materials.error';
+import {
+  InvalidMaterialTypeError,
+  MimeTypeNotMatchError,
+} from './materials.error';
 import { MaterialsService } from './materials.service';
 @Module({
   imports: [
@@ -52,17 +55,26 @@ import { MaterialsService } from './materials.service';
         switch (req.body.type) {
           case 'image':
             if (!file.mimetype.includes('image')) {
-              return callback(new Error('11'), false);
+              return callback(
+                new MimeTypeNotMatchError(file.mimetype, req.body.type),
+                false,
+              );
             }
             break;
           case 'video':
             if (!file.mimetype.includes('video')) {
-              return callback(new Error('11'), false);
+              return callback(
+                new MimeTypeNotMatchError(file.mimetype, req.body.type),
+                false,
+              );
             }
             break;
           case 'audio':
             if (!file.mimetype.includes('audio')) {
-              return callback(new Error('11'), false);
+              return callback(
+                new MimeTypeNotMatchError(file.mimetype, req.body.type),
+                false,
+              );
             }
             break;
           case 'file':
@@ -70,13 +82,15 @@ import { MaterialsService } from './materials.service';
               !file.mimetype.includes('application') &&
               !file.mimetype.includes('text')
             ) {
-              return callback(new Error('11'), false);
+              return callback(
+                new MimeTypeNotMatchError(file.mimetype, req.body.type),
+                false,
+              );
             }
             break;
           default:
             throw new InvalidMaterialTypeError();
         }
-
         callback(null, true);
       },
     }),

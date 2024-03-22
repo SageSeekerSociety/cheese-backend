@@ -53,6 +53,9 @@ dependencies:
   express:
     specifier: ^4.18.2
     version: 4.18.2
+  fluent-ffmpeg:
+    specifier: ^2.1.2
+    version: 2.1.2
   multer:
     specifier: 1.4.5-lts.1
     version: 1.4.5-lts.1
@@ -100,9 +103,9 @@ devDependencies:
   '@types/express':
     specifier: ^4.17.21
     version: 4.17.21
-  '@types/ffmpeg':
-    specifier: ^1.0.7
-    version: 1.0.7
+  '@types/fluent-ffmpeg':
+    specifier: ^2.1.24
+    version: 2.1.24
   '@types/jest':
     specifier: ^29.5.11
     version: 29.5.11
@@ -1870,8 +1873,10 @@ packages:
       '@types/serve-static': 1.15.5
     dev: true
 
-  /@types/ffmpeg@1.0.7:
-    resolution: {integrity: sha512-7Pw61IDG9Tj+gXGNshJ7JIM2fhDe0IrK7/F+b8midmsiljiugWKbW5KoNmhtZS3pPXWVfVHP3wOwquF/wbVxiw==}
+  /@types/fluent-ffmpeg@2.1.24:
+    resolution: {integrity: sha512-g5oQO8Jgi2kFS3tTub7wLvfLztr1s8tdXmRd8PiL/hLMLzTIAyMR2sANkTggM/rdEDAg3d63nYRRVepwBiCw5A==}
+    dependencies:
+      '@types/node': 20.11.7
     dev: true
 
   /@types/graceful-fs@4.1.9:
@@ -2525,7 +2530,6 @@ packages:
 
   /async@3.2.5:
     resolution: {integrity: sha512-baNZyqaaLhyLVKm/DlvdW051MSgO6b8eVfIezl9E5PqWxFgzLm/wQntEW4zOytVburDEr0JlALEpdOFwvErLsg==}
-    dev: true
 
   /asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
@@ -3780,12 +3784,6 @@ packages:
       bser: 2.1.1
     dev: true
 
-  /ffmpeg@0.0.4:
-    resolution: {integrity: sha512-3TgWUJJlZGQn+crJFyhsO/oNeRRnGTy6GhgS98oUCIfZrOW5haPPV7DUfOm3xJcHr5q3TJpjk2GudPutrNisRA==}
-    dependencies:
-      when: 3.7.8
-    dev: false
-
   /figures@3.2.0:
     resolution: {integrity: sha512-yaduQFRKLXYOGgEn6AZau90j3ggSOyiqXU0F9JZfeXYhNa+Jk4X+s45A2zg5jns87GAFa34BBm2kXw4XpNcbdg==}
     engines: {node: '>=8'}
@@ -3874,6 +3872,14 @@ packages:
   /flatted@3.2.9:
     resolution: {integrity: sha512-36yxDn5H7OFZQla0/jFJmbIKTdZAQHngCedGxiMmpNfEZM0sdEeT+WczLQrjK6D7o2aiyLYDnkw0R3JK0Qv1RQ==}
     dev: true
+
+  /fluent-ffmpeg@2.1.2:
+    resolution: {integrity: sha512-IZTB4kq5GK0DPp7sGQ0q/BWurGHffRtQQwVkiqDgeO6wYJLLV5ZhgNOQ65loZxxuPMKZKZcICCUnaGtlxBiR0Q==}
+    engines: {node: '>=0.8.0'}
+    dependencies:
+      async: 3.2.5
+      which: 1.3.1
+    dev: false
 
   /foreground-child@3.1.1:
     resolution: {integrity: sha512-TMKDUnIte6bfb5nWv7V/caI169OHgvwjb7V4WkeUvbQQdjr5rWKqHFiKWb/fcOwB+CzBT+qbWjvj+DVwRskpIg==}
@@ -6228,12 +6234,6 @@ packages:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
     dev: true
 
-  /queue@6.0.2:
-    resolution: {integrity: sha512-iHZWu+q3IdFZFX36ro/lKBkSvfkztY5Y7HMiPlOUjhupPcG2JMfst2KKEpu5XndviX/3UhFbRngUPNKtgvtZiA==}
-    dependencies:
-      inherits: 2.0.4
-    dev: false
-
   /quick-lru@4.0.1:
     resolution: {integrity: sha512-ARhCpm70fzdcvNQfPoy49IaanKkTlRWF2JMzqhcJbhSFRZv7nPTvZJdcY7301IPmvW+/p0RgIWnQDLJxifsQ7g==}
     engines: {node: '>=8'}
@@ -7646,6 +7646,13 @@ packages:
     dependencies:
       tr46: 0.0.3
       webidl-conversions: 3.0.1
+
+  /which@1.3.1:
+    resolution: {integrity: sha512-HxJdYWq1MTIQbJ3nw0cqssHoTNU267KlrDuGZ1WYlxDStUtKUhOaJmh112/TZmHxxUfuJqPXSOm7tDyas0OSIQ==}
+    hasBin: true
+    dependencies:
+      isexe: 2.0.0
+    dev: false
 
   /which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}

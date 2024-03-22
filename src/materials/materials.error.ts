@@ -11,3 +11,16 @@ export class MaterialNotFoundError extends BaseError {
     super('MaterialNotFoundError', `Material ${materialId} Not Found`, 404);
   }
 }
+export class MetaDataParseError extends BaseError {
+  constructor(metaType: string) {
+    super('MetaDataParseError', ` ${metaType} meta parse fail`, 400);
+  }
+}
+export class MimeTypeNotMatchError extends BaseError {
+  constructor(
+    public readonly mimetype: string,
+    public readonly materialtype: string,
+  ) {
+    super('MimeTypeNotMatchError', `${mimetype} is not ${materialtype}`, 422);
+  }
+}
