@@ -728,10 +728,14 @@ export class QuestionsService {
     if (!question) {
       throw new QuestionIdNotFoundError(questionId);
     }
+    // No sql injection here:
+    // "The method is implemented as a tagged template, which allows you to pass a template literal where you can easily
+    // insert your variables. In turn, Prisma Client creates prepared statements that are safe from SQL injections."
+    // See: https://www.prisma.io/docs/orm/prisma-client/queries/raw-database-access/raw-queries
     const randomUserEntities = await this.prismaService.$queryRaw<User[]>`
       SELECT * FROM "user" WHERE id NOT IN (
-        SELECT "userId" FROM question_invitation_relation
-        WHERE "questionId" = ${questionId}
+        SELECT "user_id" FROM question_invitation_relation
+        WHERE "question_id" = ${questionId}
       )
       ORDER BY RANDOM()
       LIMIT ${pageSize}

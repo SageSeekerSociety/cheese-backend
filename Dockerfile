@@ -7,6 +7,7 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 COPY .husky/install.mjs ./.husky/
 COPY prisma ./prisma/
+RUN sed -i "/generator client {/a binaryTargets = [\"debian-openssl-1.1.x\", \"debian-openssl-3.0.x\"]" "./prisma/schema.prisma"
 
 FROM base AS dev-deps
 WORKDIR /app
