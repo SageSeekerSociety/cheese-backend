@@ -36,6 +36,7 @@ RUN pnpm run build
 
 FROM node:21-slim AS prod
 ENV NODE_ENV="production"
+RUN apt-get update && apt-get install -y openssl
 WORKDIR /app
 COPY . ./
 COPY --from=prod-deps /app/node_modules ./node_modules
