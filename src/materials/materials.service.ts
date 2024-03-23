@@ -1,13 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { material } from '@prisma/client';
 import * as ffmpeg from 'fluent-ffmpeg';
-import sharp from 'sharp';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { parseMaterial } from './materials.enum';
 import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
 @Injectable()
 export class MaterialsService {
   constructor(private readonly prismaService: PrismaService) {}
+  async getImageMetadata(
+    filePath: string,
+  ): Promise<{ width: number; height: number }> {
+    //ffmpeg.setFfmpegPath('E:/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe');
+    //ffmpeg.setFfprobePath('E:/ffmpeg-master-latest-win64-gpl/bin/ffprobe.exe');
+    return new Promise((resolve) => {
+      ffmpeg.ffprobe(filePath, (err, metadata) => {
+        if (err) {
+          throw new MetaDataParseError('image');
+        } else {
+          const width = metadata.streams[0].width;
+          const height = metadata.streams[0].height;
+          if (width == undefined || height == undefined) {
+            throw new MetaDataParseError('image');
+          }
+          resolve({ width, height });
+        }
+      });
+    });
+  }
   async getVideoMetadata(
     filePath: string,
   ): Promise<{ width: number; height: number; duration: number }> {
@@ -56,8 +75,7 @@ export class MaterialsService {
   ): Promise<number> {
     let meta;
     if (type === 'image') {
-      const image = sharp(file.path);
-      const metadata = await image.metadata();
+      const metadata = await this.getImageMetadata(file.path);
       meta = {
         width: metadata.width,
         height: metadata.height,
