@@ -16,7 +16,6 @@ import {
   QuestionInvitationRelation,
 } from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
-import { AnswerDto } from '../answer/DTO/answer.dto';
 import { AnswerNotFoundError } from '../answer/answer.error';
 import { Answer } from '../answer/answer.legacy.entity';
 import { AnswerService } from '../answer/answer.service';
@@ -43,14 +42,14 @@ import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
   AlreadyAnsweredError,
-  AlreadyInvitedError,
-  BountyOutOfLimitError,
   LowerBountyError,
+  OutOfLimitOfBountyError,
   QuestionAlreadyFollowedError,
   QuestionIdNotFoundError,
   QuestionInvitationIdNotFoundError,
   QuestionNotFollowedYetError,
   QuestionNotHasThisTopicError,
+  UserAlreadyInvitedError,
 } from './questions.error';
 import { QuestionElasticsearchDocument } from './questions.es-doc';
 import {
@@ -253,9 +252,6 @@ export class QuestionsService {
   ): Promise<QuestionDto> {
     const question = await this.prismaService.question.findUnique({
       where: { id: questionId },
-      include: {
-        accepted_answer: true,
-      },
     });
     if (question == undefined || question.deletedAt)
       throw new QuestionIdNotFoundError(questionId);
@@ -303,6 +299,12 @@ export class QuestionsService {
         ? Promise.resolve(null)
         : this.groupService.getGroupDtoById(undefined, question.groupId);
 
+    const questionPromise = this.questionRepository.findOne({
+      where: { id: questionId },
+      relations: {
+        acceptedAnswer: true,
+      },
+    });
     const [
       topics,
       hasFollowed,
@@ -313,6 +315,7 @@ export class QuestionsService {
       answerCount,
       commentCount,
       groupDto,
+      question1,
     ] = await Promise.all([
       topicsPromise,
       hasFollowedPromise,
@@ -323,6 +326,7 @@ export class QuestionsService {
       answerCountPromise,
       commentCountPromise,
       groupDtoPromise,
+      questionPromise,
     ]);
     if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.questionQueryLogRepository.create({
@@ -333,24 +337,19 @@ export class QuestionsService {
       });
       await this.questionQueryLogRepository.save(log);
     }
-    const question1 = await this.questionRepository.findOne({
-      where: { id: questionId },
-      relations: {
-        acceptedAnswer: true,
-      },
-    });
-    let answerDto: AnswerDto | null;
-    if (question1?.acceptedAnswer?.id != null) {
-      answerDto = await this.answerService.getAnswerDto(
-        questionId,
-        question1?.acceptedAnswer?.id,
-        viewerId,
-        userAgent,
-        ip,
-      );
-    } else {
-      answerDto = null;
+    if (!question1) {
+      throw new QuestionIdNotFoundError(questionId);
     }
+    const acceptedAnswerDto =
+      question1.acceptedAnswer == null
+        ? null
+        : await this.answerService.getAnswerDto(
+            questionId,
+            question1.acceptedAnswer.id,
+            viewerId,
+            userAgent,
+            ip,
+          );
 
     return {
       id: question.id,
@@ -370,7 +369,7 @@ export class QuestionsService {
       view_count: viewCount,
       group: groupDto,
       bounty: question.bounty == null ? 0 : question.bounty,
-      accepted_answer: answerDto,
+      accepted_answer: acceptedAnswerDto,
     };
   }
 
@@ -665,7 +664,7 @@ export class QuestionsService {
         },
       });
     if (haveBeenInvited) {
-      throw new AlreadyInvitedError(userId);
+      throw new UserAlreadyInvitedError(userId);
     }
 
     const Invitation =
@@ -897,7 +896,7 @@ export class QuestionsService {
       throw new QuestionIdNotFoundError(questionId);
     }
     if (bounty <= 0 || bounty > 20) {
-      throw new BountyOutOfLimitError(bounty);
+      throw new OutOfLimitOfBountyError(bounty);
     }
     if (question.bounty) {
       if (question.bounty > bounty) {

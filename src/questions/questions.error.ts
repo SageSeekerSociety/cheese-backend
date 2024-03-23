@@ -58,18 +58,22 @@ export class QuestionNotHasThisTopicError extends BaseError {
   }
 }
 
-export class BountyOutOfLimitError extends BaseError {
+export class OutOfLimitOfBountyError extends BaseError {
   constructor(bounty: number) {
     super(
-      'BountyOutOfLimitError',
+      'OutOfLimitOfBountyError',
       `Bounty ${bounty} is outside the limit.`,
       400,
     );
   }
 }
-export class AlreadyInvitedError extends BaseError {
+export class UserAlreadyInvitedError extends BaseError {
   constructor(id: number) {
-    super('AlreadyInvitedError', `User with id ${id} is already invited.`, 400);
+    super(
+      'UserAlreadyInvitedError',
+      `User with id ${id} is already invited.`,
+      400,
+    );
   }
 }
 

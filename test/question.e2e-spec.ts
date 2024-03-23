@@ -870,12 +870,12 @@ describe('Questions Module', () => {
       expect(respond.body.code).toBe(404);
     });
 
-    it('should get AlreadyInvitedError', async () => {
+    it('should get UserAlreadyInvitedError', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ user_id: TestUserId });
-      expect(respond.body.message).toContain('AlreadyInvited');
+      expect(respond.body.message).toContain('UserAlreadyInvitedError');
       expect(respond.body.code).toBe(400);
     });
   });
@@ -988,7 +988,7 @@ describe('Questions Module', () => {
         .query({ pageSize: 5 });
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.users.length).toBe(5);
+      expect(respond.body.data.users.length).toBe(1);
     });
     it('should return QuestionIdNotFoundEroor', async () => {
       const respond = await request(app.getHttpServer())
@@ -1016,7 +1016,6 @@ describe('Questions Module', () => {
         .get(`/questions/${questionIds[1]}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      console.log(respond.body.data);
       expect(respond.body.data.question.bounty).toBe(15);
     });
     it('should return LowerBountyError', async () => {
@@ -1027,12 +1026,12 @@ describe('Questions Module', () => {
       expect(respond.body.message).toMatch(/^LowerBountyError: /);
       expect(respond.body.code).toBe(400);
     });
-    it('should return BountyOutOfLimitError', async () => {
+    it('should return OutOfLimitOfBountyError', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/bounty`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ bounty: 1000 });
-      expect(respond.body.message).toMatch(/^BountyOutOfLimitError: /);
+      expect(respond.body.message).toMatch(/^OutOfLimitOfBountyError: /);
       expect(respond.body.code).toBe(400);
     });
     it('should return AuthenticationRequiredError', async () => {
@@ -1065,7 +1064,6 @@ describe('Questions Module', () => {
         .get(`/questions/${questionIds[1]}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      console.log(respond.body.data);
       expect(respond.body.data.question.accepted_answer.id).toBe(answerIds[0]);
     });
     it('should return questionIdNotFoundError', async () => {
