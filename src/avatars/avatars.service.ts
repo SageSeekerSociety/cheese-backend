@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import path, { join } from 'path';
+import { join } from 'path';
 import { Repository } from 'typeorm';
 import { AvatarNotFoundError } from './avatars.error';
 import { Avatar, AvatarType } from './avatars.legacy.entity';
@@ -62,13 +62,7 @@ export class AvatarsService implements OnModuleInit {
   async getAvatarPath(avatarId: number): Promise<string> {
     const file = await this.avatarRepository.findOneBy({ id: avatarId });
     if (file == undefined) throw new AvatarNotFoundError(avatarId);
-    return path.join(
-      __dirname,
-      process.env.NODE_ENV === 'test'
-        ? '../../test/uploads/avatars'
-        : '../../uploads/avatars',
-      file.name,
-    );
+    return file.url;
   }
 
   async getDefaultAvatarId(): Promise<number> {

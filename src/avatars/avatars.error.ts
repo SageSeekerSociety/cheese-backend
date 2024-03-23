@@ -15,3 +15,9 @@ export class CorrespondentFileNotExistError extends BaseError {
     );
   }
 }
+
+export class InvalidAvatarTypeError extends BaseError {
+  constructor(public readonly avatarType: string) {
+    super('InvalidAvatarTypeError', `Invalid Avatar type: ${avatarType}`, 400);
+  }
+}
