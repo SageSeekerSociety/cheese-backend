@@ -13,13 +13,12 @@ import {
   Query,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { AttitudeType } from '@prisma/client';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
@@ -30,7 +29,6 @@ import { UpdateAnswerRequestDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
 
 @Controller('/questions/:question_id/answers')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class AnswerController {
@@ -45,11 +43,8 @@ export class AnswerController {
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-    @Param('question_id', ParseIntPipe) questionId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart?: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number = 20,
+    @Param('question_id') questionId: number,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
   ): Promise<GetAnswersRespondDto> {
     let userId: number | undefined;
     try {

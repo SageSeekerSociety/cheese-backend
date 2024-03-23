@@ -23,13 +23,12 @@ import {
   Query,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { AttitudeType } from '@prisma/client';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { PageDto, PageWithKeywordDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import {
@@ -56,7 +55,6 @@ import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
 
 @Controller('/questions')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class QuestionsController {
@@ -67,17 +65,12 @@ export class QuestionsController {
 
   @Get('/')
   async searchQuestion(
-    @Query('q') q: string,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number,
+    @Query()
+    { q, page_start: pageStart, page_size: pageSize }: PageWithKeywordDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchQuestionResponseDto> {
-    if (pageSize == undefined || pageSize == 0) pageSize = 20;
-    if (q == undefined) q = '';
     // try get viewer id
     let searcherId: number | undefined;
     try {
@@ -211,14 +204,11 @@ export class QuestionsController {
   @Get('/:id/followers')
   async getQuestionFollowers(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number,
-    @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionFollowerResponseDto> {
-    if (pageSize == undefined || pageSize == 0) pageSize = 20;
     let userId: number | undefined;
     try {
       userId = this.authService.verify(auth).userId;
@@ -322,10 +312,7 @@ export class QuestionsController {
   @Get('/:id/invitations')
   async getQuestionInvitations(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Query(
       'sort',
       new SnakeCaseToCamelCasePipe({ prefixIgnorePattern: '[+-]' }),
@@ -334,9 +321,8 @@ export class QuestionsController {
         allowedFields: ['createdAt'],
       }),
     )
-    sort: SortPattern | undefined,
+    sort: SortPattern = { createdAt: 'desc' },
   ): Promise<GetQuestionInvitationsResponseDto> {
-    if (sort == undefined) sort = { createdAt: 'desc' };
     const [invitations, page] =
       await this.questionsService.getQuestionInvitations(
         id,
@@ -401,12 +387,13 @@ export class QuestionsController {
     };
   }
 
-  //don't change the position of the below two functions
-  //because if the order is swapped, the route is incorrectly identified
+  //! The static endpoint `/:id/invitations/recommendations` should precede
+  //! the dynamic endpoint `/:id/invitations/:invitation_id`
+  //! so that it can be matched first.
   @Get('/:id/invitations/recommendations')
   async getRecommendations(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
+    @Query('page_size')
     pageSize: number,
   ): Promise<GetQuestionRecommendationsRespondDto> {
     const users =

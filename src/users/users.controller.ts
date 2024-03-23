@@ -9,6 +9,7 @@
 
 import {
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -23,8 +24,6 @@ import {
   Res,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
   forwardRef,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -33,6 +32,7 @@ import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
@@ -65,7 +65,6 @@ import {
 import { UsersService } from './users.service';
 
 @Controller('/users')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class UsersController {
@@ -380,10 +379,7 @@ export class UsersController {
   @Get('/:id/followers')
   async getFollowers(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -417,10 +413,7 @@ export class UsersController {
   @Get('/:id/follow/users')
   async getFollowees(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -454,10 +447,7 @@ export class UsersController {
   @Get('/:user_id/questions')
   async getUserAskedQuestions(
     @Param('user_id', ParseIntPipe) userId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -489,12 +479,10 @@ export class UsersController {
   }
 
   @Get('/:user_id/answers')
+  @UseInterceptors(ClassSerializerInterceptor)
   async getUserAnsweredAnswers(
     @Param('user_id', ParseIntPipe) userId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -529,10 +517,7 @@ export class UsersController {
   @Get('/:user_id/follow/questions')
   async getFollowedQuestions(
     @Param('user_id', ParseIntPipe) userId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,

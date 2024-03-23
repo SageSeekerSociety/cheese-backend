@@ -14,18 +14,16 @@ import {
   Get,
   Headers,
   Param,
-  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
   Query,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { GroupPageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateGroupDto } from './DTO/create-group.dto';
@@ -36,10 +34,9 @@ import { GroupRespondDto } from './DTO/group.dto';
 import { JoinGroupDto, JoinGroupRespondDto } from './DTO/join-group.dto';
 import { QuitGroupRespondDto } from './DTO/quit-group.dto';
 import { UpdateGroupDto, UpdateGroupRespondDto } from './DTO/update-group.dto';
-import { GroupQueryType, GroupsService } from './groups.service';
+import { GroupsService } from './groups.service';
 
 @Controller('/groups')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class GroupsController {
@@ -70,13 +67,7 @@ export class GroupsController {
   @Get('/')
   async getGroups(
     @Headers('Authorization') auth: string | undefined,
-    @Query('q') key?: string,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    page_start?: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    page_size: number = 20,
-    @Query('type', new ParseEnumPipe(GroupQueryType, { optional: true }))
-    type: GroupQueryType = GroupQueryType.Recommend,
+    @Query() { q: key, page_start, page_size, type }: GroupPageDto,
   ): Promise<GetGroupsRespondDto> {
     let userId: number | undefined;
     try {
@@ -87,7 +78,7 @@ export class GroupsController {
     const [groups, page] = await this.groupsService.getGroups(
       userId,
       key,
-      page_start ?? undefined,
+      page_start,
       page_size,
       type,
     );
@@ -151,10 +142,7 @@ export class GroupsController {
   @Get('/:id/members')
   async getGroupMembers(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    page_start?: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    page_size: number = 20,
+    @Query() { page_start, page_size }: GroupPageDto,
   ): Promise<GetGroupMembersRespondDto> {
     const [members, page] = await this.groupsService.getGroupMembers(
       id,
@@ -207,10 +195,7 @@ export class GroupsController {
   @Get('/:id/questions')
   async getGroupQuestions(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    page_start?: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    page_size: number = 20,
+    @Query() { page_start, page_size }: GroupPageDto,
   ): Promise<GetGroupQuestionsRespondDto> {
     const getGroupQuestionsResult = await this.groupsService.getGroupQuestions(
       id,

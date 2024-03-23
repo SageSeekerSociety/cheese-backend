@@ -8,8 +8,6 @@ import {
   UploadedFile,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -22,7 +20,6 @@ import { CorrespondentFileNotExistError } from './avatars.error';
 import { AvatarsService } from './avatars.service';
 
 @Controller('/avatars')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class AvatarsController {

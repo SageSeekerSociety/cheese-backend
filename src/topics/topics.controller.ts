@@ -19,10 +19,9 @@ import {
   Query,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { PageWithKeywordDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { AddTopicRequestDto, AddTopicResponseDto } from './DTO/add-topic.dto';
@@ -31,7 +30,6 @@ import { SearchTopicResponseDto } from './DTO/search-topic.dto';
 import { TopicsService } from './topics.service';
 
 @Controller('/topics')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class TopicsController {
@@ -42,17 +40,12 @@ export class TopicsController {
 
   @Get('/')
   async searchTopics(
-    @Query('q') q: string,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number,
+    @Query()
+    { q, page_start: pageStart, page_size: pageSize }: PageWithKeywordDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchTopicResponseDto> {
-    if (pageSize == undefined || pageSize == 0) pageSize = 20;
-    if (q == undefined) q = '';
     // try get viewer id
     let searcherId: number | undefined;
     try {

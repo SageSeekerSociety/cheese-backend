@@ -1339,7 +1339,7 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .get(`/questions/${questionIds[1]}/invitations/recommendations`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .query({ pageSize: 5 });
+        .query({ page_size: 5 });
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
       expect(respond.body.data.users.length).toBe(5);
@@ -1348,7 +1348,7 @@ describe('Questions Module', () => {
       const respond = await request(app.getHttpServer())
         .get(`/questions/1919810/invitations/recommendations`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .query({ pageSize: 5 });
+        .query({ page_size: 5 });
       expect(respond.body.message).toContain('QuestionIdNotFoundError');
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
