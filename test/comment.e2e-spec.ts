@@ -308,9 +308,12 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.content).toContain('zfgg好帅');
       expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
       expect(respond.body.data.comment.created_at).toBeDefined();
-      expect(respond.body.data.comment.disagree_count).toBe(0);
-      expect(respond.body.data.comment.agree_count).toBe(0);
-      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
+      expect(respond.body.data.comment.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.comment.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.comment.attitudes.difference).toBe(0);
+      expect(respond.body.data.comment.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
     });
     it('should get comment by id', async () => {
       const respond = await request(app.getHttpServer())
@@ -326,9 +329,12 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.content).toContain('啦啦啦德玛西亚');
       expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
       expect(respond.body.data.comment.created_at).toBeDefined();
-      expect(respond.body.data.comment.disagree_count).toBe(0);
-      expect(respond.body.data.comment.agree_count).toBe(0);
-      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
+      expect(respond.body.data.comment.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.comment.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.comment.attitudes.difference).toBe(0);
+      expect(respond.body.data.comment.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
     });
     it('should return CommentNotFoundError due to the invalid id', async () => {
       const respond = await request(app.getHttpServer())
@@ -345,25 +351,25 @@ describe('comments Module', () => {
     it('should agree to a comment', async () => {
       const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitude_type: 'Agree' });
+        .send({ attitude_type: 'PosiTIVE' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(200);
+      expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(200);
     });
     it('should agree to a comment', async () => {
       const commentId = CommentIds[4];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitude_type: 'Agree' });
+        .send({ attitude_type: 'pOsItIvE' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(200);
+      expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(200);
     });
     it('should get some difference from others', async () => {
@@ -380,9 +386,12 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.content).toContain('zfgg好帅');
       expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
       expect(respond.body.data.comment.created_at).toBeDefined();
-      expect(respond.body.data.comment.disagree_count).toBe(0);
-      expect(respond.body.data.comment.agree_count).toBe(1);
-      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
+      expect(respond.body.data.comment.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.comment.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.comment.attitudes.difference).toBe(1);
+      expect(respond.body.data.comment.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
     });
     it('should get some difference from self', async () => {
       const respond = await request(app.getHttpServer())
@@ -398,20 +407,23 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.content).toContain('zfgg好帅');
       expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
       expect(respond.body.data.comment.created_at).toBeDefined();
-      expect(respond.body.data.comment.disagree_count).toBe(0);
-      expect(respond.body.data.comment.agree_count).toBe(1);
-      expect(respond.body.data.comment.attitude_type).toBe('AGREE');
+      expect(respond.body.data.comment.attitudes.positive_count).toBe(1);
+      expect(respond.body.data.comment.attitudes.negative_count).toBe(0);
+      expect(respond.body.data.comment.attitudes.difference).toBe(1);
+      expect(respond.body.data.comment.attitudes.user_attitude).toBe(
+        'POSITIVE',
+      );
     });
     it('should disagree to a comment', async () => {
       const commentId = CommentIds[0];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
-        .send({ attitude_type: 'Disagree' });
+        .send({ attitude_type: 'NEGATIVE' });
       expect(respond.body.message).toBe(
         'You have expressed your attitude towards the comment',
       );
-      expect(respond.status).toBe(200);
+      expect(respond.status).toBe(201);
       expect(respond.body.code).toBe(200);
     });
     it('should get some difference from others', async () => {
@@ -428,9 +440,12 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.content).toContain('zfgg好帅');
       expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
       expect(respond.body.data.comment.created_at).toBeDefined();
-      expect(respond.body.data.comment.disagree_count).toBe(1);
-      expect(respond.body.data.comment.agree_count).toBe(0);
-      expect(respond.body.data.comment.attitude_type).toBe('UNDEFINED');
+      expect(respond.body.data.comment.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.comment.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.comment.attitudes.difference).toBe(-1);
+      expect(respond.body.data.comment.attitudes.user_attitude).toBe(
+        'UNDEFINED',
+      );
     });
     it('should get some difference from self', async () => {
       const respond = await request(app.getHttpServer())
@@ -446,14 +461,17 @@ describe('comments Module', () => {
       expect(respond.body.data.comment.content).toContain('zfgg好帅');
       expect(respond.body.data.comment.user).toStrictEqual(TestUserDto);
       expect(respond.body.data.comment.created_at).toBeDefined();
-      expect(respond.body.data.comment.disagree_count).toBe(1);
-      expect(respond.body.data.comment.agree_count).toBe(0);
-      expect(respond.body.data.comment.attitude_type).toBe('DISAGREE');
+      expect(respond.body.data.comment.attitudes.positive_count).toBe(0);
+      expect(respond.body.data.comment.attitudes.negative_count).toBe(1);
+      expect(respond.body.data.comment.attitudes.difference).toBe(-1);
+      expect(respond.body.data.comment.attitudes.user_attitude).toBe(
+        'NEGATIVE',
+      );
     });
     it('should return to InvalidAttitudeTypeError', async () => {
       const commentId = CommentIds[1];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'LIKE' });
       expect(respond.body.message).toContain('InvalidAttitudeTypeError:');
@@ -463,7 +481,7 @@ describe('comments Module', () => {
     it('should return CommentNotFoundError', async () => {
       const commentId = 114514;
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ attitude_type: 'agree' });
       expect(respond.body.message).toContain('CommentNotFoundError:');
@@ -473,7 +491,7 @@ describe('comments Module', () => {
     it('should return AuthenticationRequiredError', async () => {
       const commentId = CommentIds[1];
       const respond = await request(app.getHttpServer())
-        .put(`/comments/${commentId}/attitude`)
+        .post(`/comments/${commentId}/attitudes`)
         .send({ attitude_type: 'disagree' });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);

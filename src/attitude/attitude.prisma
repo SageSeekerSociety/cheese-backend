@@ -10,18 +10,27 @@ import { user } from "../users/users.legacy"
 
 enum AttitudableType {
   COMMENT
+  QUESTION
+  ANSWER
 
   @@map("attitudable_type")
 }
 
 enum AttitudeType {
   UNDEFINED
-  AGREE
-  DISAGREE
-  LIKE
-  DISLIKE
+  POSITIVE
+  NEGATIVE
 
   @@map("attitude_type")
+}
+
+// Although UNDEFINED is supported,
+// it should not be stored in database.
+enum AttitudeTypeNotUndefined {
+  POSITIVE
+  NEGATIVE
+
+  @@map("attitude_type_not_undefined")
 }
 
 model Attitude {
@@ -30,7 +39,7 @@ model Attitude {
   userId          Int
   attitudableType AttitudableType
   attitudableId   Int
-  attitude        AttitudeType
+  attitude        AttitudeTypeNotUndefined
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt()
 

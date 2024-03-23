@@ -11,26 +11,27 @@ import {
   Put,
   Query,
   UseFilters,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
+import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
+import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { QuestionsService } from '../questions/questions.service';
-import {
-  AgreeAnswerRequestDto,
-  AgreeAnswerRespondDto,
-} from './DTO/agree-answer.dto';
 import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { GetAnswerDetailRespondDto } from './DTO/get-answer-detail.dto';
 import { GetAnswersRespondDto } from './DTO/get-answers.dto';
 import { UpdateAnswerRequestDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 
 @Controller('/questions/:question_id/answers')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class AnswerController {
   constructor(
     private readonly authService: AuthService,
@@ -58,11 +59,11 @@ export class AnswerController {
     }
     const [answers, page] = await this.answerService.getQuestionAnswers(
       questionId,
-      pageStart ?? undefined,
+      pageStart,
       pageSize,
       userId,
-      userAgent,
       ip,
+      userAgent,
     );
     return {
       code: 200,
@@ -121,8 +122,8 @@ export class AnswerController {
       questionId,
       answerId,
       userId,
-      userAgent,
       ip,
+      userAgent,
     );
     const questionDto = await this.questionsService.getQuestionDto(
       answerDto.question_id,
@@ -185,13 +186,13 @@ export class AnswerController {
     };
   }
 
-  @Put('/:answer_id/agree')
-  async agreeAnswer(
+  @Post('/:answer_id/attitudes')
+  async updateAttitudeToAnswer(
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
+    @Body('attitude_type') attitude: string,
     @Headers('Authorization') auth: string | undefined,
-    @Body() req: AgreeAnswerRequestDto,
-  ): Promise<AgreeAnswerRespondDto> {
+  ): Promise<UpdateAttitudeRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -200,20 +201,17 @@ export class AnswerController {
       'answer/attitude',
       answerId,
     );
-    await this.answerService.agreeAnswer(
+    const attitudes = await this.answerService.setAttitudeToAnswer(
       questionId,
       answerId,
       userId,
-      req.agree_type,
+      parseAttitude(attitude),
     );
     return {
-      code: 200,
-      message: 'Answer agreed successfully.',
+      code: 201,
+      message: 'You have expressed your attitude towards the answer',
       data: {
-        agree_count: await this.answerService.getAgreeCount(
-          questionId,
-          answerId,
-        ),
+        attitudes,
       },
     };
   }

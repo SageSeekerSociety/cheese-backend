@@ -8,26 +8,27 @@ import {
   Param,
   ParseIntPipe,
   Post,
-  Put,
   Query,
   UseFilters,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { AttitudeType } from '@prisma/client';
+import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
 import { parseAttitude } from '../attitude/attitude.enum';
-import { InvalidAttitudeTypeError } from '../attitude/attitude.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateCommentResponseDto } from './DTO/create-comment.dto';
 import { GetCommentDetailResponseDto } from './DTO/get-comment-detail.dto';
 import { GetCommentsResponseDto } from './DTO/get-comments.dto';
 import { CommentsService } from './comment.service';
 import { parseCommentable } from './commentable.enum';
 @Controller('/comments')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class CommentsController {
   constructor(
     private readonly commentsService: CommentsService,
@@ -69,6 +70,36 @@ export class CommentsController {
       data: {
         comments,
         page,
+      },
+    };
+  }
+
+  // This method must be put above createComment()
+  // to avoid routing ambiguous problem
+  @Post('/:commentId/attitudes')
+  async updateAttitudeToComment(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Body('attitude_type') attitude: string,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<UpdateAttitudeRespondDto> {
+    const userId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.other,
+      await this.commentsService.getCommentCreatedById(commentId),
+      'comment/attitude',
+      commentId,
+    );
+    const attitudes = await this.commentsService.setAttitudeToComment(
+      commentId,
+      userId,
+      parseAttitude(attitude),
+    );
+    return {
+      code: 200,
+      message: 'You have expressed your attitude towards the comment',
+      data: {
+        attitudes,
       },
     };
   }
@@ -121,43 +152,6 @@ export class CommentsController {
     return {
       code: 204,
       message: 'Comment deleted already',
-    };
-  }
-
-  private parseAttitudeTypeForComment(attitude: string): AttitudeType {
-    const attitudeParsed = parseAttitude(attitude);
-    const allowed: AttitudeType[] = [
-      AttitudeType.UNDEFINED,
-      AttitudeType.AGREE,
-      AttitudeType.DISAGREE,
-    ];
-    if (allowed.indexOf(attitudeParsed) == -1)
-      throw new InvalidAttitudeTypeError(attitude);
-    return attitudeParsed;
-  }
-
-  @Put('/:commentId/attitude')
-  async attitudeToComment(
-    @Param('commentId', ParseIntPipe) commentId: number,
-    @Body('attitude_type') attitude: string,
-    @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
-    const userId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.other,
-      await this.commentsService.getCommentCreatedById(commentId),
-      'comment/attitude',
-      commentId,
-    );
-    await this.commentsService.setAttitudeToComment(
-      commentId,
-      userId,
-      this.parseAttitudeTypeForComment(attitude),
-    );
-    return {
-      code: 200,
-      message: 'You have expressed your attitude towards the comment',
     };
   }
 

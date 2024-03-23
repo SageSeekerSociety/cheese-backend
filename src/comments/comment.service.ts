@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AttitudableType, AttitudeType } from '@prisma/client';
 import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 import { AnswerService } from '../answer/answer.service';
-import { parseAttitude } from '../attitude/attitude.enum';
+import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
@@ -26,6 +26,7 @@ export class CommentsService {
   constructor(
     private readonly attitudeService: AttitudeService,
     private readonly usersService: UsersService,
+    @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
     private readonly questionService: QuestionsService,
     @InjectRepository(Comment)
@@ -121,25 +122,12 @@ export class CommentsService {
         ip,
         userAgent,
       ),
-      agree_count: await this.attitudeService.countAttitude(
-        AttitudableType.COMMENT,
-        comment.id,
-        AttitudeType.AGREE,
-      ),
-      disagree_count: await this.attitudeService.countAttitude(
-        AttitudableType.COMMENT,
-        comment.id,
-        AttitudeType.DISAGREE,
-      ),
       created_at: comment.createdAt.getTime(),
-      attitude_type:
-        viewerId == undefined
-          ? AttitudeType.UNDEFINED
-          : await this.attitudeService.getAttitude(
-              viewerId,
-              AttitudableType.COMMENT,
-              comment.id,
-            ),
+      attitudes: await this.attitudeService.getAttitudeStatusDto(
+        AttitudableType.COMMENT,
+        commentId,
+        viewerId,
+      ),
     };
     if (viewerId != undefined || ip != undefined || userAgent != undefined) {
       const log = this.commentQueryLogRepository.create({
@@ -216,15 +204,20 @@ export class CommentsService {
   async setAttitudeToComment(
     commentId: number,
     userId: number,
-    attitudeType: string,
-  ): Promise<void> {
+    attitudeType: AttitudeType,
+  ): Promise<AttitudeStateDto> {
     const commment = await this.commentRepository.findOneBy({ id: commentId });
     if (commment == null) throw new CommentNotFoundError(commentId);
     await this.attitudeService.setAttitude(
       userId,
       AttitudableType.COMMENT,
       commentId,
-      parseAttitude(attitudeType),
+      attitudeType,
+    );
+    return await this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.COMMENT,
+      commentId,
+      userId,
     );
   }
 
@@ -234,5 +227,15 @@ export class CommentsService {
     });
     if (comment == undefined) throw new CommentNotFoundError(commentId);
     return comment.createdById;
+  }
+
+  async countCommentsByCommentable(
+    commentableType: CommentableType,
+    commentableId: number,
+  ): Promise<number> {
+    return this.commentRepository.countBy({
+      commentableType,
+      commentableId,
+    });
   }
 }

@@ -8,7 +8,8 @@
 //
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["debian-openssl-3.0.x", "debian-openssl-1.1.x"]
 }
 
 datasource db {
@@ -130,29 +131,38 @@ model answer_user_attitude {
 
 enum AttitudableType {
   COMMENT
+  QUESTION
+  ANSWER
 
   @@map("attitudable_type")
 }
 
 enum AttitudeType {
   UNDEFINED
-  AGREE
-  DISAGREE
-  LIKE
-  DISLIKE
+  POSITIVE
+  NEGATIVE
 
   @@map("attitude_type")
 }
 
+// Although UNDEFINED is supported,
+// it should not be stored in database.
+enum AttitudeTypeNotUndefined {
+  POSITIVE
+  NEGATIVE
+
+  @@map("attitude_type_not_undefined")
+}
+
 model Attitude {
-  id              Int             @id @default(autoincrement())
-  user            user            @relation(fields: [userId], references: [id])
+  id              Int                      @id @default(autoincrement())
+  user            user                     @relation(fields: [userId], references: [id])
   userId          Int
   attitudableType AttitudableType
   attitudableId   Int
-  attitude        AttitudeType
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt()
+  attitude        AttitudeTypeNotUndefined
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt()
 
   @@unique([attitudableId, userId, attitudableType])
   @@index([userId])
@@ -393,6 +403,24 @@ model QuestionElasticsearchRelation {
 }
 
 //
+// questions.invitation.prisma
+//
+
+model QuestionInvitationRelation {
+  id         Int      @id @default(autoincrement())
+  questionId Int
+  question   question @relation(fields: [questionId], references: [id])
+  userId     Int
+  user       user     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([questionId])
+  @@index([userId])
+  @@map("question_invitation_relation")
+}
+
+//
 // questions.legacy.prisma
 //
 
@@ -426,6 +454,7 @@ model question {
   question_query_log            question_query_log[]
   question_topic_relation       question_topic_relation[]
   QuestionElasticsearchRelation QuestionElasticsearchRelation?
+  questionInvitationRelation    QuestionInvitationRelation[]
 
   @@index([createdById], map: "IDX_187915d8eaa010cde8b053b35d")
   @@index([title, content], map: "IDX_8b24620899a8556c3f22f52145")
@@ -588,6 +617,7 @@ model user {
   user_profile_query_log_user_profile_query_log_vieweeIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_vieweeIdTouser")
   Attitude                                                                 Attitude[]
   AttitudeLog                                                              AttitudeLog[]
+  QuestionInvitationRelation                                               QuestionInvitationRelation[]
 }
 
 model user_following_relationship {

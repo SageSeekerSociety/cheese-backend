@@ -6,17 +6,25 @@ import {
   Res,
   StreamableFile,
   UploadedFile,
+  UseFilters,
   UseInterceptors,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import * as fs from 'fs';
-import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
-import { AvatarsService } from './avatars.service';
 import path from 'path';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
+import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
 import { CorrespondentFileNotExistError } from './avatars.error';
+import { AvatarsService } from './avatars.service';
 
 @Controller('/avatars')
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class AvatarsController {
   constructor(private readonly avatarsService: AvatarsService) {}
   @Post()

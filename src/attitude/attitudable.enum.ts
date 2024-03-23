@@ -14,6 +14,8 @@ export function parseAttitudable(attitudable: string): AttitudableType {
   switch (attitudable) {
     case 'COMMENT':
       return AttitudableType.COMMENT;
+    case 'QUESTION':
+      return AttitudableType.QUESTION;
   }
   throw new InvalidAttitudableTypeError(attitudable);
 }

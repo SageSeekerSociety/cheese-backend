@@ -7,9 +7,10 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AnswerService } from '../answer/answer.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
@@ -49,7 +50,10 @@ export enum GroupQueryType {
 export class GroupsService {
   constructor(
     private usersService: UsersService,
+    @Inject(forwardRef(() => QuestionsService))
     private questionsService: QuestionsService,
+    @Inject(forwardRef(() => AnswerService))
+    private answerService: AnswerService,
     private avatarsService: AvatarsService,
     @InjectRepository(Group)
     private groupsRepository: Repository<Group>,
@@ -278,10 +282,8 @@ export class GroupsService {
       groupId,
     });
     const question_count = questions.length;
-    const getQuestionAnswerCount = async (questionId: number) =>
-      (await this.questionsService.getQuestionDto(questionId)).answer_count;
     const answer_count_promises = questions.map((question) =>
-      getQuestionAnswerCount(question.id),
+      this.answerService.countQuestionAnswers(question.id),
     );
     const answer_count = (await Promise.all(answer_count_promises)).reduce(
       (a, b) => a + b,
