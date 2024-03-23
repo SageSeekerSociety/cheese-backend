@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Res,
   StreamableFile,
@@ -32,19 +33,19 @@ export class AvatarsController {
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<UploadAvatarRespondDto> {
-    //const userid = this.authService.verify(auth).userId;
-    const avatar = await this.avatarsService.save(file.path, file.filename);
+    //const userId = this.authService.verify(auth).userId;
+    const avatarId = await this.avatarsService.save(file.path, file.filename);
     return {
       code: 201,
       message: 'Upload avatar successfully',
       data: {
-        avatarid: avatar.id,
+        avatarId,
       },
     };
   }
   @Get('/:id')
   async getAvatar(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Res({ passthrough: true }) res: Response,
   ) {
     const avatarPath = await this.avatarsService.getAvatarPath(id);

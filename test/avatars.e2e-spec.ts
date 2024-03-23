@@ -24,8 +24,8 @@ describe('Avatar Module', () => {
       //.set('Authorization', `Bearer ${TestToken}`);
       expect(respond.status).toBe(201);
       expect(respond.body.message).toBe('Upload avatar successfully');
-      expect(respond.body.data).toHaveProperty('avatarid');
-      AvatarId = respond.body.data.avatarid;
+      expect(respond.body.data).toHaveProperty('avatarId');
+      AvatarId = respond.body.data.avatarId;
     });
   });
   describe('get avatar', () => {

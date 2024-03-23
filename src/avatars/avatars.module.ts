@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { AuthModule } from '../auth/auth.module';
+import { PrismaModule } from '../common/prisma/prisma.module';
 import { AvatarsController } from './avatars.controller';
 import { Avatar } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
@@ -30,6 +31,7 @@ import { AvatarsService } from './avatars.service';
       },
     }),
     AuthModule,
+    PrismaModule,
   ],
   controllers: [AvatarsController],
   providers: [AvatarsService],

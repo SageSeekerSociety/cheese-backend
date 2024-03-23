@@ -56,8 +56,8 @@ describe('Profile Submodule of User Module', () => {
           .attach('avatar', 'src/avatars/resources/default.jpg');
         expect(respond.status).toBe(201);
         expect(respond.body.message).toBe('Upload avatar successfully');
-        expect(respond.body.data).toHaveProperty('avatarid');
-        return respond.body.data.avatarid;
+        expect(respond.body.data).toHaveProperty('avatarId');
+        return respond.body.data.avatarId;
       }
       UpdateAvatarId = await uploadAvatar();
     });

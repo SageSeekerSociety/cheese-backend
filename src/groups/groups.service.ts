@@ -79,7 +79,7 @@ export class GroupsService {
     name: string,
     userId: number,
     intro: string,
-    avatar: number,
+    avatarId: number,
   ): Promise<GroupDto> {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
@@ -88,16 +88,16 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
-    if ((await this.avatarsService.getOne(avatar)) == undefined) {
-      throw new AvatarNotFoundError(avatar);
+    if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
+      throw new AvatarNotFoundError(avatarId);
     }
     const group = this.groupsRepository.create({ name });
     await this.groupsRepository.save(group);
-    await this.avatarsService.plusUsageCount(avatar);
+    await this.avatarsService.plusUsageCount(avatarId);
     const groupProfile = this.groupProfilesRepository.create({
       groupId: group.id,
       intro,
-      avatarId: avatar,
+      avatarId,
     });
     await this.groupProfilesRepository.save(groupProfile);
 
@@ -324,7 +324,7 @@ export class GroupsService {
     groupId: number,
     name: string,
     intro: string,
-    avatar: number,
+    avatarId: number,
   ): Promise<void> {
     const group = await this.groupsRepository.findOne({
       where: { id: groupId },
@@ -350,7 +350,9 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
-    const avatarId = (await this.avatarsService.getOne(avatar)).id;
+    if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
+      throw new AvatarNotFoundError(avatarId);
+    }
     const preAvatarId = group.profile.avatarId;
     await this.avatarsService.plusUsageCount(avatarId);
     await this.avatarsService.minusUsageCount(preAvatarId);

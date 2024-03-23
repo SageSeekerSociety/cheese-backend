@@ -20,6 +20,7 @@ import {
   AuthorizedAction,
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
+import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
@@ -600,13 +601,15 @@ export class UsersService {
     userId: number,
     nickname: string,
     intro: string,
-    avatar: number,
+    avatarId: number,
   ): Promise<void> {
     const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
     }
-    const avatarId = (await this.avatarsService.getOne(avatar)).id;
+    if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
+      throw new AvatarNotFoundError(avatarId);
+    }
     const preAvatarId = profile.avatarId;
     await this.avatarsService.plusUsageCount(avatarId);
     await this.avatarsService.minusUsageCount(preAvatarId);
