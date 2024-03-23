@@ -17,22 +17,16 @@ import { MaterialsService } from './materials.service';
     MulterModule.register({
       storage: diskStorage({
         destination: (req, file, callback) => {
-          let uploadPath: string;
-          switch (req.body.type) {
-            case 'image':
-              uploadPath = './uploads/images';
-              break;
-            case 'video':
-              uploadPath = './uploads/videos';
-              break;
-            case 'audio':
-              uploadPath = './uploads/audios';
-              break;
-            case 'file':
-              uploadPath = './uploads/files';
-              break;
-            default:
-              throw new InvalidMaterialTypeError();
+          const uploadPaths: { [key: string]: string } = {
+            image: './uploads/images',
+            video: './uploads/videos',
+            audio: './uploads/audios',
+            file: './uploads/files',
+          };
+          const fileType = req.body.type;
+          const uploadPath = uploadPaths[fileType];
+          if (!uploadPath) {
+            throw new InvalidMaterialTypeError();
           }
           if (!fs.existsSync(uploadPath)) {
             fs.mkdirSync(uploadPath, { recursive: true });
@@ -52,45 +46,26 @@ import { MaterialsService } from './materials.service';
         fileSize: 1024 * 1024 * 1024, //1GB
       },
       fileFilter(req, file, callback) {
-        switch (req.body.type) {
-          case 'image':
-            if (!file.mimetype.includes('image')) {
-              return callback(
-                new MimeTypeNotMatchError(file.mimetype, req.body.type),
-                false,
-              );
-            }
-            break;
-          case 'video':
-            if (!file.mimetype.includes('video')) {
-              return callback(
-                new MimeTypeNotMatchError(file.mimetype, req.body.type),
-                false,
-              );
-            }
-            break;
-          case 'audio':
-            if (!file.mimetype.includes('audio')) {
-              return callback(
-                new MimeTypeNotMatchError(file.mimetype, req.body.type),
-                false,
-              );
-            }
-            break;
-          case 'file':
-            if (
-              !file.mimetype.includes('application') &&
-              !file.mimetype.includes('text')
-            ) {
-              return callback(
-                new MimeTypeNotMatchError(file.mimetype, req.body.type),
-                false,
-              );
-            }
-            break;
-          default:
-            throw new InvalidMaterialTypeError();
+        const typeToMimeTypes: { [key: string]: string[] } = {
+          image: ['image'],
+          video: ['video'],
+          audio: ['audio'],
+          file: ['application', 'text'],
+        };
+        const allowedTypes = typeToMimeTypes[req.body.type];
+        if (!allowedTypes) {
+          throw new InvalidMaterialTypeError();
         }
+        const isAllowed = allowedTypes.some((type) =>
+          file.mimetype.includes(type),
+        );
+        if (!isAllowed) {
+          return callback(
+            new MimeTypeNotMatchError(file.mimetype, req.body.type),
+            false,
+          );
+        }
+
         callback(null, true);
       },
     }),

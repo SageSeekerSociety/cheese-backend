@@ -13,7 +13,7 @@ export class MaterialNotFoundError extends BaseError {
 }
 export class MetaDataParseError extends BaseError {
   constructor(metaType: string) {
-    super('MetaDataParseError', ` ${metaType} meta parse fail`, 400);
+    super('MetaDataParseError', `${metaType} meta parse fail`, 400);
   }
 }
 export class MimeTypeNotMatchError extends BaseError {
