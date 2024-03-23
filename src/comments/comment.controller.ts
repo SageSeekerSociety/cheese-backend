@@ -6,14 +6,13 @@ import {
   Headers,
   Ip,
   Param,
-  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Query,
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
-import { AttitudeType } from '@prisma/client';
+import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
@@ -70,13 +69,13 @@ export class CommentsController {
     };
   }
 
-  // This method must be put above createComment()
-  // to avoid routing ambiguous problem
+  //! The static route `/:commentId/attitudes` should come
+  //! before the dynamic route `/:commentableType/:commentableId`
+  //! so that it is not overridden.
   @Post('/:commentId/attitudes')
   async updateAttitudeToComment(
     @Param('commentId', ParseIntPipe) commentId: number,
-    @Body('attitude_type', new ParseEnumPipe(AttitudeType))
-    attitude: AttitudeType,
+    @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateAttitudeRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -90,7 +89,7 @@ export class CommentsController {
     const attitudes = await this.commentsService.setAttitudeToComment(
       commentId,
       userId,
-      attitude,
+      attitudeType,
     );
     return {
       code: 200,

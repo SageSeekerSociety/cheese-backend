@@ -47,15 +47,15 @@ export class GroupsController {
 
   @Post('/')
   async createGroup(
-    @Body() req: CreateGroupDto,
+    @Body() { name, intro, avatarId }: CreateGroupDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<GroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const group = await this.groupsService.createGroup(
-      req.name,
+      name,
       userId,
-      req.intro,
-      req.avatarId,
+      intro,
+      avatarId,
     );
     return {
       code: 201,
@@ -66,8 +66,8 @@ export class GroupsController {
 
   @Get('/')
   async getGroups(
-    @Headers('Authorization') auth: string | undefined,
     @Query() { q: key, page_start, page_size, type }: GroupPageDto,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<GetGroupsRespondDto> {
     let userId: number | undefined;
     try {
@@ -128,8 +128,8 @@ export class GroupsController {
 
   @Delete('/:id')
   async deleteGroup(
-    @Headers('Authorization') auth: string | undefined,
     @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
     await this.groupsService.deleteGroup(userId, id);
@@ -162,14 +162,14 @@ export class GroupsController {
   @Post('/:id/members')
   async joinGroup(
     @Param('id', ParseIntPipe) groupId: number,
+    @Body() { intro }: JoinGroupDto,
     @Headers('Authorization') auth: string | undefined,
-    @Body() joinGroupDto: JoinGroupDto,
   ): Promise<JoinGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const joinResult = await this.groupsService.joinGroup(
       userId,
       groupId,
-      joinGroupDto.intro,
+      intro,
     );
     return {
       code: 201,

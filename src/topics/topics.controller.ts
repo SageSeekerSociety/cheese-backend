@@ -73,7 +73,7 @@ export class TopicsController {
 
   @Post('/')
   async addTopic(
-    @Body() request: AddTopicRequestDto,
+    @Body() { name }: AddTopicRequestDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<AddTopicResponseDto> {
     const userId = this.authService.verify(auth).userId;
@@ -84,7 +84,7 @@ export class TopicsController {
       'topics',
       undefined,
     );
-    const topic = await this.topicsService.addTopic(request.name, userId);
+    const topic = await this.topicsService.addTopic(name, userId);
     return {
       code: 201,
       message: 'OK',
@@ -96,7 +96,7 @@ export class TopicsController {
 
   @Get('/:id')
   async getTopic(
-    @Param('id', new ParseIntPipe()) id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,

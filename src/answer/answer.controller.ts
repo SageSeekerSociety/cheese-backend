@@ -6,7 +6,6 @@ import {
   Headers,
   Ip,
   Param,
-  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
@@ -14,7 +13,7 @@ import {
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
-import { AttitudeType } from '@prisma/client';
+import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
@@ -40,11 +39,11 @@ export class AnswerController {
 
   @Get('/')
   async getQuestionAnswers(
+    @Param('question_id') questionId: number,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-    @Param('question_id') questionId: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
   ): Promise<GetAnswersRespondDto> {
     let userId: number | undefined;
     try {
@@ -73,9 +72,9 @@ export class AnswerController {
 
   @Post('/')
   async answerQuestion(
+    @Param('question_id', ParseIntPipe) questionId: number,
     @Body('content') content: string,
     @Headers('Authorization') auth: string | undefined,
-    @Param('question_id', ParseIntPipe) questionId: number,
   ): Promise<CreateAnswerRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -101,9 +100,9 @@ export class AnswerController {
 
   @Get('/:answer_id')
   async getAnswerDetail(
-    @Headers('Authorization') auth: string | undefined,
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
+    @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetAnswerDetailRespondDto> {
@@ -138,8 +137,8 @@ export class AnswerController {
   async updateAnswer(
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
+    @Body() { content }: UpdateAnswerRequestDto,
     @Headers('Authorization') auth: string | undefined,
-    @Body() req: UpdateAnswerRequestDto,
   ): Promise<BaseRespondDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -152,7 +151,7 @@ export class AnswerController {
     await this.answerService.updateAnswer(
       questionId,
       answerId,
-      req.content,
+      content,
       userId,
     );
     return {
@@ -186,8 +185,7 @@ export class AnswerController {
   async updateAttitudeToAnswer(
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
-    @Body('attitude_type', new ParseEnumPipe(AttitudeType))
-    attitude: AttitudeType,
+    @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateAttitudeRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -202,7 +200,7 @@ export class AnswerController {
       questionId,
       answerId,
       userId,
-      attitude,
+      attitudeType,
     );
     return {
       code: 201,

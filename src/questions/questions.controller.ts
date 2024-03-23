@@ -16,7 +16,6 @@ import {
   Headers,
   Ip,
   Param,
-  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
@@ -24,7 +23,7 @@ import {
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
-import { AttitudeType } from '@prisma/client';
+import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
@@ -49,7 +48,10 @@ import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto'
 import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
 import { GetQuestionRecommendationsRespondDto } from './DTO/get-question-recommendations.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
-import { InviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
+import {
+  InviteUsersAnswerRequestDto,
+  InviteUsersAnswerResponseDto,
+} from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
@@ -99,7 +101,7 @@ export class QuestionsController {
 
   @Post('/')
   async addQuestion(
-    @Body() body: AddQuestionRequestDto,
+    @Body() { title, content, type, topics, groupId }: AddQuestionRequestDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<AddQuestionResponseDto> {
     const userId = this.authService.verify(auth).userId;
@@ -112,11 +114,11 @@ export class QuestionsController {
     );
     const questionId = await this.questionsService.addQuestion(
       userId,
-      body.title,
-      body.content,
-      body.type,
-      body.topics,
-      body.groupId,
+      title,
+      content,
+      type,
+      topics,
+      groupId,
     );
     return {
       code: 201,
@@ -158,7 +160,7 @@ export class QuestionsController {
   @Put('/:id')
   async updateQuestion(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateQuestionRequestDto,
+    @Body() { title, content, type, topics }: UpdateQuestionRequestDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     this.authService.audit(
@@ -170,10 +172,10 @@ export class QuestionsController {
     );
     await this.questionsService.updateQuestion(
       id,
-      body.title,
-      body.content,
-      body.type,
-      body.topics,
+      title,
+      content,
+      type,
+      topics,
       this.authService.verify(auth).userId,
     );
     return {
@@ -280,11 +282,10 @@ export class QuestionsController {
     };
   }
 
-  @Post('/:questionId/attitudes')
+  @Post('/:id/attitudes')
   async updateAttitudeToQuestion(
-    @Param('questionId', ParseIntPipe) questionId: number,
-    @Body('attitude_type', new ParseEnumPipe(AttitudeType))
-    attitude: AttitudeType,
+    @Param('id', ParseIntPipe) questionId: number,
+    @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateAttitudeRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -298,7 +299,7 @@ export class QuestionsController {
     const attitudes = await this.questionsService.setAttitudeToQuestion(
       questionId,
       userId,
-      attitude,
+      attitudeType,
     );
     return {
       code: 201,
@@ -343,8 +344,8 @@ export class QuestionsController {
   @Post('/:id/invitations')
   async inviteUserAnswerQuestion(
     @Param('id', ParseIntPipe) id: number,
+    @Body() { user_id: invitedUserId }: InviteUsersAnswerRequestDto,
     @Headers('Authorization') auth: string | undefined,
-    @Body('user_id', ParseIntPipe) invitedUserId: number,
   ): Promise<InviteUsersAnswerResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -370,26 +371,26 @@ export class QuestionsController {
   @Delete('/:id/invitations/:invitation_id')
   async cancelInvition(
     @Param('id', ParseIntPipe) id: number,
-    @Param('invitation_id', ParseIntPipe) invitation_id: number,
+    @Param('invitation_id', ParseIntPipe) invitationId: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     this.authService.audit(
       auth,
       AuthorizedAction.delete,
-      await this.questionsService.getInvitedById(id, invitation_id),
+      await this.questionsService.getInvitedById(id, invitationId),
       'questions/invitation',
-      invitation_id,
+      invitationId,
     );
-    await this.questionsService.cancelInvitation(id, invitation_id);
+    await this.questionsService.cancelInvitation(id, invitationId);
     return {
       code: 204,
       message: 'successfully cancelled',
     };
   }
 
-  //! The static endpoint `/:id/invitations/recommendations` should precede
-  //! the dynamic endpoint `/:id/invitations/:invitation_id`
-  //! so that it can be matched first.
+  //! The static route `/:id/invitations/recommendations` should come
+  //! before the dynamic route `/:id/invitations/:invitation_id`
+  //! so that it is not overridden.
   @Get('/:id/invitations/recommendations')
   async getRecommendations(
     @Param('id', ParseIntPipe) id: number,
@@ -413,11 +414,11 @@ export class QuestionsController {
   @Get('/:id/invitations/:invitation_id')
   async getInvitationDetail(
     @Param('id', ParseIntPipe) id: number,
-    @Param('invitation_id', ParseIntPipe) invitation_id: number,
+    @Param('invitation_id', ParseIntPipe) invitationId: number,
   ): Promise<GetQuestionInvitationDetailResponseDto> {
     const invitationDto = await this.questionsService.getQuestionInvitationDto(
       id,
-      invitation_id,
+      invitationId,
     );
     return {
       code: 200,
