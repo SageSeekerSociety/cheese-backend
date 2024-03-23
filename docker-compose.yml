@@ -16,7 +16,10 @@ services:
       database:
         condition: service_healthy
     volumes:
-      - /var/app/uploads:/app/uploads
+    - type: volume
+      source: cheese_backend_uploads
+      target: /app/uploads
+      
     
   database:
     image: mysql:8.0.36
@@ -35,3 +38,4 @@ services:
 
 volumes:
   cheese_db:
+  cheese_backend_uploads:
