@@ -931,7 +931,8 @@ paths:
                 intro:
                   type: string
                 avatarId:
-                  type: int
+                  type: integer
+                  format: int64
               required:
                 - nickname
                 - intro
@@ -2206,7 +2207,8 @@ paths:
                 intro:
                   type: string
                 avatarId:
-                  type: int
+                  type: integer
+                  format: int64
                 cover:
                   type: string
               required:
