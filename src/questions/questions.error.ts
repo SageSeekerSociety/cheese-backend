@@ -8,7 +8,7 @@
  */
 
 import { BaseError } from '../common/error/base-error';
-
+const limit = 20;
 export class QuestionIdNotFoundError extends BaseError {
   constructor(id: number) {
     super(
@@ -62,7 +62,7 @@ export class OutOfLimitOfBountyError extends BaseError {
   constructor(bounty: number) {
     super(
       'OutOfLimitOfBountyError',
-      `Bounty ${bounty} is outside the limit.`,
+      `Bounty ${bounty} is outside the limit of ${limit}.`,
       400,
     );
   }
@@ -87,7 +87,7 @@ export class AlreadyAnsweredError extends BaseError {
   }
 }
 
-export class LowerBountyError extends BaseError {
+export class LowerBountyThanBeforeError extends BaseError {
   constructor(id: number, bounty: number) {
     super(
       'LowerBountyError',
