@@ -13,67 +13,62 @@ import {
 } from './materials.error';
 import { MaterialsService } from './materials.service';
 @Module({
-  imports: [
-    MulterModule.register({
-      storage: diskStorage({
-        destination: (req, file, callback) => {
-          const uploadPaths: { [key: string]: string } = {
-            image: './uploads/images',
-            video: './uploads/videos',
-            audio: './uploads/audios',
-            file: './uploads/files',
-          };
-          const fileType = req.body.type;
-          const uploadPath = uploadPaths[fileType];
-          if (!uploadPath) {
-            throw new InvalidMaterialTypeError();
-          }
-          if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-          }
-          callback(null, uploadPath);
-        },
-        filename: (req, file, callback) => {
-          /*const randomName = Array(32)
-            .fill(null)
-            .map(() => Math.round(Math.random() * 16).toString(16))
-            .join('');*/
-          const randomName = uuidv4();
-          return callback(null, `${randomName}${extname(file.originalname)}`);
-        },
-      }),
-      limits: {
-        fileSize: 1024 * 1024 * 1024, //1GB
-      },
-      fileFilter(req, file, callback) {
-        const typeToMimeTypes: { [key: string]: string[] } = {
-          image: ['image'],
-          video: ['video'],
-          audio: ['audio'],
-          file: ['application', 'text'],
-        };
-        const allowedTypes = typeToMimeTypes[req.body.type];
-        if (!allowedTypes) {
-          throw new InvalidMaterialTypeError();
-        }
-        const isAllowed = allowedTypes.some((type) =>
-          file.mimetype.includes(type),
-        );
-        if (!isAllowed) {
-          return callback(
-            new MimeTypeNotMatchError(file.mimetype, req.body.type),
-            false,
-          );
-        }
-
-        callback(null, true);
-      },
-    }),
-    PrismaModule,
-    AuthModule,
-  ],
+  imports: [configureMulterModule(), PrismaModule, AuthModule],
   controllers: [MaterialsController],
   providers: [MaterialsService],
   exports: [MaterialsService],
 })
 export class MaterialsModule {}
+
+function configureMulterModule() {
+  return MulterModule.register({
+    storage: diskStorage({
+      destination: (req, file, callback) => {
+        const uploadPaths: { [key: string]: string } = {
+          image: './uploads/images',
+          video: './uploads/videos',
+          audio: './uploads/audios',
+          file: './uploads/files',
+        };
+        const fileType = req.body.type;
+        const uploadPath = uploadPaths[fileType];
+        if (!uploadPath) {
+          throw new InvalidMaterialTypeError();
+        }
+        if (!fs.existsSync(uploadPath)) {
+          fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        callback(null, uploadPath);
+      },
+      filename: (req, file, callback) => {
+        const randomName = uuidv4();
+        callback(null, `${randomName}${extname(file.originalname)}`);
+      },
+    }),
+    limits: {
+      fileSize: 1024 * 1024 * 1024, //1GB
+    },
+    fileFilter(req, file, callback) {
+      const typeToMimeTypes: { [key: string]: string[] } = {
+        image: ['image'],
+        video: ['video'],
+        audio: ['audio'],
+        file: ['application', 'text'],
+      };
+      const allowedTypes = typeToMimeTypes[req.body.type];
+      if (!allowedTypes) {
+        return callback(new InvalidMaterialTypeError(), false);
+      }
+      const isAllowed = allowedTypes.some((type) =>
+        file.mimetype.includes(type),
+      );
+      if (!isAllowed) {
+        return callback(
+          new MimeTypeNotMatchError(file.mimetype, req.body.type),
+          false,
+        );
+      }
+      callback(null, true);
+    },
+  });
+}

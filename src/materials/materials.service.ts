@@ -68,7 +68,7 @@ export class MaterialsService {
     file: Express.Multer.File,
   ): Promise<number> {
     let meta;
-    if (type === MaterialType.IMAGE) {
+    if (type === MaterialType.image) {
       const metadata = await this.getImageMetadata(file.path);
       meta = {
         width: metadata.width,
@@ -76,7 +76,7 @@ export class MaterialsService {
         size: file.size,
         thumbnail: 'thumbnail', //todo
       };
-    } else if (type === MaterialType.VIDEO) {
+    } else if (type === MaterialType.video) {
       const metadata = await this.getVideoMetadata(file.path);
       meta = {
         width: metadata.width,
@@ -85,7 +85,7 @@ export class MaterialsService {
         size: file.size,
         thumbnail: 'thumbnail', //todo
       };
-    } else if (type === MaterialType.AUDIO) {
+    } else if (type === MaterialType.audio) {
       const metadata = await this.getAudioMetadata(file.path);
       meta = {
         duration: metadata.duration,

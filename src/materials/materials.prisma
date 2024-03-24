@@ -1,8 +1,8 @@
 enum MaterialType {
-  IMAGE
-  FILE
-  AUDIO
-  VIDEO
+  image
+  file
+  audio
+  video
 }
 model material {
   id           Int          @id @default(autoincrement())

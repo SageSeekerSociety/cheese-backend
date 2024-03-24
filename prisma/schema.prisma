@@ -368,10 +368,10 @@ model group_target {
 //
 
 enum MaterialType {
-  IMAGE
-  FILE
-  AUDIO
-  VIDEO
+  image
+  file
+  audio
+  video
 }
 
 model material {

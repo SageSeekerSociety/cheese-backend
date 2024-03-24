@@ -11,6 +11,8 @@ import {
   UploadedFile,
   UseFilters,
   UseInterceptors,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from '../auth/auth.service';
@@ -21,6 +23,7 @@ import { MaterialsService } from './materials.service';
 import { MaterialTypeDto } from './DTO/material.dto';
 
 @Controller('/materials')
+@UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
 export class MaterialsController {
   constructor(
@@ -31,13 +34,13 @@ export class MaterialsController {
   @Post()
   @UseInterceptors(FileInterceptor('file'))
   async uploadMaterial(
-    @Body() { material_type: attitudeType }: MaterialTypeDto,
+    @Body() { type: materialType }: MaterialTypeDto,
     @UploadedFile() file: Express.Multer.File,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UploadMaterialRespondDto> {
     this.authService.verify(auth);
     const materialId = await this.materialsService.uploadMaterial(
-      attitudeType,
+      materialType,
       file,
     );
     return {
