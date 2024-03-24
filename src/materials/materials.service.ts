@@ -8,7 +8,12 @@ import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
 export class MaterialsService {
   private ffprobeAsync: (file: string) => Promise<ffmpeg.FfprobeData>;
   constructor(private readonly prismaService: PrismaService) {
-    this.ffprobeAsync = promisify(ffmpeg.ffprobe);
+    try {
+      this.ffprobeAsync = promisify(ffmpeg.ffprobe);
+    } catch (error) {
+      console.log(error);
+      throw new Error('ffmpeg error');
+    }
   }
   async getImageMetadata(
     filePath: string,
