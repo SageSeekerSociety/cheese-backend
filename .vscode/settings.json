@@ -4,5 +4,8 @@
   "editor.codeActionsOnSave": {
     "source.organizeImports": "always"
   },
-  "typescript.preferences.importModuleSpecifier": "relative"
+  "typescript.preferences.importModuleSpecifier": "relative",
+  "conventionalCommits.scopes": [
+    "questions"
+  ]
 }

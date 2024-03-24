@@ -39,11 +39,36 @@ export class QuestionNotFollowedYetError extends BaseError {
   }
 }
 
+export class QuestionInvitationIdNotFoundError extends BaseError {
+  constructor(id: number) {
+    super(
+      'QuestionInvitationIdNotFoundError',
+      `Question invitation with id ${id} is not found.`,
+      400,
+    );
+  }
+}
 export class QuestionNotHasThisTopicError extends BaseError {
   constructor(id: number, topicId: number) {
     super(
       'QuestionNotHasThisTopicError',
       `Question with id ${id} does not have topic with id ${topicId}.`,
+      400,
+    );
+  }
+}
+
+export class AlreadyInvitedError extends BaseError {
+  constructor(id: number) {
+    super('AlreadyInvitedError', `User with id ${id} is already invited.`, 400);
+  }
+}
+
+export class AlreadyAnsweredError extends BaseError {
+  constructor(id: number) {
+    super(
+      'AlreadyAnsweredError',
+      `User with id ${id} has already answered the question.`,
       400,
     );
   }

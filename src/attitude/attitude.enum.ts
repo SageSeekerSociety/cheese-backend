@@ -14,14 +14,10 @@ export function parseAttitude(attitude: string): AttitudeType {
   switch (attitude) {
     case 'UNDEFINED':
       return AttitudeType.UNDEFINED;
-    case 'LIKE':
-      return AttitudeType.LIKE;
-    case 'DISLIKE':
-      return AttitudeType.DISLIKE;
-    case 'AGREE':
-      return AttitudeType.AGREE;
-    case 'DISAGREE':
-      return AttitudeType.DISAGREE;
+    case 'POSITIVE':
+      return AttitudeType.POSITIVE;
+    case 'NEGATIVE':
+      return AttitudeType.NEGATIVE;
   }
   throw new InvalidAttitudeTypeError(attitude);
 }

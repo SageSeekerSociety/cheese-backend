@@ -1,35 +1,59 @@
 services:
   backend:
-    image: cheese_backend_dev
-    build:
-      context: .
-      target: dev
+    image: ghcr.io/sageseekersociety/cheese-backend:dev
     env_file: .env
-    develop:
-      watch:
-        - action: sync
-          path: .
-          target: /app
-        - action: rebuild
-          path: pnpm-lock.yaml
     depends_on:
       database:
         condition: service_healthy
+      es:
+        condition: service_healthy
     
   database:
-    image: mysql:8.0.36
+    image: postgres:16.2
     env_file: .env
     volumes:
       - type: volume
-        source: cheese_db
-        target: /var/lib/mysql
+        source: cheese_db_pg
+        target: /var/lib/postgresql/data
+      - type: bind
+        source: ./prisma/migrations/20240321040602_init/migration.sql
+        target: /docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: /bin/mysql ${MYSQL_DATABASE} -h localhost -u ${MYSQL_USER} -p${MYSQL_PASSWORD} --silent --execute "SELECT 1;"
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       start_period: 30s
       start_interval: 3s
       interval: 5m
       timeout: 10s
       retries: 10
+  
+  es:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    env_file: .env
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_AUTH_PASSWORD}
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+    volumes:
+      - type: volume
+        source: cheese_es
+        target: /usr/share/elasticsearch/data
+    ports:
+      - "127.0.0.1:9200:9200"
+    healthcheck:
+      test:
+        ["CMD-SHELL",
+        "curl -s --user elastic:${ELASTICSEARCH_AUTH_PASSWORD} -X GET http://localhost:9200/_cluster/health?pretty | grep status | grep -E 'green|yello'"]
+      start_period: 60s
+      start_interval: 3s
+      interval: 5m
+      timeout: 10s
+      retries: 20
+    
 
 volumes:
-  cheese_db:
+  cheese_db_pg:
+  cheese_es:
