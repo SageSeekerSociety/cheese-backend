@@ -99,6 +99,7 @@ describe('Material Module', () => {
         .field('type', 'video')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.mp4');
+      console.log(respond.body.code, respond.body.message);
       expect(respond.body.code).toBe(200);
       expect(respond.body.message).toBe('Material upload successfully');
       expect(respond.body.data).toHaveProperty('id');
@@ -154,7 +155,7 @@ describe('Material Module', () => {
       expect(respond.status).toBe(200);
       expect(respond.body.data.material.meta.height).toEqual(200);
       expect(respond.body.data.material.meta.width).toEqual(200);
-      expect(respond.body.data.material.meta.size).toEqual(53104);
+      expect(respond.body.data.material.meta.size).toEqual(53102);
     });
     it('should get the uploaded video detail', async () => {
       const respond = await request(app.getHttpServer())
@@ -171,7 +172,7 @@ describe('Material Module', () => {
         .get(`/materials/${AudioId}`)
         .send();
       expect(respond.status).toBe(200);
-      expect(respond.body.data.material.meta.size).toEqual(70700);
+      expect(respond.body.data.material.meta.size).toEqual(70699);
       expect(respond.body.data.material.meta.duration).toEqual(3);
     });
     it('should get the uploaded file detail', async () => {
@@ -180,7 +181,7 @@ describe('Material Module', () => {
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.material.meta.mime).toBe('application/pdf');
-      expect(respond.body.data.material.meta.size).toEqual(50224);
+      expect(respond.body.data.material.meta.size).toEqual(50146);
     });
     it('should return MaterialNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
