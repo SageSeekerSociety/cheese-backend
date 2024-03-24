@@ -17,7 +17,6 @@ import {
 } from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { AnswerNotFoundError } from '../answer/answer.error';
-import { Answer } from '../answer/answer.legacy.entity';
 import { AnswerService } from '../answer/answer.service';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
@@ -42,8 +41,9 @@ import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
   AlreadyAnsweredError,
-  LowerBountyThanBeforeError,
-  OutOfLimitOfBountyError,
+  BOUNTY_LIMIT,
+  BountyNotBiggerError,
+  BountyOutOfLimitError,
   QuestionAlreadyFollowedError,
   QuestionIdNotFoundError,
   QuestionInvitationIdNotFoundError,
@@ -63,11 +63,13 @@ import {
 @Injectable()
 export class QuestionsService {
   constructor(
+    @Inject(forwardRef(() => UsersService))
     private readonly userService: UsersService,
     private readonly topicService: TopicsService,
+    @Inject(forwardRef(() => AttitudeService))
     private readonly attitudeService: AttitudeService,
     @Inject(forwardRef(() => GroupsService))
-    private groupService: GroupsService,
+    private readonly groupService: GroupsService,
     @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
     @InjectEntityManager()
@@ -84,8 +86,6 @@ export class QuestionsService {
     private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
-    @InjectRepository(Answer)
-    private readonly answerRepository: Repository<Answer>,
   ) {}
 
   async addTopicToQuestion(
@@ -157,7 +157,6 @@ export class QuestionsService {
           content,
           type,
           groupId,
-          bounty: 0,
         });
         await questionRepository.save(question);
         const questionTopicRelationRepository = entityManager.getRepository(
@@ -230,20 +229,6 @@ export class QuestionsService {
     return await this.questionQueryLogRepository.countBy({ questionId });
   }
 
-  async getAnswerIdOfCreatedBy(
-    questionId: number,
-    createdById: number,
-  ): Promise<number | undefined> {
-    const answer = await this.prismaService.answer.findFirst({
-      where: {
-        deletedAt: undefined,
-        questionId,
-        createdById,
-      },
-    });
-    return answer?.id ?? undefined;
-  }
-
   async getQuestionDto(
     questionId: number,
     viewerId?: number,
@@ -252,9 +237,12 @@ export class QuestionsService {
   ): Promise<QuestionDto> {
     const question = await this.prismaService.question.findUnique({
       where: { id: questionId },
+      include: { accepted_answer: true },
     });
     if (question == undefined || question.deletedAt)
+      //! workaround before soft delete middleware
       throw new QuestionIdNotFoundError(questionId);
+
     let userDto: UserDto | null = null; // For case that user is deleted.
     try {
       userDto = await this.userService.getUserDtoById(
@@ -275,7 +263,7 @@ export class QuestionsService {
     const myAnswerIdPromise =
       viewerId == undefined
         ? Promise.resolve(undefined) // If the viewer is not logged in, then the field should be missing.
-        : this.getAnswerIdOfCreatedBy(questionId, viewerId); // If the viewer is logged in, then the field should be a number or null.
+        : this.answerService.getAnswerIdOfCreatedBy(questionId, viewerId); // If the viewer is logged in, then the field should be a number or null.
     const attitudeDtoPromise = this.attitudeService.getAttitudeStatusDto(
       AttitudableType.QUESTION,
       questionId,
@@ -298,13 +286,17 @@ export class QuestionsService {
       question.groupId == undefined
         ? Promise.resolve(null)
         : this.groupService.getGroupDtoById(undefined, question.groupId);
+    const acceptedAnswerDtoPromise =
+      question.accepted_answer == undefined
+        ? Promise.resolve(null)
+        : this.answerService.getAnswerDto(
+            questionId,
+            question.accepted_answer.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
 
-    const questionPromise = this.questionRepository.findOne({
-      where: { id: questionId },
-      relations: {
-        acceptedAnswer: true,
-      },
-    });
     const [
       topics,
       hasFollowed,
@@ -315,7 +307,7 @@ export class QuestionsService {
       answerCount,
       commentCount,
       groupDto,
-      questionDto,
+      acceptedAnswerDto,
     ] = await Promise.all([
       topicsPromise,
       hasFollowedPromise,
@@ -326,31 +318,19 @@ export class QuestionsService {
       answerCountPromise,
       commentCountPromise,
       groupDtoPromise,
-      questionPromise,
+      acceptedAnswerDtoPromise,
     ]);
-    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
+    if (viewerId != undefined && ip != undefined) {
+      // TODO: is checking all fields necessary? This is only a temporary solution to meet the not-null constraint.
+      // TODO: userAgent maybe null when testing
       const log = this.questionQueryLogRepository.create({
         viewerId,
         questionId,
         ip,
-        userAgent,
+        userAgent: userAgent ?? '',
       });
       await this.questionQueryLogRepository.save(log);
     }
-    if (!questionDto) {
-      throw new QuestionIdNotFoundError(questionId);
-    }
-    const acceptedAnswerDto =
-      questionDto.acceptedAnswer == null
-        ? null
-        : await this.answerService.getAnswerDto(
-            questionId,
-            questionDto.acceptedAnswer.id,
-            viewerId,
-            userAgent,
-            ip,
-          );
-
     return {
       id: question.id,
       title: question.title,
@@ -368,7 +348,7 @@ export class QuestionsService {
       attitudes: attitudeDto,
       view_count: viewCount,
       group: groupDto,
-      bounty: question.bounty ?? 0,
+      bounty: question.bounty,
       accepted_answer: acceptedAnswerDto,
     };
   }
@@ -574,6 +554,61 @@ export class QuestionsService {
     });
   }
 
+  async getFollowedQuestions(
+    followerId: number,
+    firstQuestionId: number | undefined, // if from start
+    pageSize: number,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
+  ): Promise<[QuestionDto[], PageRespondDto]> {
+    if ((await this.userService.isUserExists(followerId)) == false)
+      throw new UserIdNotFoundError(followerId);
+    if (firstQuestionId == undefined) {
+      const relations = await this.questionFollowRelationRepository.find({
+        where: { followerId },
+        take: pageSize + 1,
+        order: { questionId: 'ASC' },
+      });
+      const DTOs = await Promise.all(
+        relations.map((r) => {
+          return this.getQuestionDto(r.questionId, viewerId, ip, userAgent);
+        }),
+      );
+      return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
+    } else {
+      const prevPromise = this.questionFollowRelationRepository.find({
+        where: {
+          followerId,
+          questionId: LessThan(firstQuestionId),
+        },
+        take: pageSize,
+        order: { questionId: 'DESC' },
+      });
+      const currPromise = this.questionFollowRelationRepository.find({
+        where: {
+          followerId,
+          questionId: MoreThanOrEqual(firstQuestionId),
+        },
+        take: pageSize + 1,
+        order: { questionId: 'ASC' },
+      });
+      const [prev, curr] = await Promise.all([prevPromise, currPromise]);
+      const currDTOs = await Promise.all(
+        curr.map((record) =>
+          this.getQuestionDto(record.questionId, viewerId, ip, userAgent),
+        ),
+      );
+      return PageHelper.PageMiddle(
+        prev,
+        currDTOs,
+        pageSize,
+        (i) => i.questionId,
+        (i) => i.id,
+      );
+    }
+  }
+
   async getQuestionFollowers(
     questionId: number,
     firstFollowerId: number | undefined, // if from start
@@ -649,7 +684,7 @@ export class QuestionsService {
       throw new QuestionIdNotFoundError(questionId);
     if ((await this.userService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
-    const haveBeenAnswered = await this.getAnswerIdOfCreatedBy(
+    const haveBeenAnswered = await this.answerService.getAnswerIdOfCreatedBy(
       questionId,
       userId,
     );
@@ -667,14 +702,14 @@ export class QuestionsService {
       throw new UserAlreadyInvitedError(userId);
     }
 
-    const Invitation =
+    const invitation =
       await this.prismaService.questionInvitationRelation.create({
         data: {
           questionId,
           userId,
         },
       });
-    return Invitation.id;
+    return invitation.id;
   }
 
   async getQuestionInvitations(
@@ -688,11 +723,11 @@ export class QuestionsService {
     ): Promise<QuestionInvitationDto> => {
       return {
         id: invitation.id,
-        questionId: invitation.questionId,
+        question_id: invitation.questionId,
         user: await this.userService.getUserDtoById(invitation.userId),
-        createdAt: invitation.createdAt.getTime(),
-        updatedAt: invitation.updatedAt.getTime(),
-        isAnswered: await this.isQuestionAnsweredBy(
+        created_at: invitation.createdAt.getTime(),
+        updated_at: invitation.updatedAt.getTime(),
+        is_answered: await this.isQuestionAnsweredBy(
           questionId,
           invitation.userId,
         ),
@@ -808,11 +843,11 @@ export class QuestionsService {
     const userdto = await this.userService.getUserDtoById(invitation.userId);
     return {
       id: invitation.id,
-      questionId: invitation.questionId,
+      question_id: invitation.questionId,
       user: userdto,
-      createdAt: invitation.createdAt.getTime(),
-      updatedAt: invitation.updatedAt.getTime(),
-      isAnswered: await this.isQuestionAnsweredBy(
+      created_at: invitation.createdAt.getTime(),
+      updated_at: invitation.updatedAt.getTime(),
+      is_answered: await this.isQuestionAnsweredBy(
         questionId,
         invitation.userId,
       ),
@@ -868,7 +903,10 @@ export class QuestionsService {
     userId: number | undefined,
   ): Promise<boolean> {
     if (userId == undefined) return false;
-    return (await this.getAnswerIdOfCreatedBy(questionId, userId)) != undefined;
+    return (
+      (await this.answerService.getAnswerIdOfCreatedBy(questionId, userId)) !=
+      undefined
+    );
   }
 
   async getInvitedById(
@@ -888,39 +926,105 @@ export class QuestionsService {
       throw new QuestionInvitationIdNotFoundError(invitationId);
     return invitation.userId;
   }
+
   async setBounty(questionId: number, bounty: number) {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
-    });
-    if (!question) {
+    if ((await this.isQuestionExists(questionId)) == false)
       throw new QuestionIdNotFoundError(questionId);
+    if (bounty < 0 || bounty > BOUNTY_LIMIT)
+      throw new BountyOutOfLimitError(bounty);
+
+    const oldBounty = (
+      await this.prismaService.question.findUniqueOrThrow({
+        where: { id: questionId },
+      })
+    ).bounty;
+    if (!(bounty > oldBounty)) {
+      throw new BountyNotBiggerError(questionId, bounty);
     }
-    if (bounty <= 0 || bounty > 20) {
-      throw new OutOfLimitOfBountyError(bounty);
-    }
-    if (question.bounty) {
-      if (question.bounty > bounty) {
-        throw new LowerBountyThanBeforeError(questionId, bounty);
-      }
-    }
-    question.bounty = bounty;
-    await this.questionRepository.save(question);
+
+    await this.prismaService.question.update({
+      where: { id: questionId },
+      data: {
+        bounty,
+      },
+    });
   }
 
-  async acceptAnswer(questionId: number, answerId: number) {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
-    });
-    const answer = await this.answerRepository.findOneBy({
-      id: answerId,
-    });
-    if (!question) {
+  async acceptAnswer(questionId: number, answerId: number): Promise<void> {
+    if ((await this.isQuestionExists(questionId)) == false)
       throw new QuestionIdNotFoundError(questionId);
-    }
-    if (!answer) {
+    if (
+      (await this.answerService.isAnswerExists(questionId, answerId)) == false
+    )
       throw new AnswerNotFoundError(answerId);
+
+    await this.prismaService.question.update({
+      where: { id: questionId },
+      data: {
+        accepted_answer: {
+          connect: {
+            id: answerId,
+          },
+        },
+      },
+    });
+  }
+
+  async getQuestionCount(userId: number): Promise<number> {
+    return await this.questionRepository.countBy({ createdById: userId });
+  }
+
+  async getUserAskedQuestions(
+    userId: number,
+    pageStart: number | undefined,
+    pageSize: number,
+    viewerId?: number,
+    userAgent?: string,
+    ip?: string,
+  ): Promise<[QuestionDto[], PageRespondDto]> {
+    if ((await this.userService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
+    if (!pageStart) {
+      const currPage = await this.questionRepository.find({
+        where: { createdById: userId },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getQuestionDto(entity.id, viewerId, ip, userAgent);
+        }),
+      );
+      return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
+    } else {
+      const prevPage = await this.questionRepository.find({
+        where: {
+          createdById: userId,
+          id: LessThan(pageStart),
+        },
+        order: { id: 'DESC' },
+        take: pageSize,
+      });
+      const currPage = await this.questionRepository.find({
+        where: {
+          createdById: userId,
+          id: MoreThanOrEqual(pageStart),
+        },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getQuestionDto(entity.id, viewerId, ip, userAgent);
+        }),
+      );
+      return PageHelper.PageMiddle(
+        prevPage,
+        currDto,
+        pageSize,
+        (answer) => answer.id,
+        (answer) => answer.id,
+      );
     }
-    question.acceptedAnswer = answer;
-    await this.questionRepository.save(question);
   }
 }

@@ -8,7 +8,8 @@
 //
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["debian-openssl-3.0.x", "debian-openssl-1.1.x"]
 }
 
 datasource db {
@@ -450,7 +451,7 @@ model question {
   answer                        answer[]
   group_question_relationship   group_question_relationship?
   user                          user                           @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_187915d8eaa010cde8b053b35d5")
-  bounty                        Int
+  bounty                        Int                            @default(0)
   accepted_answer               answer?                        @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id])
   acceptedAnswerId              Int?                           @unique()
   question_follower_relation    question_follower_relation[]

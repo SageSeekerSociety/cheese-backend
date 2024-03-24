@@ -7,7 +7,7 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import {
   AttitudableType,
   AttitudeType,
@@ -22,6 +22,7 @@ import { AttitudeStateDto } from './DTO/attitude-state.dto';
 export class AttitudeService {
   constructor(
     private readonly prismaService: PrismaService,
+    @Inject(forwardRef(() => UsersService))
     private readonly usersService: UsersService,
   ) {}
 

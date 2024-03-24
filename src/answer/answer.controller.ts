@@ -11,6 +11,7 @@ import {
   Put,
   Query,
   UseFilters,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -19,6 +20,7 @@ import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
 import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { GetAnswerDetailRespondDto } from './DTO/get-answer-detail.dto';
@@ -27,8 +29,9 @@ import { UpdateAnswerRequestDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
 
 @Controller('/questions/:question_id/answers')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class AnswerController {
   constructor(
     private readonly authService: AuthService,
@@ -59,8 +62,8 @@ export class AnswerController {
       pageStart,
       pageSize,
       userId,
-      userAgent,
       ip,
+      userAgent,
     );
     return {
       code: 200,
@@ -119,13 +122,14 @@ export class AnswerController {
       questionId,
       answerId,
       userId,
-      userAgent,
       ip,
+      userAgent,
     );
     const questionDto = await this.questionsService.getQuestionDto(
       answerDto.question_id,
-      undefined,
+      userId,
       ip,
+      userAgent,
     );
     return {
       code: 200,

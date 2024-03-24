@@ -20,12 +20,14 @@ import {
   Put,
   Query,
   UseFilters,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateGroupDto } from './DTO/create-group.dto';
 import { GetGroupsRespondDto } from './DTO/get-groups.dto';
 import { GetGroupMembersRespondDto } from './DTO/get-members.dto';
@@ -37,8 +39,9 @@ import { UpdateGroupDto, UpdateGroupRespondDto } from './DTO/update-group.dto';
 import { GroupQueryType, GroupsService } from './groups.service';
 
 @Controller('/groups')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class GroupsController {
   constructor(
     private readonly authService: AuthService,

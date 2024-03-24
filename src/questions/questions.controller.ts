@@ -21,6 +21,7 @@ import {
   Put,
   Query,
   UseFilters,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
@@ -29,10 +30,12 @@ import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import {
   ParseSortPatternPipe,
   SortPattern,
 } from '../common/pipe/parse-sort-pattern.pipe';
+import { SnakeCaseToCamelCasePipe } from '../common/pipe/snake-case-to-camel-case.pipe';
 import {
   AddQuestionRequestDto,
   AddQuestionResponseDto,
@@ -52,8 +55,9 @@ import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
 
 @Controller('/questions')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class QuestionsController {
   constructor(
     readonly questionsService: QuestionsService,
@@ -322,6 +326,7 @@ export class QuestionsController {
     pageSize: number | undefined,
     @Query(
       'sort',
+      new SnakeCaseToCamelCasePipe({ prefixIgnorePattern: '[+-]' }),
       new ParseSortPatternPipe({
         optional: true,
         allowedFields: ['createdAt'],
@@ -339,7 +344,7 @@ export class QuestionsController {
       );
     return {
       code: 200,
-      message: 'Invited',
+      message: 'OK',
       data: {
         invitations,
         page,
@@ -396,7 +401,7 @@ export class QuestionsController {
 
   //don't change the position of the below two functions
   //because if the order is swapped, the route is incorrectly identified
-  @Get('/:id/invitation/recommendations')
+  @Get('/:id/invitations/recommendations')
   async getRecommendations(
     @Param('id', ParseIntPipe) id: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
@@ -440,11 +445,10 @@ export class QuestionsController {
     @Headers('Authorization') auth: string | undefined,
     @Body('bounty', ParseIntPipe) bounty: number,
   ): Promise<BaseRespondDto> {
-    const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
       AuthorizedAction.modify,
-      userId,
+      await this.questionsService.getQuestionCreatedById(id),
       'questions',
       id,
     );
@@ -458,14 +462,13 @@ export class QuestionsController {
   @Put('/:id/acceptance')
   async acceptAnswer(
     @Param('id', ParseIntPipe) id: number,
+    @Query('answer_id', ParseIntPipe) answer_id: number,
     @Headers('Authorization') auth: string | undefined,
-    @Query('answer_id') answer_id: number,
   ): Promise<BaseRespondDto> {
-    const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
       AuthorizedAction.modify,
-      userId,
+      await this.questionsService.getQuestionCreatedById(id),
       'questions',
       id,
     );

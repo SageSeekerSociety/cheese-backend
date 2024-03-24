@@ -70,7 +70,7 @@ export class Question {
   @Column()
   type: number;
 
-  @Column()
+  @Column({ type: 'int', default: 0 })
   bounty: number;
 
   @OneToOne(() => Answer, (answer) => answer.question)
