@@ -42,7 +42,7 @@ import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
   AlreadyAnsweredError,
-  LowerBountyError,
+  LowerBountyThanBeforeError,
   OutOfLimitOfBountyError,
   QuestionAlreadyFollowedError,
   QuestionIdNotFoundError,
@@ -315,7 +315,7 @@ export class QuestionsService {
       answerCount,
       commentCount,
       groupDto,
-      question1,
+      questionDto,
     ] = await Promise.all([
       topicsPromise,
       hasFollowedPromise,
@@ -337,15 +337,15 @@ export class QuestionsService {
       });
       await this.questionQueryLogRepository.save(log);
     }
-    if (!question1) {
+    if (!questionDto) {
       throw new QuestionIdNotFoundError(questionId);
     }
     const acceptedAnswerDto =
-      question1.acceptedAnswer == null
+      questionDto.acceptedAnswer == null
         ? null
         : await this.answerService.getAnswerDto(
             questionId,
-            question1.acceptedAnswer.id,
+            questionDto.acceptedAnswer.id,
             viewerId,
             userAgent,
             ip,
@@ -368,7 +368,7 @@ export class QuestionsService {
       attitudes: attitudeDto,
       view_count: viewCount,
       group: groupDto,
-      bounty: question.bounty == null ? 0 : question.bounty,
+      bounty: question.bounty ?? 0,
       accepted_answer: acceptedAnswerDto,
     };
   }
@@ -900,7 +900,7 @@ export class QuestionsService {
     }
     if (question.bounty) {
       if (question.bounty > bounty) {
-        throw new LowerBountyError(questionId, bounty);
+        throw new LowerBountyThanBeforeError(questionId, bounty);
       }
     }
     question.bounty = bounty;
