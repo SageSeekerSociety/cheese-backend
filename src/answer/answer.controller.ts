@@ -124,6 +124,8 @@ export class AnswerController {
     );
     const questionDto = await this.questionsService.getQuestionDto(
       answerDto.question_id,
+      undefined,
+      ip,
     );
     return {
       code: 200,
