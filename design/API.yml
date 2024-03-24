@@ -313,6 +313,10 @@ components:
           minimum: 0
           maximum: 20
           description: 悬赏数量
+        bounty_start_at:
+          type: integer
+          format: int64
+          description: 悬赏开始时间
         accepted_answer:
           $ref: "#/components/schemas/Answer"
           nullable: true
