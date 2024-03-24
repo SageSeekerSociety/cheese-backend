@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnswerModule } from '../answer/answer.module';
 import { AttitudeModule } from '../attitude/attitude.module';
@@ -19,11 +19,12 @@ import { CommentsService } from './comment.service';
     AuthModule,
     UsersModule,
     QuestionsModule,
-    AnswerModule,
+    forwardRef(() => AnswerModule),
     AttitudeModule,
     PrismaModule,
   ],
   controllers: [CommentsController],
   providers: [CommentsService],
+  exports: [CommentsService],
 })
 export class CommentsModule {}

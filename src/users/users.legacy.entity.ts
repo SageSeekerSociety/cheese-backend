@@ -36,6 +36,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Avatar } from '../avatars/avatars.legacy.entity';
 
 @Entity()
 export class User {
@@ -118,8 +119,11 @@ export class UserProfile {
   @Column()
   nickname: string;
 
+  @ManyToOne(() => Avatar)
+  avatar: Avatar;
+
   @Column()
-  avatar: string;
+  avatarId: number;
 
   @Column()
   intro: string;

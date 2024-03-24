@@ -18,19 +18,22 @@ import {
   Post,
   Query,
   UseFilters,
+  UseInterceptors,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { AddTopicRequestDto, AddTopicResponseDto } from './DTO/add-topic.dto';
+import { GetTopicResponseDto } from './DTO/get-topic.dto';
 import { SearchTopicResponseDto } from './DTO/search-topic.dto';
 import { TopicsService } from './topics.service';
-import { GetTopicResponseDto } from './DTO/get-topic.dto';
 
 @Controller('/topics')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UsePipes(ValidationPipe)
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class TopicsController {
   constructor(
     private readonly topicsService: TopicsService,

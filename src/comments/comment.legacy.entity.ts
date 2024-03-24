@@ -26,7 +26,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../users/users.legacy.entity';
-import { CommentTag, CommentableType } from './commentable.enum';
+import { CommentableType } from './commentable.enum';
 
 @Entity()
 export class Comment {
@@ -38,12 +38,6 @@ export class Comment {
     enum: CommentableType,
   })
   commentableType: CommentableType;
-
-  @Column({
-    type: 'enum',
-    enum: CommentTag,
-  })
-  commentTag: CommentTag;
 
   @Column()
   @Index()

@@ -6,11 +6,6 @@ export enum CommentableType {
   QUESTION = 'QUESTION',
 }
 
-export enum CommentTag {
-  IGNORED = 'IGNORED',
-  SOLVED = 'SOLVED',
-}
-
 export function parseCommentable(commentable: string): CommentableType {
   commentable = commentable.toUpperCase();
   switch (commentable) {
