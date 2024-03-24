@@ -988,7 +988,7 @@ describe('Questions Module', () => {
         .query({ pageSize: 5 });
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.data.users.length).toBe(1);
+      expect(respond.body.data.users.length).toBe(5);
     });
     it('should return QuestionIdNotFoundEroor', async () => {
       const respond = await request(app.getHttpServer())
