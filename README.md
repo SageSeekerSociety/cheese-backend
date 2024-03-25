@@ -1,9 +1,5 @@
 # cheese-backend
 
-<p align="center">
-  <img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
-
 ## Description
 
 [Cheese Backend](https://github.com/SageSeekerSociety/cheese-backend)
