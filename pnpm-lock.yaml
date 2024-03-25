@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@elastic/elasticsearch':
-    specifier: ^8.12.1
-    version: 8.12.1
+    specifier: ^8.12.2
+    version: 8.12.2
   '@nestjs/common':
     specifier: ^10.2.10
     version: 10.3.1(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.14)(rxjs@7.8.1)
@@ -19,7 +19,7 @@ dependencies:
     version: 10.3.1(@nestjs/common@10.3.1)(@nestjs/platform-express@10.3.1)(reflect-metadata@0.1.14)(rxjs@7.8.1)
   '@nestjs/elasticsearch':
     specifier: ^10.0.1
-    version: 10.0.1(@elastic/elasticsearch@8.12.1)(@nestjs/common@10.3.1)(rxjs@7.8.1)
+    version: 10.0.1(@elastic/elasticsearch@8.12.2)(@nestjs/common@10.3.1)(rxjs@7.8.1)
   '@nestjs/jwt':
     specifier: ^10.2.0
     version: 10.2.0(@nestjs/common@10.3.1)
@@ -30,8 +30,8 @@ dependencies:
     specifier: ^10.0.1
     version: 10.0.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(reflect-metadata@0.1.14)(rxjs@7.8.1)(typeorm@0.3.20)
   '@prisma/client':
-    specifier: 5.9.1
-    version: 5.9.1(prisma@5.11.0)
+    specifier: 5.11.0
+    version: 5.11.0(prisma@5.11.0)
   '@types/bcrypt':
     specifier: ^5.0.2
     version: 5.0.2
@@ -92,8 +92,8 @@ devDependencies:
     specifier: ^10.0.3
     version: 10.1.0(typescript@5.4.3)
   '@nestjs/testing':
-    specifier: ^10.2.10
-    version: 10.3.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(@nestjs/platform-express@10.3.1)
+    specifier: ^10.3.5
+    version: 10.3.5(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(@nestjs/platform-express@10.3.1)
   '@types/jest':
     specifier: ^29.5.12
     version: 29.5.12
@@ -122,8 +122,8 @@ devDependencies:
     specifier: ^5.0.1
     version: 5.1.3(eslint-config-prettier@9.1.0)(eslint@8.57.0)(prettier@3.2.4)
   husky:
-    specifier: ^9.0.7
-    version: 9.0.7
+    specifier: ^9.0.11
+    version: 9.0.11
   jest:
     specifier: ^29.7.0
     version: 29.7.0(@types/node@20.11.7)(ts-node@10.9.2)
@@ -736,18 +736,18 @@ packages:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
-  /@elastic/elasticsearch@8.12.1:
-    resolution: {integrity: sha512-/dJtxtvoN2vRXip6xUrEyzthhzVUOKL8L9YNq25HpMwqiqrJTK70/dOp6GM8oTVQ87UPyJBiiCxQY2+cvg2XWw==}
+  /@elastic/elasticsearch@8.12.2:
+    resolution: {integrity: sha512-04NvH3LIgcv1Uwguorfw2WwzC9Lhfsqs9f0L6uq6MrCw0lqe/HOQ6E8vJ6EkHAA15iEfbhtxOtenbZVVcE+mAQ==}
     engines: {node: '>=18'}
     dependencies:
-      '@elastic/transport': 8.4.0
+      '@elastic/transport': 8.4.1
       tslib: 2.6.2
     transitivePeerDependencies:
       - supports-color
     dev: false
 
-  /@elastic/transport@8.4.0:
-    resolution: {integrity: sha512-Yb3fDa7yGD0ca3uMbL64M3vM1cE5h5uHmBcTjkdB4VpCasRNKSd09iDpwqX8zX1tbBtxcaKYLceKthWvPeIxTw==}
+  /@elastic/transport@8.4.1:
+    resolution: {integrity: sha512-/SXVuVnuU5b4dq8OFY4izG+dmGla185PcoqgK6+AJMpmOeY1QYVNbWtCwvSvoAANN5D/wV+EBU8+x7Vf9EphbA==}
     engines: {node: '>=16'}
     dependencies:
       debug: 4.3.4
@@ -1222,14 +1222,14 @@ packages:
     transitivePeerDependencies:
       - encoding
 
-  /@nestjs/elasticsearch@10.0.1(@elastic/elasticsearch@8.12.1)(@nestjs/common@10.3.1)(rxjs@7.8.1):
+  /@nestjs/elasticsearch@10.0.1(@elastic/elasticsearch@8.12.2)(@nestjs/common@10.3.1)(rxjs@7.8.1):
     resolution: {integrity: sha512-rYkcuStF7oDbyt5X3h0BAYS3thZQm8vsHUkGot6dkB8dOTsSIsQJ8UYY9j66LhghzsBiewIwUrKkhY5WM2DVqA==}
     peerDependencies:
       '@elastic/elasticsearch': ^7.4.0 || ^8.0.0
       '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0
       rxjs: ^7.2.0
     dependencies:
-      '@elastic/elasticsearch': 8.12.1
+      '@elastic/elasticsearch': 8.12.2
       '@nestjs/common': 10.3.1(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       rxjs: 7.8.1
     dev: false
@@ -1290,8 +1290,8 @@ packages:
       - chokidar
     dev: true
 
-  /@nestjs/testing@10.3.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(@nestjs/platform-express@10.3.1):
-    resolution: {integrity: sha512-74aSAugWT31jSPnStyRWDXgjHXWO3GYaUfAZ2T7Dml88UGkGy95iwaWgYy7aYM8/xVFKcDYkfL5FAYqZYce/yg==}
+  /@nestjs/testing@10.3.5(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(@nestjs/platform-express@10.3.1):
+    resolution: {integrity: sha512-j30/lxH0BayeDTigapYtQn/XhMRR7CzlFsm3dHoWViWQv0qT1r2ffe3927BbBLX3N/ZzglE10OAqW06ADZV8dw==}
     peerDependencies:
       '@nestjs/common': ^10.0.0
       '@nestjs/core': ^10.0.0
@@ -1374,8 +1374,8 @@ packages:
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
     dev: true
 
-  /@prisma/client@5.9.1(prisma@5.11.0):
-    resolution: {integrity: sha512-caSOnG4kxcSkhqC/2ShV7rEoWwd3XrftokxJqOCMVvia4NYV/TPtJlS9C2os3Igxw/Qyxumj9GBQzcStzECvtQ==}
+  /@prisma/client@5.11.0(prisma@5.11.0):
+    resolution: {integrity: sha512-SWshvS5FDXvgJKM/a0y9nDC1rqd7KG0Q6ZVzd+U7ZXK5soe73DJxJJgbNBt2GNXOa+ysWB4suTpdK5zfFPhwiw==}
     engines: {node: '>=16.13'}
     requiresBuild: true
     peerDependencies:
@@ -4140,8 +4140,8 @@ packages:
     engines: {node: '>=16.17.0'}
     dev: true
 
-  /husky@9.0.7:
-    resolution: {integrity: sha512-vWdusw+y12DUEeoZqW1kplOFqk3tedGV8qlga8/SF6a3lOiWLqGZZQvfWvY0fQYdfiRi/u1DFNpudTSV9l1aCg==}
+  /husky@9.0.11:
+    resolution: {integrity: sha512-AB6lFlbwwyIqMdHYhwPe+kjOC3Oc5P3nThEoW/AaO2BX3vJDjWPFxYLxokUZOo6RNX20He3AaT8sESs9NJcmEw==}
     engines: {node: '>=18'}
     hasBin: true
     dev: true
