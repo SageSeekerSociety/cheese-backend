@@ -141,12 +141,24 @@ export class QuestionsService {
     type: number,
     topicIds: number[],
     groupId?: number,
+    bounty: number = 0,
   ): Promise<number> {
+    if (bounty < 0 || bounty > BOUNTY_LIMIT)
+      throw new BountyOutOfLimitError(bounty);
+
     for (const topicId of topicIds) {
       const topicExists = await this.topicService.isTopicExists(topicId);
       if (topicExists == false) throw new TopicNotFoundError(topicId);
     }
+
+    // const nonExistTopicId = topicIds.find(async (topicId) => {
+    //   const exist = await this.topicService.isTopicExists(topicId);
+    //   return !exist;
+    // });
+    // if (nonExistTopicId) throw new TopicNotFoundError(nonExistTopicId);
+
     // TODO: Validate groupId.
+
     let question: Question;
     await this.entityManager.transaction(
       async (entityManager: EntityManager) => {
@@ -157,6 +169,8 @@ export class QuestionsService {
           content,
           type,
           groupId,
+          bounty,
+          bounty_start_at: bounty ? new Date() : undefined,
         });
         await questionRepository.save(question);
         const questionTopicRelationRepository = entityManager.getRepository(
@@ -349,6 +363,7 @@ export class QuestionsService {
       view_count: viewCount,
       group: groupDto,
       bounty: question.bounty,
+      bounty_start_at: question.bounty_start_at?.getTime(),
       accepted_answer: acceptedAnswerDto,
     };
   }
@@ -946,6 +961,7 @@ export class QuestionsService {
       where: { id: questionId },
       data: {
         bounty,
+        bounty_start_at: new Date(),
       },
     });
   }

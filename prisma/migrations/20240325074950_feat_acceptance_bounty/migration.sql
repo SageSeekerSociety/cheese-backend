@@ -6,7 +6,8 @@
 */
 -- AlterTable
 ALTER TABLE "question" ADD COLUMN     "acceptedAnswerId" INTEGER,
-ADD COLUMN     "bounty" INTEGER NOT NULL DEFAULT 0;
+ADD COLUMN     "bounty" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "bounty_start_at" TIMESTAMP(3);
 
 -- CreateIndex
 CREATE UNIQUE INDEX "question_acceptedAnswerId_key" ON "question"("acceptedAnswerId");

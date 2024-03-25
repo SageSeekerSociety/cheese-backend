@@ -123,6 +123,7 @@ export class QuestionsController {
       body.type,
       body.topics,
       body.groupId,
+      body.bounty,
     );
     return {
       code: 201,

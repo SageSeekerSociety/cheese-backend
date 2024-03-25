@@ -452,6 +452,7 @@ model question {
   group_question_relationship   group_question_relationship?
   user                          user                           @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_187915d8eaa010cde8b053b35d5")
   bounty                        Int                            @default(0)
+  bounty_start_at               DateTime?
   accepted_answer               answer?                        @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id])
   acceptedAnswerId              Int?                           @unique()
   question_follower_relation    question_follower_relation[]

@@ -1358,6 +1358,42 @@ describe('Questions Module', () => {
   });
 
   describe('Bounty test', () => {
+    it('should create a question with bounty', async () => {
+      async function createQuestion(
+        title: string,
+        content: string,
+        bounty: number,
+      ) {
+        const respond = await request(app.getHttpServer())
+          .post('/questions')
+          .set('Authorization', `Bearer ${TestToken}`)
+          .send({
+            title: `${TestQuestionPrefix} ${title}`,
+            content,
+            type: 0,
+            topics: [TopicIds[0], TopicIds[1]],
+            bounty,
+          });
+        expect(respond.body.message).toBe('Created');
+        expect(respond.body.code).toBe(201);
+        expect(respond.status).toBe(201);
+        expect(respond.body.data.id).toBeDefined();
+        questionIds.push(respond.body.data.id);
+        return respond.body.data.id;
+      }
+
+      const bountyQuestionId = await createQuestion(
+        'Bounty Test 1',
+        'test',
+        10,
+      );
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${bountyQuestionId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.data.question.bounty).toBe(10);
+      expect(typeof respond.body.data.question.bounty_start_at).toBe('number');
+    });
     it('should set bounty to a question', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/bounty`)
@@ -1373,8 +1409,17 @@ describe('Questions Module', () => {
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.data.question.bounty).toBe(15);
+      expect(typeof respond.body.data.question.bounty_start_at).toBe('number');
     });
-    it('should return LowerBountyError', async () => {
+    it('should not set bounty by a non-owner', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/bounty`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ bounty: 15 });
+      expect(respond.body.message).toMatch(/^PermissionDeniedError: /);
+      expect(respond.body.code).toBe(403);
+    });
+    it('should return BountyNotBiggerError', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/bounty`)
         .set('Authorization', `Bearer ${TestToken}`)
@@ -1382,7 +1427,7 @@ describe('Questions Module', () => {
       expect(respond.body.message).toMatch(/^BountyNotBiggerError: /);
       expect(respond.body.code).toBe(400);
     });
-    it('should return OutOfLimitOfBountyError', async () => {
+    it('should return BountyOutOfLimitError', async () => {
       const respond = await request(app.getHttpServer())
         .put(`/questions/${questionIds[1]}/bounty`)
         .set('Authorization', `Bearer ${TestToken}`)

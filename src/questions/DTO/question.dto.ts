@@ -21,5 +21,6 @@ export class QuestionDto {
   view_count: number;
   group: GroupDto | null;
   bounty: number;
+  bounty_start_at?: number; // timestamp
   accepted_answer: AnswerDto | null;
 }
