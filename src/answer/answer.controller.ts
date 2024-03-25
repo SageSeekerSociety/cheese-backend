@@ -127,6 +127,9 @@ export class AnswerController {
     );
     const questionDto = await this.questionsService.getQuestionDto(
       answerDto.question_id,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,
