@@ -6,13 +6,13 @@
  *
  */
 
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { UsersModule } from '../users/users.module';
 import { AttitudeService } from './attitude.service';
 
 @Module({
-  imports: [PrismaModule, UsersModule],
+  imports: [PrismaModule, forwardRef(() => UsersModule)],
   providers: [AttitudeService],
   exports: [AttitudeService],
 })

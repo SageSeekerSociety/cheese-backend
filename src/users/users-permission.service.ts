@@ -108,7 +108,11 @@ export class UsersPermissionService {
         },
         {
           // An user can create and delete comment.
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
+          authorizedActions: [
+            AuthorizedAction.create,
+            AuthorizedAction.delete,
+            AuthorizedAction.modify,
+          ],
           authorizedResource: {
             ownedByUser: userId,
             types: ['comment'],
