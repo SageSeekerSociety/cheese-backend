@@ -16,6 +16,7 @@ import { ConfiguredElasticsearchModule } from '../common/config/elasticsearch.mo
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { GroupsModule } from '../groups/groups.module';
 import { TopicsModule } from '../topics/topics.module';
+import { User } from '../users/users.legacy.entity';
 import { UsersModule } from '../users/users.module';
 import { QuestionsController } from './questions.controller';
 import {
@@ -35,6 +36,7 @@ import { QuestionsService } from './questions.service';
       QuestionFollowerRelation,
       QuestionQueryLog,
       QuestionSearchLog,
+      User,
       Answer,
     ]),
     ConfiguredElasticsearchModule,

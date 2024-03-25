@@ -51,6 +51,7 @@ model Answer {
   answerQueryLog        AnswerQueryLog[]
   answerUpdateLog       AnswerUpdateLog[]
   answerUserAttitude    AnswerUserAttitude[]
+  acceptedByQuestion    Question?               @relation("AcceptedAnswer")
 
   @@index([groupId], map: "IDX_1887685ce6667b435b01c646a2")
   @@index([questionId], map: "IDX_a4013f10cd6924793fbd5f0d63")
@@ -468,11 +469,15 @@ model Question {
   answer                        Answer[]
   groupQuestionRelationship     GroupQuestionRelationship?
   user                          User                           @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_187915d8eaa010cde8b053b35d5")
+  bounty                        Int                            @default(0)
+  bountyStartAt                 DateTime?                      @map("bounty_start_at")
+  acceptedAnswer                Answer?                        @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id])
+  acceptedAnswerId              Int?                           @unique() @map("accepted_answer_id")
   questionFollowerRelation      QuestionFollowerRelation[]
   questionQueryLog              QuestionQueryLog[]
   questionTopicRelation         QuestionTopicRelation[]
-  questionElasticsearchRelation QuestionElasticsearchRelation?
   questionInvitationRelation    QuestionInvitationRelation[]
+  questionElasticsearchRelation QuestionElasticsearchRelation?
 
   @@index([createdById], map: "IDX_187915d8eaa010cde8b053b35d")
   @@index([title, content], map: "IDX_8b24620899a8556c3f22f52145")
