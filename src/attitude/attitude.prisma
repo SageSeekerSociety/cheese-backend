@@ -12,16 +12,12 @@ enum AttitudableType {
   COMMENT
   QUESTION
   ANSWER
-
-  @@map("attitudable_type")
 }
 
 enum AttitudeType {
   UNDEFINED
   POSITIVE
   NEGATIVE
-
-  @@map("attitude_type")
 }
 
 // Although UNDEFINED is supported,
@@ -29,8 +25,6 @@ enum AttitudeType {
 enum AttitudeTypeNotUndefined {
   POSITIVE
   NEGATIVE
-
-  @@map("attitude_type_not_undefined")
 }
 
 model Attitude {
@@ -45,7 +39,6 @@ model Attitude {
 
   @@unique([attitudableId, userId, attitudableType])
   @@index([userId])
-  @@map("attitude")
 }
 
 model AttitudeLog {
@@ -59,5 +52,4 @@ model AttitudeLog {
 
   @@index([attitudableId, attitudableType])
   @@index([userId])
-  @@map("attitude_log")
 }

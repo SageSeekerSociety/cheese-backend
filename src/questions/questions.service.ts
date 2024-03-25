@@ -170,7 +170,7 @@ export class QuestionsService {
           type,
           groupId,
           bounty,
-          bounty_start_at: bounty ? new Date() : undefined,
+          bountyStartAt: bounty ? new Date() : undefined,
         });
         await questionRepository.save(question);
         const questionTopicRelationRepository = entityManager.getRepository(
@@ -251,7 +251,7 @@ export class QuestionsService {
   ): Promise<QuestionDto> {
     const question = await this.prismaService.question.findUnique({
       where: { id: questionId },
-      include: { accepted_answer: true },
+      include: { acceptedAnswer: true },
     });
     if (question == undefined || question.deletedAt)
       //! workaround before soft delete middleware
@@ -301,11 +301,11 @@ export class QuestionsService {
         ? Promise.resolve(null)
         : this.groupService.getGroupDtoById(undefined, question.groupId);
     const acceptedAnswerDtoPromise =
-      question.accepted_answer == undefined
+      question.acceptedAnswer == undefined
         ? Promise.resolve(null)
         : this.answerService.getAnswerDto(
             questionId,
-            question.accepted_answer.id,
+            question.acceptedAnswer.id,
             viewerId,
             ip,
             userAgent,
@@ -363,7 +363,7 @@ export class QuestionsService {
       view_count: viewCount,
       group: groupDto,
       bounty: question.bounty,
-      bounty_start_at: question.bounty_start_at?.getTime(),
+      bounty_start_at: question.bountyStartAt?.getTime(),
       accepted_answer: acceptedAnswerDto,
     };
   }
@@ -810,10 +810,14 @@ export class QuestionsService {
     if (!question) {
       throw new QuestionIdNotFoundError(questionId);
     }
+    // No sql injection here:
+    // "The method is implemented as a tagged template, which allows you to pass a template literal where you can easily
+    // insert your variables. In turn, Prisma Client creates prepared statements that are safe from SQL injections."
+    // See: https://www.prisma.io/docs/orm/prisma-client/queries/raw-database-access/raw-queries
     const randomUserEntities = await this.prismaService.$queryRaw<User[]>`
       SELECT * FROM "user" WHERE id NOT IN (
-        SELECT "userId" FROM question_invitation_relation
-        WHERE "questionId" = ${questionId}
+        SELECT "user_id" FROM question_invitation_relation
+        WHERE "question_id" = ${questionId}
       )
       ORDER BY RANDOM()
       LIMIT ${pageSize}
@@ -961,7 +965,7 @@ export class QuestionsService {
       where: { id: questionId },
       data: {
         bounty,
-        bounty_start_at: new Date(),
+        bountyStartAt: new Date(),
       },
     });
   }
@@ -977,7 +981,7 @@ export class QuestionsService {
     await this.prismaService.question.update({
       where: { id: questionId },
       data: {
-        accepted_answer: {
+        acceptedAnswer: {
           connect: {
             id: answerId,
           },

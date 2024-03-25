@@ -74,7 +74,7 @@ export class Question {
   bounty: number;
 
   @Column({ type: 'timestamp', nullable: true })
-  bounty_start_at?: Date;
+  bountyStartAt?: Date;
 
   @OneToOne(() => Answer, (answer) => answer.question)
   acceptedAnswer: Answer | null;
