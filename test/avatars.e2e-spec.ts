@@ -2,6 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { AvatarType } from '../src/avatars/avatars.legacy.entity';
 jest.mock('../src/users/email.service');
 
 describe('Avatar Module', () => {
@@ -36,9 +37,7 @@ describe('Avatar Module', () => {
         .send()
         .responseType('blob');
       expect(respond.status).toBe(200);
-      expect(respond.headers['content-type']).toEqual(
-        'application/octet-stream',
-      );
+      expect(respond.headers['content-type']).toEqual('image/*');
       expect(respond.headers['content-disposition']).toContain('attachment');
     });
     it('should return AvatarNotFoundError when an avatar is not found', async () => {
@@ -49,22 +48,35 @@ describe('Avatar Module', () => {
       expect(respond.status).toBe(404);
     });
   });
-  describe('get default avatarID', () => {
-    it('should get default avatarId', async () => {
+  describe('get default avatar', () => {
+    it('should get default avatar', async () => {
       const respond = await request(app.getHttpServer())
-        .get('/avatars/default/id')
+        .get('/avatars/default')
         .send();
       expect(respond.status).toBe(200);
-      //expect(respond.body.data.avatarId).toEqual(1);
+      expect(respond.headers['content-type']).toEqual('image/*');
+      expect(respond.headers['content-disposition']).toContain('attachment');
     });
   });
-  describe('get pre defined avatarIds', () => {
-    it('should get pre defined avatarIds', async () => {
+  describe('get pre available avatarIds', () => {
+    it('should get available avatarIds', async () => {
       const respond = await request(app.getHttpServer())
-        .get('/avatars/predefined/id')
+        .get('/avatars/')
+        .query({ type: AvatarType.PreDefined })
         .send();
       expect(respond.status).toBe(200);
+      expect(respond.body.message).toContain(
+        'Get available avatarIds successfully',
+      );
       expect(respond.body.data.avatarIds.length).toEqual(3);
+    });
+    it('should return InvalidAvatarTypeError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/avatars/')
+        .query({ type: 'yuiiiiiii' })
+        .send();
+      expect(respond.status).toBe(400);
+      expect(respond.body.message).toContain('Invalid Avatar type');
     });
   });
 
