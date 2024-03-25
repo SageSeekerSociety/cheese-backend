@@ -64,4 +64,12 @@ jobs:
           docker compose exec backend pnpm prisma migrate deploy
 
       - name: Run Test
-        run: docker compose exec backend pnpm run test:cov
+        run: |
+          docker compose exec backend pnpm run test:cov
+          docker compose cp backend:/app/coverage .
+
+      - name: Report coverage
+        if: ${{ !cancelled() }}
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
