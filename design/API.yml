@@ -307,6 +307,19 @@ components:
         view_count:
           type: integer
           description: 浏览数量
+        bounty:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 20
+          description: 悬赏数量
+        bounty_start_at:
+          type: integer
+          format: int64
+          description: 悬赏开始时间
+        accepted_answer:
+          $ref: "#/components/schemas/Answer"
+          nullable: true
         group:
           $ref: "#/components/schemas/Group"
           nullable: true
@@ -392,9 +405,6 @@ components:
         view_count:
           type: integer
           description: 浏览数量
-        is_group:
-          type: boolean
-          description: 是否为小组回答
         group:
           $ref: "#/components/schemas/Group"
     Comment:
@@ -415,6 +425,7 @@ components:
           example: ANSWER
         content:
           type: string
+          minLength: 1
           description: 评论内容
         user:
           $ref: "#/components/schemas/User"
@@ -1212,6 +1223,12 @@ paths:
                   type: integer
                   format: int64
                   description: 所属小组 ID，留空表示不属于任何小组
+                bounty:
+                  type: integer
+                  format: int64
+                  description: 悬赏金额，0 表示不设置悬赏
+                  default: 0
+                  maximum: 20
               required:
                 - title
                 - content
@@ -1429,6 +1446,25 @@ paths:
                           - attitudes
                     required:
                       - data
+  /questions/{id}/bounty:
+    put:
+      summary: 设置悬赏
+      operationId: setBounty
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
   /questions/{id}/invitations:
     get:
       summary: 获取该问题下被邀请回答的用户
@@ -1526,7 +1562,7 @@ paths:
                           - invitation_id
                     required:
                       - data
-  /questions/{id}/recommendations:
+  /questions/{id}/invitations/recommendations:
     get:
       summary: 获取推荐邀请用户列表
       operationId: getQuestionInvitationRecommendations
@@ -1906,7 +1942,6 @@ paths:
                           - id
                 required:
                   - data
-
   /comments/{commentId}:
     get:
       summary: 获取评论详情
@@ -1930,6 +1965,28 @@ paths:
                             $ref: "#/components/schemas/Comment"
                     required:
                       - data
+    patch:
+      summary: 更新评论
+      operationId: updateComment
+      parameters:
+        - $ref: "#/components/parameters/commentId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  $ref: "#/components/schemas/Comment/properties/content"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除评论
       operationId: deleteComment
@@ -2846,13 +2903,7 @@ paths:
       summary: 对灵感表态
       operationId: attitudeInsight
       parameters:
-        - name: insightId
-          in: path
-          description: 灵感 ID
-          required: true
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/insightId"
       security:
         - bearerAuth: []
       requestBody:

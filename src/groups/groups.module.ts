@@ -33,7 +33,7 @@ import { AvatarsModule } from '../avatars/avatars.module';
       GroupTarget,
     ]),
     AuthModule,
-    UsersModule,
+    forwardRef(() => UsersModule),
     forwardRef(() => QuestionsModule),
     forwardRef(() => AnswerModule),
     AvatarsModule,

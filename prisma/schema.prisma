@@ -8,7 +8,8 @@
 //
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["debian-openssl-3.0.x", "debian-openssl-1.1.x"]
 }
 
 datasource db {
@@ -50,6 +51,7 @@ model answer {
   answer_query_log         answer_query_log[]
   answer_update_log        answer_update_log[]
   answer_user_attitude     answer_user_attitude[]
+  accepted_by_question     question?                  @relation("AcceptedAnswer")
 
   @@index([groupId], map: "IDX_1887685ce6667b435b01c646a2")
   @@index([questionId], map: "IDX_a4013f10cd6924793fbd5f0d63")
@@ -449,11 +451,15 @@ model question {
   answer                        answer[]
   group_question_relationship   group_question_relationship?
   user                          user                           @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_187915d8eaa010cde8b053b35d5")
+  bounty                        Int                            @default(0)
+  bounty_start_at               DateTime?
+  accepted_answer               answer?                        @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id])
+  acceptedAnswerId              Int?                           @unique()
   question_follower_relation    question_follower_relation[]
   question_query_log            question_query_log[]
   question_topic_relation       question_topic_relation[]
+  QuestionInvitationRelation    QuestionInvitationRelation[]
   QuestionElasticsearchRelation QuestionElasticsearchRelation?
-  questionInvitationRelation    QuestionInvitationRelation[]
 
   @@index([createdById], map: "IDX_187915d8eaa010cde8b053b35d")
   @@index([title, content], map: "IDX_8b24620899a8556c3f22f52145")

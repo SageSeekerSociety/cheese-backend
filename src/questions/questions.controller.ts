@@ -35,6 +35,7 @@ import {
   ParseSortPatternPipe,
   SortPattern,
 } from '../common/pipe/parse-sort-pattern.pipe';
+import { SnakeCaseToCamelCasePipe } from '../common/pipe/snake-case-to-camel-case.pipe';
 import {
   AddQuestionRequestDto,
   AddQuestionResponseDto,
@@ -122,6 +123,7 @@ export class QuestionsController {
       body.type,
       body.topics,
       body.groupId,
+      body.bounty,
     );
     return {
       code: 201,
@@ -325,6 +327,7 @@ export class QuestionsController {
     pageSize: number | undefined,
     @Query(
       'sort',
+      new SnakeCaseToCamelCasePipe({ prefixIgnorePattern: '[+-]' }),
       new ParseSortPatternPipe({
         optional: true,
         allowedFields: ['createdAt'],
@@ -342,7 +345,7 @@ export class QuestionsController {
       );
     return {
       code: 200,
-      message: 'Invited',
+      message: 'OK',
       data: {
         invitations,
         page,
@@ -399,7 +402,7 @@ export class QuestionsController {
 
   //don't change the position of the below two functions
   //because if the order is swapped, the route is incorrectly identified
-  @Get('/:id/invitation/recommendations')
+  @Get('/:id/invitations/recommendations')
   async getRecommendations(
     @Param('id', ParseIntPipe) id: number,
     @Query('page_size', new ParseIntPipe({ optional: true }))
@@ -434,6 +437,46 @@ export class QuestionsController {
       data: {
         invitation: invitationDto,
       },
+    };
+  }
+
+  @Put('/:id/bounty')
+  async setBounty(
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body('bounty', ParseIntPipe) bounty: number,
+  ): Promise<BaseRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
+    await this.questionsService.setBounty(id, bounty);
+    return {
+      code: 200,
+      message: 'OK',
+    };
+  }
+
+  @Put('/:id/acceptance')
+  async acceptAnswer(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('answer_id', ParseIntPipe) answer_id: number,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<BaseRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
+    await this.questionsService.acceptAnswer(id, answer_id);
+    return {
+      code: 200,
+      message: 'OK',
     };
   }
 }
