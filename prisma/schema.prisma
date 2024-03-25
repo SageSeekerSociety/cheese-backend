@@ -457,9 +457,8 @@ model question {
   question_follower_relation    question_follower_relation[]
   question_query_log            question_query_log[]
   question_topic_relation       question_topic_relation[]
-  questionId                    Int?
-  QuestionElasticsearchRelation QuestionElasticsearchRelation?
   QuestionInvitationRelation    QuestionInvitationRelation[]
+  QuestionElasticsearchRelation QuestionElasticsearchRelation?
 
   @@index([createdById], map: "IDX_187915d8eaa010cde8b053b35d")
   @@index([title, content], map: "IDX_8b24620899a8556c3f22f52145")
