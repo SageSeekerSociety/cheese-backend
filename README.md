@@ -1,6 +1,8 @@
 # cheese-backend
+
 ![test](https://github.com/SageSeekerSociety/cheese-backend/actions/workflows/test.yml/badge.svg)
 ![test_docker](https://github.com/SageSeekerSociety/cheese-backend/actions/workflows/build-test-docker-dev.yml/badge.svg)
+[![codecov](https://codecov.io/gh/SageSeekerSociety/cheese-backend/graph/badge.svg?token=ZWHHESBFJW)](https://codecov.io/gh/SageSeekerSociety/cheese-backend)
 
 ## Description
 
