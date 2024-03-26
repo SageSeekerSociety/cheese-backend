@@ -1,7 +1,7 @@
-openapi: '3.0.2'
+openapi: "3.0.2"
 info:
   title: Cheese Community API
-  version: '1.0'
+  version: "1.0"
 servers:
   - url: http://localhost:7777/api/{version}
     description: Local server
@@ -139,7 +139,7 @@ components:
           format: int64
         user_attitude:
           allOf:
-            - $ref: '#/components/schemas/AttitudeType'
+            - $ref: "#/components/schemas/AttitudeType"
             - description: 当前登录用户的态度
 
     CommonResponse:
@@ -152,7 +152,7 @@ components:
           description: 错误码，0表示成功，其他表示失败
         message:
           type: string
-          default: ''
+          default: ""
           description: 错误信息，成功时为空字符串
       required:
         - code
@@ -168,18 +168,18 @@ components:
         username:
           type: string
           description: 用户名
-          example: 'cheese'
+          example: "cheese"
         nickname:
           type: string
           description: 昵称
-          example: '芝士'
+          example: "芝士"
         avatarId:
           type: integer
           description: 头像 id
         intro:
           type: string
           description: 个人简介
-          default: 'This user has not set an introduction yet.'
+          default: "This user has not set an introduction yet."
         follow_count:
           type: integer
           format: int64
@@ -269,14 +269,14 @@ components:
           type: string
           description: 问题详情
         author:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         type:
           type: integer
           description: 问题类型
         topics:
           type: array
           items:
-            $ref: '#/components/schemas/Topic'
+            $ref: "#/components/schemas/Topic"
         created_at:
           type: integer
           format: int64
@@ -286,7 +286,7 @@ components:
           format: int64
           description: 最后修改时间（时间戳）
         attitudes:
-          $ref: '#/components/schemas/AttitudeStats'
+          $ref: "#/components/schemas/AttitudeStats"
         is_follow:
           type: boolean
           description: 是否关注问题
@@ -307,8 +307,21 @@ components:
         view_count:
           type: integer
           description: 浏览数量
+        bounty:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 20
+          description: 悬赏数量
+        bounty_start_at:
+          type: integer
+          format: int64
+          description: 悬赏开始时间
+        accepted_answer:
+          $ref: "#/components/schemas/Answer"
+          nullable: true
         group:
-          $ref: '#/components/schemas/Group'
+          $ref: "#/components/schemas/Group"
           nullable: true
     QuestionInvitation:
       type: object
@@ -323,7 +336,7 @@ components:
           format: int64
           description: 问题 ID
         user:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           format: int64
@@ -369,7 +382,7 @@ components:
           type: string
           description: 回答内容
         author:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           format: int64
@@ -379,7 +392,7 @@ components:
           format: int64
           description: 最后修改时间（时间戳）
         attitudes:
-          $ref: '#/components/schemas/AttitudeStats'
+          $ref: "#/components/schemas/AttitudeStats"
         is_favorite:
           type: boolean
           description: 是否收藏回答
@@ -392,11 +405,8 @@ components:
         view_count:
           type: integer
           description: 浏览数量
-        is_group:
-          type: boolean
-          description: 是否为小组回答
         group:
-          $ref: '#/components/schemas/Group'
+          $ref: "#/components/schemas/Group"
     Comment:
       type: object
       description: 评论详情
@@ -418,13 +428,13 @@ components:
           minLength: 1
           description: 评论内容
         user:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           format: int64
           description: 创建时间（时间戳）
         attitudes:
-          $ref: '#/components/schemas/AttitudeStats'
+          $ref: "#/components/schemas/AttitudeStats"
       required:
         - id
         - commentable_id
@@ -444,12 +454,12 @@ components:
           type: string
         intro:
           type: string
-          default: ''
+          default: ""
         avatarId:
           type: integer
           format: int64
         owner:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           format: int64
@@ -485,7 +495,7 @@ components:
           type: string
         intro:
           type: string
-          default: ''
+          default: ""
         created_at:
           type: integer
           format: int64
@@ -522,7 +532,7 @@ components:
           type: string
           description: 内容
         author:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         created_at:
           type: integer
           description: 创建时间
@@ -532,7 +542,7 @@ components:
           description: 最后更新时间
           format: int64
         attitudes:
-          $ref: '#/components/schemas/AttitudeStats'
+          $ref: "#/components/schemas/AttitudeStats"
         comment_count:
           type: integer
           description: 评论数量
@@ -543,9 +553,9 @@ components:
           type: array
           description: 媒体文件，如果没有则为空数组
           items:
-            $ref: '#/components/schemas/Media'
+            $ref: "#/components/schemas/Media"
         attachment:
-          $ref: '#/components/schemas/Attachment'
+          $ref: "#/components/schemas/Attachment"
       required:
         - id
         - content
@@ -598,8 +608,8 @@ components:
           description: URL
         meta:
           oneOf:
-            - $ref: '#/components/schemas/ImageMeta'
-            - $ref: '#/components/schemas/VideoMeta'
+            - $ref: "#/components/schemas/ImageMeta"
+            - $ref: "#/components/schemas/VideoMeta"
     ImageMeta:
       type: object
       description: 图片元数据
@@ -690,7 +700,7 @@ components:
         - password
     LoginResponse:
       allOf:
-        - $ref: '#/components/schemas/CommonResponse'
+        - $ref: "#/components/schemas/CommonResponse"
         - type: object
           properties:
             data:
@@ -699,7 +709,7 @@ components:
                 accessToken:
                   type: string
                 user:
-                  $ref: '#/components/schemas/User'
+                  $ref: "#/components/schemas/User"
               required:
                 - accessToken
                 - user
@@ -726,7 +736,7 @@ components:
         - emailCode
     RegisterResponse:
       allOf:
-        - $ref: '#/components/schemas/CommonResponse'
+        - $ref: "#/components/schemas/CommonResponse"
         - type: object
           properties:
             data:
@@ -735,7 +745,7 @@ components:
                 accessToken:
                   type: string
                 user:
-                  $ref: '#/components/schemas/User'
+                  $ref: "#/components/schemas/User"
               required:
                 - accessToken
                 - user
@@ -779,20 +789,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
       responses:
-        '201':
+        "201":
           description: User registered successfully
           headers:
             Set-Cookie:
-              description: 'refresh token'
+              description: "refresh token"
               schema:
                 type: string
-                example: 'RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/; Expires=Sat, 01 Jan 2025 00:00:00 GMT'
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegisterResponse'
+                $ref: "#/components/schemas/RegisterResponse"
   /users/auth/login:
     post:
       summary: 用户登录
@@ -801,20 +811,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: OK
           headers:
             Set-Cookie:
-              description: 'refresh token'
+              description: "refresh token"
               schema:
                 type: string
-                example: 'RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT'
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: "#/components/schemas/LoginResponse"
   /users/auth/refresh-token:
     post:
       summary: 用户刷新 token
@@ -822,19 +832,19 @@ paths:
       security:
         - REFRESH_TOKEN: []
       responses:
-        '200':
+        "200":
           description: OK
           headers:
             Set-Cookie:
-              description: 'refresh token'
+              description: "refresh token"
               schema:
                 type: string
-                example: 'RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT'
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -853,12 +863,12 @@ paths:
       security:
         - REFRESH_TOKEN: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
 
   /users/verify/email:
     post:
@@ -875,12 +885,12 @@ paths:
               required:
                 - email
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /users/recover/password/request:
     post:
       summary: 重置密码请求
@@ -896,12 +906,12 @@ paths:
               required:
                 - email
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /users/recover/password/verify:
     post:
       summary: 验证 Token 并重置密码
@@ -920,40 +930,40 @@ paths:
                 - token
                 - new_password
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /users/{userId}:
     get:
       summary: 获取用户信息
       operationId: getUserInfo
       parameters:
-        - $ref: '#/components/parameters/userId'
+        - $ref: "#/components/parameters/userId"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           user:
-                            $ref: '#/components/schemas/User'
+                            $ref: "#/components/schemas/User"
                     required:
                       - data
     put:
       summary: 更新用户信息
       operationId: updateUserInfo
       parameters:
-        - $ref: '#/components/parameters/userId'
+        - $ref: "#/components/parameters/userId"
       security:
         - bearerAuth: []
       requestBody:
@@ -968,34 +978,35 @@ paths:
                   type: string
                 avatarId:
                   type: integer
+                  format: int64
               required:
                 - nickname
                 - intro
                 - avatarId
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /users/{userId}/questions:
     get:
       summary: 获取用户提问列表
       operationId: getUserQuestions
       parameters:
-        - $ref: '#/components/parameters/userId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1004,9 +1015,9 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /users/{userId}/answers:
@@ -1014,18 +1025,18 @@ paths:
       summary: 获取用户回答列表
       operationId: getUserAnswers
       parameters:
-        - $ref: '#/components/parameters/userId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1034,9 +1045,9 @@ paths:
                           answers:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Answer'
+                              $ref: "#/components/schemas/Answer"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /users/{userId}/followers:
@@ -1044,18 +1055,18 @@ paths:
       summary: 获取用户粉丝列表
       operationId: getUserFollowers
       parameters:
-        - $ref: '#/components/parameters/userId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1064,27 +1075,27 @@ paths:
                           users:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
       summary: 关注用户
       operationId: followUser
       parameters:
-        - $ref: '#/components/parameters/userId'
+        - $ref: "#/components/parameters/userId"
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1101,18 +1112,18 @@ paths:
       summary: 取消关注用户
       operationId: unfollowUser
       parameters:
-        - $ref: '#/components/parameters/userId'
+        - $ref: "#/components/parameters/userId"
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1130,18 +1141,18 @@ paths:
       summary: 获取用户关注的问题列表
       operationId: getUserFollowQuestions
       parameters:
-        - $ref: '#/components/parameters/userId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1150,9 +1161,9 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /users/{userId}/follow/users:
@@ -1160,18 +1171,18 @@ paths:
       summary: 获取用户关注的用户列表
       operationId: getUserFollowUsers
       parameters:
-        - $ref: '#/components/parameters/userId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1180,9 +1191,9 @@ paths:
                           users:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /questions:
@@ -1196,17 +1207,17 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1215,9 +1226,9 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -1247,19 +1258,25 @@ paths:
                   type: integer
                   format: int64
                   description: 所属小组 ID，留空表示不属于任何小组
+                bounty:
+                  type: integer
+                  format: int64
+                  description: 悬赏金额，0 表示不设置悬赏
+                  default: 0
+                  maximum: 20
               required:
                 - title
                 - content
                 - type
                 - topics
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1275,29 +1292,29 @@ paths:
       summary: 获取问题详情
       operationId: getQuestionDetail
       parameters:
-        - $ref: '#/components/parameters/questionId'
+        - $ref: "#/components/parameters/questionId"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           question:
-                            $ref: '#/components/schemas/Question'
+                            $ref: "#/components/schemas/Question"
                     required:
                       - data
     put:
       summary: 更新问题
       operationId: updateQuestion
       parameters:
-        - $ref: '#/components/parameters/questionId'
+        - $ref: "#/components/parameters/questionId"
       security:
         - bearerAuth: []
       requestBody:
@@ -1324,38 +1341,38 @@ paths:
                 - type
                 - topics
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除问题
       operationId: deleteQuestion
       parameters:
-        - $ref: '#/components/parameters/questionId'
+        - $ref: "#/components/parameters/questionId"
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /questions/{questionId}/followers:
     get:
       summary: 获取问题关注者列表
       operationId: getQuestionFollowers
       parameters:
-        - $ref: '#/components/parameters/questionId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1364,26 +1381,26 @@ paths:
                           users:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     put:
       summary: 关注问题
       operationId: followQuestion
       parameters:
-        - $ref: '#/components/parameters/questionId'
+        - $ref: "#/components/parameters/questionId"
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1400,17 +1417,17 @@ paths:
       summary: 取消关注问题
       operationId: unfollowQuestion
       parameters:
-        - $ref: '#/components/parameters/questionId'
+        - $ref: "#/components/parameters/questionId"
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1444,26 +1461,45 @@ paths:
               type: object
               properties:
                 attitude_type:
-                  $ref: '#/components/schemas/AttitudeType'
+                  $ref: "#/components/schemas/AttitudeType"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           attitudes:
-                            $ref: '#/components/schemas/AttitudeStats'
+                            $ref: "#/components/schemas/AttitudeStats"
                         required:
                           - attitudes
                     required:
                       - data
+  /questions/{id}/bounty:
+    put:
+      summary: 设置悬赏
+      operationId: setBounty
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
   /questions/{id}/invitations:
     get:
       summary: 获取该问题下被邀请回答的用户
@@ -1494,15 +1530,15 @@ paths:
           description: 排序方式字符串，例如 "+created_at" 表示按创建时间升序，"-created_at" 表示按创建时间降序，使用逗号来分隔先后多个排序字段
           schema:
             type: string
-            example: '+created_at'
+            example: "+created_at"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1511,9 +1547,9 @@ paths:
                           invitations:
                             type: array
                             items:
-                              $ref: '#/components/schemas/QuestionInvitation'
+                              $ref: "#/components/schemas/QuestionInvitation"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -1541,13 +1577,13 @@ paths:
               required:
                 - user_id
       responses:
-        '201':
+        "201":
           description: Successfully invited
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1581,13 +1617,13 @@ paths:
             format: int64
             default: 5
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1596,7 +1632,7 @@ paths:
                           users:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                         required:
                           - users
                     required:
@@ -1621,20 +1657,20 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           invitation:
-                            $ref: '#/components/schemas/QuestionInvitation'
+                            $ref: "#/components/schemas/QuestionInvitation"
                     required:
                       - data
     delete:
@@ -1658,24 +1694,24 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /questions/{id}/answers:
     get:
       summary: 获取问题回答列表
       operationId: getQuestionAnswers
       parameters:
-        - $ref: '#/components/parameters/questionId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1684,9 +1720,9 @@ paths:
                           answers:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Answer'
+                              $ref: "#/components/schemas/Answer"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -1713,13 +1749,13 @@ paths:
               required:
                 - content
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1737,33 +1773,33 @@ paths:
       summary: 获取回答详情
       operationId: getAnswerDetail
       parameters:
-        - $ref: '#/components/parameters/questionId'
-        - $ref: '#/components/parameters/answerId'
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           question:
-                            $ref: '#/components/schemas/Question'
+                            $ref: "#/components/schemas/Question"
                           answer:
-                            $ref: '#/components/schemas/Answer'
+                            $ref: "#/components/schemas/Answer"
                     required:
                       - data
     put:
       summary: 更新回答
       operationId: updateAnswer
       parameters:
-        - $ref: '#/components/parameters/questionId'
-        - $ref: '#/components/parameters/answerId'
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       requestBody:
@@ -1777,27 +1813,27 @@ paths:
               required:
                 - content
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除回答
       operationId: deleteAnswer
       parameters:
-        - $ref: '#/components/parameters/questionId'
-        - $ref: '#/components/parameters/answerId'
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /questions/{questionId}/answers/{answerId}/attitudes:
     post:
       summary: 对回答表态
@@ -1826,22 +1862,22 @@ paths:
               type: object
               properties:
                 attitude_type:
-                  $ref: '#/components/schemas/AttitudeType'
+                  $ref: "#/components/schemas/AttitudeType"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           attitudes:
-                            $ref: '#/components/schemas/AttitudeStats'
+                            $ref: "#/components/schemas/AttitudeStats"
                         required:
                           - attitudes
                     required:
@@ -1851,45 +1887,45 @@ paths:
       summary: 收藏回答
       operationId: favoriteAnswer
       parameters:
-        - $ref: '#/components/parameters/questionId'
-        - $ref: '#/components/parameters/answerId'
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 取消收藏回答
       operationId: unfavoriteAnswer
       parameters:
-        - $ref: '#/components/parameters/questionId'
-        - $ref: '#/components/parameters/answerId'
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /comments/{commentableType}/{commentableId}:
     get:
       summary: 获取对象评论列表
       operationId: getComments
       parameters:
-        - $ref: '#/components/parameters/commentableId'
-        - $ref: '#/components/parameters/commentableType'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/commentableId"
+        - $ref: "#/components/parameters/commentableType"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1900,15 +1936,15 @@ paths:
                             items:
                               type: object
                               allOf:
-                                - $ref: '#/components/schemas/Comment'
+                                - $ref: "#/components/schemas/Comment"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
     post:
       summary: 创建评论
       operationId: createComment
       parameters:
-        - $ref: '#/components/parameters/commentableId'
-        - $ref: '#/components/parameters/commentableType'
+        - $ref: "#/components/parameters/commentableId"
+        - $ref: "#/components/parameters/commentableType"
       requestBody:
         content:
           application/json:
@@ -1922,13 +1958,13 @@ paths:
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -1946,29 +1982,29 @@ paths:
       summary: 获取评论详情
       operationId: getCommentDetail
       parameters:
-        - $ref: '#/components/parameters/commentId'
+        - $ref: "#/components/parameters/commentId"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           comment:
-                            $ref: '#/components/schemas/Comment'
+                            $ref: "#/components/schemas/Comment"
                     required:
                       - data
     patch:
       summary: 更新评论
       operationId: updateComment
       parameters:
-        - $ref: '#/components/parameters/commentId'
+        - $ref: "#/components/parameters/commentId"
       security:
         - bearerAuth: []
       requestBody:
@@ -1978,30 +2014,30 @@ paths:
               type: object
               properties:
                 content:
-                  $ref: '#/components/schemas/Comment/properties/content'
+                  $ref: "#/components/schemas/Comment/properties/content"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除评论
       operationId: deleteComment
       parameters:
-        - $ref: '#/components/parameters/commentId'
+        - $ref: "#/components/parameters/commentId"
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /comments/{comment_id}/attitudes:
     post:
       summary: 对评论表态
       operationId: attitudeComment
       parameters:
-        - $ref: '#/components/parameters/commentId'
+        - $ref: "#/components/parameters/commentId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2011,24 +2047,24 @@ paths:
               type: object
               properties:
                 attitude_type:
-                  $ref: '#/components/schemas/AttitudeType'
+                  $ref: "#/components/schemas/AttitudeType"
               required:
                 - attitude_type
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           attitudes:
-                            $ref: '#/components/schemas/AttitudeStats'
+                            $ref: "#/components/schemas/AttitudeStats"
                         required:
                           - attitudes
                     required:
@@ -2044,16 +2080,16 @@ paths:
           required: true
           schema:
             type: string
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2062,9 +2098,9 @@ paths:
                           topics:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Topic'
+                              $ref: "#/components/schemas/Topic"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -2083,13 +2119,13 @@ paths:
               required:
                 - name
       responses:
-        '201':
+        "201":
           description: Topic created successfully
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2113,20 +2149,20 @@ paths:
             type: integer
             format: int64
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           topic:
-                            $ref: '#/components/schemas/Topic'
+                            $ref: "#/components/schemas/Topic"
                     required:
                       - data
   /groups:
@@ -2139,8 +2175,8 @@ paths:
           description: 搜索关键词，留空即为获取全部圈子
           schema:
             type: string
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
         - name: sort
           in: query
           description: 排序方式
@@ -2162,14 +2198,14 @@ paths:
           schema:
             type: boolean
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2178,9 +2214,9 @@ paths:
                           groups:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Group'
+                              $ref: "#/components/schemas/Group"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
@@ -2205,13 +2241,13 @@ paths:
                 - intro
                 - avatarId
       responses:
-        '201':
+        "201":
           description: Group created successfully
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2227,29 +2263,29 @@ paths:
       summary: 获取圈子详情
       operationId: getGroupDetail
       parameters:
-        - $ref: '#/components/parameters/groupId'
+        - $ref: "#/components/parameters/groupId"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           group:
-                            $ref: '#/components/schemas/Group'
+                            $ref: "#/components/schemas/Group"
                     required:
                       - data
     put:
       summary: 更新圈子
       operationId: updateGroup
       parameters:
-        - $ref: '#/components/parameters/groupId'
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2264,6 +2300,7 @@ paths:
                   type: string
                 avatarId:
                   type: integer
+                  format: int64
                 cover:
                   type: string
               required:
@@ -2272,39 +2309,39 @@ paths:
                 - avatarId
                 - cover
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除圈子
       operationId: deleteGroup
       parameters:
-        - $ref: '#/components/parameters/groupId'
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /groups/{groupId}/members:
     get:
       summary: 获取圈子成员列表
       operationId: getGroupMembers
       parameters:
-        - $ref: '#/components/parameters/groupId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2313,16 +2350,16 @@ paths:
                           members:
                             type: array
                             items:
-                              $ref: '#/components/schemas/User'
+                              $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
       summary: 加入圈子
       operationId: joinGroup
       parameters:
-        - $ref: '#/components/parameters/groupId'
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2336,13 +2373,13 @@ paths:
               required:
                 - intro
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2363,18 +2400,18 @@ paths:
       summary: 退出圈子
       operationId: quitGroup
       parameters:
-        - $ref: '#/components/parameters/groupId'
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2390,18 +2427,18 @@ paths:
       summary: 获取圈子问题列表
       operationId: getGroupQuestions
       parameters:
-        - $ref: '#/components/parameters/groupId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2410,9 +2447,9 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /groups/{groupId}/targets:
@@ -2420,9 +2457,9 @@ paths:
       summary: 获取圈子目标列表
       operationId: getGroupTargets
       parameters:
-        - $ref: '#/components/parameters/groupId'
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
         - name: sort
           in: query
           description: 排序方式
@@ -2434,14 +2471,14 @@ paths:
               - new
             default: recommend
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2450,16 +2487,16 @@ paths:
                           targets:
                             type: array
                             items:
-                              $ref: '#/components/schemas/GroupTarget'
+                              $ref: "#/components/schemas/GroupTarget"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
     post:
       summary: 创建圈子目标
       operationId: createGroupTarget
       parameters:
-        - $ref: '#/components/parameters/groupId'
+        - $ref: "#/components/parameters/groupId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2492,13 +2529,13 @@ paths:
                 - name
                 - intro
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2514,21 +2551,21 @@ paths:
       summary: 获取圈子目标详情
       operationId: getGroupTargetDetail
       parameters:
-        - $ref: '#/components/parameters/groupId'
-        - $ref: '#/components/parameters/targetId'
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     put:
       summary: 更新圈子目标
       operationId: updateGroupTarget
       parameters:
-        - $ref: '#/components/parameters/groupId'
-        - $ref: '#/components/parameters/targetId'
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2564,57 +2601,57 @@ paths:
                 - end_time
                 - attendance
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除圈子目标
       operationId: deleteGroupTarget
       parameters:
-        - $ref: '#/components/parameters/groupId'
-        - $ref: '#/components/parameters/targetId'
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /groups/{groupId}/targets/{targetId}/attend:
     post:
       summary: 打卡
       operationId: attendGroupTarget
       parameters:
-        - $ref: '#/components/parameters/groupId'
-        - $ref: '#/components/parameters/targetId'
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
   /feeds:
     get:
       summary: 获取动态列表
       operationId: getFeedList
       parameters:
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       security:
         - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2647,8 +2684,8 @@ paths:
                                   type: object
                                   description: 动态数据
                                   oneOf:
-                                    - $ref: '#/components/schemas/Question'
-                                    - $ref: '#/components/schemas/Answer'
+                                    - $ref: "#/components/schemas/Question"
+                                    - $ref: "#/components/schemas/Answer"
                               required:
                                 - from
                                 - type
@@ -2673,13 +2710,13 @@ paths:
       summary: 获取热门问题列表
       operationId: getHotQuestionList
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2688,7 +2725,7 @@ paths:
                           questions:
                             type: array
                             items:
-                              $ref: '#/components/schemas/Question'
+                              $ref: "#/components/schemas/Question"
                     required:
                       - data
   /search:
@@ -2713,17 +2750,17 @@ paths:
               - user
               - topic
             default: question
-        - $ref: '#/components/parameters/page_start'
-        - $ref: '#/components/parameters/page_size'
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 type: object
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2733,11 +2770,11 @@ paths:
                             type: array
                             items:
                               oneOf:
-                                - $ref: '#/components/schemas/Question'
-                                - $ref: '#/components/schemas/Answer'
-                                - $ref: '#/components/schemas/User'
+                                - $ref: "#/components/schemas/Question"
+                                - $ref: "#/components/schemas/Answer"
+                                - $ref: "#/components/schemas/User"
                           page:
-                            $ref: '#/components/schemas/Page'
+                            $ref: "#/components/schemas/Page"
                     required:
                       - data
   /images:
@@ -2756,7 +2793,7 @@ paths:
                   type: string
                   format: binary
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -2820,13 +2857,13 @@ paths:
               required:
                 - content
       responses:
-        '201':
+        "201":
           description: Insight created successfully
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
@@ -2844,29 +2881,29 @@ paths:
       summary: 获取灵感详情
       operationId: getInsightDetail
       parameters:
-        - $ref: '#/components/parameters/insightId'
+        - $ref: "#/components/parameters/insightId"
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           insight:
-                            $ref: '#/components/schemas/Insight'
+                            $ref: "#/components/schemas/Insight"
                     required:
                       - data
     put:
       summary: 更新灵感
       operationId: updateInsight
       parameters:
-        - $ref: '#/components/parameters/insightId'
+        - $ref: "#/components/parameters/insightId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2880,28 +2917,28 @@ paths:
               required:
                 - content
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommonResponse'
+                $ref: "#/components/schemas/CommonResponse"
     delete:
       summary: 删除灵感
       operationId: deleteInsight
       parameters:
-        - $ref: '#/components/parameters/insightId'
+        - $ref: "#/components/parameters/insightId"
       security:
         - bearerAuth: []
       responses:
-        '204':
+        "204":
           description: No Content
   /insights/{insightId}/attitudes:
     post:
       summary: 对灵感表态
       operationId: attitudeInsight
       parameters:
-        - $ref: '#/components/parameters/insightId'
+        - $ref: "#/components/parameters/insightId"
       security:
         - bearerAuth: []
       requestBody:
@@ -2911,29 +2948,58 @@ paths:
               type: object
               properties:
                 attitude_type:
-                  $ref: '#/components/schemas/AttitudeType'
+                  $ref: "#/components/schemas/AttitudeType"
               required:
                 - attitude_type
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/CommonResponse'
+                  - $ref: "#/components/schemas/CommonResponse"
                   - type: object
                     properties:
                       data:
                         type: object
                         properties:
                           attitudes:
-                            $ref: '#/components/schemas/AttitudeStats'
+                            $ref: "#/components/schemas/AttitudeStats"
                         required:
                           - attitudes
                     required:
                       - data
   /avatars:
+    get:
+      summary: Get available avatarIds
+      operationId: getAvailableAvatarIds
+      parameters:
+        - name: type
+          in: query
+          description: Avatar type
+          schema:
+            type: string
+            enum:
+              - predefined
+            default: predefined
+      responses:
+        "200":
+          description: Get available avatarIds successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarIds:
+                        type: array
+                        items:
+                          type: number
+                          format: int64
+                        description: Available avatarIds
     post:
       summary: Upload an avatar
       operationId: uploadAvatar
@@ -2948,7 +3014,7 @@ paths:
                   format: binary
                   description: The avatar image to upload
       responses:
-        '201':
+        "201":
           description: Upload avatar successfully
           content:
             application/json:
@@ -2958,6 +3024,18 @@ paths:
                   id:
                     type: number
                     description: Unique identifier for the uploaded avatar
+  /avatars/default:
+    get:
+      summary: Get default avatar
+      operationId: getDefaultAvata
+      responses:
+        "200":
+          description: Get default avatar successfully
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
   /avatars/{id}:
     get:
       summary: Get an avatar by id
@@ -2970,11 +3048,12 @@ paths:
           schema:
             type: number
             format: int64
+            minimum: 1
       responses:
-        '200':
+        "200":
           description: get avatar successfully
           content:
-            application/octet-stream:
+            image/*:
               schema:
                 type: string
                 format: binary

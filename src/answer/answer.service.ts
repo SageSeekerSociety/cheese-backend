@@ -283,14 +283,6 @@ export class AnswerService {
       throw new AnswerNotFoundError(answerId);
     }
 
-    const log = this.answerQueryLogRepository.create({
-      answerId,
-      viewerId,
-      userAgent,
-      ip,
-    });
-    const logSavedPromise = this.answerQueryLogRepository.save(log);
-
     const authorDtoPromise = this.usersService.getUserDtoById(
       answer.createdById,
       viewerId,
@@ -314,7 +306,6 @@ export class AnswerService {
         : this.groupsService.getGroupDtoById(viewerId, answer.groupId);
 
     const [
-      ,
       authorDto,
       attitudeStatusDto,
       viewCount,
@@ -322,7 +313,6 @@ export class AnswerService {
       isFavorite,
       groupDto,
     ] = await Promise.all([
-      logSavedPromise,
       authorDtoPromise,
       attitudeStatusDtoPromise,
       viewCountPromise,
@@ -330,6 +320,15 @@ export class AnswerService {
       isFavoritePromise,
       groupDtoPromise,
     ]);
+
+    if (viewerId != undefined && ip != undefined && userAgent != undefined) {
+      await this.answerQueryLogRepository.save({
+        answerId,
+        viewerId,
+        ip,
+        userAgent,
+      });
+    }
 
     return {
       id: answer.id,

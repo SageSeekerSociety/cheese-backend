@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { ElasticsearchModuleOptions } from '@nestjs/elasticsearch';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { isMySQL } from '../helper/db.helper';
 
 export default () => {
@@ -41,6 +42,7 @@ export default () => {
               10,
             ),
           }),
+      namingStrategy: new SnakeNamingStrategy(),
     },
     elasticsearch: {
       node: process.env.ELASTICSEARCH_NODE,

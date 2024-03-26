@@ -1,3 +1,4 @@
+import { AnswerDto } from '../../answer/DTO/answer.dto';
 import { AttitudeStateDto } from '../../attitude/DTO/attitude-state.dto';
 import { GroupDto } from '../../groups/DTO/group.dto';
 import { TopicDto } from '../../topics/DTO/topic.dto';
@@ -19,4 +20,7 @@ export class QuestionDto {
   follow_count: number;
   view_count: number;
   group: GroupDto | null;
+  bounty: number;
+  bounty_start_at?: number; // timestamp
+  accepted_answer: AnswerDto | null;
 }
