@@ -14,7 +14,7 @@ export class AvatarsService implements OnModuleInit {
     this.initialize();
   }
   private async initialize(): Promise<void> {
-    const sourcePath = join(__dirname, '../../src/avatars/resources');
+    const sourcePath = join(__dirname, '../../resources');
     if (
       !(await this.avatarRepository.findOneBy({
         avatarType: AvatarType.Default,

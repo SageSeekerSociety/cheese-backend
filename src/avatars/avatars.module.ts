@@ -12,7 +12,10 @@ import { AvatarsService } from './avatars.service';
     TypeOrmModule.forFeature([Avatar]),
     MulterModule.register({
       storage: diskStorage({
-        destination: join(__dirname, '/images'),
+        destination:
+          process.env.NODE_ENV === 'test'
+            ? join(__dirname, '../../test/uploads/avatars')
+            : '/app/uploads/avatars',
         filename: (_, file, callback) => {
           const fileName = `${new Date().getTime() + extname(file.originalname)}`;
           return callback(null, fileName);
