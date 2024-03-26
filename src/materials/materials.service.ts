@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { material, MaterialType } from '@prisma/client';
+import { Material, MaterialType } from '@prisma/client';
 import * as ffmpeg from 'fluent-ffmpeg';
 import { promisify } from 'util';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -106,7 +106,7 @@ export class MaterialsService {
     }
     const newMaterial = await this.prismaService.material.create({
       data: {
-        url: file.destination,
+        url: '/static/' + type + 's/' + file.filename, //todo:may need a better way
         type,
         name: file.filename,
         meta,
@@ -115,10 +115,7 @@ export class MaterialsService {
     return newMaterial.id;
   }
 
-  async getMaterial(
-    id: number,
-    fieldList: string[],
-  ): Promise<Partial<material>> {
+  async getMaterial(id: number, fieldList: string[]): Promise<Material> {
     const material = await this.prismaService.material.findUnique({
       where: {
         id,

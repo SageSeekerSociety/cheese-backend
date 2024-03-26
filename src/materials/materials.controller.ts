@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseArrayPipe,
   ParseIntPipe,
   Post,
   Query,
@@ -55,10 +56,10 @@ export class MaterialsController {
   @Get('/:materialId')
   async getMaterialDetail(
     @Param('materialId', ParseIntPipe) id: number,
-    @Query('fields') fields: string = 'url,meta',
+    @Query('fields', new ParseArrayPipe({ separator: ',', optional: true }))
+    fields: string[] = ['meta', 'url'],
   ): Promise<GetMaterialRespondDto> {
-    const fieldList = fields.split(',');
-    const material = await this.materialsService.getMaterial(id, fieldList);
+    const material = await this.materialsService.getMaterial(id, fields);
     return {
       code: 200,
       message: 'Get Material successfully',

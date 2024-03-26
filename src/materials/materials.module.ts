@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import * as fs from 'fs';
 import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
@@ -24,11 +24,17 @@ function configureMulterModule() {
   return MulterModule.register({
     storage: diskStorage({
       destination: (req, file, callback) => {
+        if (!process.env.FILE_UPLOAD_PATH) {
+          throw new Error(
+            'FILE_UPLOAD_PATH environment variable is not defined',
+          );
+        }
+        const rootPath = process.env.FILE_UPLOAD_PATH;
         const uploadPaths: { [key: string]: string } = {
-          image: './uploads/images',
-          video: './uploads/videos',
-          audio: './uploads/audios',
-          file: './uploads/files',
+          image: join(rootPath, '/images'),
+          video: join(rootPath, '/videos'),
+          audio: join(rootPath, '/audios'),
+          file: join(rootPath, '/files'),
         };
         const fileType = req.body.type;
         const uploadPath = uploadPaths[fileType];
