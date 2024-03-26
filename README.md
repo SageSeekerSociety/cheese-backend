@@ -11,7 +11,7 @@ The backend of the cheese Q&A system.
 
 ## Installation
 
-Before installing this backend, ensure that you have installed the pnpm package manager. If you haven't installed it, you can install it with the following command:
+Before installing this backend, ensure that you have installed the pnpm package manager. If you have not yet installed it, you can install it with the following command:
 
 ```bash
 corepack enable pnpm
@@ -43,7 +43,7 @@ and recompile the prisma client with the following command:
 pnpm build-prisma
 ```
 
-Also, you need to set up an elasticsearch instance. It is used to provide full-text search feature.
+Also, you need to set up an Elasticsearch instance. It is used to provide full-text search feature.
 
 Copy `sample.env` to `.env` and modify according to your condition.
 
@@ -79,7 +79,7 @@ Nest.js is a framework that can be run directly without building, but you can st
 pnpm build
 ```
 
-If you add to or modify .prisma files, you need to recompile the prisma client with the following command:
+If you add to or modify .prisma files, you need to recompile the Prisma client with the following command:
 
 ```bash
 pnpm build-prisma
@@ -87,7 +87,7 @@ pnpm build-prisma
 
 ## Test
 
-We mainly use e2e tests to test the app, because the app is mainly responsible for CRUD operations, and the e2e tests can test the app more comprehensively.
+Our primary testing approach involves e2e tests, as the app focuses extensively on CRUD operations, and the e2e tests can test the app more comprehensively.
 
 ```bash
 # run all tests
