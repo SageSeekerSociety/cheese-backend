@@ -74,7 +74,7 @@ jobs:
         ports:
           # Maps tcp port 9200 on service container to the host
           - 9200:9200
-    
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -92,7 +92,7 @@ jobs:
 
       - name: Install Dependencies
         run: pnpm install
-      
+
       - name: Initialize Database Structures with Prisma
         run: pnpm prisma db push
 
@@ -119,3 +119,9 @@ jobs:
             echo "Repeating Test [$i]"
             pnpm test:cov --verbose
           done
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: SageSeekerSociety/cheese-backend

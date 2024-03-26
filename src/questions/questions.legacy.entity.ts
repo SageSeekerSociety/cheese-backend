@@ -39,6 +39,7 @@ import { GroupQuestionRelationship } from '../groups/groups.legacy.entity';
 import { Topic } from '../topics/topics.legacy.entity';
 import { User } from '../users/users.legacy.entity';
 
+import { Answer } from '../answer/answer.legacy.entity';
 import { isMySQL } from '../common/helper/db.helper';
 
 @Entity()
@@ -68,6 +69,15 @@ export class Question {
 
   @Column()
   type: number;
+
+  @Column({ type: 'int', default: 0 })
+  bounty: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  bountyStartAt?: Date;
+
+  @OneToOne(() => Answer, (answer) => answer.question)
+  acceptedAnswer: Answer | null;
 
   @OneToOne(() => GroupQuestionRelationship, (gqr) => gqr.question)
   groupQuestionRelationship: GroupQuestionRelationship;

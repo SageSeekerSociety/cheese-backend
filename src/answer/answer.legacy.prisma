@@ -32,6 +32,7 @@ model answer {
   answer_query_log         answer_query_log[]
   answer_update_log        answer_update_log[]
   answer_user_attitude     answer_user_attitude[]
+  accepted_by_question     question?                  @relation("AcceptedAnswer")
 
   @@index([groupId], map: "IDX_1887685ce6667b435b01c646a2")
   @@index([questionId], map: "IDX_a4013f10cd6924793fbd5f0d63")

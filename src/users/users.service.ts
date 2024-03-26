@@ -380,7 +380,7 @@ export class UsersService {
     if (profile == undefined) {
       throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
-    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
+    if (viewerId != undefined && ip != undefined && userAgent != undefined) {
       const log = this.userProfileQueryLogRepository.create({
         viewerId: viewerId,
         vieweeId: userId,

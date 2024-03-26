@@ -20,13 +20,13 @@ import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
 import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
 import { GetAnswerDetailRespondDto } from './DTO/get-answer-detail.dto';
 import { GetAnswersRespondDto } from './DTO/get-answers.dto';
 import { UpdateAnswerRequestDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
-import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 
 @Controller('/questions/:question_id/answers')
 @UsePipes(ValidationPipe)
@@ -127,6 +127,9 @@ export class AnswerController {
     );
     const questionDto = await this.questionsService.getQuestionDto(
       answerDto.question_id,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,

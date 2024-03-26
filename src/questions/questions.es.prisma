@@ -6,5 +6,6 @@ model QuestionElasticsearchRelation {
   questionId      Int      @unique
   elasticsearchId String
 
-  @@map("question_elasticsearch_relation")
+  @@index([questionId])
+  @@index([elasticsearchId])
 }
