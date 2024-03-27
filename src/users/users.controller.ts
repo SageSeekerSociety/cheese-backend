@@ -34,7 +34,10 @@ import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
+import {
+  NoTokenValidate,
+  TokenValidateInterceptor,
+} from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
 import {
   FollowRespondDto as FollowUserRespondDto,
@@ -80,6 +83,7 @@ export class UsersController {
   ) {}
 
   @Post('/verify/email')
+  @NoTokenValidate()
   async sendRegisterEmailCode(
     @Body() request: SendEmailVerifyCodeRequestDto,
     @Ip() ip: string,
@@ -93,6 +97,7 @@ export class UsersController {
   }
 
   @Post('/')
+  @NoTokenValidate()
   async register(
     @Body() request: RegisterRequestDto,
     @Ip() ip: string,
@@ -138,6 +143,7 @@ export class UsersController {
   }
 
   @Post('/auth/login')
+  @NoTokenValidate()
   async login(
     @Body() request: LoginRequestDto,
     @Ip() ip: string,
@@ -174,6 +180,7 @@ export class UsersController {
   }
 
   @Post('/auth/refresh-token')
+  @NoTokenValidate()
   async refreshToken(
     @Headers('cookie') cookieHeader: string,
     @Res() res: Response,
@@ -222,6 +229,7 @@ export class UsersController {
   }
 
   @Post('/auth/logout')
+  @NoTokenValidate()
   async logout(
     @Headers('cookie') cookieHeader: string,
   ): Promise<BaseRespondDto> {
@@ -244,6 +252,7 @@ export class UsersController {
   }
 
   @Post('/recover/password/request')
+  @NoTokenValidate()
   async sendResetPasswordEmail(
     @Body() request: ResetPasswordRequestRequestDto,
     @Ip() ip: string,
@@ -261,6 +270,7 @@ export class UsersController {
   }
 
   @Post('/recover/password/verify')
+  @NoTokenValidate()
   async verifyAndResetPassword(
     @Body() request: ResetPasswordVerifyRequestDto,
     @Ip() ip: string,
