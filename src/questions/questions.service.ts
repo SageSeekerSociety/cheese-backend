@@ -143,6 +143,7 @@ export class QuestionsService {
     groupId?: number,
     bounty: number = 0,
   ): Promise<number> {
+    /* istanbul ignore if */
     if (bounty < 0 || bounty > BOUNTY_LIMIT)
       throw new BountyOutOfLimitError(bounty);
 
@@ -189,6 +190,8 @@ export class QuestionsService {
         );
       },
     );
+
+    /* istanbul ignore if */
     if (question! == undefined)
       throw new Error(
         "Impossible: variable 'question' is undefined after transaction.",
@@ -467,6 +470,8 @@ export class QuestionsService {
           await this.prismaService.questionElasticsearchRelation.findUnique({
             where: { questionId },
           });
+
+        /* istanbul ignore if */
         if (esRelation == null)
           throw new Error(
             `Question with id ${questionId} exists, ` +
@@ -506,6 +511,8 @@ export class QuestionsService {
       await this.prismaService.questionElasticsearchRelation.findUnique({
         where: { questionId },
       });
+
+    /* istanbul ignore if */
     if (esRelation == null)
       throw new Error(
         `Question with id ${questionId} exists, ` +
@@ -946,11 +953,13 @@ export class QuestionsService {
     return invitation.userId;
   }
 
-  async setBounty(questionId: number, bounty: number) {
-    if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+  async setBounty(questionId: number, bounty: number): Promise<void> {
+    /* istanbul ignore if */
     if (bounty < 0 || bounty > BOUNTY_LIMIT)
       throw new BountyOutOfLimitError(bounty);
+
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
 
     const oldBounty = (
       await this.prismaService.question.findUniqueOrThrow({

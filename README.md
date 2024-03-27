@@ -112,3 +112,7 @@ In addition, you can install the following extensions for better development exp
 [JavaScript and TypeScript Nightly](https://marketplace.visualstudio.com/items?itemName=ms-vscode.vscode-typescript-next&ssr=false#qna) for better TypeScript language support.
 
 [vscode-openapi-viewer](https://marketplace.visualstudio.com/items?itemName=AndrewButson.vscode-openapi-viewer) to help you view the OpenAPI document.
+
+## Development
+
+About the development of this app, you can refer to the [Development Guide](./docs/development-guide.md).
