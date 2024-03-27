@@ -7,7 +7,7 @@ export class CommentableNotFoundError extends BaseError {
     public readonly commentableId: number,
   ) {
     super(
-      'CommentableIdNotFoundError',
+      'CommentableNotFoundError',
       `${commentableType} ${commentableId} not found`,
       404,
     );
