@@ -7,6 +7,7 @@ import {
   Ip,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseFilters,
@@ -22,6 +23,10 @@ import { TokenValidateInterceptor } from '../common/interceptor/token-validate.i
 import { CreateCommentResponseDto } from './DTO/create-comment.dto';
 import { GetCommentDetailResponseDto } from './DTO/get-comment-detail.dto';
 import { GetCommentsResponseDto } from './DTO/get-comments.dto';
+import {
+  UpdateCommentDto,
+  UpdateCommentResponseDto,
+} from './DTO/update-comment.dto';
 import { CommentsService } from './comment.service';
 import { parseCommentable } from './commentable.enum';
 @Controller('/comments')
@@ -35,8 +40,7 @@ export class CommentsController {
 
   @Get('/:commentableType/:commentableId')
   async getComments(
-    @Param('commentableType')
-    commentableType: string,
+    @Param('commentableType') commentableType: string,
     @Param('commentableId', ParseIntPipe) commentableId: number,
     @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
@@ -177,6 +181,26 @@ export class CommentsController {
       data: {
         comment,
       },
+    };
+  }
+
+  @Patch('/:commentId')
+  async updateComment(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Body() { content }: UpdateCommentDto,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<UpdateCommentResponseDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.commentsService.getCommentCreatedById(commentId),
+      'comment',
+      commentId,
+    );
+    await this.commentsService.updateComment(commentId, content);
+    return {
+      code: 200,
+      message: 'Comment updated successfully',
     };
   }
 }

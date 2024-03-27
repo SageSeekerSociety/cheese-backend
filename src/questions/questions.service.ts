@@ -16,6 +16,7 @@ import {
   QuestionInvitationRelation,
 } from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AnswerNotFoundError } from '../answer/answer.error';
 import { AnswerService } from '../answer/answer.service';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
@@ -40,12 +41,15 @@ import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
 import {
   AlreadyAnsweredError,
-  AlreadyInvitedError,
+  BOUNTY_LIMIT,
+  BountyNotBiggerError,
+  BountyOutOfLimitError,
   QuestionAlreadyFollowedError,
   QuestionIdNotFoundError,
   QuestionInvitationIdNotFoundError,
   QuestionNotFollowedYetError,
   QuestionNotHasThisTopicError,
+  UserAlreadyInvitedError,
 } from './questions.error';
 import { QuestionElasticsearchDocument } from './questions.es-doc';
 import {
@@ -126,7 +130,7 @@ export class QuestionsService {
     });
     if (relation == null)
       throw new QuestionNotHasThisTopicError(questionId, topicId);
-    await questionTopicRelationRepository.softDelete({ id: relation.id });
+    await questionTopicRelationRepository.softRemove({ id: relation.id });
   }
 
   // returns: question id
@@ -137,12 +141,25 @@ export class QuestionsService {
     type: number,
     topicIds: number[],
     groupId?: number,
+    bounty: number = 0,
   ): Promise<number> {
+    /* istanbul ignore if */
+    if (bounty < 0 || bounty > BOUNTY_LIMIT)
+      throw new BountyOutOfLimitError(bounty);
+
     for (const topicId of topicIds) {
       const topicExists = await this.topicService.isTopicExists(topicId);
       if (topicExists == false) throw new TopicNotFoundError(topicId);
     }
+
+    // const nonExistTopicId = topicIds.find(async (topicId) => {
+    //   const exist = await this.topicService.isTopicExists(topicId);
+    //   return !exist;
+    // });
+    // if (nonExistTopicId) throw new TopicNotFoundError(nonExistTopicId);
+
     // TODO: Validate groupId.
+
     let question: Question;
     await this.entityManager.transaction(
       async (entityManager: EntityManager) => {
@@ -153,6 +170,8 @@ export class QuestionsService {
           content,
           type,
           groupId,
+          bounty,
+          bountyStartAt: bounty ? new Date() : undefined,
         });
         await questionRepository.save(question);
         const questionTopicRelationRepository = entityManager.getRepository(
@@ -171,6 +190,8 @@ export class QuestionsService {
         );
       },
     );
+
+    /* istanbul ignore if */
     if (question! == undefined)
       throw new Error(
         "Impossible: variable 'question' is undefined after transaction.",
@@ -231,10 +252,14 @@ export class QuestionsService {
     ip?: string,
     userAgent?: string,
   ): Promise<QuestionDto> {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
+    const question = await this.prismaService.question.findUnique({
+      where: { id: questionId },
+      include: { acceptedAnswer: true },
     });
-    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined || question.deletedAt)
+      //! workaround before soft delete middleware
+      throw new QuestionIdNotFoundError(questionId);
+
     let userDto: UserDto | null = null; // For case that user is deleted.
     try {
       userDto = await this.userService.getUserDtoById(
@@ -278,6 +303,16 @@ export class QuestionsService {
       question.groupId == undefined
         ? Promise.resolve(null)
         : this.groupService.getGroupDtoById(undefined, question.groupId);
+    const acceptedAnswerDtoPromise =
+      question.acceptedAnswer == undefined
+        ? Promise.resolve(null)
+        : this.answerService.getAnswerDto(
+            questionId,
+            question.acceptedAnswer.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
 
     const [
       topics,
@@ -289,6 +324,7 @@ export class QuestionsService {
       answerCount,
       commentCount,
       groupDto,
+      acceptedAnswerDto,
     ] = await Promise.all([
       topicsPromise,
       hasFollowedPromise,
@@ -299,13 +335,16 @@ export class QuestionsService {
       answerCountPromise,
       commentCountPromise,
       groupDtoPromise,
+      acceptedAnswerDtoPromise,
     ]);
-    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
+    if (viewerId != undefined && ip != undefined) {
+      // TODO: is checking all fields necessary? This is only a temporary solution to meet the not-null constraint.
+      // TODO: userAgent maybe null when testing
       const log = this.questionQueryLogRepository.create({
         viewerId,
         questionId,
         ip,
-        userAgent,
+        userAgent: userAgent ?? '',
       });
       await this.questionQueryLogRepository.save(log);
     }
@@ -326,6 +365,9 @@ export class QuestionsService {
       attitudes: attitudeDto,
       view_count: viewCount,
       group: groupDto,
+      bounty: question.bounty,
+      bounty_start_at: question.bountyStartAt?.getTime(),
+      accepted_answer: acceptedAnswerDto,
     };
   }
 
@@ -428,6 +470,8 @@ export class QuestionsService {
           await this.prismaService.questionElasticsearchRelation.findUnique({
             where: { questionId },
           });
+
+        /* istanbul ignore if */
         if (esRelation == null)
           throw new Error(
             `Question with id ${questionId} exists, ` +
@@ -467,6 +511,8 @@ export class QuestionsService {
       await this.prismaService.questionElasticsearchRelation.findUnique({
         where: { questionId },
       });
+
+    /* istanbul ignore if */
     if (esRelation == null)
       throw new Error(
         `Question with id ${questionId} exists, ` +
@@ -675,17 +721,17 @@ export class QuestionsService {
         },
       });
     if (haveBeenInvited) {
-      throw new AlreadyInvitedError(userId);
+      throw new UserAlreadyInvitedError(userId);
     }
 
-    const Invitation =
+    const invitation =
       await this.prismaService.questionInvitationRelation.create({
         data: {
           questionId,
           userId,
         },
       });
-    return Invitation.id;
+    return invitation.id;
   }
 
   async getQuestionInvitations(
@@ -771,10 +817,14 @@ export class QuestionsService {
     if (!question) {
       throw new QuestionIdNotFoundError(questionId);
     }
+    // No sql injection here:
+    // "The method is implemented as a tagged template, which allows you to pass a template literal where you can easily
+    // insert your variables. In turn, Prisma Client creates prepared statements that are safe from SQL injections."
+    // See: https://www.prisma.io/docs/orm/prisma-client/queries/raw-database-access/raw-queries
     const randomUserEntities = await this.prismaService.$queryRaw<User[]>`
       SELECT * FROM "user" WHERE id NOT IN (
-        SELECT "userId" FROM question_invitation_relation
-        WHERE "questionId" = ${questionId}
+        SELECT "user_id" FROM question_invitation_relation
+        WHERE "question_id" = ${questionId}
       )
       ORDER BY RANDOM()
       LIMIT ${pageSize}
@@ -903,6 +953,52 @@ export class QuestionsService {
     return invitation.userId;
   }
 
+  async setBounty(questionId: number, bounty: number): Promise<void> {
+    /* istanbul ignore if */
+    if (bounty < 0 || bounty > BOUNTY_LIMIT)
+      throw new BountyOutOfLimitError(bounty);
+
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+
+    const oldBounty = (
+      await this.prismaService.question.findUniqueOrThrow({
+        where: { id: questionId },
+      })
+    ).bounty;
+    if (!(bounty > oldBounty)) {
+      throw new BountyNotBiggerError(questionId, bounty);
+    }
+
+    await this.prismaService.question.update({
+      where: { id: questionId },
+      data: {
+        bounty,
+        bountyStartAt: new Date(),
+      },
+    });
+  }
+
+  async acceptAnswer(questionId: number, answerId: number): Promise<void> {
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionIdNotFoundError(questionId);
+    if (
+      (await this.answerService.isAnswerExists(questionId, answerId)) == false
+    )
+      throw new AnswerNotFoundError(answerId);
+
+    await this.prismaService.question.update({
+      where: { id: questionId },
+      data: {
+        acceptedAnswer: {
+          connect: {
+            id: answerId,
+          },
+        },
+      },
+    });
+  }
+
   async getQuestionCount(userId: number): Promise<number> {
     return await this.questionRepository.countBy({ createdById: userId });
   }
@@ -925,7 +1021,7 @@ export class QuestionsService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getQuestionDto(entity.id, viewerId, userAgent, ip);
+          return this.getQuestionDto(entity.id, viewerId, ip, userAgent);
         }),
       );
       return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
@@ -948,7 +1044,7 @@ export class QuestionsService {
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getQuestionDto(entity.id, viewerId, userAgent, ip);
+          return this.getQuestionDto(entity.id, viewerId, ip, userAgent);
         }),
       );
       return PageHelper.PageMiddle(

@@ -178,7 +178,10 @@ describe('Topic Module', () => {
     it('should search topics and do paging', async () => {
       // Try search: `${TestTopicCode} 高等`
       const respond = await request(app.getHttpServer())
-        .get(`/topics?q=${TestTopicCode}%20%E9%AB%98%E7%AD%89`)
+        .get(`/topics`)
+        .query({
+          q: `${TestTopicCode} 高等`,
+        })
         .send();
       expect(respond.body.message).toBe('OK');
       expect(respond.status).toBe(200);
@@ -189,9 +192,12 @@ describe('Topic Module', () => {
       }
 
       const respond2 = await request(app.getHttpServer())
-        .get(`/topics?q=${TestTopicCode}%20%E9%AB%98%E7%AD%89&page_size=3`)
-        .set('authorization', 'Bearer ' + TestToken)
-        .set('User-Agent', 'PostmanRuntime/7.26.8')
+        .get(`/topics`)
+        .query({
+          q: `${TestTopicCode} 高等`,
+          page_size: 3,
+        })
+        .set('Authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond2.body.message).toBe('OK');
       expect(respond2.status).toBe(200);
@@ -209,9 +215,12 @@ describe('Topic Module', () => {
       expect(respond2.body.data.page.has_more).toBe(true);
 
       const respond3 = await request(app.getHttpServer())
-        .get(
-          `/topics?q=${TestTopicCode}%20%E9%AB%98%E7%AD%89&page_size=3&page_start=${respond2.body.data.page.next_start}`,
-        )
+        .get(`/topics`)
+        .query({
+          q: `${TestTopicCode} 高等`,
+          page_size: 3,
+          page_start: respond2.body.data.page.next_start,
+        })
         .send();
       expect(respond3.body.message).toBe('OK');
       expect(respond3.status).toBe(200);
@@ -233,23 +242,28 @@ describe('Topic Module', () => {
       expect(respond3.body.data.page.has_more).toBe(true);
 
       const respond4 = await request(app.getHttpServer())
-        .get(
-          `/topics?q=${TestTopicCode}%20%E9%AB%98%E7%AD%89&page_size=3&page_start=${respond2.body.data.page.page_start}`,
-        )
-        .set('authorization', 'Bearer ' + TestToken)
-        .set('User-Agent', 'PostmanRuntime/7.26.8')
+        .get(`/topics`)
+        .query({
+          q: `${TestTopicCode} 高等`,
+          page_size: 3,
+          page_start: respond2.body.data.page.page_start,
+        })
+        .set('Authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond4.body).toStrictEqual(respond2.body);
 
       // Try emoji search to see if unicode storage works.
       const respond5 = await request(app.getHttpServer())
-        .get(
-          `/topics?q=${TestTopicCode}%20%F0%9F%A7%91%E2%80%8D%F0%9F%A6%B2&page_size=3`,
-        )
+        .get(`/topics`)
+        .query({
+          q: `${TestTopicCode} 🧑‍🦲`,
+          page_size: 3,
+        })
         .send();
       expect(respond5.body.message).toBe('OK');
       expect(respond5.status).toBe(200);
       expect(respond5.body.data.topics.length).toBe(3);
+      // respond5.body.data.topics.map((topic) => topic.name).sort();
       expect(respond5.body.data.topics[0].name).toBe(
         `${TestTopicPrefix} Emojis in the topic name 🧑‍🦲`,
       );

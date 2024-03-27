@@ -28,6 +28,7 @@ describe('Questions Module', () => {
   let TestUserId: number;
   const TopicIds: number[] = [];
   const questionIds: number[] = [];
+  const answerIds: number[] = [];
   const invitationIds: number[] = [];
   let auxUserId: number;
   let auxAccessToken: string;
@@ -1082,12 +1083,12 @@ describe('Questions Module', () => {
       expect(respond.body.code).toBe(404);
     });
 
-    it('should get AlreadyInvitedError', async () => {
+    it('should get UserAlreadyInvitedError', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/questions/${questionIds[1]}/invitations`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ user_id: TestUserId });
-      expect(respond.body.message).toContain('AlreadyInvited');
+      expect(respond.body.message).toContain('UserAlreadyInvitedError');
       expect(respond.body.code).toBe(400);
     });
   });
@@ -1241,6 +1242,7 @@ describe('Questions Module', () => {
         .set('Authorization', `Bearer ${TestToken}`)
         .send({ content: 'woc' });
       expect(respond.body.code).toBe(201);
+      answerIds.push(respond.body.data.id);
     });
 
     it('should return alreadyAnsweredError', async () => {
@@ -1352,6 +1354,142 @@ describe('Questions Module', () => {
       expect(respond.body.message).toContain('QuestionIdNotFoundError');
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
+    });
+  });
+
+  describe('Bounty test', () => {
+    it('should create a question with bounty', async () => {
+      async function createQuestion(
+        title: string,
+        content: string,
+        bounty: number,
+      ) {
+        const respond = await request(app.getHttpServer())
+          .post('/questions')
+          .set('Authorization', `Bearer ${TestToken}`)
+          .send({
+            title: `${TestQuestionPrefix} ${title}`,
+            content,
+            type: 0,
+            topics: [TopicIds[0], TopicIds[1]],
+            bounty,
+          });
+        expect(respond.body.message).toBe('Created');
+        expect(respond.body.code).toBe(201);
+        expect(respond.status).toBe(201);
+        expect(respond.body.data.id).toBeDefined();
+        questionIds.push(respond.body.data.id);
+        return respond.body.data.id;
+      }
+
+      const bountyQuestionId = await createQuestion(
+        'Bounty Test 1',
+        'test',
+        10,
+      );
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${bountyQuestionId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.data.question.bounty).toBe(10);
+      expect(typeof respond.body.data.question.bounty_start_at).toBe('number');
+    });
+    it('should set bounty to a question', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/bounty`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ bounty: 15 });
+      expect(respond.body.message).toBe('OK');
+      expect(respond.body.code).toBe(200);
+      expect(respond.status).toBe(200);
+    });
+    it('should get the change', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.data.question.bounty).toBe(15);
+      expect(typeof respond.body.data.question.bounty_start_at).toBe('number');
+    });
+    it('should not set bounty by a non-owner', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/bounty`)
+        .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send({ bounty: 15 });
+      expect(respond.body.message).toMatch(/^PermissionDeniedError: /);
+      expect(respond.body.code).toBe(403);
+    });
+    it('should return BountyNotBiggerError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/bounty`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ bounty: 10 });
+      expect(respond.body.message).toMatch(/^BountyNotBiggerError: /);
+      expect(respond.body.code).toBe(400);
+    });
+    it('should return BountyOutOfLimitError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/bounty`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ bounty: 1000 });
+      // expect(respond.body.message).toMatch(/^BountyOutOfLimitError: /);
+      // ! Now it throws a BadRequestError, since the limit is checked parsing the DTO
+      expect(respond.body.code).toBe(400);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/bounty`)
+        .send({ bounty: 15 });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
+    it('should return QuestionIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/1919810/bounty`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send({ bounty: 15 });
+      expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
+      expect(respond.body.code).toBe(404);
+    });
+  });
+  describe('Accpet answer test', () => {
+    it('should accept an answer', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/acceptance`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ answer_id: answerIds[0] });
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.message).toBe('OK');
+    });
+    it('should get the change', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/questions/${questionIds[1]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.body.data.question.accepted_answer.id).toBe(answerIds[0]);
+    });
+    it('should return questionIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/1919810/acceptance`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ answer_id: answerIds[0] });
+      expect(respond.body.code).toBe(404);
+      expect(respond.body.message).toMatch(/^QuestionIdNotFoundError: /);
+    });
+    it('should return answerIdNotFoundError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/acceptance`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .query({ answer_id: 123456798 });
+      expect(respond.body.code).toBe(404);
+      expect(respond.body.message).toMatch(/^AnswerNotFoundError: /);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .put(`/questions/${questionIds[1]}/acceptance`)
+        .query({ answer_id: answerIds[0] });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
     });
   });
 

@@ -53,6 +53,7 @@ import {
   InviteUsersAnswerResponseDto,
 } from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
+import { SetBountyDto } from './DTO/set-bounty.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
 
@@ -101,7 +102,8 @@ export class QuestionsController {
 
   @Post('/')
   async addQuestion(
-    @Body() { title, content, type, topics, groupId }: AddQuestionRequestDto,
+    @Body()
+    { title, content, type, topics, groupId, bounty }: AddQuestionRequestDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<AddQuestionResponseDto> {
     const userId = this.authService.verify(auth).userId;
@@ -119,6 +121,7 @@ export class QuestionsController {
       type,
       topics,
       groupId,
+      bounty,
     );
     return {
       code: 201,
@@ -426,6 +429,46 @@ export class QuestionsController {
       data: {
         invitation: invitationDto,
       },
+    };
+  }
+
+  @Put('/:id/bounty')
+  async setBounty(
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body() { bounty }: SetBountyDto,
+  ): Promise<BaseRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
+    await this.questionsService.setBounty(id, bounty);
+    return {
+      code: 200,
+      message: 'OK',
+    };
+  }
+
+  @Put('/:id/acceptance')
+  async acceptAnswer(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('answer_id', ParseIntPipe) answer_id: number,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<BaseRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
+    await this.questionsService.acceptAnswer(id, answer_id);
+    return {
+      code: 200,
+      message: 'OK',
     };
   }
 }

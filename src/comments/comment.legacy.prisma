@@ -31,7 +31,6 @@ model comment {
   user               user                         @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_63ac916757350d28f05c5a6a4ba")
   comment_delete_log comment_delete_log[]
   comment_query_log  comment_query_log[]
-
   @@index([commentableId], map: "IDX_525212ea7a75cba69724e42303")
   @@index([createdById], map: "IDX_63ac916757350d28f05c5a6a4b")
 }
