@@ -73,7 +73,7 @@ export class Question {
   @Column({ type: 'int', default: 0 })
   bounty: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   bountyStartAt?: Date;
 
   @OneToOne(() => Answer, (answer) => answer.question)

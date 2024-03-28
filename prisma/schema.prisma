@@ -40,9 +40,9 @@ model Answer {
   questionId            Int                     @map("question_id")
   groupId               Int?                    @map("group_id")
   content               String
-  createdAt             DateTime                @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt             DateTime                @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt             DateTime?               @map("deleted_at") @db.Timestamp(6)
+  createdAt             DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt             DateTime?               @map("deleted_at") @db.Timestamptz(6)
   group                 Group?                  @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1887685ce6667b435b01c646a2c")
   question              Question                @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a4013f10cd6924793fbd5f0d637")
   user                  User                    @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f636f6e852686173ea947f29045")
@@ -63,7 +63,7 @@ model AnswerDeleteLog {
   id        Int      @id(map: "PK_f1696d27f69ec9c6133a12aadcf") @default(autoincrement())
   deleterId Int?     @map("deleter_id")
   answerId  Int      @map("answer_id")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   answer    Answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_910393b814aac627593588c17fd")
   user      User?    @relation(fields: [deleterId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c2d0251df4669e17a57d6dbc06f")
 
@@ -90,7 +90,7 @@ model AnswerQueryLog {
   answerId  Int      @map("answer_id")
   ip        String   @db.VarChar
   userAgent String   @map("user_agent") @db.VarChar
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   answer    Answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_71ed57d6bb340716f5e17043bbb")
   user      User?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f4b7cd859700f8928695b6c2bab")
 
@@ -105,7 +105,7 @@ model AnswerUpdateLog {
   answerId   Int      @map("answer_id")
   oldContent String   @map("old_content")
   newContent String   @map("new_content")
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user       User?    @relation(fields: [updaterId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_0ef2a982b61980d95b5ae7f1a60")
   answer     Answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_6f0964cf74c12678a86e49b23fe")
 
@@ -204,12 +204,12 @@ model AttitudeLog {
 
 model Session {
   id              Int      @id(map: "PK_f55da76ac1c3ac420f444d2ff11") @default(autoincrement())
-  validUntil      DateTime @map("valid_until") @db.Timestamp(6)
+  validUntil      DateTime @map("valid_until") @db.Timestamptz(6)
   revoked         Boolean
   userId          Int      @map("user_id")
   authorization   String
   lastRefreshedAt BigInt   @map("last_refreshed_at")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId], map: "IDX_3d2f174ef04fb312fdebd0ddc5")
   @@index([validUntil], map: "IDX_bb46e87d5b3f1e55c625755c00")
@@ -222,7 +222,7 @@ model SessionRefreshLog {
   oldRefreshToken String   @map("old_refresh_token")
   newRefreshToken String   @map("new_refresh_token")
   accessToken     String   @map("access_token")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("session_refresh_log")
 }
@@ -235,7 +235,7 @@ model Avatar {
   id           Int            @id @default(autoincrement())
   url          String         @db.VarChar
   name         String         @db.VarChar
-  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   avatarType   String         @map("avatar_type") @db.VarChar
   usageCount   Int            @default(0) @map("usage_count")
   groupProfile GroupProfile[]
@@ -289,7 +289,7 @@ model CommentDeleteLog {
   id           Int      @id(map: "PK_429889b4bdc646cb80ef8bc1814") @default(autoincrement())
   commentId    Int      @map("comment_id")
   operatedById Int      @map("operated_by_id")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user         User     @relation(fields: [operatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_53f0a8befcc12c0f7f2bab7584d")
   comment      Comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66705ce7d7908554cff01b260ec")
 
@@ -304,7 +304,7 @@ model CommentQueryLog {
   viewerId  Int?     @map("viewer_id")
   ip        String   @db.VarChar
   userAgent String   @map("user_agent") @db.VarChar
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   comment   Comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4020ff7fcffb2737e990f8bde5e")
   user      User?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4ead8566a6fa987264484b13d54")
 
@@ -334,8 +334,8 @@ model Group {
   id                        Int                         @id(map: "PK_256aa0fda9b1de1a73ee0b7106b") @default(autoincrement())
   name                      String                      @unique(map: "IDX_8a45300fd825918f3b40195fbd") @db.VarChar
   createdAt                 DateTime                    @default(dbgenerated("('now'::text)::timestamp(3) with time zone")) @map("created_at")
-  updatedAt                 DateTime                    @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt                 DateTime?                   @map("deleted_at") @db.Timestamp(6)
+  updatedAt                 DateTime                    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt                 DateTime?                   @map("deleted_at") @db.Timestamptz(6)
   answer                    Answer[]
   groupMembership           GroupMembership[]
   groupProfile              GroupProfile?
@@ -350,9 +350,9 @@ model GroupMembership {
   groupId   Int       @map("group_id")
   memberId  Int       @map("member_id")
   role      String    @db.VarChar
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   user      User      @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7d88d00d8617a802b698c0cd609")
   group     Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_b1411f07fafcd5ad93c6ee16424")
 
@@ -367,9 +367,9 @@ model GroupProfile {
   avatarId  Int?      @map("avatar_id")
   avatar    Avatar?   @relation(fields: [avatarId], references: [id])
   groupId   Int       @unique(map: "REL_7359ba99cc116d00cf74e048ed") @map("group_id")
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   group     Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7359ba99cc116d00cf74e048edd")
 
   @@map("group_profile")
@@ -379,9 +379,9 @@ model GroupQuestionRelationship {
   id         Int       @id(map: "PK_47ee7be0b0f0e51727012382922") @default(autoincrement())
   groupId    Int       @map("group_id")
   questionId Int       @unique(map: "REL_5b1232271bf29d99456fcf39e7") @map("question_id")
-  createdAt  DateTime  @map("created_at") @db.Timestamp(6)
-  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt  DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt  DateTime  @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
   question   Question  @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_5b1232271bf29d99456fcf39e75")
   group      Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_b31bf3b3688ec41daaced89a0ab")
 
@@ -394,9 +394,9 @@ model GroupTarget {
   groupId             Int       @map("group_id")
   name                String    @db.VarChar
   intro               String    @db.VarChar
-  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt           DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt           DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
   startedAt           DateTime  @map("started_at") @db.Date
   endedAt             DateTime  @map("ended_at") @db.Date
   attendanceFrequency String    @map("attendance_frequency") @db.VarChar
@@ -484,14 +484,14 @@ model Question {
   content                       String
   type                          Int
   groupId                       Int?                           @map("group_id")
-  createdAt                     DateTime                       @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                     DateTime                       @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt                     DateTime?                      @map("deleted_at") @db.Timestamp(6)
+  createdAt                     DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                     DateTime                       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt                     DateTime?                      @map("deleted_at") @db.Timestamptz(6)
   answer                        Answer[]
   groupQuestionRelationship     GroupQuestionRelationship?
   user                          User                           @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_187915d8eaa010cde8b053b35d5")
   bounty                        Int                            @default(0)
-  bountyStartAt                 DateTime?                      @map("bounty_start_at")
+  bountyStartAt                 DateTime?                      @map("bounty_start_at") @db.Timestamptz(6)
   acceptedAnswer                Answer?                        @relation("AcceptedAnswer", fields: [acceptedAnswerId], references: [id])
   acceptedAnswerId              Int?                           @unique() @map("accepted_answer_id")
   questionFollowerRelation      QuestionFollowerRelation[]
@@ -510,8 +510,8 @@ model QuestionFollowerRelation {
   id         Int       @id(map: "PK_5f5ce2e314f975612a13d601362") @default(autoincrement())
   questionId Int       @map("question_id")
   followerId Int       @map("follower_id")
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  deletedAt  DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
   user       User      @relation(fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_21a30245c4a32d5ac67da809010")
   question   Question  @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_6544f7f7579bf88e3c62f995f8a")
 
@@ -526,7 +526,7 @@ model QuestionQueryLog {
   questionId Int      @map("question_id")
   ip         String   @db.VarChar
   userAgent  String   @map("user_agent") @db.VarChar
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user       User?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_8ce4bcc67caf0406e6f20923d4d")
   question   Question @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a0ee1672e103ed0a0266f217a3f")
 
@@ -545,7 +545,7 @@ model QuestionSearchLog {
   searcherId      Int?     @map("searcher_id")
   ip              String   @db.VarChar
   userAgent       String   @map("user_agent") @db.VarChar
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user            User?    @relation(fields: [searcherId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_13c7e9fd7403cc5a87ab6524bc4")
 
   @@index([searcherId], map: "IDX_13c7e9fd7403cc5a87ab6524bc")
@@ -558,8 +558,8 @@ model QuestionTopicRelation {
   questionId  Int       @map("question_id")
   topicId     Int       @map("topic_id")
   createdById Int       @map("created_by_id")
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
   user        User      @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_d439ea68a02c1e7ea9863fc3df1")
   topic       Topic     @relation(fields: [topicId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_dd4b9a1b83559fa38a3a50463fd")
   question    Question  @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_fab99c5e4fc380d9b7f9abbbb02")
@@ -590,8 +590,8 @@ model Topic {
   id                    Int                     @id(map: "PK_33aa4ecb4e4f20aa0157ea7ef61") @default(autoincrement())
   name                  String                  @unique(map: "idx_topic_name_unique") @db.VarChar
   createdById           Int                     @map("created_by_id")
-  createdAt             DateTime                @default(now()) @map("created_at") @db.Timestamp(6)
-  deletedAt             DateTime?               @map("deleted_at") @db.Timestamp(6)
+  createdAt             DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt             DateTime?               @map("deleted_at") @db.Timestamptz(6)
   questionTopicRelation QuestionTopicRelation[]
   user                  User                    @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_59d7548ea797208240417106e2d")
 
@@ -610,7 +610,7 @@ model TopicSearchLog {
   searcherId   Int?     @map("searcher_id")
   ip           String   @db.VarChar
   userAgent    String   @map("user_agent") @db.VarChar
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user         User?    @relation(fields: [searcherId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_fe1e75b8b625499f0119faaba5b")
 
   @@index([keywords], map: "IDX_85c1844b4fa3e29b1b8dfaeac6")
@@ -640,9 +640,9 @@ model User {
   username                                                           String                       @unique(map: "IDX_78a916df40e02a9deb1c4b75ed") @db.VarChar
   hashedPassword                                                     String                       @map("hashed_password") @db.VarChar
   email                                                              String                       @unique(map: "IDX_e12875dfb3b1d92d7d7c5377e2") @db.VarChar
-  createdAt                                                          DateTime                     @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                                                          DateTime                     @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt                                                          DateTime?                    @map("deleted_at") @db.Timestamp(6)
+  createdAt                                                          DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                                                          DateTime                     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt                                                          DateTime?                    @map("deleted_at") @db.Timestamptz(6)
   answer                                                             Answer[]
   answerDeleteLog                                                    AnswerDeleteLog[]
   answerFavoritedByUser                                              AnswerFavoritedByUser[]
@@ -677,8 +677,8 @@ model UserFollowingRelationship {
   id                                            Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
   followeeId                                    Int       @map("followee_id")
   followerId                                    Int       @map("follower_id")
-  createdAt                                     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  deletedAt                                     DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt                                     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt                                     DateTime? @map("deleted_at") @db.Timestamptz(6)
   userUserFollowingRelationshipFollowerIdTouser User      @relation("user_following_relationship_followerIdTouser", fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_868df0c2c3a138ee54d2a515bce")
   userUserFollowingRelationshipFolloweeIdTouser User      @relation("user_following_relationship_followeeIdTouser", fields: [followeeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c78831eeee179237b1482d0c6fb")
 
@@ -692,7 +692,7 @@ model UserLoginLog {
   userId    Int      @map("user_id")
   ip        String   @db.VarChar
   userAgent String   @map("user_agent") @db.VarChar
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66c592c7f7f20d1214aba2d0046")
 
   @@index([userId], map: "IDX_66c592c7f7f20d1214aba2d004")
@@ -705,9 +705,9 @@ model UserProfile {
   nickname  String    @db.VarChar
   avatarId  Int       @map("avatar_id")
   intro     String    @db.VarChar
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
-  deletedAt DateTime? @map("deleted_at") @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_user_id")
   avatar    Avatar    @relation(fields: [avatarId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_avatar_id")
 
@@ -720,7 +720,7 @@ model UserProfileQueryLog {
   vieweeId                              Int      @map("viewee_id")
   ip                                    String   @db.VarChar
   userAgent                             String   @map("user_agent") @db.VarChar
-  createdAt                             DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt                             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   userUserProfileQueryLogViewerIdTouser User?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1261db28434fde159acda6094bc")
   userUserProfileQueryLogVieweeIdTouser User     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff592e4403b328be0de4f2b3973")
 
@@ -736,7 +736,7 @@ model UserRegisterLog {
   registerRequestId Int?     @map("register_request_id")
   ip                String   @db.VarChar
   userAgent         String   @map("user_agent") @db.VarChar
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([email], map: "IDX_3af79f07534d9f1c945cd4c702")
   @@map("user_register_log")
@@ -746,7 +746,7 @@ model UserRegisterRequest {
   id        Int      @id(map: "PK_cdf2d880551e43d9362ddd37ae0") @default(autoincrement())
   email     String   @db.VarChar
   code      String   @db.VarChar
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([email], map: "IDX_c1d0ecc369d7a6a3d7e876c589")
   @@map("user_register_request")
@@ -758,7 +758,7 @@ model UserResetPasswordLog {
   type      Int
   ip        String   @db.VarChar
   userAgent String   @map("user_agent") @db.VarChar
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("user_reset_password_log")
 }

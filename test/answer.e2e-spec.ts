@@ -516,7 +516,7 @@ describe('Answers Module', () => {
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
-    it('should get answers asked by auxUser', async () => {
+    it('should get answers asked by auxUser with default page settings', async () => {
       const response = await request(app.getHttpServer())
         .get(`/users/${auxUserId}/answers`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -539,7 +539,7 @@ describe('Answers Module', () => {
         expect(response.body.data.answers[i].id).toBe(auxUserAskedAnswerIds[i]);
       }
     });
-    it('should get answers asked by auxUser', async () => {
+    it('should get answers asked by auxUser with a page setting', async () => {
       const response = await request(app.getHttpServer())
         .get(`/users/${auxUserId}/answers`)
         .query({
@@ -560,7 +560,7 @@ describe('Answers Module', () => {
       expect(response.body.data.answers[0].id).toBe(auxUserAskedAnswerIds[0]);
       expect(response.body.data.answers[1].id).toBe(auxUserAskedAnswerIds[1]);
     });
-    it('should get answers asked by auxUser', async () => {
+    it('should get answers asked by auxUser with another page setting', async () => {
       const response = await request(app.getHttpServer())
         .get(`/users/${auxUserId}/answers`)
         .query({
@@ -787,7 +787,7 @@ describe('Answers Module', () => {
         .post(
           `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
         )
-        .send();
+        .send({ attitude_type: 'POSITIVE' });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
       expect(respond.statusCode).toBe(401);

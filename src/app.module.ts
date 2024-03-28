@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_PIPE } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnswerModule } from './answer/answer.module';
 import { AvatarsModule } from './avatars/avatars.module';
@@ -33,6 +34,14 @@ import { ServeStaticModule } from '@nestjs/serve-static';
     }),
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        transform: true,
+        disableErrorMessages: false,
+      }),
+    },
+  ],
 })
 export class AppModule {}

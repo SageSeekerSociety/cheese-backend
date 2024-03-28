@@ -9,6 +9,7 @@
 
 import {
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -23,8 +24,6 @@ import {
   Res,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
   forwardRef,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -33,8 +32,12 @@ import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
+import {
+  NoTokenValidate,
+  TokenValidateInterceptor,
+} from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
 import {
   FollowRespondDto as FollowUserRespondDto,
@@ -65,7 +68,6 @@ import {
 import { UsersService } from './users.service';
 
 @Controller('/users')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class UsersController {
@@ -80,12 +82,13 @@ export class UsersController {
   ) {}
 
   @Post('/verify/email')
+  @NoTokenValidate()
   async sendRegisterEmailCode(
-    @Body() request: SendEmailVerifyCodeRequestDto,
+    @Body() { email }: SendEmailVerifyCodeRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SendEmailVerifyCodeResponseDto> {
-    await this.usersService.sendRegisterEmailCode(request.email, ip, userAgent);
+    await this.usersService.sendRegisterEmailCode(email, ip, userAgent);
     return {
       code: 201,
       message: 'Send email successfully.',
@@ -93,24 +96,26 @@ export class UsersController {
   }
 
   @Post('/')
+  @NoTokenValidate()
   async register(
-    @Body() request: RegisterRequestDto,
+    @Body()
+    { username, nickname, password, email, emailCode }: RegisterRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
     @Res() res: Response,
   ): Promise<Response> {
     const userDto = await this.usersService.register(
-      request.username,
-      request.nickname,
-      request.password,
-      request.email,
-      request.emailCode,
+      username,
+      nickname,
+      password,
+      email,
+      emailCode,
       ip,
       userAgent,
     );
     const [, refreshToken] = await this.usersService.login(
-      request.username,
-      request.password,
+      username,
+      password,
       ip,
       userAgent,
     );
@@ -138,15 +143,16 @@ export class UsersController {
   }
 
   @Post('/auth/login')
+  @NoTokenValidate()
   async login(
-    @Body() request: LoginRequestDto,
+    @Body() { username, password }: LoginRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
     @Res() res: Response,
   ): Promise<Response> {
     const [userDto, refreshToken] = await this.usersService.login(
-      request.username,
-      request.password,
+      username,
+      password,
       ip,
       userAgent,
     );
@@ -174,6 +180,7 @@ export class UsersController {
   }
 
   @Post('/auth/refresh-token')
+  @NoTokenValidate()
   async refreshToken(
     @Headers('cookie') cookieHeader: string,
     @Res() res: Response,
@@ -222,6 +229,7 @@ export class UsersController {
   }
 
   @Post('/auth/logout')
+  @NoTokenValidate()
   async logout(
     @Headers('cookie') cookieHeader: string,
   ): Promise<BaseRespondDto> {
@@ -244,16 +252,13 @@ export class UsersController {
   }
 
   @Post('/recover/password/request')
+  @NoTokenValidate()
   async sendResetPasswordEmail(
-    @Body() request: ResetPasswordRequestRequestDto,
+    @Body() { email }: ResetPasswordRequestRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<ResetPasswordRequestRespondDto> {
-    await this.usersService.sendResetPasswordEmail(
-      request.email,
-      ip,
-      userAgent,
-    );
+    await this.usersService.sendResetPasswordEmail(email, ip, userAgent);
     return {
       code: 201,
       message: 'Send email successfully.',
@@ -261,14 +266,15 @@ export class UsersController {
   }
 
   @Post('/recover/password/verify')
+  @NoTokenValidate()
   async verifyAndResetPassword(
-    @Body() request: ResetPasswordVerifyRequestDto,
+    @Body() { token, new_password }: ResetPasswordVerifyRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<ResetPasswordVerifyRespondDto> {
     await this.usersService.verifyAndResetPassword(
-      request.token,
-      request.new_password,
+      token,
+      new_password,
       ip,
       userAgent,
     );
@@ -309,7 +315,7 @@ export class UsersController {
   @Put('/:id')
   async updateUser(
     @Param('id', ParseIntPipe) id: number,
-    @Body() request: UpdateUserRequestDto,
+    @Body() { nickname, intro, avatarId }: UpdateUserRequestDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateUserRespondDto> {
     this.authService.audit(
@@ -319,12 +325,7 @@ export class UsersController {
       'users/profile',
       undefined,
     );
-    await this.usersService.updateUserProfile(
-      id,
-      request.nickname,
-      request.intro,
-      request.avatarId,
-    );
+    await this.usersService.updateUserProfile(id, nickname, intro, avatarId);
     return {
       code: 200,
       message: 'Update user successfully.',
@@ -380,10 +381,7 @@ export class UsersController {
   @Get('/:id/followers')
   async getFollowers(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -417,10 +415,7 @@ export class UsersController {
   @Get('/:id/follow/users')
   async getFollowees(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -451,13 +446,10 @@ export class UsersController {
     };
   }
 
-  @Get('/:user_id/questions')
+  @Get('/:id/questions')
   async getUserAskedQuestions(
-    @Param('user_id', ParseIntPipe) userId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Param('id', ParseIntPipe) userId: number,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -488,13 +480,11 @@ export class UsersController {
     };
   }
 
-  @Get('/:user_id/answers')
+  @Get('/:id/answers')
+  @UseInterceptors(ClassSerializerInterceptor)
   async getUserAnsweredAnswers(
-    @Param('user_id', ParseIntPipe) userId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Param('id', ParseIntPipe) userId: number,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -526,13 +516,10 @@ export class UsersController {
     };
   }
 
-  @Get('/:user_id/follow/questions')
+  @Get('/:id/follow/questions')
   async getFollowedQuestions(
-    @Param('user_id', ParseIntPipe) userId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Param('id', ParseIntPipe) userId: number,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
