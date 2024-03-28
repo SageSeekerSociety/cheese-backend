@@ -2,6 +2,10 @@ services:
   backend:
     image: ghcr.io/sageseekersociety/cheese-backend:dev
     env_file: .env
+    volumes:
+      - type: volume
+        source: cheese_backend_uploads
+        target: /app/uploads
     depends_on:
       database:
         condition: service_healthy
@@ -57,3 +61,4 @@ services:
 volumes:
   cheese_db_pg:
   cheese_es:
+  cheese_backend_uploads:

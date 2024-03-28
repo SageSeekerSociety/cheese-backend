@@ -28,7 +28,7 @@ dependencies:
     version: 10.3.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)
   '@nestjs/serve-static':
     specifier: ^4.0.1
-    version: 4.0.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(express@4.19.1)
+    version: 4.0.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(express@4.19.2)
   '@nestjs/typeorm':
     specifier: ^10.0.1
     version: 10.0.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(reflect-metadata@0.1.14)(rxjs@7.8.1)(typeorm@0.3.20)
@@ -1311,7 +1311,7 @@ packages:
       - chokidar
     dev: true
 
-  /@nestjs/serve-static@4.0.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(express@4.19.1):
+  /@nestjs/serve-static@4.0.1(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(express@4.19.2):
     resolution: {integrity: sha512-AoOrVdAe+WmsceuCcA8nWmKUYmaOsg9pqBCbIj7PS4W3XdikJQMtfxgSIoOlyUksZdhTBFjHqKh0Yhpj6pulwQ==}
     peerDependencies:
       '@fastify/static': ^6.5.0
@@ -1329,9 +1329,10 @@ packages:
     dependencies:
       '@nestjs/common': 10.3.1(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.1.14)(rxjs@7.8.1)
       '@nestjs/core': 10.3.1(@nestjs/common@10.3.1)(@nestjs/platform-express@10.3.1)(reflect-metadata@0.1.14)(rxjs@7.8.1)
-      express: 4.19.1
+      express: 4.19.2
       path-to-regexp: 0.2.5
     dev: false
+
   /@nestjs/testing@10.3.5(@nestjs/common@10.3.1)(@nestjs/core@10.3.1)(@nestjs/platform-express@10.3.1):
     resolution: {integrity: sha512-j30/lxH0BayeDTigapYtQn/XhMRR7CzlFsm3dHoWViWQv0qT1r2ffe3927BbBLX3N/ZzglE10OAqW06ADZV8dw==}
     peerDependencies:
