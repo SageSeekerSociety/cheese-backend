@@ -28,14 +28,14 @@ enum AttitudeTypeNotUndefined {
 }
 
 model Attitude {
-  id              Int             @id @default(autoincrement())
-  user            user            @relation(fields: [userId], references: [id])
+  id              Int                      @id @default(autoincrement())
+  user            user                     @relation(fields: [userId], references: [id])
   userId          Int
   attitudableType AttitudableType
   attitudableId   Int
   attitude        AttitudeTypeNotUndefined
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt()
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt()
 
   @@unique([attitudableId, userId, attitudableType])
   @@index([userId])
