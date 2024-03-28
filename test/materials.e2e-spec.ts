@@ -174,6 +174,7 @@ describe('Material Module', () => {
       expect(respond.body.data.material.meta.size).toEqual(70699);
       expect(respond.body.data.material.meta.duration).toEqual(3);
     });
+
     it('should get the uploaded file detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/materials/${FileId}`)
