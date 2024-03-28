@@ -173,7 +173,7 @@ export class AnswerController {
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<void> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -183,10 +183,6 @@ export class AnswerController {
       answerId,
     );
     await this.answerService.deleteAnswer(questionId, answerId, userId);
-    return {
-      code: 200,
-      message: 'Answer deleted successfully.',
-    };
   }
 
   @Post('/:answer_id/attitudes')
@@ -245,7 +241,7 @@ export class AnswerController {
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<void> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -255,9 +251,5 @@ export class AnswerController {
       answerId,
     );
     await this.answerService.unfavoriteAnswer(questionId, answerId, userId);
-    return {
-      code: 204,
-      message: 'No Content',
-    };
   }
 }

@@ -507,9 +507,7 @@ describe('comments Module', () => {
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toBe('Comment deleted already');
       expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(204);
     });
     it('should not delete a comment when the user does not match', async () => {
       const commentId = CommentIds[0];
@@ -545,9 +543,7 @@ describe('comments Module', () => {
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toBe('Comment deleted already');
       expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(204);
     });
   });
   describe('update comment', () => {

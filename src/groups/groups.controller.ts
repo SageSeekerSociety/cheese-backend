@@ -25,7 +25,6 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateGroupDto } from './DTO/create-group.dto';
@@ -139,13 +138,9 @@ export class GroupsController {
   async deleteGroup(
     @Headers('Authorization') auth: string | undefined,
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<BaseRespondDto> {
+  ): Promise<void> {
     const userId = this.authService.verify(auth).userId;
     await this.groupsService.deleteGroup(userId, id);
-    return {
-      code: 200,
-      message: 'No Content.',
-    };
   }
 
   @Get('/:id/members')
