@@ -69,8 +69,8 @@ export class MaterialsController {
     };
   }
   @Delete(':/materialId') // to do
-  async deleteMaterial() {
+  async deleteMaterial(): Promise<void> {
     //@Param('materialId') id: number,
-    return 204;
+    return;
   }
 }

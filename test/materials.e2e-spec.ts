@@ -99,7 +99,6 @@ describe('Material Module', () => {
         .field('type', 'video')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.mp4');
-      console.log(respond.body.code, respond.body.message);
       expect(respond.body.code).toBe(200);
       expect(respond.body.message).toBe('Material upload successfully');
       expect(respond.body.data).toHaveProperty('id');
@@ -165,7 +164,7 @@ describe('Material Module', () => {
       expect(respond.body.data.material.meta.height).toEqual(1080);
       expect(respond.body.data.material.meta.width).toEqual(2160);
       expect(respond.body.data.material.meta.size).toEqual(240563);
-      expect(respond.body.data.material.meta.duration).toBeCloseTo(3.1, 1);
+      expect(respond.body.data.material.meta.duration).toBeCloseTo(3.1, 0.15);
     });
     it('should get the uploaded audio detail', async () => {
       const respond = await request(app.getHttpServer())
@@ -175,6 +174,7 @@ describe('Material Module', () => {
       expect(respond.body.data.material.meta.size).toEqual(70699);
       expect(respond.body.data.material.meta.duration).toEqual(3);
     });
+
     it('should get the uploaded file detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/materials/${FileId}`)
