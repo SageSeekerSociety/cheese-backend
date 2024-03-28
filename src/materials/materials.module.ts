@@ -38,9 +38,6 @@ function configureMulterModule() {
         };
         const fileType = req.body.type;
         const uploadPath = uploadPaths[fileType];
-        if (!uploadPath) {
-          throw new InvalidMaterialTypeError();
-        }
         if (!fs.existsSync(uploadPath)) {
           fs.mkdirSync(uploadPath, { recursive: true });
         }
