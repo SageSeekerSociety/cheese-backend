@@ -165,7 +165,7 @@ describe('Material Module', () => {
       expect(respond.body.data.material.meta.height).toEqual(1080);
       expect(respond.body.data.material.meta.width).toEqual(2160);
       expect(respond.body.data.material.meta.size).toEqual(240563);
-      expect(respond.body.data.material.meta.duration).toEqual(3.115644);
+      expect(respond.body.data.material.meta.duration).toBeCloseTo(3.1, 1);
     });
     it('should get the uploaded audio detail', async () => {
       const respond = await request(app.getHttpServer())

@@ -11,15 +11,12 @@ export class MaterialsService {
     try {
       this.ffprobeAsync = promisify(ffmpeg.ffprobe);
     } catch (error) {
-      console.log(error);
       throw new Error('ffmpeg error');
     }
   }
   async getImageMetadata(
     filePath: string,
   ): Promise<{ width: number; height: number }> {
-    //ffmpeg.setFfmpegPath('E:/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe');
-    //ffmpeg.setFfprobePath('E:/ffmpeg-master-latest-win64-gpl/bin/ffprobe.exe');
     try {
       const metadata = await this.ffprobeAsync(filePath);
       const width = metadata.streams[0].width;
@@ -35,8 +32,6 @@ export class MaterialsService {
   async getVideoMetadata(
     filePath: string,
   ): Promise<{ width: number; height: number; duration: number }> {
-    //ffmpeg.setFfmpegPath('E:/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe');
-    //ffmpeg.setFfprobePath('E:/ffmpeg-master-latest-win64-gpl/bin/ffprobe.exe');
     try {
       const metadata = await this.ffprobeAsync(filePath);
       const width = metadata.streams[0].width;
@@ -55,8 +50,6 @@ export class MaterialsService {
     }
   }
   async getAudioMetadata(filePath: string): Promise<{ duration: number }> {
-    //ffmpeg.setFfmpegPath('E:/ffmpeg-master-latest-win64-gpl/bin/ffmpeg.exe');
-    //ffmpeg.setFfprobePath('E:/ffmpeg-master-latest-win64-gpl/bin/ffprobe.exe');
     try {
       const metadata = await this.ffprobeAsync(filePath);
       const duration = metadata.format.duration;
