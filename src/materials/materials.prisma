@@ -1,0 +1,15 @@
+enum MaterialType {
+  image
+  file
+  audio
+  video
+}
+model material {
+  id           Int          @id @default(autoincrement())
+  type         MaterialType
+  url          String
+  name         String
+  meta         Json         @db.Json
+}
+
+
