@@ -1,65 +1,76 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Material, MaterialType } from '@prisma/client';
-import * as ffmpeg from 'fluent-ffmpeg';
+import ffmpeg from 'fluent-ffmpeg';
+import path, { join } from 'path';
 import { promisify } from 'util';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
 @Injectable()
-export class MaterialsService {
+export class MaterialsService implements OnModuleInit {
   private ffprobeAsync: (file: string) => Promise<ffmpeg.FfprobeData>;
   constructor(private readonly prismaService: PrismaService) {
     try {
       this.ffprobeAsync = promisify(ffmpeg.ffprobe);
     } catch (error) {
-      throw new Error('ffmpeg error');
+      throw new Error('Failed to initialize ffprobeAsync: ' + error);
     }
+  }
+  async onModuleInit(): Promise<void> {
+    ffmpeg.getAvailableCodecs((err: Error | null) => {
+      if (err) {
+        throw new Error('Error getting available codecs:' + err);
+      }
+    });
   }
   async getImageMetadata(
     filePath: string,
   ): Promise<{ width: number; height: number }> {
-    try {
-      const metadata = await this.ffprobeAsync(filePath);
-      const width = metadata.streams[0].width;
-      const height = metadata.streams[0].height;
-      if (width === undefined || height === undefined) {
-        throw new MetaDataParseError('image');
-      }
-      return { width, height };
-    } catch (error) {
+    const metadata = await this.ffprobeAsync(filePath);
+    const width = metadata.streams[0].width;
+    const height = metadata.streams[0].height;
+    if (width === undefined || height === undefined) {
       throw new MetaDataParseError('image');
     }
+    return { width, height };
   }
   async getVideoMetadata(
     filePath: string,
-  ): Promise<{ width: number; height: number; duration: number }> {
-    try {
-      const metadata = await this.ffprobeAsync(filePath);
-      const width = metadata.streams[0].width;
-      const height = metadata.streams[0].height;
-      const duration = metadata.format.duration;
-      if (
-        width === undefined ||
-        height === undefined ||
-        duration === undefined
-      ) {
-        throw new MetaDataParseError('video');
-      }
-      return { width, height, duration };
-    } catch (error) {
+  ): Promise<{
+    width: number;
+    height: number;
+    duration: number;
+    thumbnail: string;
+  }> {
+    const metadata = await this.ffprobeAsync(filePath);
+    const width = metadata.streams[0].width;
+    const height = metadata.streams[0].height;
+    const duration = metadata.format.duration;
+    if (width === undefined || height === undefined || duration === undefined) {
       throw new MetaDataParseError('video');
     }
+    const rootPath = process.env.FILE_UPLOAD_PATH!;
+    const videoName = path.parse(filePath).name;
+    ffmpeg(filePath)
+      .screenshots({
+        timestamps: ['00:00:01'],
+        folder: join(rootPath, '/images'), // 缩略图存储的文件夹路径
+        filename: `${videoName}-thumbnail.jpg`, // 缩略图文件名
+        size: '320x240', // 缩略图尺寸
+      })
+      .on('end', () => {})
+      .on('error', (err: Error) => {
+        throw Error('Error generating thumbnail:' + err);
+      });
+    const thumbnail = '/static/images/' + `${videoName}-thumbnail.jpg`;
+    return { width, height, duration, thumbnail };
   }
   async getAudioMetadata(filePath: string): Promise<{ duration: number }> {
-    try {
-      const metadata = await this.ffprobeAsync(filePath);
-      const duration = metadata.format.duration;
-      if (duration === undefined) {
-        throw new MetaDataParseError('audio');
-      }
-      return { duration };
-    } catch (error) {
+    const metadata = await this.ffprobeAsync(filePath);
+    const duration = metadata.format.duration;
+    if (duration === undefined) {
       throw new MetaDataParseError('audio');
     }
+    return { duration };
   }
   async uploadMaterial(
     type: MaterialType,
@@ -81,7 +92,7 @@ export class MaterialsService {
         height: metadata.height,
         duration: metadata.duration,
         size: file.size,
-        thumbnail: 'thumbnail', //todo
+        thumbnail: metadata.thumbnail, //todo
       };
     } else if (type === MaterialType.audio) {
       const metadata = await this.getAudioMetadata(file.path);
