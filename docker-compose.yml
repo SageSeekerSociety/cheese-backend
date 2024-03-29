@@ -29,9 +29,6 @@ services:
       - type: volume
         source: cheese_db_pg
         target: /var/lib/postgresql/data
-      - type: bind
-        source: ./prisma/migrations/20240321040602_init/migration.sql
-        target: /docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       start_period: 30s
