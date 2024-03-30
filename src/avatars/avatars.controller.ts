@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Res,
@@ -9,8 +10,6 @@ import {
   UploadedFile,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
@@ -27,7 +26,6 @@ import { AvatarType } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
 
 @Controller('/avatars')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class AvatarsController {
@@ -35,10 +33,10 @@ export class AvatarsController {
   @Post()
   @UseInterceptors(FileInterceptor('avatar'))
   async createAvatar(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() { path, filename }: Express.Multer.File,
   ): Promise<UploadAvatarRespondDto> {
     //const userid = this.authService.verify(auth).userId;
-    const avatar = await this.avatarsService.save(file.path, file.filename);
+    const avatar = await this.avatarsService.save(path, filename);
     return {
       code: 201,
       message: 'Upload avatar successfully',
@@ -78,7 +76,7 @@ export class AvatarsController {
   }
   @Get('/:id')
   async getAvatar(
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Res({ passthrough: true }) res: Response,
   ) {
     const avatarPath = await this.avatarsService.getAvatarPath(id);
