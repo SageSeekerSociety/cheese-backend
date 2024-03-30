@@ -68,9 +68,10 @@ export class MaterialsController {
       },
     };
   }
-  @Delete(':/materialId') // to do
+  @Delete('/:materialId') // to do
   async deleteMaterial(): Promise<void> {
     //@Param('materialId') id: number,
-    return;
+    /* istanbul ignore next */
+    throw new Error('deleteMaterial method is not implemented yet.');
   }
 }

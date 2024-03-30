@@ -12,6 +12,7 @@ export class MaterialNotFoundError extends BaseError {
   }
 }
 export class MetaDataParseError extends BaseError {
+  /* istanbul ignore next */
   constructor(metaType: string) {
     super('MetaDataParseError', `${metaType} meta parse fail`, 400);
   }

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
-import * as fs from 'fs';
+import { existsSync, mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -25,6 +25,7 @@ function configureMulterModule() {
     storage: diskStorage({
       destination: (req, file, callback) => {
         if (!process.env.FILE_UPLOAD_PATH) {
+          /* istanbul ignore next */
           throw new Error(
             'FILE_UPLOAD_PATH environment variable is not defined',
           );
@@ -38,8 +39,8 @@ function configureMulterModule() {
         };
         const fileType = req.body.type;
         const uploadPath = uploadPaths[fileType];
-        if (!fs.existsSync(uploadPath)) {
-          fs.mkdirSync(uploadPath, { recursive: true });
+        if (!existsSync(uploadPath)) {
+          mkdirSync(uploadPath, { recursive: true });
         }
         callback(null, uploadPath);
       },

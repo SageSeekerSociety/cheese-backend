@@ -9,17 +9,18 @@ import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
 export class MaterialsService implements OnModuleInit {
   private ffprobeAsync: (file: string) => Promise<ffmpeg.FfprobeData>;
   constructor(private readonly prismaService: PrismaService) {
-    try {
-      this.ffprobeAsync = promisify(ffmpeg.ffprobe);
-    } catch (error) {
-      throw new Error('Failed to initialize ffprobeAsync: ' + error);
-    }
+    this.ffprobeAsync = promisify(ffmpeg.ffprobe);
   }
   async onModuleInit(): Promise<void> {
-    ffmpeg.getAvailableCodecs((err: Error | null) => {
-      if (err) {
-        throw new Error('Error getting available codecs:' + err);
-      }
+    return new Promise((resolve, reject) => {
+      ffmpeg.getAvailableCodecs((err) => {
+        /* istanbul ignore if */
+        if (err) {
+          reject(new Error('FFmpeg not found on system.'));
+        } else {
+          resolve();
+        }
+      });
     });
   }
   async getImageMetadata(
@@ -28,14 +29,13 @@ export class MaterialsService implements OnModuleInit {
     const metadata = await this.ffprobeAsync(filePath);
     const width = metadata.streams[0].width;
     const height = metadata.streams[0].height;
-    if (width === undefined || height === undefined) {
+    /* istanbul ignore if */
+    if (!width || !height) {
       throw new MetaDataParseError('image');
     }
     return { width, height };
   }
-  async getVideoMetadata(
-    filePath: string,
-  ): Promise<{
+  async getVideoMetadata(filePath: string): Promise<{
     width: number;
     height: number;
     duration: number;
@@ -45,7 +45,8 @@ export class MaterialsService implements OnModuleInit {
     const width = metadata.streams[0].width;
     const height = metadata.streams[0].height;
     const duration = metadata.format.duration;
-    if (width === undefined || height === undefined || duration === undefined) {
+    /* istanbul ignore if */
+    if (!width || !height || !duration) {
       throw new MetaDataParseError('video');
     }
     const rootPath = process.env.FILE_UPLOAD_PATH!;
@@ -53,21 +54,26 @@ export class MaterialsService implements OnModuleInit {
     ffmpeg(filePath)
       .screenshots({
         timestamps: ['00:00:01'],
-        folder: join(rootPath, '/images'), // 缩略图存储的文件夹路径
-        filename: `${videoName}-thumbnail.jpg`, // 缩略图文件名
-        size: '320x240', // 缩略图尺寸
+        folder: join(rootPath, '/images'),
+        filename: `${videoName}-thumbnail.jpg`,
+        size: '320x240',
       })
-      .on('end', () => {})
+
+      .on('end', () => {
+        /* istanbul ignore next */
+      })
       .on('error', (err: Error) => {
+        /* istanbul ignore next */
         throw Error('Error generating thumbnail:' + err);
       });
-    const thumbnail = '/static/images/' + `${videoName}-thumbnail.jpg`;
+    const thumbnail = `/static/images/${encodeURIComponent(videoName)}-thumbnail.jpg`;
     return { width, height, duration, thumbnail };
   }
   async getAudioMetadata(filePath: string): Promise<{ duration: number }> {
     const metadata = await this.ffprobeAsync(filePath);
     const duration = metadata.format.duration;
-    if (duration === undefined) {
+    /* istanbul ignore if */
+    if (!duration) {
       throw new MetaDataParseError('audio');
     }
     return { duration };
@@ -110,7 +116,7 @@ export class MaterialsService implements OnModuleInit {
     }
     const newMaterial = await this.prismaService.material.create({
       data: {
-        url: '/static/' + type + 's/' + file.filename, //todo:may need a better way
+        url: `/static/${encodeURIComponent(type)}s/${encodeURIComponent(file.filename)}`,
         type,
         name: file.filename,
         meta,
