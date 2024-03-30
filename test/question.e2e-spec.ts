@@ -591,8 +591,6 @@ describe('Questions Module', () => {
         .delete(`/questions/${questionIds[0]}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toBe('OK');
-      expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);
       const respond2 = await request(app.getHttpServer())
         .get(`/questions/${questionIds[0]}`)

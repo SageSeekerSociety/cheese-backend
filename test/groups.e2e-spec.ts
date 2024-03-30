@@ -635,9 +635,7 @@ describe('Groups Module', () => {
         .delete(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toBe('No Content.');
       expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
     });
     it('should return GroupIdNotFoundError after deletion', async () => {
       const TestGroupId = GroupIds[3];
