@@ -20,5 +20,6 @@
     "noFallthroughCasesInSwitch": false,
     "strict": true,
     "moduleResolution": "Node16",
+    "types": ["node"],
   },
 }
