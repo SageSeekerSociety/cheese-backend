@@ -1,4 +1,12 @@
 services:
+  frontend:
+    image: ghcr.io/sageseekersociety/cheese-frontend:dev
+    env_file: .env
+    depends_on:
+      - backend
+    ports:
+      - "4173:80"
+
   backend:
     image: ghcr.io/sageseekersociety/cheese-backend:dev
     env_file: .env
@@ -10,7 +18,10 @@ services:
       database:
         condition: service_healthy
       es:
-        condition: service_healthy  
+        condition: service_healthy
+    ports:
+      - "4174:3000"
+
   database:
     image: postgres:16.2
     env_file: .env
