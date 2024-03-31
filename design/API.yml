@@ -1168,12 +1168,33 @@ paths:
       parameters:
         - name: q
           in: query
-          description: 搜索关键词
-          required: true
+          description: 搜索关键词，留空时返回所有问题
+          required: false
           schema:
             type: string
         - $ref: "#/components/parameters/page_start"
         - $ref: "#/components/parameters/page_size"
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum:
+              - relevance
+              - created
+              - active
+              - bounty_end_soon
+              - frequent_asked
+              - attitude_diff
+            default: relevance
+          required: false
+        - name: filter
+          in: query
+          description: 筛选条件，支持未回答（unanswered）、未解决（unsolved）和有悬赏（bounty）。可同时多个条件，以逗号分隔
+          schema:
+            type: string
+            example: "unsolved,bounty"
+          required: false
       responses:
         "200":
           description: OK
