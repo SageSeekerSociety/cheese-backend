@@ -1,5 +1,27 @@
 # Development Guide
 
+## Writing Clean Code
+
+Writing clean code is essential for maintainability and readability. It is important to follow the best practices and conventions of the language and framework you are using. Here are some general guidelines to follow:
+
+- Use meaningful names for variables, functions, and classes. We recommend using camelCase for variables and functions and PascalCase for classes. Avoid using abbreviations and acronyms unless they are well-known.
+
+- Keep functions and classes small and focused. A function should do one thing and do it well. If a function is too long or has too many responsibilities, consider breaking it down into smaller functions. Follow the SRP principle.
+
+- Avoid over-abstraction or over-optimization. Do not add unnecessary complexity or features that are not needed. Keep the code simple and easy to understand. Follow the KISS and YAGNI principles.
+
+- [Do not write comments](https://www.youtube.com/watch?v=Bf7vDBBOBUA), especially in Chinese. Instead, write self-explanatory code. Comments tend to become outdated and misleading over time. If you need to explain something, consider refactoring the code to make it more readable. Write comments only when necessary, such as explaining non-obvious performance optimizations, workarounds, corner cases, or references to math or algorithms.
+
+## Using Typescript
+
+Typescript is a superset of JavaScript and is very similar to JavaScript. But it is still important to understand the type system, which is the main feature of Typescript. In the perspective of programming language theory, type increases the expressiveness of the language, and Typescript is no exception. It is important to understand the type system to take full advantage of it.
+
+Here are some basic rules to follow when using Typescript:
+
+- Always use types, especially for annotating function arguments and return types. Understand TypeScript's type system is used to perform static type checking effectively at compile time, and it does not affect the runtime behavior of the code. If you really want to make sure the type is correct at runtime, you can use `is` type guards or `instanceof` operator.
+
+- Respect null safety. Use `null` and `undefined` only when necessary. Use [optional chaining](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#optional-chaining) and [nullish coalescing operators](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-3-7.html#nullish-coalescing) to handle `null` and `undefined`. Unless you know what you are doing, avoid using `!` to assert non-null.
+
 ## Extracting Data from Requests
 
 When extracting data from requests, there are two common approaches: using NestJS built-in pipes or using Data Transfer Objects (DTOs) with `class-validator` and `class-transformer`.
