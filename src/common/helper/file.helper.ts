@@ -19,3 +19,9 @@ export function getFileHash(filePath: string): Promise<string> {
       });
   });
 }
+
+export async function getFileMimeType(filePath: string): Promise<string> {
+  const { fileTypeFromFile } = await import('file-type');
+  const fileType = await fileTypeFromFile(filePath);
+  return fileType?.mime || 'application/octet-stream';
+}

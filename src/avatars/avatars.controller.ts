@@ -17,7 +17,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import * as fs from 'fs';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { getFileHash } from '../common/helper/file.helper';
+import { getFileHash, getFileMimeType } from '../common/helper/file.helper';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
 import {
@@ -61,15 +61,14 @@ export class AvatarsController {
       throw new CorrespondentFileNotExistError(defaultAvatarId);
     }
 
-    const { fileTypeFromFile } = await import('file-type');
-    const fileType = await fileTypeFromFile(avatarPath);
+    const fileMimeType = await getFileMimeType(avatarPath);
     const fileHash = await getFileHash(avatarPath);
     const fileStat = fs.statSync(avatarPath);
     res.set({
       'Cache-Control': 'public, max-age=31536000',
       'Content-Disposition': 'inline',
       'Content-Length': fileStat.size,
-      'Content-Type': fileType!.mime,
+      'Content-Type': fileMimeType,
       ETag: fileHash,
       'Last-Modified': fileStat.mtime.toUTCString(),
     });
@@ -93,15 +92,14 @@ export class AvatarsController {
       throw new CorrespondentFileNotExistError(id);
     }
 
-    const { fileTypeFromFile } = await import('file-type');
-    const fileType = await fileTypeFromFile(avatarPath);
+    const fileMimeType = await getFileMimeType(avatarPath);
     const fileHash = await getFileHash(avatarPath);
     const fileStat = fs.statSync(avatarPath);
     res.set({
       'Cache-Control': 'public, max-age=31536000',
       'Content-Disposition': 'inline',
       'Content-Length': fileStat.size,
-      'Content-Type': fileType!.mime,
+      'Content-Type': fileMimeType,
       ETag: fileHash,
       'Last-Modified': fileStat.mtime.toUTCString(),
     });
