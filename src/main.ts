@@ -5,14 +5,15 @@ export const IS_DEV = process.env.NODE_ENV !== 'production';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  if (IS_DEV) {
-    app.enableCors({
-      origin: ['http://localhost:3000'],
-      methods: 'GET,POST,PUT,DELETE',
-      allowedHeaders: 'Content-Type,Authorization',
-      credentials: true,
-    });
-  }
+  const corsOptions = {
+    origin:
+      process.env.CORS_ORIGINS?.split(',') ??
+      (IS_DEV ? ['http://localhost:3000'] : []),
+    methods: process.env.CORS_METHODS ?? 'GET,POST,PUT,PATCH,DELETE',
+    allowedHeaders: process.env.CORS_HEADERS ?? 'Content-Type,Authorization',
+    credentials: process.env.CORS_CREDENTIALS === 'true',
+  };
+  app.enableCors(corsOptions);
   if (!process.env.PORT)
     throw new Error('PORT environment variable is not defined');
   await app.listen(process.env.PORT);
