@@ -1,5 +1,27 @@
 # Development Guide
 
+## Workflow
+
+The development workflow is based on the [Gitflow Workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow). The repository has two main branches: `main` and `dev`. The `main` branch is the production branch, and the `dev` branch is the development branch. All feature branches should be created from the `dev` branch and merged back into the `dev` branch.
+
+There are several tools to ensure the quality of the codebase, such as linters, formatters, git hooks, and CI/CD pipelines. However, it is more important to truly get into the habit of these kinds of workflows and practices, as they are essential for a smooth development process:
+
+1. **Create a issue**: Before starting any work, create an issue in the repository. This issue should describe the feature or bug you are working on and should be assigned to you.
+
+2. **Create a branch**: Checkout a new branch from the `dev` branch with a descriptive name. For example, if you are working on a feature to add user authentication, you can name the branch `feat/user-auth`.
+
+3. **Write code**: Write the code for the feature or bug fix. Follow the best practices and conventions of the language and framework you are using.
+
+4. **Commit changes**: Commit your changes frequently with descriptive commit messages. Use the imperative mood under [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format, and keep the message short and concise.
+
+5. **Write tests**: Write tests for the code you have written. Make sure to cover all edge cases and scenarios. Make sure test coverage is high and all tests pass. You could also follow the TDD approach and write tests before writing the code.
+
+6. **Create a pull request**: Once you have completed the work, create a pull request from your branch to the `dev` branch. The pull request should reference the issue you are working on and should include a detailed description of the changes.
+
+7. **Review code**: Ask a colleague to review your code. Make sure the code follows the best practices and conventions of the language and framework you are using. Make sure the code is clean, readable, and maintainable.
+
+8. **Merge `dev` into your branch**: After the review, merge the `dev` branch into your branch to resolve any conflicts. Be very careful, and make sure the code still works as expected.
+
 ## Writing Clean Code
 
 Writing clean code is essential for maintainability and readability. It is important to follow the best practices and conventions of the language and framework you are using. Here are some general guidelines to follow:
