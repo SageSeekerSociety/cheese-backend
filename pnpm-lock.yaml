@@ -133,6 +133,9 @@ devDependencies:
   jest:
     specifier: ^29.7.0
     version: 29.7.0(@types/node@20.11.7)(ts-node@10.9.2)
+  jest-esm-transformer:
+    specifier: ^1.0.0
+    version: 1.0.0
   lint-staged:
     specifier: ^15.2.1
     version: 15.2.1
@@ -342,6 +345,11 @@ packages:
     engines: {node: '>=6.9.0'}
     dev: true
 
+  /@babel/helper-plugin-utils@7.24.0:
+    resolution: {integrity: sha512-9cUznXMG0+FxRuJfvL82QlTqIzhVW9sL0KjMPHhAOOvpQGL8QtdxnBKILjBqxlHyliz0yCa1G903ZXI/FuHy2w==}
+    engines: {node: '>=6.9.0'}
+    dev: true
+
   /@babel/helper-simple-access@7.22.5:
     resolution: {integrity: sha512-n0H99E/K+Bika3++WNL17POvo4rKWZ7lZEp1Q+fStVbUi8nxPQEBOlTmCOxW/0JsS56SKKQ+ojAe2pHKJHN35w==}
     engines: {node: '>=6.9.0'}
@@ -526,6 +534,18 @@ packages:
     dependencies:
       '@babel/core': 7.23.9
       '@babel/helper-plugin-utils': 7.22.5
+    dev: true
+
+  /@babel/plugin-transform-modules-commonjs@7.24.1(@babel/core@7.23.9):
+    resolution: {integrity: sha512-szog8fFTUxBfw0b98gEWPaEqF42ZUD/T3bkynW/wtgx2p/XCP55WEsb+VosKceRSd6njipdZvNogqdtI4Q0chw==}
+    engines: {node: '>=6.9.0'}
+    peerDependencies:
+      '@babel/core': ^7.0.0-0
+    dependencies:
+      '@babel/core': 7.23.9
+      '@babel/helper-module-transforms': 7.23.3(@babel/core@7.23.9)
+      '@babel/helper-plugin-utils': 7.24.0
+      '@babel/helper-simple-access': 7.22.5
     dev: true
 
   /@babel/template@7.23.9:
@@ -4703,6 +4723,15 @@ packages:
       '@types/node': 20.11.7
       jest-mock: 29.7.0
       jest-util: 29.7.0
+    dev: true
+
+  /jest-esm-transformer@1.0.0:
+    resolution: {integrity: sha512-FoPgeMMwy1/CEsc8tBI41i83CEO3x85RJuZi5iAMmWoARXhfgk6Jd7y+4d+z+HCkTKNVDvSWKGRhwjzU9PUbrw==}
+    dependencies:
+      '@babel/core': 7.23.9
+      '@babel/plugin-transform-modules-commonjs': 7.24.1(@babel/core@7.23.9)
+    transitivePeerDependencies:
+      - supports-color
     dev: true
 
   /jest-get-type@29.6.3:
