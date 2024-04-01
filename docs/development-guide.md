@@ -32,6 +32,8 @@ Writing clean code is essential for maintainability and readability. It is impor
 
 - Avoid over-abstraction or over-optimization. Do not add unnecessary complexity or features that are not needed. Keep the code simple and easy to understand. Follow the KISS and YAGNI principles.
 
+- Espouse the Defensive Programming approach. Do not assume that input data is always correct. Use assertions and error handling to catch bugs early, and frequently perform sanity checks even it seems impossible to fail. It's better to fail fast and fail loudly.
+
 - [Do not write comments](https://www.youtube.com/watch?v=Bf7vDBBOBUA), especially in Chinese. Instead, write self-explanatory code. Comments tend to become outdated and misleading over time. If you need to explain something, consider refactoring the code to make it more readable. Write comments only when necessary, such as explaining non-obvious performance optimizations, workarounds, corner cases, or references to math or algorithms.
 
 ## Using Typescript
