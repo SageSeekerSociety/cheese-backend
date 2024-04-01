@@ -32,9 +32,9 @@ export class GroupNameAlreadyUsedError extends BaseError {
   }
 }
 
-export class GroupIdNotFoundError extends BaseError {
+export class GroupNotFoundError extends BaseError {
   constructor(public readonly groupId: number) {
-    super('GroupIdNotFoundError', `Group with id ${groupId} not found`, 404);
+    super('GroupNotFoundError', `Group with id ${groupId} not found`, 404);
   }
 }
 
