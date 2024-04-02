@@ -12,5 +12,4 @@ model QuestionInvitationRelation {
 
   @@index([questionId])
   @@index([userId])
-  @@map("question_invitation_relation")
 }
