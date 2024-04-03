@@ -14,7 +14,7 @@ jobs:
       matrix:
         postgresql-version: [latest, 12]
         elasticsearch-version: [8.12.2, 8.0.0]
-        node-version: [16.x, 18.x]
+        node-version: [18.x, 20.x]
         pnpm-version: [6, 8]
 
     env:
