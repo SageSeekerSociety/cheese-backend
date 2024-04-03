@@ -55,6 +55,9 @@ jobs:
       - name: Create env file
         run: cp sample.env .env
 
+      - name: pull frontend images
+        run: docker pull ghcr.io/sageseekersociety/cheese-frontend:dev
+
       - name: Start compose
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
 
