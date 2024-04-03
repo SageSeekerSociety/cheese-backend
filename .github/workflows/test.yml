@@ -15,7 +15,8 @@ jobs:
         postgresql-version: [latest, 12]
         elasticsearch-version: [8.12.2, 8.0.0]
         node-version: [18.x, 20.x]
-        pnpm-version: [6, 8]
+        pnpm-version: [8]
+        repeat: [1, 2]
 
     env:
       TEST_REPEAT: 10 # Tests will be repeated
