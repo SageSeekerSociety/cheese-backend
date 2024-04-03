@@ -16,7 +16,6 @@ import {
 import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
