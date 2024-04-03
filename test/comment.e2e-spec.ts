@@ -238,7 +238,7 @@ describe('comments Module', () => {
           content: `${TestCommentPrefix} ${content}`,
         });
 
-      expect(respond.body.message).toMatch(/^CommentableIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^CommentableNotFoundError: /);
       expect(respond.body.code).toBe(404);
       expect(respond.status).toBe(404);
     });
@@ -497,9 +497,7 @@ describe('comments Module', () => {
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toBe('Comment deleted already');
       expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(204);
     });
     it('should not delete a comment when the user does not match', async () => {
       const commentId = CommentIds[0];
@@ -535,9 +533,7 @@ describe('comments Module', () => {
         .delete(`/comments/${commentId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toBe('Comment deleted already');
       expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(204);
     });
   });
   describe('update comment', () => {

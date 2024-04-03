@@ -191,7 +191,7 @@ export class QuestionsController {
   async deleteQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<void> {
     this.authService.audit(
       auth,
       AuthorizedAction.delete,
@@ -200,10 +200,6 @@ export class QuestionsController {
       id,
     );
     await this.questionsService.deleteQuestion(id);
-    return {
-      code: 200,
-      message: 'OK',
-    };
   }
 
   @Get('/:id/followers')

@@ -663,10 +663,7 @@ describe('Answers Module', () => {
         .delete(`/questions/${testQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-
-      expect(response.body.message).toBe('Answer deleted successfully.');
       expect(response.status).toBe(200);
-      expect(response.body.code).toBe(200);
     });
 
     it('should return a not found error when trying to delete a non-existent answer', async () => {
@@ -720,9 +717,7 @@ describe('Answers Module', () => {
         .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(response.body.message).toBe('No Content');
       expect(response.status).toBe(200);
-      expect(response.body.code).toBe(204);
     });
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
@@ -765,7 +760,6 @@ describe('Answers Module', () => {
 
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
-
       expect(response.body.code).toBe(404);
     });
 

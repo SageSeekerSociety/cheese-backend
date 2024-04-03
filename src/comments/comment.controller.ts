@@ -16,7 +16,6 @@ import {
 import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
 import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
@@ -139,7 +138,7 @@ export class CommentsController {
   async deleteComment(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<void> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -149,10 +148,6 @@ export class CommentsController {
       commentId,
     );
     await this.commentsService.deleteComment(commentId, userId);
-    return {
-      code: 204,
-      message: 'Comment deleted already',
-    };
   }
 
   @Get('/:commentId')
