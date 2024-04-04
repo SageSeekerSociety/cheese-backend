@@ -1,13 +1,13 @@
 /*
  *  Description: This file implements the PageHelper class.
- *               Its an utility class for generating the PageRespondDto data.
+ *               Its an utility class for generating the PageResponseDto data.
  *
  *  Author(s):
  *      Nictheboy Li    <nictheboy@outlook.com>
  *
  */
 
-import { PageRespondDto } from '../DTO/page-respond.dto';
+import { PageDto } from '../DTO/page-response.dto';
 
 export class PageHelper {
   // Used when you do
@@ -23,7 +23,7 @@ export class PageHelper {
     data: TData[],
     pageSize: number,
     idGetter: (item: TData) => number,
-  ): [TData[], PageRespondDto] {
+  ): [TData[], PageDto] {
     return PageHelper.PageInternal(data, pageSize, false, 0, idGetter);
   }
 
@@ -50,7 +50,7 @@ export class PageHelper {
     pageSize: number,
     idGetterPrev: (item: TPrev) => number,
     idGetter: (item: TData) => number,
-  ): [TData[], PageRespondDto] {
+  ): [TData[], PageDto] {
     let has_prev = false;
     let prev_start = 0;
     if (prev.length > 0) {
@@ -84,7 +84,7 @@ export class PageHelper {
     // Something like '() => { throw new TopicNotFoundError(pageStart); }'
     // If pageStart is not found in allData, this function will be called.
     errorIfNotFound?: (pageStart: number) => void,
-  ): [TData[], PageRespondDto] {
+  ): [TData[], PageDto] {
     if (pageStart == undefined) {
       const data = allData.slice(0, pageSize + 1);
       return PageHelper.PageStart(data, pageSize, idGetter);
@@ -109,7 +109,7 @@ export class PageHelper {
     hasPrev: boolean,
     prevStart: number,
     idGetter: (item: TData) => number,
-  ): [TData[], PageRespondDto] {
+  ): [TData[], PageDto] {
     if (data.length == 0 || pageSize < 0) {
       return [
         [],

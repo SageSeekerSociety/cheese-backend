@@ -19,7 +19,7 @@ import * as fs from 'fs';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { getFileHash, getFileMimeType } from '../common/helper/file.helper';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
-import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
+import { UploadAvatarResponseDto } from './DTO/upload-avatar.dto';
 import {
   CorrespondentFileNotExistError,
   InvalidAvatarTypeError,
@@ -38,7 +38,7 @@ export class AvatarsController {
   @UseInterceptors(FileInterceptor('avatar'))
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
-  ): Promise<UploadAvatarRespondDto> {
+  ): Promise<UploadAvatarResponseDto> {
     //const userid = this.authService.verify(auth).userId;
     const avatar = await this.avatarsService.save(file.path, file.filename);
     return {

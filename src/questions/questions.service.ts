@@ -21,7 +21,7 @@ import { AnswerService } from '../answer/answer.service';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
 import { CommentableType } from '../comments/commentable.enum';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import {
   getCurrWhereBySort,
@@ -378,7 +378,7 @@ export class QuestionsService {
     searcherId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[QuestionDto[], PageRespondDto]> {
+  ): Promise<[QuestionDto[], PageDto]> {
     const timeBegin = Date.now();
     const result = !keywords
       ? { hits: { hits: [] } }
@@ -583,7 +583,7 @@ export class QuestionsService {
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[QuestionDto[], PageRespondDto]> {
+  ): Promise<[QuestionDto[], PageDto]> {
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
     if (firstQuestionId == undefined) {
@@ -638,7 +638,7 @@ export class QuestionsService {
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[UserDto[], PageRespondDto]> {
+  ): Promise<[UserDto[], PageDto]> {
     if (firstFollowerId == undefined) {
       const relations = await this.questionFollowRelationRepository.find({
         where: { questionId },
@@ -739,7 +739,7 @@ export class QuestionsService {
     sort: SortPattern,
     pageStart: number | undefined,
     pageSize: number | undefined = 20,
-  ): Promise<[QuestionInvitationDto[], PageRespondDto]> {
+  ): Promise<[QuestionInvitationDto[], PageDto]> {
     const record2dto = async (
       invitation: QuestionInvitationRelation,
     ): Promise<QuestionInvitationDto> => {
@@ -1010,7 +1010,7 @@ export class QuestionsService {
     viewerId?: number,
     userAgent?: string,
     ip?: string,
-  ): Promise<[QuestionDto[], PageRespondDto]> {
+  ): Promise<[QuestionDto[], PageDto]> {
     if ((await this.userService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
     if (!pageStart) {

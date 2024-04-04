@@ -1,3 +1,3 @@
-import { LoginRespondDto } from './login.dto';
+import { LoginResponseDto } from './login.dto';
 
-export class RefreshTokenRespondDto extends LoginRespondDto {}
+export class RefreshTokenResponseDto extends LoginResponseDto {}

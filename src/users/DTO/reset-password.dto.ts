@@ -1,12 +1,12 @@
 import { IsString } from 'class-validator';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
 export class ResetPasswordRequestRequestDto {
   @IsString()
   email: string;
 }
 
-export class ResetPasswordRequestRespondDto extends BaseRespondDto {}
+export class ResetPasswordRequestDto extends BaseResponseDto {}
 
 export class ResetPasswordVerifyRequestDto {
   @IsString()
@@ -16,4 +16,4 @@ export class ResetPasswordVerifyRequestDto {
   new_password: string;
 }
 
-export class ResetPasswordVerifyRespondDto extends BaseRespondDto {}
+export class ResetPasswordVerifyResponseDto extends BaseResponseDto {}
