@@ -407,6 +407,27 @@ model GroupTarget {
 }
 
 //
+// materials.prisma
+//
+
+enum MaterialType {
+  image
+  file
+  audio
+  video
+}
+
+model Material {
+  id   Int          @id @default(autoincrement())
+  type MaterialType
+  url  String
+  name String
+  meta Json         @db.Json
+
+  @@map("material")
+}
+
+//
 // questions.es.prisma
 //
 

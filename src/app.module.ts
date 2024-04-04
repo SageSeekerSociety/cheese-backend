@@ -11,7 +11,8 @@ import configuration, {
 import { GroupsModule } from './groups/groups.module';
 import { QuestionsModule } from './questions/questions.module';
 import { UsersModule } from './users/users.module';
-
+import { MaterialsModule } from './materials/materials.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration] }),
@@ -26,6 +27,11 @@ import { UsersModule } from './users/users.module';
     GroupsModule,
     AvatarsModule,
     CommentsModule,
+    MaterialsModule,
+    ServeStaticModule.forRoot({
+      rootPath: process.env.FILE_UPLOAD_PATH,
+      serveRoot: '/static',
+    }),
   ],
   controllers: [],
   providers: [
