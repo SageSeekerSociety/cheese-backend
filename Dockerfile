@@ -18,7 +18,7 @@ FROM dev-deps AS dev
 WORKDIR /app
 COPY . ./
 EXPOSE 8000
-CMD ["pnpm", "start:dev"]
+CMD ["tail", "-f", "/dev/null"]
 
 FROM dev-deps AS prod-deps
 WORKDIR /app

@@ -72,5 +72,8 @@ jobs:
           --to-schema-datamodel prisma/schema.prisma \
           --exit-code
 
+      - name: Start Prisma Process
+        run: docker compose exec backend pnpm start:dev
+
       - name: Run Test
         run: docker compose exec backend pnpm run test:cov
