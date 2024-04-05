@@ -20,10 +20,6 @@ COPY . ./
 EXPOSE 8000
 CMD ["pnpm", "start:dev"]
 
-FROM dev AS test
-WORKDIR /app
-RUN pnpm lint && pnpm test && pnpm test:cov
-
 FROM dev-deps AS prod-deps
 WORKDIR /app
 ENV NODE_ENV="production"
