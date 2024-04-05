@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsInt,
@@ -30,6 +31,8 @@ export class AddQuestionRequestDto {
   @IsInt()
   @Min(0, { message: 'Bounty can not be negative' })
   @Max(BOUNTY_LIMIT, { message: 'Bounty is too high' })
+  @IsOptional()
+  @Type(() => Number)
   bounty: number = 0;
 }
 

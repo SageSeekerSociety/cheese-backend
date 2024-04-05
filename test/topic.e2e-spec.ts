@@ -158,7 +158,12 @@ describe('Topic Module', () => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
     });
     it('should return empty page without parameters', async () => {
-      const respond = await request(app.getHttpServer()).get('/topics').send();
+      const respond = await request(app.getHttpServer())
+        .get('/topics')
+        .query({
+          q: '',
+        })
+        .send();
       expect(respond.body.message).toBe('OK');
       expect(respond.body.code).toBe(200);
       expect(respond.status).toBe(200);

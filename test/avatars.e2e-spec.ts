@@ -37,8 +37,12 @@ describe('Avatar Module', () => {
         .send()
         .responseType('blob');
       expect(respond.status).toBe(200);
-      expect(respond.headers['content-type']).toEqual('image/*');
-      expect(respond.headers['content-disposition']).toContain('attachment');
+      expect(respond.headers['cache-control']).toContain('max-age');
+      expect(respond.headers['content-type']).toMatch(/image\/.*/);
+      expect(respond.headers['content-disposition']).toContain('inline');
+      expect(respond.headers['content-length']).toBeDefined();
+      expect(respond.headers['etag']).toBeDefined();
+      expect(respond.headers['last-modified']).toBeDefined();
     });
     it('should return AvatarNotFoundError when an avatar is not found', async () => {
       const respond = await request(app.getHttpServer())
@@ -54,8 +58,12 @@ describe('Avatar Module', () => {
         .get('/avatars/default')
         .send();
       expect(respond.status).toBe(200);
-      expect(respond.headers['content-type']).toEqual('image/*');
-      expect(respond.headers['content-disposition']).toContain('attachment');
+      expect(respond.headers['cache-control']).toContain('max-age');
+      expect(respond.headers['content-type']).toMatch(/image\/.*/);
+      expect(respond.headers['content-disposition']).toContain('inline');
+      expect(respond.headers['content-length']).toBeDefined();
+      expect(respond.headers['etag']).toBeDefined();
+      expect(respond.headers['last-modified']).toBeDefined();
     });
   });
   describe('get pre available avatarIds', () => {
