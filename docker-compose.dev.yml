@@ -1,9 +1,6 @@
 services:
   backend:
     image: ghcr.io/sageseekersociety/cheese-backend-dev:dev
-    build:
-      context: .
-      target: dev
     env_file: .env
     develop:
       watch:
