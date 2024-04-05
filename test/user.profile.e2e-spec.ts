@@ -53,7 +53,7 @@ describe('Profile Submodule of User Module', () => {
         const respond = await request(app.getHttpServer())
           .post('/avatars')
           //.set('Authorization', `Bearer ${TestToken}`)
-          .attach('avatar', 'resources/default.jpg');
+          .attach('avatar', 'src/resources/avatars/default.jpg');
         expect(respond.status).toBe(201);
         expect(respond.body.message).toBe('Upload avatar successfully');
         expect(respond.body.data).toHaveProperty('avatarid');

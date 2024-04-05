@@ -7,15 +7,25 @@ import { AuthModule } from '../auth/auth.module';
 import { AvatarsController } from './avatars.controller';
 import { Avatar } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
+import { existsSync, mkdirSync } from 'fs';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Avatar]),
     MulterModule.register({
       storage: diskStorage({
-        destination:
-          process.env.NODE_ENV === 'test'
-            ? join(__dirname, '../../test/uploads/avatars')
-            : '/app/uploads/avatars',
+        destination: (req, file, callback) => {
+          if (!process.env.FILE_UPLOAD_PATH) {
+            return callback(
+              new Error('FILE_UPLOAD_PATH environment variable is not defined'),
+              'error',
+            );
+          }
+          const dest = join(process.env.FILE_UPLOAD_PATH, 'avatars');
+          if (!existsSync(dest)) {
+            mkdirSync(dest, { recursive: true });
+          }
+          return callback(null, dest);
+        },
         filename: (_, file, callback) => {
           const fileName = `${new Date().getTime() + extname(file.originalname)}`;
           return callback(null, fileName);
