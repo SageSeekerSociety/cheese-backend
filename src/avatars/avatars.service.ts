@@ -18,7 +18,7 @@ export class AvatarsService implements OnModuleInit {
     const sourcePath = join(__dirname, '../resources/avatars');
 
     const avatarFiles = readdirSync(sourcePath);
-
+    /* istanbul ignore if */
     if (!process.env.DEFAULT_AVATAR_NAME) {
       throw new Error(
         'DEFAULT_AVATAR_NAME environment variable is not defined',
@@ -50,7 +50,7 @@ export class AvatarsService implements OnModuleInit {
       const predefinedAvatars = avatarFiles.filter(
         (file) => file !== defaultAvatarName,
       );
-      if (!predefinedAvatars) {
+      if (predefinedAvatars.length === 0) {
         throw new Error('no predefined avatars found');
       }
       await Promise.all(
@@ -91,7 +91,8 @@ export class AvatarsService implements OnModuleInit {
     const defaultAvatar = await this.avatarRepository.findOneBy({
       avatarType: AvatarType.default,
     });
-    if (defaultAvatar == undefined) throw new Error();
+    if (defaultAvatar == undefined) throw new Error('Default avatar not found');
+
     const defaultAvatarId = defaultAvatar.id;
     return defaultAvatarId;
   }

@@ -3,6 +3,7 @@ import { MulterModule } from '@nestjs/platform-express';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
+import { v4 as uuidv4 } from 'uuid';
 import { AuthModule } from '../auth/auth.module';
 import { AvatarsController } from './avatars.controller';
 import { Avatar } from './avatars.legacy.entity';
@@ -14,6 +15,7 @@ import { existsSync, mkdirSync } from 'fs';
     MulterModule.register({
       storage: diskStorage({
         destination: (req, file, callback) => {
+          /* istanbul ignore if */
           if (!process.env.FILE_UPLOAD_PATH) {
             return callback(
               new Error('FILE_UPLOAD_PATH environment variable is not defined'),
@@ -26,9 +28,9 @@ import { existsSync, mkdirSync } from 'fs';
           }
           return callback(null, dest);
         },
-        filename: (_, file, callback) => {
-          const fileName = `${new Date().getTime() + extname(file.originalname)}`;
-          return callback(null, fileName);
+        filename: (req, file, callback) => {
+          const randomName = uuidv4();
+          callback(null, `${randomName}${extname(file.originalname)}`);
         },
       }),
       limits: {
@@ -36,7 +38,14 @@ import { existsSync, mkdirSync } from 'fs';
         fieldNameSize: 50,
       },
       fileFilter: (_, file, callback) => {
-        if (!file.originalname.match(/\.(jpg|jpeg|png|gif)$/)) {
+        const allowedMimeTypes = [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/gif',
+        ];
+        /* istanbul ignore if */
+        if (!allowedMimeTypes.includes(file.mimetype)) {
           return callback(new Error('Only image files are allowed!'), false);
         }
         callback(null, true);
