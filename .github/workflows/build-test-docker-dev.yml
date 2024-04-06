@@ -63,8 +63,7 @@ jobs:
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
       - name: Sync Database Structures with Prisma
-        run: |
-          docker compose exec backend pnpm prisma migrate deploy
+        run: docker compose exec backend pnpm prisma migrate deploy
 
       - name: Check Prisma Structures Sync With Database
         run: |
@@ -72,9 +71,6 @@ jobs:
           --from-schema-datasource prisma/schema.prisma \
           --to-schema-datamodel prisma/schema.prisma \
           --exit-code
-
-      - name: Start Prisma Process
-        run: docker compose exec backend pnpm start:dev -d
 
       - name: Run Test
         run: docker compose exec backend pnpm run test:cov
