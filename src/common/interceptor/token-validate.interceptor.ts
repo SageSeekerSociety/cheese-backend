@@ -25,17 +25,30 @@ import {
   Injectable,
   NestInterceptor,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Observable } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 
 // See: https://docs.nestjs.com/interceptors
 // See: https://stackoverflow.com/questions/63618612/nestjs-use-service-inside-interceptor-not-global-interceptor
 
+export const NoTokenValidate = Reflector.createDecorator();
+
 @Injectable()
 export class TokenValidateInterceptor implements NestInterceptor {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private reflector: Reflector,
+  ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const noTokenValidate = this.reflector.get(
+      NoTokenValidate,
+      context.getHandler(),
+    );
+    if (noTokenValidate) {
+      return next.handle();
+    }
     const token = context.switchToHttp().getRequest().headers['authorization'];
     if (token != undefined) {
       this.authService.verify(token);

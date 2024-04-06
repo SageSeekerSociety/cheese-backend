@@ -26,9 +26,9 @@ model user {
   username                                                                 String                        @unique(map: "IDX_78a916df40e02a9deb1c4b75ed") @db.VarChar
   hashedPassword                                                           String                        @db.VarChar
   email                                                                    String                        @unique(map: "IDX_e12875dfb3b1d92d7d7c5377e2") @db.VarChar
-  createdAt                                                                DateTime                      @default(now()) @db.Timestamp(6)
-  updatedAt                                                                DateTime                      @default(now()) @db.Timestamp(6)
-  deletedAt                                                                DateTime?                     @db.Timestamp(6)
+  createdAt                                                                DateTime                      @default(now()) @db.Timestamptz(6)
+  updatedAt                                                                DateTime                      @default(now()) @db.Timestamptz(6)
+  deletedAt                                                                DateTime?                     @db.Timestamptz(6)
   answer                                                                   answer[]
   answer_delete_log                                                        answer_delete_log[]
   answer_favorited_by_user                                                 answer_favorited_by_user[]
@@ -61,8 +61,8 @@ model user_following_relationship {
   id                                                Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
   followeeId                                        Int
   followerId                                        Int
-  createdAt                                         DateTime  @default(now()) @db.Timestamp(6)
-  deletedAt                                         DateTime? @db.Timestamp(6)
+  createdAt                                         DateTime  @default(now()) @db.Timestamptz(6)
+  deletedAt                                         DateTime? @db.Timestamptz(6)
   user_user_following_relationship_followerIdTouser user      @relation("user_following_relationship_followerIdTouser", fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_868df0c2c3a138ee54d2a515bce")
   user_user_following_relationship_followeeIdTouser user      @relation("user_following_relationship_followeeIdTouser", fields: [followeeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c78831eeee179237b1482d0c6fb")
 
@@ -75,7 +75,7 @@ model user_login_log {
   userId    Int
   ip        String   @db.VarChar
   userAgent String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamp(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
   user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66c592c7f7f20d1214aba2d0046")
 
   @@index([userId], map: "IDX_66c592c7f7f20d1214aba2d004")
@@ -87,11 +87,11 @@ model user_profile {
   nickname  String    @db.VarChar
   avatarId  Int
   intro     String    @db.VarChar
-  createdAt DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt DateTime  @default(now()) @db.Timestamp(6)
-  deletedAt DateTime? @db.Timestamp(6)
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @db.Timestamptz(6)
+  deletedAt DateTime? @db.Timestamptz(6)
   user      user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_user_id")
-  avatar    avatar    @relation(fields: [avatarId], references: [id], onDelete: NoAction, onUpdate: NoAction,map: "fk_user_profile_avatar_id")
+  avatar    avatar    @relation(fields: [avatarId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_avatar_id")
 }
 
 model user_profile_query_log {
@@ -100,7 +100,7 @@ model user_profile_query_log {
   vieweeId                                   Int
   ip                                         String   @db.VarChar
   userAgent                                  String   @db.VarChar
-  createdAt                                  DateTime @default(now()) @db.Timestamp(6)
+  createdAt                                  DateTime @default(now()) @db.Timestamptz(6)
   user_user_profile_query_log_viewerIdTouser user?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1261db28434fde159acda6094bc")
   user_user_profile_query_log_vieweeIdTouser user     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff592e4403b328be0de4f2b3973")
 
@@ -115,7 +115,7 @@ model user_register_log {
   registerRequestId Int?
   ip                String   @db.VarChar
   userAgent         String   @db.VarChar
-  createdAt         DateTime @default(now()) @db.Timestamp(6)
+  createdAt         DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([email], map: "IDX_3af79f07534d9f1c945cd4c702")
 }
@@ -124,7 +124,7 @@ model user_register_request {
   id        Int      @id(map: "PK_cdf2d880551e43d9362ddd37ae0") @default(autoincrement())
   email     String   @db.VarChar
   code      String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamp(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([email], map: "IDX_c1d0ecc369d7a6a3d7e876c589")
 }
@@ -135,5 +135,5 @@ model user_reset_password_log {
   type      Int
   ip        String   @db.VarChar
   userAgent String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamp(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
 }

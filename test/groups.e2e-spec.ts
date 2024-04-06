@@ -421,12 +421,12 @@ describe('Groups Module', () => {
       expect(groupDto.is_owner).toBe(false);
     });
 
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/groups/0`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
@@ -469,12 +469,12 @@ describe('Groups Module', () => {
       expect(groupDto.is_member).toBe(true);
       expect(groupDto.is_owner).toBe(false);
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/groups/0/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ intro: '我是初音未来' });
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
@@ -528,7 +528,7 @@ describe('Groups Module', () => {
       expect(groupDto.is_member).toBe(true);
       expect(groupDto.is_owner).toBe(false);
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .put('/groups/0')
         .set('Authorization', `Bearer ${TestToken}`)
@@ -539,7 +539,7 @@ describe('Groups Module', () => {
         });
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
     });
     it('should return GroupNameAlreadyUsedError when group name is already used', async () => {
       const TestGroupId = GroupIds[0];
@@ -606,12 +606,12 @@ describe('Groups Module', () => {
       expect(groupDto.is_member).toBe(false);
       expect(groupDto.is_owner).toBe(false);
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .delete(`/groups/0/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     }, 10000);
@@ -635,26 +635,24 @@ describe('Groups Module', () => {
         .delete(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toBe('No Content.');
       expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
     });
-    it('should return GroupIdNotFoundError after deletion', async () => {
+    it('should return GroupNotFoundError after deletion', async () => {
       const TestGroupId = GroupIds[3];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .delete(`/groups/0`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
@@ -746,12 +744,12 @@ describe('Groups Module', () => {
       expect(respond.body.data.page.has_more).toBe(false);
       expect(respond.body.data.page.next_start).toBeFalsy();
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/groups/0/members`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });

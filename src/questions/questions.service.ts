@@ -45,9 +45,9 @@ import {
   BountyNotBiggerError,
   BountyOutOfLimitError,
   QuestionAlreadyFollowedError,
-  QuestionIdNotFoundError,
-  QuestionInvitationIdNotFoundError,
+  QuestionInvitationNotFoundError,
   QuestionNotFollowedYetError,
+  QuestionNotFoundError,
   QuestionNotHasThisTopicError,
   UserAlreadyInvitedError,
 } from './questions.error';
@@ -102,7 +102,7 @@ export class QuestionsService {
       const question = await this.questionRepository.findOneBy({
         id: questionId,
       });
-      if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+      if (question == undefined) throw new QuestionNotFoundError(questionId);
     }
     const topicExists = await this.topicService.isTopicExists(topicId);
     if (topicExists == false) throw new TopicNotFoundError(topicId);
@@ -143,6 +143,7 @@ export class QuestionsService {
     groupId?: number,
     bounty: number = 0,
   ): Promise<number> {
+    /* istanbul ignore if */
     if (bounty < 0 || bounty > BOUNTY_LIMIT)
       throw new BountyOutOfLimitError(bounty);
 
@@ -189,6 +190,8 @@ export class QuestionsService {
         );
       },
     );
+
+    /* istanbul ignore if */
     if (question! == undefined)
       throw new Error(
         "Impossible: variable 'question' is undefined after transaction.",
@@ -255,7 +258,7 @@ export class QuestionsService {
     });
     if (question == undefined || question.deletedAt)
       //! workaround before soft delete middleware
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
 
     let userDto: UserDto | null = null; // For case that user is deleted.
     try {
@@ -400,7 +403,7 @@ export class QuestionsService {
       pageSize,
       (i) => i.id,
       (firstQuestionId) => {
-        throw new QuestionIdNotFoundError(firstQuestionId);
+        throw new QuestionNotFoundError(firstQuestionId);
       },
     );
     const questions = await Promise.all(
@@ -433,7 +436,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionNotFoundError(questionId);
     await this.entityManager.transaction(
       async (entityManager: EntityManager) => {
         const questionRepository = entityManager.getRepository(Question);
@@ -467,6 +470,8 @@ export class QuestionsService {
           await this.prismaService.questionElasticsearchRelation.findUnique({
             where: { questionId },
           });
+
+        /* istanbul ignore if */
         if (esRelation == null)
           throw new Error(
             `Question with id ${questionId} exists, ` +
@@ -493,7 +498,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionNotFoundError(questionId);
     return question.createdById;
   }
 
@@ -501,11 +506,13 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionNotFoundError(questionId);
     const esRelation =
       await this.prismaService.questionElasticsearchRelation.findUnique({
         where: { questionId },
       });
+
+    /* istanbul ignore if */
     if (esRelation == null)
       throw new Error(
         `Question with id ${questionId} exists, ` +
@@ -528,7 +535,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionNotFoundError(questionId);
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
 
@@ -553,7 +560,7 @@ export class QuestionsService {
     const question = await this.questionRepository.findOneBy({
       id: questionId,
     });
-    if (question == undefined) throw new QuestionIdNotFoundError(questionId);
+    if (question == undefined) throw new QuestionNotFoundError(questionId);
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
 
@@ -696,7 +703,7 @@ export class QuestionsService {
     userId: number,
   ): Promise<number> {
     if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     if ((await this.userService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
     const haveBeenAnswered = await this.answerService.getAnswerIdOfCreatedBy(
@@ -750,7 +757,7 @@ export class QuestionsService {
     };
 
     if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     if (pageStart == undefined) {
       const invitations =
         await this.prismaService.questionInvitationRelation.findMany({
@@ -768,7 +775,7 @@ export class QuestionsService {
           where: { id: pageStart },
         });
       if (cursor == undefined)
-        throw new QuestionInvitationIdNotFoundError(pageStart);
+        throw new QuestionInvitationNotFoundError(pageStart);
       const prev = await this.prismaService.questionInvitationRelation.findMany(
         {
           where: {
@@ -808,7 +815,7 @@ export class QuestionsService {
       where: { id: questionId },
     });
     if (!question) {
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     }
     // No sql injection here:
     // "The method is implemented as a tagged template, which allows you to pass a template literal where you can easily
@@ -851,13 +858,13 @@ export class QuestionsService {
     invitationId: number,
   ): Promise<QuestionInvitationDto> {
     if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     const invitation =
       await this.prismaService.questionInvitationRelation.findFirst({
         where: { id: invitationId, questionId },
       });
     if (!invitation) {
-      throw new QuestionInvitationIdNotFoundError(invitationId);
+      throw new QuestionInvitationNotFoundError(invitationId);
     }
     const userdto = await this.userService.getUserDtoById(invitation.userId);
     return {
@@ -878,13 +885,13 @@ export class QuestionsService {
     invitationId: number,
   ): Promise<void> {
     if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     const invitation =
       await this.prismaService.questionInvitationRelation.findFirst({
         where: { id: invitationId, questionId },
       });
     if (!invitation) {
-      throw new QuestionInvitationIdNotFoundError(invitationId);
+      throw new QuestionInvitationNotFoundError(invitationId);
     }
     await this.prismaService.questionInvitationRelation.delete({
       where: {
@@ -903,7 +910,7 @@ export class QuestionsService {
     attitudeType: AttitudeType,
   ): Promise<AttitudeStateDto> {
     if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     await this.attitudeService.setAttitude(
       userId,
       AttitudableType.QUESTION,
@@ -933,7 +940,7 @@ export class QuestionsService {
     invitationId: number,
   ): Promise<number> {
     if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     const invitation =
       await this.prismaService.questionInvitationRelation.findUnique({
         where: {
@@ -942,15 +949,17 @@ export class QuestionsService {
         },
       });
     if (invitation == undefined)
-      throw new QuestionInvitationIdNotFoundError(invitationId);
+      throw new QuestionInvitationNotFoundError(invitationId);
     return invitation.userId;
   }
 
-  async setBounty(questionId: number, bounty: number) {
-    if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+  async setBounty(questionId: number, bounty: number): Promise<void> {
+    /* istanbul ignore if */
     if (bounty < 0 || bounty > BOUNTY_LIMIT)
       throw new BountyOutOfLimitError(bounty);
+
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionNotFoundError(questionId);
 
     const oldBounty = (
       await this.prismaService.question.findUniqueOrThrow({
@@ -972,7 +981,7 @@ export class QuestionsService {
 
   async acceptAnswer(questionId: number, answerId: number): Promise<void> {
     if ((await this.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     if (
       (await this.answerService.isAnswerExists(questionId, answerId)) == false
     )

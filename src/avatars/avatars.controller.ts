@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Headers,
   Param,
   Post,
   Query,
@@ -15,8 +16,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import * as fs from 'fs';
-import path from 'path';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { getFileHash, getFileMimeType } from '../common/helper/file.helper';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
 import {
@@ -32,6 +33,7 @@ import { AvatarsService } from './avatars.service';
 @UseInterceptors(TokenValidateInterceptor)
 export class AvatarsController {
   constructor(private readonly avatarsService: AvatarsService) {}
+
   @Post()
   @UseInterceptors(FileInterceptor('avatar'))
   async createAvatar(
@@ -47,20 +49,69 @@ export class AvatarsController {
       },
     };
   }
+
   @Get('/default')
-  async getDefaultAvatar(@Res({ passthrough: true }) res: Response) {
-    const DefaultAvatarId = await this.avatarsService.getDefaultAvatarId();
-    const avatarPath = await this.avatarsService.getAvatarPath(DefaultAvatarId);
+  async getDefaultAvatar(
+    @Headers('If-None-Match') ifNoneMatch: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const defaultAvatarId = await this.avatarsService.getDefaultAvatarId();
+    const avatarPath = await this.avatarsService.getAvatarPath(defaultAvatarId);
+    if (!fs.existsSync(avatarPath)) {
+      throw new CorrespondentFileNotExistError(defaultAvatarId);
+    }
+
+    const fileMimeType = await getFileMimeType(avatarPath);
+    const fileHash = await getFileHash(avatarPath);
+    const fileStat = fs.statSync(avatarPath);
+    res.set({
+      'Cache-Control': 'public, max-age=31536000',
+      'Content-Disposition': 'inline',
+      'Content-Length': fileStat.size,
+      'Content-Type': fileMimeType,
+      ETag: fileHash,
+      'Last-Modified': fileStat.mtime.toUTCString(),
+    });
+    if (ifNoneMatch === fileHash) {
+      res.status(304).end();
+      return;
+    }
+
     const file = fs.createReadStream(avatarPath);
-    if (fs.existsSync(avatarPath)) {
-      res.set({
-        'Content-Type': 'image/*',
-        'Content-Disposition':
-          'attachment; filename=' + path.parse(avatarPath).base,
-      });
-      return new StreamableFile(file);
-    } else throw new CorrespondentFileNotExistError(DefaultAvatarId);
+    return new StreamableFile(file);
   }
+
+  @Get('/:id')
+  async getAvatar(
+    @Headers('If-None-Match') ifNoneMatch: string,
+    @Param('id') id: number,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const avatarPath = await this.avatarsService.getAvatarPath(id);
+    if (!fs.existsSync(avatarPath)) {
+      throw new CorrespondentFileNotExistError(id);
+    }
+
+    const fileMimeType = await getFileMimeType(avatarPath);
+    const fileHash = await getFileHash(avatarPath);
+    const fileStat = fs.statSync(avatarPath);
+    res.set({
+      'Cache-Control': 'public, max-age=31536000',
+      'Content-Disposition': 'inline',
+      'Content-Length': fileStat.size,
+      'Content-Type': fileMimeType,
+      ETag: fileHash,
+      'Last-Modified': fileStat.mtime.toUTCString(),
+    });
+    if (ifNoneMatch === fileHash) {
+      res.status(304).end();
+      return;
+    }
+
+    const file = fs.createReadStream(avatarPath);
+    return new StreamableFile(file);
+  }
+
   @Get()
   async getAvailableAvatarIds(
     @Query('type') type: AvatarType = AvatarType.PreDefined,
@@ -75,21 +126,5 @@ export class AvatarsController {
         },
       };
     } else throw new InvalidAvatarTypeError(type);
-  }
-  @Get('/:id')
-  async getAvatar(
-    @Param('id') id: number,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const avatarPath = await this.avatarsService.getAvatarPath(id);
-    const file = fs.createReadStream(avatarPath);
-    if (fs.existsSync(avatarPath)) {
-      res.set({
-        'Content-Type': 'image/*',
-        'Content-Disposition':
-          'attachment; filename=' + path.parse(avatarPath).base,
-      });
-      return new StreamableFile(file);
-    } else throw new CorrespondentFileNotExistError(id);
   }
 }
