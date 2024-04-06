@@ -51,15 +51,16 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          load: true
 
       - name: Create env file
         run: cp sample.env .env
 
-      - name: pull frontend images
-        run: docker pull ghcr.io/sageseekersociety/cheese-frontend:dev
+      - name: set backend image tag
+        run: echo "BACKEND_DEV_VERSION=${{ steps.meta.outputs.version }}" >> "$GITHUB_ENV"
 
       - name: Start compose
-        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
       - name: Sync Database Structures with Prisma
         run: |
@@ -73,7 +74,7 @@ jobs:
           --exit-code
 
       - name: Start Prisma Process
-        run: docker compose exec backend pnpm start:dev
+        run: docker compose exec backend pnpm start:dev -d
 
       - name: Run Test
         run: docker compose exec backend pnpm run test:cov

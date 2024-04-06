@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/sageseekersociety/cheese-backend-dev:dev
+    image: ghcr.io/sageseekersociety/cheese-backend-dev:${BACKEND_DEV_VERSION:-dev}
     env_file: .env
     depends_on:
       database:
