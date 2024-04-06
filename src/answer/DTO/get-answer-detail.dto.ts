@@ -1,8 +1,8 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 import { QuestionDto } from '../../questions/DTO/question.dto';
 import { AnswerDto } from './answer.dto';
 
-export class GetAnswerDetailRespondDto extends BaseRespondDto {
+export class GetAnswerDetailResponseDto extends BaseResponseDto {
   data: {
     question: QuestionDto;
     answer: AnswerDto;

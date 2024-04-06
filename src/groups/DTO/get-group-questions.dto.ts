@@ -1,7 +1,7 @@
-import { PageRespondDto } from '../../common/DTO/page-respond.dto';
+import { PageDto } from '../../common/DTO/page-response.dto';
 import { QuestionDto } from '../../questions/DTO/question.dto';
 
 export class GetGroupQuestionsResultDto {
   questions: QuestionDto[];
-  page: PageRespondDto;
+  page: PageDto;
 }

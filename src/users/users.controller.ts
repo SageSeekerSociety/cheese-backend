@@ -31,7 +31,7 @@ import { AnswerService } from '../answer/answer.service';
 import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import {
@@ -40,22 +40,22 @@ import {
 } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
 import {
-  FollowRespondDto as FollowUserRespondDto,
-  UnfollowRespondDto as UnfollowUserRespondDto,
+  FollowResponseDto,
+  UnfollowResponseDto,
 } from './DTO/follow-unfollow.dto';
-import { GetAnsweredAnswersRespondDto } from './DTO/get-answered-answers.dto';
-import { GetAskedQuestionsRespondDto } from './DTO/get-asked-questions.dto';
-import { GetFollowedQuestionsRespondDto } from './DTO/get-followed-questions.dto';
-import { GetFollowersRespondDto } from './DTO/get-followers.dto';
-import { GetUserRespondDto } from './DTO/get-user.dto';
-import { LoginRequestDto, LoginRespondDto } from './DTO/login.dto';
-import { RefreshTokenRespondDto } from './DTO/refresh-token.dto';
+import { GetAnsweredAnswersResponseDto } from './DTO/get-answered-answers.dto';
+import { GetAskedQuestionsResponseDto } from './DTO/get-asked-questions.dto';
+import { GetFollowedQuestionsResponseDto } from './DTO/get-followed-questions.dto';
+import { GetFollowersResponseDto } from './DTO/get-followers.dto';
+import { GetUserResponseDto } from './DTO/get-user.dto';
+import { LoginRequestDto, LoginResponseDto } from './DTO/login.dto';
+import { RefreshTokenResponseDto } from './DTO/refresh-token.dto';
 import { RegisterRequestDto, RegisterResponseDto } from './DTO/register.dto';
 import {
+  ResetPasswordRequestDto,
   ResetPasswordRequestRequestDto,
-  ResetPasswordRequestRespondDto,
   ResetPasswordVerifyRequestDto,
-  ResetPasswordVerifyRespondDto,
+  ResetPasswordVerifyResponseDto,
 } from './DTO/reset-password.dto';
 import {
   SendEmailVerifyCodeRequestDto,
@@ -63,7 +63,7 @@ import {
 } from './DTO/send-email-verify-code.dto';
 import {
   UpdateUserRequestDto,
-  UpdateUserRespondDto,
+  UpdateUserResponseDto,
 } from './DTO/update-user.dto';
 import { UsersService } from './users.service';
 
@@ -161,7 +161,7 @@ export class UsersController {
     const newRefreshTokenExpire = new Date(
       this.authService.decode(newRefreshToken).validUntil,
     );
-    const data: LoginRespondDto = {
+    const data: LoginResponseDto = {
       code: 201,
       message: 'Login successfully.',
       data: {
@@ -210,7 +210,7 @@ export class UsersController {
       ip,
       userAgent,
     );
-    const data: RefreshTokenRespondDto = {
+    const data: RefreshTokenResponseDto = {
       code: 201,
       message: 'Refresh token successfully.',
       data: {
@@ -232,7 +232,7 @@ export class UsersController {
   @NoTokenValidate()
   async logout(
     @Headers('cookie') cookieHeader: string,
-  ): Promise<BaseRespondDto> {
+  ): Promise<BaseResponseDto> {
     if (cookieHeader == undefined) {
       throw new AuthenticationRequiredError();
     }
@@ -257,7 +257,7 @@ export class UsersController {
     @Body() { email }: ResetPasswordRequestRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<ResetPasswordRequestRespondDto> {
+  ): Promise<ResetPasswordRequestDto> {
     await this.usersService.sendResetPasswordEmail(email, ip, userAgent);
     return {
       code: 201,
@@ -271,7 +271,7 @@ export class UsersController {
     @Body() { token, new_password }: ResetPasswordVerifyRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<ResetPasswordVerifyRespondDto> {
+  ): Promise<ResetPasswordVerifyResponseDto> {
     await this.usersService.verifyAndResetPassword(
       token,
       new_password,
@@ -290,7 +290,7 @@ export class UsersController {
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<GetUserRespondDto> {
+  ): Promise<GetUserResponseDto> {
     let viewerId: number | undefined;
     try {
       viewerId = this.authService.verify(auth).userId;
@@ -317,7 +317,7 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Body() { nickname, intro, avatarId }: UpdateUserRequestDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<UpdateUserRespondDto> {
+  ): Promise<UpdateUserResponseDto> {
     this.authService.audit(
       auth,
       AuthorizedAction.modify,
@@ -336,7 +336,7 @@ export class UsersController {
   async followUser(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<FollowUserRespondDto> {
+  ): Promise<FollowResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -359,7 +359,7 @@ export class UsersController {
   async unfollowUser(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<UnfollowUserRespondDto> {
+  ): Promise<UnfollowResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -381,11 +381,12 @@ export class UsersController {
   @Get('/:id/followers')
   async getFollowers(
     @Param('id', ParseIntPipe) id: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<GetFollowersRespondDto> {
+  ): Promise<GetFollowersResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     let viewerId: number | undefined;
@@ -415,11 +416,12 @@ export class UsersController {
   @Get('/:id/follow/users')
   async getFollowees(
     @Param('id', ParseIntPipe) id: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<GetFollowersRespondDto> {
+  ): Promise<GetFollowersResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     let viewerId: number | undefined;
@@ -449,11 +451,12 @@ export class UsersController {
   @Get('/:id/questions')
   async getUserAskedQuestions(
     @Param('id', ParseIntPipe) userId: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<GetAskedQuestionsRespondDto> {
+  ): Promise<GetAskedQuestionsResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     let viewerId: number | undefined;
@@ -484,11 +487,12 @@ export class UsersController {
   @UseInterceptors(ClassSerializerInterceptor)
   async getUserAnsweredAnswers(
     @Param('id', ParseIntPipe) userId: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<GetAnsweredAnswersRespondDto> {
+  ): Promise<GetAnsweredAnswersResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     let viewerId: number | undefined;
@@ -519,11 +523,12 @@ export class UsersController {
   @Get('/:id/follow/questions')
   async getFollowedQuestions(
     @Param('id', ParseIntPipe) userId: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<GetFollowedQuestionsRespondDto> {
+  ): Promise<GetFollowedQuestionsResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
     let viewerId: number | undefined;

@@ -1,5 +1,5 @@
 import { IsString } from 'class-validator';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
 export class JoinGroupDto {
   @IsString()
@@ -12,6 +12,6 @@ export class JoinGroupResultDto {
   is_waiting: boolean;
 }
 
-export class JoinGroupRespondDto extends BaseRespondDto {
+export class JoinGroupResponseDto extends BaseResponseDto {
   data: JoinGroupResultDto;
 }

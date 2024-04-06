@@ -1,7 +1,7 @@
 import { Material } from '@prisma/client';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
-export class GetMaterialRespondDto extends BaseRespondDto {
+export class GetMaterialResponseDto extends BaseResponseDto {
   data: {
     material: Material;
   };

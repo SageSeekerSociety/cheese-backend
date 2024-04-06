@@ -5,7 +5,7 @@ import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 import { AnswerService } from '../answer/answer.service';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionsService } from '../questions/questions.service';
@@ -150,7 +150,7 @@ export class CommentsService {
     viewerId?: number,
     ip?: string,
     userAgent?: string,
-  ): Promise<[CommentDto[], PageRespondDto]> {
+  ): Promise<[CommentDto[], PageDto]> {
     if (pageStart == undefined) {
       const comments = await this.commentRepository.find({
         where: {

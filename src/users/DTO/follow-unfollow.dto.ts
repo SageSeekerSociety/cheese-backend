@@ -1,12 +1,12 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
-export class FollowRespondDto extends BaseRespondDto {
+export class FollowResponseDto extends BaseResponseDto {
   data: {
     follow_count: number;
   };
 }
 
-export class UnfollowRespondDto extends BaseRespondDto {
+export class UnfollowResponseDto extends BaseResponseDto {
   data: {
     follow_count: number;
   };

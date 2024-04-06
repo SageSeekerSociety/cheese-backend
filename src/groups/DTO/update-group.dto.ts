@@ -1,5 +1,4 @@
 import { IsInt, IsString } from 'class-validator';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
 
 export class UpdateGroupDto {
   @IsString()
@@ -13,5 +12,3 @@ export class UpdateGroupDto {
 
   // todo: add cover
 }
-
-export class UpdateGroupRespondDto extends BaseRespondDto {}
