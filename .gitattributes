@@ -1,1 +1,3 @@
 * text eol=lf
+src/materials/resources/* binary
+src/avatars/resources/* binary

@@ -9,13 +9,9 @@
 
 import { BaseError } from '../common/error/base-error';
 export const BOUNTY_LIMIT = 20;
-export class QuestionIdNotFoundError extends BaseError {
+export class QuestionNotFoundError extends BaseError {
   constructor(id: number) {
-    super(
-      'QuestionIdNotFoundError',
-      `Question with id ${id} is not found.`,
-      404,
-    );
+    super('QuestionNotFoundError', `Question with id ${id} is not found.`, 404);
   }
 }
 
@@ -39,10 +35,10 @@ export class QuestionNotFollowedYetError extends BaseError {
   }
 }
 
-export class QuestionInvitationIdNotFoundError extends BaseError {
+export class QuestionInvitationNotFoundError extends BaseError {
   constructor(id: number) {
     super(
-      'QuestionInvitationIdNotFoundError',
+      'QuestionInvitationNotFoundError',
       `Question invitation with id ${id} is not found.`,
       400,
     );

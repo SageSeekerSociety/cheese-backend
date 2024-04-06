@@ -238,7 +238,7 @@ describe('comments Module', () => {
           content: `${TestCommentPrefix} ${content}`,
         });
 
-      expect(respond.body.message).toMatch(/^CommentableIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^CommentableNotFoundError: /);
       expect(respond.body.code).toBe(404);
       expect(respond.status).toBe(404);
     });

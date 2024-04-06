@@ -14,7 +14,7 @@ import { CommentableType } from '../comments/commentable.enum';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { GroupsService } from '../groups/groups.service';
-import { QuestionIdNotFoundError } from '../questions/questions.error';
+import { QuestionNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
 import { UserIdNotFoundError } from '../users/users.error';
 import { User } from '../users/users.legacy.entity';
@@ -599,7 +599,7 @@ export class AnswerService {
 
   async countQuestionAnswers(questionId: number): Promise<number> {
     if ((await this.questionsService.isQuestionExists(questionId)) == false)
-      throw new QuestionIdNotFoundError(questionId);
+      throw new QuestionNotFoundError(questionId);
     return this.answerRepository.countBy({
       questionId: questionId,
     });
