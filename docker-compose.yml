@@ -10,8 +10,7 @@ services:
       database:
         condition: service_healthy
       es:
-        condition: service_healthy
-    
+        condition: service_healthy  
   database:
     image: postgres:16.2
     env_file: .env
@@ -56,9 +55,8 @@ services:
       interval: 5m
       timeout: 10s
       retries: 20
-    
 
 volumes:
+  cheese_backend_uploads:
   cheese_db_pg:
   cheese_es:
-  cheese_backend_uploads:

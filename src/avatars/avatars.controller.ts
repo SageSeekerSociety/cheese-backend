@@ -114,9 +114,9 @@ export class AvatarsController {
 
   @Get()
   async getAvailableAvatarIds(
-    @Query('type') type: AvatarType = AvatarType.PreDefined,
+    @Query('type') type: AvatarType = AvatarType.predefined,
   ) {
-    if (type == AvatarType.PreDefined) {
+    if (type == AvatarType.predefined) {
       const avatarIds = await this.avatarsService.getPreDefinedAvatarIds();
       return {
         code: 200,

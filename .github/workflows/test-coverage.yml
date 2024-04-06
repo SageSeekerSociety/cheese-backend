@@ -33,6 +33,7 @@ jobs:
       TYPEORM_DB_CONNECT_TIMEOUT: 60000
       TYPEORM_DB_LOGGING_ALL: false
       TYPEORM_DB_LOGGING_ERROR: true
+      DEFAULT_AVATAR_NAME: default.jpg
       FILE_UPLOAD_PATH: /home/runner/work/cheese-backend
       ELASTICSEARCH_NODE: http://127.0.0.1:9200/
       ELASTICSEARCH_MAX_RETRIES: 10
