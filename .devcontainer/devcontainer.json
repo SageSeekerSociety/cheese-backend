@@ -2,5 +2,15 @@
   "dockerComposeFile": ["../docker-compose.yml", "../docker-compose.dev.yml"],
   "service": "backend",
   "workspaceFolder": "/app",
-  "shutdownAction": "stopCompose"
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ajmnz.prisma-import",
+        "donjayamanne.git-extension-pack",
+        "ms-vscode.vscode-typescript-next",
+        "AndrewButson.vscode-openapi-viewer"
+      ]
+    }
+  }
 }
