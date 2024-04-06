@@ -30,7 +30,8 @@ describe('Groups Module', () => {
   let auxAdminAccessToken: string;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let auxAdminUserDto: any;
-
+  let PreAvatarId: number;
+  let UpdateAvatarId: number;
   const GroupIds: number[] = [];
   const TestGroupPrefix = `G${Math.floor(Math.random() * 1000000)}`;
 
@@ -84,6 +85,20 @@ describe('Groups Module', () => {
   });
 
   describe('preparation', () => {
+    it('should upload two avatars for creating and updating', async () => {
+      async function uploadAvatar() {
+        const respond = await request(app.getHttpServer())
+          .post('/avatars')
+          //.set('Authorization', `Bearer ${TestToken}`)
+          .attach('avatar', 'src/avatars/resources/default.jpg');
+        expect(respond.status).toBe(201);
+        expect(respond.body.message).toBe('Upload avatar successfully');
+        expect(respond.body.data).toHaveProperty('avatarid');
+        return respond.body.data.avatarid;
+      }
+      PreAvatarId = await uploadAvatar();
+      UpdateAvatarId = await uploadAvatar();
+    });
     it(`should send an email and register a user ${TestUsername}`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
@@ -124,19 +139,20 @@ describe('Groups Module', () => {
       expect(respond.body.data.user.id).toBeDefined();
       TestUserDto = respond.body.data.user;
     });
+
     it('should create some groups', async () => {
-      async function createGroup(name: string, intro: string, avatar: string) {
+      async function createGroup(name: string, intro: string) {
         const respond = await request(app.getHttpServer())
           .post('/groups')
           .set('Authorization', `Bearer ${TestToken}`)
-          .send({ name: TestGroupPrefix + name, intro, avatar });
+          .send({ name: TestGroupPrefix + name, intro, avatarId: PreAvatarId });
         expect(respond.body.message).toBe('Group created successfully');
         expect(respond.body.code).toBe(201);
         expect(respond.status).toBe(201);
         const groupDto = respond.body.data.group;
         expect(groupDto.id).toBeTruthy();
         expect(groupDto.name).toContain(name);
-        expect(groupDto.avatar).toBe(avatar);
+        expect(groupDto.avatarId).toBe(PreAvatarId);
         expect(groupDto.owner).toStrictEqual(TestUserDto);
         expect(groupDto.created_at).toBeDefined();
         expect(groupDto.updated_at).toBeDefined();
@@ -149,10 +165,10 @@ describe('Groups Module', () => {
         expect(groupDto.intro).toBe(intro);
         GroupIds.push(groupDto.id);
       }
-      await createGroup('数学之神膜膜喵', '不如原神', '🥸');
-      await createGroup('ICS膜膜膜', 'pwb txdy!', '🐂');
-      await createGroup('嘉然今天学什么', '学, 学个屁!', '🤡');
-      await createGroup('XCPC启动', '启不动了', '🐱');
+      await createGroup('数学之神膜膜喵', '不如原神');
+      await createGroup('ICS膜膜膜', 'pwb txdy!');
+      await createGroup('嘉然今天学什么', '学, 学个屁!');
+      await createGroup('XCPC启动', '启不动了');
     }, 80000);
     it('should create some auxiliary users', async () => {
       [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
@@ -370,7 +386,7 @@ describe('Groups Module', () => {
       expect(groupDto.id).toBe(TestGroupId);
       expect(groupDto.name).toContain('数学之神膜膜喵');
       expect(groupDto.intro).toBe('不如原神');
-      expect(groupDto.avatar).toBe('🥸');
+      expect(groupDto.avatarId).toBe(PreAvatarId);
       expect(groupDto.owner).toStrictEqual(TestUserDto);
       expect(groupDto.created_at).toBeDefined();
       expect(groupDto.updated_at).toBeDefined();
@@ -394,7 +410,7 @@ describe('Groups Module', () => {
       expect(groupDto.id).toBe(TestGroupId);
       expect(groupDto.name).toContain('数学之神膜膜喵');
       expect(groupDto.intro).toBe('不如原神');
-      expect(groupDto.avatar).toBe('🥸');
+      expect(groupDto.avatarId).toBe(PreAvatarId);
       expect(groupDto.owner).toStrictEqual(TestUserDto);
       expect(groupDto.created_at).toBeDefined();
       expect(groupDto.updated_at).toBeDefined();
@@ -405,12 +421,12 @@ describe('Groups Module', () => {
       expect(groupDto.is_owner).toBe(false);
     });
 
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/groups/0`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
@@ -443,7 +459,7 @@ describe('Groups Module', () => {
       expect(groupDto.id).toBe(TestGroupId);
       expect(groupDto.name).toContain('数学之神膜膜喵');
       expect(groupDto.intro).toBe('不如原神');
-      expect(groupDto.avatar).toBe('🥸');
+      expect(groupDto.avatarId).toBe(PreAvatarId);
       expect(groupDto.owner).toStrictEqual(TestUserDto);
       expect(groupDto.created_at).toBeDefined();
       expect(groupDto.updated_at).toBeDefined();
@@ -453,12 +469,12 @@ describe('Groups Module', () => {
       expect(groupDto.is_member).toBe(true);
       expect(groupDto.is_owner).toBe(false);
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .post(`/groups/0/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send({ intro: '我是初音未来' });
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
@@ -483,7 +499,7 @@ describe('Groups Module', () => {
         .send({
           name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
-          avatar: '🤣',
+          avatarId: UpdateAvatarId,
         });
       expect(respond.body.message).toBe('Group updated successfully.');
       expect(respond.status).toBe(200);
@@ -502,7 +518,7 @@ describe('Groups Module', () => {
       expect(groupDto.id).toBe(TestGroupId);
       expect(groupDto.name).toContain('关注幻城谢谢喵');
       expect(groupDto.intro).toBe('湾原审万德');
-      expect(groupDto.avatar).toBe('🤣');
+      expect(groupDto.avatarId).toBe(UpdateAvatarId);
       expect(groupDto.owner).toStrictEqual(TestUserDto);
       expect(groupDto.created_at).toBeDefined();
       expect(groupDto.updated_at).toBeDefined();
@@ -512,18 +528,18 @@ describe('Groups Module', () => {
       expect(groupDto.is_member).toBe(true);
       expect(groupDto.is_owner).toBe(false);
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .put('/groups/0')
         .set('Authorization', `Bearer ${TestToken}`)
         .send({
           name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
-          avatar: '🤣',
+          avatarId: UpdateAvatarId,
         });
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
     });
     it('should return GroupNameAlreadyUsedError when group name is already used', async () => {
       const TestGroupId = GroupIds[0];
@@ -533,7 +549,7 @@ describe('Groups Module', () => {
         .send({
           name: TestGroupPrefix + 'ICS膜膜膜',
           intro: '湾原审万德',
-          avatar: '🤣',
+          avatarId: UpdateAvatarId,
         });
       expect(respond.body.message).toMatch(/^GroupNameAlreadyUsedError: /);
       expect(respond.status).toBe(409);
@@ -548,7 +564,7 @@ describe('Groups Module', () => {
         .send({
           name: TestGroupPrefix + '关注幻城谢谢喵',
           intro: '湾原审万德',
-          avatar: '🤣',
+          avatarId: UpdateAvatarId,
         });
       expect(respond.body.message).toMatch(/^CannotDeleteGroupError: /);
       expect(respond.status).toBe(403);
@@ -580,7 +596,7 @@ describe('Groups Module', () => {
       expect(groupDto.id).toBe(TestGroupId);
       expect(groupDto.name).toContain('关注幻城谢谢喵');
       expect(groupDto.intro).toBe('湾原审万德');
-      expect(groupDto.avatar).toBe('🤣');
+      expect(groupDto.avatarId).toBe(UpdateAvatarId);
       expect(groupDto.owner).toStrictEqual(TestUserDto);
       expect(groupDto.created_at).toBeDefined();
       expect(groupDto.updated_at).toBeDefined();
@@ -590,12 +606,12 @@ describe('Groups Module', () => {
       expect(groupDto.is_member).toBe(false);
       expect(groupDto.is_owner).toBe(false);
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .delete(`/groups/0/members`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     }, 10000);
@@ -619,26 +635,24 @@ describe('Groups Module', () => {
         .delete(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toBe('No Content.');
       expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
     });
-    it('should return GroupIdNotFoundError after deletion', async () => {
+    it('should return GroupNotFoundError after deletion', async () => {
       const TestGroupId = GroupIds[3];
       const respond = await request(app.getHttpServer())
         .get(`/groups/${TestGroupId}`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .delete(`/groups/0`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
@@ -730,12 +744,12 @@ describe('Groups Module', () => {
       expect(respond.body.data.page.has_more).toBe(false);
       expect(respond.body.data.page.next_start).toBeFalsy();
     });
-    it('should return GroupIdNotFoundError when group is not found', async () => {
+    it('should return GroupNotFoundError when group is not found', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/groups/0/members`)
         .set('Authorization', `Bearer ${TestToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^GroupIdNotFoundError: /);
+      expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });

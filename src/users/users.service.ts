@@ -7,11 +7,12 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AnswerService } from '../answer/answer.service';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
   AuthService,
@@ -19,12 +20,14 @@ import {
   AuthorizedAction,
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
+import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { Question } from '../questions/questions.legacy.entity';
+import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
 import { EmailService } from './email.service';
+import { UsersPermissionService } from './users-permission.service';
 import {
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
@@ -55,7 +58,6 @@ import {
   UserResetPasswordLog,
   UserResetPasswordLogType,
 } from './users.legacy.entity';
-import { Answer } from '../answer/answer.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -63,6 +65,12 @@ export class UsersService {
     private readonly emailService: EmailService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly usersPermissionService: UsersPermissionService,
+    private readonly avatarsService: AvatarsService,
+    @Inject(forwardRef(() => AnswerService))
+    private readonly answerService: AnswerService,
+    @Inject(forwardRef(() => QuestionsService))
+    private readonly questionsService: QuestionsService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(UserProfile)
@@ -80,10 +88,6 @@ export class UsersService {
     @InjectRepository(UserResetPasswordLog)
     private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
     private readonly prismaService: PrismaService,
-    @InjectRepository(Question)
-    private readonly questionRepository: Repository<Question>,
-    @InjectRepository(Answer)
-    private readonly answerRepository: Repository<Answer>,
   ) {}
 
   private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
@@ -217,10 +221,6 @@ export class UsersService {
     );
   }
 
-  get defaultAvatar(): string {
-    return 'default.jpg';
-  }
-
   get defaultIntro(): string {
     return 'This user has not set an introduction yet.';
   }
@@ -300,7 +300,6 @@ export class UsersService {
               `4. We are under attack!`,
           );
         }
-
         // Verify whether the username is registered.
         if ((await this.userRepository.findOneBy({ username })) != undefined) {
           const log = this.userRegisterLogRepository.create({
@@ -323,11 +322,12 @@ export class UsersService {
           email: email,
         });
         await this.userRepository.save(user);
+        const avatarId = await this.avatarsService.getDefaultAvatarId();
         const profile = this.userProfileRepository.create({
           user: user,
           nickname: nickname,
-          avatar: this.defaultAvatar,
           intro: this.defaultIntro,
+          avatarId,
         });
         await this.userProfileRepository.save(profile);
         const log = this.userRegisterLogRepository.create({
@@ -342,7 +342,7 @@ export class UsersService {
           id: user.id,
           username: user.username,
           nickname: profile.nickname,
-          avatar: profile.avatar,
+          avatarId: profile.avatarId,
           intro: profile.intro,
           follow_count: 0,
           fans_count: 0,
@@ -380,7 +380,7 @@ export class UsersService {
     if (profile == undefined) {
       throw new Error(`User '${user.username}' DO NOT has a profile!`);
     }
-    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
+    if (viewerId != undefined && ip != undefined && userAgent != undefined) {
       const log = this.userProfileQueryLogRepository.create({
         viewerId: viewerId,
         vieweeId: userId,
@@ -389,17 +389,30 @@ export class UsersService {
       });
       await this.userProfileQueryLogRepository.save(log);
     }
+    const followCountPromise = this.getFollowingCount(userId);
+    const fansCountPromise = this.getFollowedCount(userId);
+    const ifFollowPromise = this.isUserFollowUser(viewerId, userId);
+    const answerCountPromise = this.answerService.getAnswerCount(userId);
+    const questionCountPromise = this.questionsService.getQuestionCount(userId);
+    const [followCount, fansCount, isFollow, answerCount, questionCount] =
+      await Promise.all([
+        followCountPromise,
+        fansCountPromise,
+        ifFollowPromise,
+        answerCountPromise,
+        questionCountPromise,
+      ]);
     return {
       id: user.id,
       username: user.username,
       nickname: profile.nickname,
-      avatar: profile.avatar,
+      avatarId: profile.avatarId,
       intro: profile.intro,
-      follow_count: await this.getFollowingCount(userId),
-      fans_count: await this.getFollowedCount(userId),
-      question_count: await this.getQuestionCount(userId),
-      answer_count: await this.getAnswerCount(userId),
-      is_follow: await this.isUserFollowUser(viewerId, userId),
+      follow_count: followCount,
+      fans_count: fansCount,
+      is_follow: isFollow,
+      question_count: questionCount,
+      answer_count: answerCount,
     };
   }
 
@@ -439,86 +452,9 @@ export class UsersService {
     ];
   }
 
-  private createSession(userId: number): Promise<string> {
-    const authorization: Authorization = {
-      userId: userId,
-      permissions: [
-        {
-          authorizedActions: [AuthorizedAction.query],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: undefined,
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.modify],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['users/profile'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['users/following'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can control the questions he/she created.
-          authorizedActions: [
-            AuthorizedAction.create,
-            AuthorizedAction.delete,
-            AuthorizedAction.modify,
-            AuthorizedAction.query,
-            AuthorizedAction.other,
-          ],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions/following'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // Everyone can create a topic.
-          authorizedActions: [AuthorizedAction.create],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['topics'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can create and delete comment.
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['comment'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can set attitude to any comment
-          authorizedActions: [AuthorizedAction.other],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['comment/attitude'],
-            resourceIds: undefined,
-          },
-        },
-      ],
-    };
+  private async createSession(userId: number): Promise<string> {
+    const authorization: Authorization =
+      await this.usersPermissionService.getAuthorizationForUser(userId);
     return this.sessionService.createSession(userId, authorization);
   }
 
@@ -663,15 +599,19 @@ export class UsersService {
   async updateUserProfile(
     userId: number,
     nickname: string,
-    avatar: string,
     intro: string,
+    avatar: number,
   ): Promise<void> {
     const profile = await this.userProfileRepository.findOneBy({ userId });
     if (profile == undefined) {
       throw new UserIdNotFoundError(userId);
     }
+    const avatarId = (await this.avatarsService.getOne(avatar)).id;
+    const preAvatarId = profile.avatarId;
+    await this.avatarsService.plusUsageCount(avatarId);
+    await this.avatarsService.minusUsageCount(preAvatarId);
+    profile.avatarId = avatarId;
     profile.nickname = nickname;
-    profile.avatar = avatar;
     profile.intro = intro;
     await this.userProfileRepository.save(profile);
   }
@@ -722,7 +662,7 @@ export class UsersService {
 
   async getFollowers(
     followeeId: number,
-    firstFollowerId: number, // undefined if from start
+    firstFollowerId: number | undefined, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
@@ -775,7 +715,7 @@ export class UsersService {
 
   async getFollowees(
     followerId: number,
-    firstFolloweeId: number, // undefined if from start
+    firstFolloweeId: number | undefined, // undefined if from start
     pageSize: number,
     viewerId?: number, // optional
     ip?: string, // optional
@@ -830,24 +770,12 @@ export class UsersService {
     return (await this.prismaService.user.count({ where: { id: userId } })) > 0;
   }
 
-  async getFollowingCount(followerId: number | undefined): Promise<number> {
-    if (followerId == undefined) return 0;
+  async getFollowingCount(followerId: number): Promise<number> {
     return await this.userFollowingRepository.countBy({ followerId });
   }
 
-  async getFollowedCount(followeeId: number | undefined): Promise<number> {
-    if (followeeId == undefined) return 0;
+  async getFollowedCount(followeeId: number): Promise<number> {
     return await this.userFollowingRepository.countBy({ followeeId });
-  }
-
-  async getQuestionCount(userId: number | undefined): Promise<number> {
-    if (userId == undefined) return 0;
-    return await this.questionRepository.countBy({ createdById: userId });
-  }
-
-  async getAnswerCount(userId: number | undefined): Promise<number> {
-    if (userId == undefined) return 0;
-    return await this.answerRepository.countBy({ createdById: userId });
   }
 
   async isUserFollowUser(

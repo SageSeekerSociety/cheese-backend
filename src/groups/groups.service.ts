@@ -7,12 +7,15 @@
  *
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { AnswerService } from '../answer/answer.service';
+import { AvatarNotFoundError } from '../avatars/avatars.error';
+import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
-import { QuestionIdNotFoundError } from '../questions/questions.error';
+import { QuestionNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
@@ -24,9 +27,10 @@ import { GroupProfile } from './group-profile.entity';
 import {
   CannotDeleteGroupError,
   GroupAlreadyJoinedError,
-  GroupIdNotFoundError,
   GroupNameAlreadyUsedError,
+  GroupNotFoundError,
   GroupNotJoinedError,
+  GroupProfileNotFoundError,
   InvalidGroupNameError,
 } from './groups.error';
 import {
@@ -46,7 +50,11 @@ export enum GroupQueryType {
 export class GroupsService {
   constructor(
     private usersService: UsersService,
+    @Inject(forwardRef(() => QuestionsService))
     private questionsService: QuestionsService,
+    @Inject(forwardRef(() => AnswerService))
+    private answerService: AnswerService,
+    private avatarsService: AvatarsService,
     @InjectRepository(Group)
     private groupsRepository: Repository<Group>,
     @InjectRepository(GroupProfile)
@@ -71,7 +79,7 @@ export class GroupsService {
     name: string,
     userId: number,
     intro: string,
-    avatar: string,
+    avatar: number,
   ): Promise<GroupDto> {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
@@ -80,14 +88,16 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
-
+    if ((await this.avatarsService.getOne(avatar)) == undefined) {
+      throw new AvatarNotFoundError(avatar);
+    }
     const group = this.groupsRepository.create({ name });
     await this.groupsRepository.save(group);
-
+    await this.avatarsService.plusUsageCount(avatar);
     const groupProfile = this.groupProfilesRepository.create({
       groupId: group.id,
       intro,
-      avatar,
+      avatarId: avatar,
     });
     await this.groupProfilesRepository.save(groupProfile);
 
@@ -104,7 +114,7 @@ export class GroupsService {
       id: group.id,
       name: group.name,
       intro: groupProfile.intro,
-      avatar: groupProfile.avatar,
+      avatarId: groupProfile.avatarId,
       owner: userDto,
       created_at: group.createdAt.getTime(),
       updated_at: group.updatedAt.getTime(),
@@ -162,7 +172,7 @@ export class GroupsService {
         id: page_start_id,
       });
       if (!referenceGroup) {
-        throw new GroupIdNotFoundError(page_start_id);
+        throw new GroupNotFoundError(page_start_id);
       }
 
       let referenceValue;
@@ -252,7 +262,7 @@ export class GroupsService {
       relations: ['profile'],
     });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     const ownership = await this.groupMembershipsRepository.findOneBy({
@@ -272,10 +282,8 @@ export class GroupsService {
       groupId,
     });
     const question_count = questions.length;
-    const getQuestionAnswerCount = async (questionId: number) =>
-      (await this.questionsService.getQuestionDto(questionId)).answer_count;
     const answer_count_promises = questions.map((question) =>
-      getQuestionAnswerCount(question.id),
+      this.answerService.countQuestionAnswers(question.id),
     );
     const answer_count = (await Promise.all(answer_count_promises)).reduce(
       (a, b) => a + b,
@@ -294,7 +302,7 @@ export class GroupsService {
       id: group.id,
       name: group.name,
       intro: group.profile.intro,
-      avatar: group.profile.avatar,
+      avatarId: group.profile.avatarId,
       owner: ownerDto,
       created_at: group.createdAt.getTime(),
       updated_at: group.updatedAt.getTime(),
@@ -306,20 +314,24 @@ export class GroupsService {
       is_public: true, // todo: implement
     };
   }
-
+  async getGroupProfile(groupId: number): Promise<GroupProfile> {
+    const profile = await this.groupProfilesRepository.findOneBy({ groupId });
+    if (profile == undefined) throw new GroupProfileNotFoundError(groupId);
+    return profile;
+  }
   async updateGroup(
     userId: number,
     groupId: number,
     name: string,
     intro: string,
-    avatar: string,
+    avatar: number,
   ): Promise<void> {
     const group = await this.groupsRepository.findOne({
       where: { id: groupId },
       relations: ['profile'],
     });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     const userMembership = await this.groupMembershipsRepository.findOneBy({
@@ -338,9 +350,13 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
+    const avatarId = (await this.avatarsService.getOne(avatar)).id;
+    const preAvatarId = group.profile.avatarId;
+    await this.avatarsService.plusUsageCount(avatarId);
+    await this.avatarsService.minusUsageCount(preAvatarId);
+    group.profile.avatarId = avatarId;
     group.name = name;
     group.profile.intro = intro;
-    group.profile.avatar = avatar;
     await this.groupsRepository.save(group);
     await this.groupProfilesRepository.save(group.profile);
   }
@@ -351,7 +367,7 @@ export class GroupsService {
       relations: ['profile'],
     });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     const owner = await this.groupMembershipsRepository.findOneBy({
@@ -376,7 +392,7 @@ export class GroupsService {
   ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     if (
@@ -405,7 +421,7 @@ export class GroupsService {
   async quitGroup(userId: number, groupId: number): Promise<number> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     const membership = await this.groupMembershipsRepository.findOneBy({
@@ -433,7 +449,7 @@ export class GroupsService {
     page_size: number,
   ): Promise<[UserDto[], PageRespondDto]> {
     if ((await this.groupsRepository.findOneBy({ id: groupId })) == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     if (!firstMemberId) {
@@ -503,7 +519,7 @@ export class GroupsService {
           questionId: page_start_id,
         });
       if (!referenceRelationship) {
-        throw new QuestionIdNotFoundError(page_start_id);
+        throw new QuestionNotFoundError(page_start_id);
       }
       const referenceValue = referenceRelationship.createdAt;
       const prev = await this.groupQuestionRelationshipsRepository

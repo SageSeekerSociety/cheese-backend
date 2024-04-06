@@ -14,18 +14,17 @@ import {
   Get,
   Headers,
   Param,
-  ParseEnumPipe,
   ParseIntPipe,
   Post,
   Put,
   Query,
   UseFilters,
-  UsePipes,
-  ValidationPipe,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { GroupPageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateGroupDto } from './DTO/create-group.dto';
 import { GetGroupsRespondDto } from './DTO/get-groups.dto';
 import { GetGroupMembersRespondDto } from './DTO/get-members.dto';
@@ -34,11 +33,11 @@ import { GroupRespondDto } from './DTO/group.dto';
 import { JoinGroupDto, JoinGroupRespondDto } from './DTO/join-group.dto';
 import { QuitGroupRespondDto } from './DTO/quit-group.dto';
 import { UpdateGroupDto, UpdateGroupRespondDto } from './DTO/update-group.dto';
-import { GroupQueryType, GroupsService } from './groups.service';
+import { GroupsService } from './groups.service';
 
 @Controller('/groups')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class GroupsController {
   constructor(
     private readonly authService: AuthService,
@@ -47,15 +46,15 @@ export class GroupsController {
 
   @Post('/')
   async createGroup(
-    @Body() req: CreateGroupDto,
+    @Body() { name, intro, avatarId }: CreateGroupDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<GroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const group = await this.groupsService.createGroup(
-      req.name,
+      name,
       userId,
-      req.intro,
-      req.avatar,
+      intro,
+      avatarId,
     );
     return {
       code: 201,
@@ -66,14 +65,8 @@ export class GroupsController {
 
   @Get('/')
   async getGroups(
+    @Query() { q: key, page_start, page_size, type }: GroupPageDto,
     @Headers('Authorization') auth: string | undefined,
-    @Query('q') key?: string,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    page_start?: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    page_size: number = 20,
-    @Query('type', new ParseEnumPipe(GroupQueryType, { optional: true }))
-    type: GroupQueryType = GroupQueryType.Recommend,
   ): Promise<GetGroupsRespondDto> {
     let userId: number | undefined;
     try {
@@ -84,7 +77,7 @@ export class GroupsController {
     const [groups, page] = await this.groupsService.getGroups(
       userId,
       key,
-      page_start ?? undefined,
+      page_start,
       page_size,
       type,
     );
@@ -124,7 +117,7 @@ export class GroupsController {
       id,
       req.name,
       req.intro,
-      req.avatar,
+      req.avatarId,
     );
     return {
       code: 200,
@@ -134,24 +127,17 @@ export class GroupsController {
 
   @Delete('/:id')
   async deleteGroup(
-    @Headers('Authorization') auth: string | undefined,
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<BaseRespondDto> {
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<void> {
     const userId = this.authService.verify(auth).userId;
     await this.groupsService.deleteGroup(userId, id);
-    return {
-      code: 200,
-      message: 'No Content.',
-    };
   }
 
   @Get('/:id/members')
   async getGroupMembers(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    page_start?: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    page_size: number = 20,
+    @Query() { page_start, page_size }: GroupPageDto,
   ): Promise<GetGroupMembersRespondDto> {
     const [members, page] = await this.groupsService.getGroupMembers(
       id,
@@ -171,14 +157,14 @@ export class GroupsController {
   @Post('/:id/members')
   async joinGroup(
     @Param('id', ParseIntPipe) groupId: number,
+    @Body() { intro }: JoinGroupDto,
     @Headers('Authorization') auth: string | undefined,
-    @Body() joinGroupDto: JoinGroupDto,
   ): Promise<JoinGroupRespondDto> {
     const userId = this.authService.verify(auth).userId;
     const joinResult = await this.groupsService.joinGroup(
       userId,
       groupId,
-      joinGroupDto.intro,
+      intro,
     );
     return {
       code: 201,
@@ -204,10 +190,7 @@ export class GroupsController {
   @Get('/:id/questions')
   async getGroupQuestions(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    page_start?: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    page_size: number = 20,
+    @Query() { page_start, page_size }: GroupPageDto,
   ): Promise<GetGroupQuestionsRespondDto> {
     const getGroupQuestionsResult = await this.groupsService.getGroupQuestions(
       id,

@@ -18,19 +18,20 @@ import {
   Post,
   Query,
   UseFilters,
-  UsePipes,
-  ValidationPipe,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { PageWithKeywordDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { AddTopicRequestDto, AddTopicResponseDto } from './DTO/add-topic.dto';
+import { GetTopicResponseDto } from './DTO/get-topic.dto';
 import { SearchTopicResponseDto } from './DTO/search-topic.dto';
 import { TopicsService } from './topics.service';
-import { GetTopicResponseDto } from './DTO/get-topic.dto';
 
 @Controller('/topics')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+@UseFilters(BaseErrorExceptionFilter)
+@UseInterceptors(TokenValidateInterceptor)
 export class TopicsController {
   constructor(
     private readonly topicsService: TopicsService,
@@ -39,17 +40,12 @@ export class TopicsController {
 
   @Get('/')
   async searchTopics(
-    @Query('q') q: string,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number,
+    @Query()
+    { q, page_start: pageStart, page_size: pageSize }: PageWithKeywordDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchTopicResponseDto> {
-    if (pageSize == undefined || pageSize == 0) pageSize = 20;
-    if (q == undefined) q = '';
     // try get viewer id
     let searcherId: number | undefined;
     try {
@@ -77,7 +73,7 @@ export class TopicsController {
 
   @Post('/')
   async addTopic(
-    @Body() request: AddTopicRequestDto,
+    @Body() { name }: AddTopicRequestDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<AddTopicResponseDto> {
     const userId = this.authService.verify(auth).userId;
@@ -88,7 +84,7 @@ export class TopicsController {
       'topics',
       undefined,
     );
-    const topic = await this.topicsService.addTopic(request.name, userId);
+    const topic = await this.topicsService.addTopic(name, userId);
     return {
       code: 201,
       message: 'OK',
@@ -100,7 +96,7 @@ export class TopicsController {
 
   @Get('/:id')
   async getTopic(
-    @Param('id', new ParseIntPipe()) id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,

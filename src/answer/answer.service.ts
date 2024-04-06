@@ -1,13 +1,31 @@
-import { Injectable } from '@nestjs/common';
+//
+//  In this file, in the parameters of all methods except those whose name is ended with 'AcrossQuestions'
+//  an answer id should always be after a question id, which can be used as the sharding key in the future.
+//
+
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { AttitudableType, AttitudeType } from '@prisma/client';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
-//mport { AnswerModule } from './answer.module';
+import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
+import { AttitudeService } from '../attitude/attitude.service';
+import { CommentsService } from '../comments/comment.service';
+import { CommentableType } from '../comments/commentable.enum';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { GroupsService } from '../groups/groups.service';
+import { QuestionNotFoundError } from '../questions/questions.error';
+import { QuestionsService } from '../questions/questions.service';
 import { UserIdNotFoundError } from '../users/users.error';
 import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { AnswerDto } from './DTO/answer.dto';
+import {
+  AlreadyHasSameAttitudeError,
+  AnswerNotFavoriteError,
+  AnswerNotFoundError,
+  QuestionAlreadyAnsweredError,
+} from './answer.error';
 import {
   Answer,
   AnswerAttitudeAgree,
@@ -17,21 +35,23 @@ import {
   AnswerUpdateLog,
   AnswerUserAttitude,
 } from './answer.legacy.entity';
-import {
-  AlreadyHasSameAttitudeError,
-  AnswerNotFavoriteError,
-  AnswerNotFoundError,
-} from './answer.error';
 
 @Injectable()
 export class AnswerService {
   constructor(
-    private usersService: UsersService,
-    //private questionsService: QuestionsService,
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
+    @Inject(forwardRef(() => QuestionsService))
+    private readonly questionsService: QuestionsService,
+    @Inject(forwardRef(() => CommentsService))
+    private readonly commentsService: CommentsService,
+    @Inject(forwardRef(() => GroupsService))
+    private readonly groupsService: GroupsService,
+    private readonly attitudeService: AttitudeService,
     @InjectRepository(Answer)
-    private answerRepository: Repository<Answer>,
+    private readonly answerRepository: Repository<Answer>,
     @InjectRepository(AnswerUserAttitude)
-    private userAttitudeRepository: Repository<AnswerUserAttitude>,
+    private readonly userAttitudeRepository: Repository<AnswerUserAttitude>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(AnswerQueryLog)
@@ -44,12 +64,24 @@ export class AnswerService {
 
   async createAnswer(
     questionId: number,
-    userId: number,
+    createdById: number,
     content: string,
   ): Promise<number> {
+    const existingAnswerId = await this.getAnswerIdOfCreatedBy(
+      questionId,
+      createdById,
+    );
+    if (existingAnswerId != null) {
+      throw new QuestionAlreadyAnsweredError(
+        createdById,
+        questionId,
+        existingAnswerId,
+      );
+    }
+
     const answer = this.answerRepository.create({
       questionId,
-      createdById: userId,
+      createdById,
       content,
     });
     const createdAnswer = await this.answerRepository.save(answer);
@@ -57,22 +89,28 @@ export class AnswerService {
   }
 
   async getQuestionAnswers(
-    questionId: number | undefined,
+    questionId: number,
     pageStart: number | undefined,
     pageSize: number,
     viewerId?: number,
-    userAgent?: string,
     ip?: string,
+    userAgent?: string,
   ): Promise<[AnswerDto[], PageRespondDto]> {
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
         where: { questionId },
-        order: { createdAt: 'ASC' },
+        order: { id: 'ASC' },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
+          return this.getAnswerDto(
+            questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
         }),
       );
       return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
@@ -84,22 +122,28 @@ export class AnswerService {
       const prevPage = await this.answerRepository.find({
         where: {
           questionId,
-          createdAt: LessThan(start.createdAt),
+          id: LessThan(pageStart),
         },
-        order: { createdAt: 'DESC' },
+        order: { id: 'DESC' },
         take: pageSize,
       });
       const currPage = await this.answerRepository.find({
         where: {
           questionId,
-          createdAt: MoreThanOrEqual(start.createdAt),
+          id: MoreThanOrEqual(pageStart),
         },
-        order: { createdAt: 'ASC' },
+        order: { id: 'ASC' },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
         currPage.map(async (entity) => {
-          return this.getAnswerDto(entity.id, viewerId, userAgent, ip);
+          return this.getAnswerDto(
+            questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
         }),
       );
       return PageHelper.PageMiddle(
@@ -112,13 +156,85 @@ export class AnswerService {
     }
   }
 
-  async getViewCountOfAnswer(answerId: number): Promise<number> {
+  async getUserAnsweredAnswersAcrossQuestions(
+    userId: number,
+    pageStart: number | undefined,
+    pageSize: number,
+    viewerId?: number,
+    ip?: string,
+    userAgent?: string,
+  ): Promise<[AnswerDto[], PageRespondDto]> {
+    if ((await this.usersService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
+    if (!pageStart) {
+      const currPage = await this.answerRepository.find({
+        where: { createdById: userId },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
+    } else {
+      const prevPage = await this.answerRepository.find({
+        where: {
+          createdById: userId,
+          id: LessThan(pageStart),
+        },
+        order: { id: 'DESC' },
+        take: pageSize,
+      });
+      const currPage = await this.answerRepository.find({
+        where: {
+          createdById: userId,
+          id: MoreThanOrEqual(pageStart),
+        },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageMiddle(
+        prevPage,
+        currDto,
+        pageSize,
+        (answer) => answer.id,
+        (answer) => answer.id,
+      );
+    }
+  }
+
+  // questionId is reserved for sharding
+  async getViewCountOfAnswer(
+    questionId: number,
+    answerId: number,
+  ): Promise<number> {
     return await this.answerQueryLogRepository.count({
       where: { answerId },
     });
   }
 
+  // questionId is reserved for sharding
   async getAgreeType(
+    questionId: number,
     answerId: number,
     userId: number | undefined,
   ): Promise<number> {
@@ -133,11 +249,13 @@ export class AnswerService {
     }
   }
 
+  // questionId is reserved for sharding
   async isFavorite(
+    questionId: number,
     answerId: number,
-    userId: number | undefined,
+    createdById: number | undefined,
   ): Promise<boolean> {
-    if (userId == undefined) return false;
+    if (createdById == undefined) return false;
     const answer = await this.answerRepository.findOne({
       where: { id: answerId },
       relations: ['favoritedBy'],
@@ -145,35 +263,72 @@ export class AnswerService {
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
-    return answer.favoritedBy.some((user) => user.id === userId);
+    return answer.favoritedBy.some((user) => user.id === createdById);
   }
 
   async getAnswerDto(
+    questionId: number,
     answerId: number,
     viewerId?: number,
-    userAgent?: string,
     ip?: string,
+    userAgent?: string,
   ): Promise<AnswerDto> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: {
+        questionId,
+        id: answerId,
+      },
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
-    const authorDto = await this.usersService.getUserDtoById(
+
+    const authorDtoPromise = this.usersService.getUserDtoById(
       answer.createdById,
       viewerId,
       ip,
       userAgent,
     );
-
-    const log = this.answerQueryLogRepository.create({
+    const attitudeStatusDtoPromise = this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.ANSWER,
       answerId,
       viewerId,
-      userAgent,
-      ip,
-    });
-    await this.answerQueryLogRepository.save(log);
+    );
+    const viewCountPromise = this.getViewCountOfAnswer(questionId, answerId);
+    const commentCountPromise = this.commentsService.countCommentsByCommentable(
+      CommentableType.ANSWER,
+      answerId,
+    );
+    const isFavoritePromise = this.isFavorite(questionId, answerId, viewerId);
+    const groupDtoPromise =
+      answer.groupId == undefined
+        ? Promise.resolve(undefined)
+        : this.groupsService.getGroupDtoById(viewerId, answer.groupId);
+
+    const [
+      authorDto,
+      attitudeStatusDto,
+      viewCount,
+      commentCount,
+      isFavorite,
+      groupDto,
+    ] = await Promise.all([
+      authorDtoPromise,
+      attitudeStatusDtoPromise,
+      viewCountPromise,
+      commentCountPromise,
+      isFavoritePromise,
+      groupDtoPromise,
+    ]);
+
+    if (viewerId != undefined && ip != undefined && userAgent != undefined) {
+      await this.answerQueryLogRepository.save({
+        answerId,
+        viewerId,
+        ip,
+        userAgent,
+      });
+    }
 
     return {
       id: answer.id,
@@ -182,21 +337,27 @@ export class AnswerService {
       author: authorDto,
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
+      attitudes: attitudeStatusDto,
       favorite_count: answer.favoritedBy?.length ?? 0,
-      view_count: await this.getViewCountOfAnswer(answerId),
-      agree_count: await this.getAgreeCount(answerId),
-      agree_type: await this.getAgreeType(answerId, viewerId),
-      is_favorite: await this.isFavorite(answerId, viewerId),
+      view_count: viewCount,
+      comment_count: commentCount,
+      is_favorite: isFavorite,
+      is_group: answer.groupId != undefined,
+      group: groupDto,
     };
   }
 
   async updateAnswer(
-    userId: number,
+    questionId: number,
     answerId: number,
     content: string,
+    updaterId: number,
   ): Promise<void> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: {
+        questionId,
+        id: answerId,
+      },
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
@@ -207,7 +368,7 @@ export class AnswerService {
     await this.answerRepository.save(answer);
 
     const log = this.answerUpdateLogRepository.create({
-      updaterId: userId,
+      updaterId,
       answerId,
       oldContent,
       newContent: content,
@@ -215,9 +376,16 @@ export class AnswerService {
     await this.answerUpdateLogRepository.save(log);
   }
 
-  async deleteAnswer(answerId: number, deleterId: number): Promise<void> {
+  async deleteAnswer(
+    questionId: number,
+    answerId: number,
+    deleterId: number,
+  ): Promise<void> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: {
+        questionId,
+        id: answerId,
+      },
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
@@ -232,54 +400,132 @@ export class AnswerService {
     await this.answerDeleteLogRepository.save(log);
   }
 
-  async getAgreeCount(answerId: number): Promise<number> {
+  // questionId is reserved for sharding
+  async getAgreeCount(questionId: number, answerId: number): Promise<number> {
     return await this.userAttitudeRepository.count({
       where: { answerId, type: AnswerAttitudeAgree },
     });
   }
 
   async agreeAnswer(
-    id: number,
+    questionId: number,
+    answerId: number,
     userId: number,
     agreeType: number,
   ): Promise<void> {
-    const answer = await this.answerRepository.findOneBy({ id });
+    const answer = await this.answerRepository.findOneBy({
+      questionId,
+      id: answerId,
+    });
     if (!answer) {
-      throw new AnswerNotFoundError(id);
+      throw new AnswerNotFoundError(answerId);
     }
 
-    // maybe need to check if the user has already agreed or disagreed
+    // check if the user has already agreed or disagreed
     const userAttitude = await this.userAttitudeRepository.findOne({
-      where: { userId, answerId: id },
+      where: { userId, answerId },
     });
     if (userAttitude) {
       if (userAttitude.type == agreeType) {
-        throw new AlreadyHasSameAttitudeError(userId, id, agreeType);
+        throw new AlreadyHasSameAttitudeError(userId, answerId, agreeType);
       }
       userAttitude.type = agreeType;
       await this.userAttitudeRepository.save(userAttitude);
     } else {
       await this.userAttitudeRepository.save({
         userId,
-        answerId: id,
+        answerId,
         type: agreeType,
       });
     }
   }
 
-  async favoriteAnswer(id: number, userId: number): Promise<void> {
+  async getFavoriteAnswers(
+    userId: number,
+    pageStart: number, // undefined if from start
+    pageSize: number,
+    viewerId?: number, // optional
+    ip?: string, // optional
+    userAgent?: string, // optional
+  ): Promise<[AnswerDto[], PageRespondDto]> {
+    if ((await this.usersService.isUserExists(userId)) == false)
+      throw new UserIdNotFoundError(userId);
+    if (!pageStart) {
+      const currPage = await this.answerRepository.find({
+        where: { favoritedBy: { id: userId } },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
+    } else {
+      const prevPage = await this.answerRepository.find({
+        where: {
+          favoritedBy: { id: userId },
+          id: LessThan(pageStart),
+        },
+        order: { id: 'DESC' },
+        take: pageSize,
+      });
+      const currPage = await this.answerRepository.find({
+        where: {
+          favoritedBy: { id: userId },
+          id: MoreThanOrEqual(pageStart),
+        },
+        order: { id: 'ASC' },
+        take: pageSize + 1,
+      });
+      const currDto = await Promise.all(
+        currPage.map(async (entity) => {
+          return this.getAnswerDto(
+            entity.questionId,
+            entity.id,
+            viewerId,
+            ip,
+            userAgent,
+          );
+        }),
+      );
+      return PageHelper.PageMiddle(
+        prevPage,
+        currDto,
+        pageSize,
+        (answer) => answer.id,
+        (answer) => answer.id,
+      );
+    }
+  }
+
+  async favoriteAnswer(
+    questionId: number,
+    answerId: number,
+    createdById: number,
+  ): Promise<void> {
     const answer = await this.answerRepository.findOne({
-      where: { id },
+      where: {
+        questionId,
+        id: answerId,
+      },
       relations: ['favoritedBy'],
     });
     if (!answer) {
-      throw new AnswerNotFoundError(id);
+      throw new AnswerNotFoundError(answerId);
     }
 
-    const user = await this.userRepository.findOneBy({ id: userId });
+    const user = await this.userRepository.findOneBy({ id: createdById });
     /* istanbul ignore if */
     if (!user) {
-      throw new UserIdNotFoundError(userId);
+      throw new UserIdNotFoundError(createdById);
     }
     if (
       !answer.favoritedBy.some((favoritedUser) => favoritedUser.id === user.id)
@@ -289,19 +535,26 @@ export class AnswerService {
     await this.answerRepository.save(answer);
   }
 
-  async unfavoriteAnswer(answerId: number, userId: number): Promise<void> {
+  async unfavoriteAnswer(
+    questionId: number,
+    answerId: number,
+    createdById: number,
+  ): Promise<void> {
     const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
+      where: {
+        questionId,
+        id: answerId,
+      },
       relations: ['favoritedBy'],
     });
     if (!answer) {
       throw new AnswerNotFoundError(answerId);
     }
 
-    const user = await this.userRepository.findOneBy({ id: userId });
+    const user = await this.userRepository.findOneBy({ id: createdById });
     /* istanbul ignore if */
     if (!user) {
-      throw new UserIdNotFoundError(userId);
+      throw new UserIdNotFoundError(createdById);
     }
 
     if (
@@ -316,7 +569,83 @@ export class AnswerService {
     await this.answerRepository.save(answer);
   }
 
-  async isAnswerExists(answerId: number): Promise<boolean> {
-    return (await this.answerRepository.countBy({ id: answerId })) > 0;
+  async isAnswerExists(questionId: number, answerId: number): Promise<boolean> {
+    return (
+      (await this.answerRepository.countBy({
+        questionId,
+        id: answerId,
+      })) > 0
+    );
+  }
+
+  async isAnswerExistsAcrossQuestions(answerId: number): Promise<boolean> {
+    return (
+      (await this.answerRepository.countBy({
+        id: answerId,
+      })) > 0
+    );
+  }
+
+  async getCreatedById(questionId: number, answerId: number): Promise<number> {
+    const answer = await this.answerRepository.findOneBy({
+      questionId,
+      id: answerId,
+    });
+    if (!answer) {
+      throw new AnswerNotFoundError(answerId);
+    }
+    return answer.createdById;
+  }
+
+  async countQuestionAnswers(questionId: number): Promise<number> {
+    if ((await this.questionsService.isQuestionExists(questionId)) == false)
+      throw new QuestionNotFoundError(questionId);
+    return this.answerRepository.countBy({
+      questionId: questionId,
+    });
+  }
+
+  async setAttitudeToAnswer(
+    questionId: number,
+    answerId: number,
+    userId: number,
+    attitude: AttitudeType,
+  ): Promise<AttitudeStateDto> {
+    const answer = await this.answerRepository.findOneBy({
+      questionId,
+      id: answerId,
+    });
+    if (!answer) {
+      throw new AnswerNotFoundError(answerId);
+    }
+    await this.attitudeService.setAttitude(
+      userId,
+      AttitudableType.ANSWER,
+      answerId,
+      attitude,
+    );
+    return this.attitudeService.getAttitudeStatusDto(
+      AttitudableType.ANSWER,
+      answerId,
+      userId,
+    );
+  }
+
+  async getAnswerCount(userId: number): Promise<number> {
+    return await this.answerRepository.countBy({ createdById: userId });
+  }
+
+  async getAnswerIdOfCreatedBy(
+    questionId: number,
+    createdById: number,
+  ): Promise<number | undefined> {
+    const answer = await this.answerRepository.findOne({
+      where: {
+        deletedAt: undefined,
+        questionId,
+        createdById,
+      },
+    });
+    return answer?.id; // return undefined if answer == undefined
   }
 }

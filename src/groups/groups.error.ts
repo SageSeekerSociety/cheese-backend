@@ -32,9 +32,9 @@ export class GroupNameAlreadyUsedError extends BaseError {
   }
 }
 
-export class GroupIdNotFoundError extends BaseError {
+export class GroupNotFoundError extends BaseError {
   constructor(public readonly groupId: number) {
-    super('GroupIdNotFoundError', `Group with id ${groupId} not found`, 404);
+    super('GroupNotFoundError', `Group with id ${groupId} not found`, 404);
   }
 }
 
@@ -53,5 +53,15 @@ export class GroupAlreadyJoinedError extends BaseError {
 export class GroupNotJoinedError extends BaseError {
   constructor(public readonly groupId: number) {
     super('GroupNotJoinedError', `Group ${groupId} not joined`, 409);
+  }
+}
+
+export class GroupProfileNotFoundError extends BaseError {
+  constructor(public readonly groupId: number) {
+    super(
+      'GroupProfileNotFoundError',
+      `Group ${groupId}'s profile not found`,
+      404,
+    );
   }
 }

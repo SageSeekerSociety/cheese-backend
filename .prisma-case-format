@@ -1,0 +1,2 @@
+# See: https://github.com/iiian/prisma-case-format
+default: 'table=pascal; mapTable=snake; field=pascal; mapField=snake; enum=pascal; mapEnum=pascal'

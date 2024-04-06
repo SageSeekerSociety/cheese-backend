@@ -1,4 +1,4 @@
-import { question } from "../../prisma/schema"
+import { question } from "questions.legacy"
 
 model QuestionElasticsearchRelation {
   id              Int      @id @default(autoincrement())
@@ -6,5 +6,6 @@ model QuestionElasticsearchRelation {
   questionId      Int      @unique
   elasticsearchId String
 
-  @@map("question_elasticsearch_relation")
+  @@index([questionId])
+  @@index([elasticsearchId])
 }

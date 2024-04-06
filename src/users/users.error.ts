@@ -159,3 +159,9 @@ export class UserAlreadyFollowedError extends BaseError {
     );
   }
 }
+
+export class UpdateAvatarError extends BaseError {
+  constructor() {
+    super('UpdateAvatarError', 'Can not use avatar loaded by others.', 403);
+  }
+}
