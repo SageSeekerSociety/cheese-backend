@@ -31,11 +31,11 @@ services:
         target: /var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      start_period: 30s
-      start_interval: 3s
-      interval: 5m
+      start_period: 180s
+      start_interval: 5s
+      interval: 1m
       timeout: 10s
-      retries: 10
+      retries: 3
   
   es:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
@@ -58,12 +58,12 @@ services:
       test:
         ["CMD-SHELL",
         "curl -s --user elastic:${ELASTICSEARCH_AUTH_PASSWORD} -X GET http://localhost:9200/_cluster/health?pretty | grep status | grep -E 'green|yello'"]
-      start_period: 60s
-      start_interval: 3s
-      interval: 5m
+      start_period: 180s
+      start_interval: 5s
+      interval: 1m
       timeout: 10s
-      retries: 20
-
+      retries: 3
+    
 volumes:
   cheese_backend_uploads:
   cheese_db_pg:
