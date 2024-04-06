@@ -18,8 +18,8 @@ model topic {
   id                      Int                       @id(map: "PK_33aa4ecb4e4f20aa0157ea7ef61") @default(autoincrement())
   name                    String                    @unique(map: "idx_topic_name_unique") @db.VarChar
   createdById             Int
-  createdAt               DateTime                  @default(now()) @db.Timestamp(6)
-  deletedAt               DateTime?                 @db.Timestamp(6)
+  createdAt               DateTime                  @default(now()) @db.Timestamptz(6)
+  deletedAt               DateTime?                 @db.Timestamptz(6)
   question_topic_relation question_topic_relation[]
   user                    user                      @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_59d7548ea797208240417106e2d")
 
@@ -37,7 +37,7 @@ model topic_search_log {
   searcherId   Int?
   ip           String   @db.VarChar
   userAgent    String   @db.VarChar
-  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
   user         user?    @relation(fields: [searcherId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_fe1e75b8b625499f0119faaba5b")
 
   @@index([keywords], map: "IDX_85c1844b4fa3e29b1b8dfaeac6")

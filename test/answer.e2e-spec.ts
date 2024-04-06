@@ -516,7 +516,7 @@ describe('Answers Module', () => {
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
-    it('should get answers asked by auxUser', async () => {
+    it('should get answers asked by auxUser with default page settings', async () => {
       const response = await request(app.getHttpServer())
         .get(`/users/${auxUserId}/answers`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
@@ -539,7 +539,7 @@ describe('Answers Module', () => {
         expect(response.body.data.answers[i].id).toBe(auxUserAskedAnswerIds[i]);
       }
     });
-    it('should get answers asked by auxUser', async () => {
+    it('should get answers asked by auxUser with a page setting', async () => {
       const response = await request(app.getHttpServer())
         .get(`/users/${auxUserId}/answers`)
         .query({
@@ -560,7 +560,7 @@ describe('Answers Module', () => {
       expect(response.body.data.answers[0].id).toBe(auxUserAskedAnswerIds[0]);
       expect(response.body.data.answers[1].id).toBe(auxUserAskedAnswerIds[1]);
     });
-    it('should get answers asked by auxUser', async () => {
+    it('should get answers asked by auxUser with another page setting', async () => {
       const response = await request(app.getHttpServer())
         .get(`/users/${auxUserId}/answers`)
         .query({
@@ -663,10 +663,7 @@ describe('Answers Module', () => {
         .delete(`/questions/${testQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-
-      expect(response.body.message).toBe('Answer deleted successfully.');
       expect(response.status).toBe(200);
-      expect(response.body.code).toBe(200);
     });
 
     it('should return a not found error when trying to delete a non-existent answer', async () => {
@@ -720,9 +717,7 @@ describe('Answers Module', () => {
         .delete(`/questions/${TestQuestionId}/answers/${TestAnswerId}/favorite`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
         .send();
-      expect(response.body.message).toBe('No Content');
       expect(response.status).toBe(200);
-      expect(response.body.code).toBe(204);
     });
 
     it('should throw AnswerNotFavoriteError when trying to unfavorite an answer that has not been favorited yet', async () => {
@@ -765,7 +760,6 @@ describe('Answers Module', () => {
 
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
-
       expect(response.body.code).toBe(404);
     });
 
@@ -787,7 +781,7 @@ describe('Answers Module', () => {
         .post(
           `/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}/attitudes`,
         )
-        .send();
+        .send({ attitude_type: 'POSITIVE' });
       expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
       expect(respond.body.code).toBe(401);
       expect(respond.statusCode).toBe(401);

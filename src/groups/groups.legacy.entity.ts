@@ -59,7 +59,7 @@ export class Group {
   memberships: GroupMembership[];
 
   @CreateDateColumn({
-    type: 'timestamp',
+    type: 'timestamptz',
     precision: 3,
     default: () => 'CURRENT_TIMESTAMP(3)',
   })

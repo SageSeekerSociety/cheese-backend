@@ -7,26 +7,28 @@ import {
   Ip,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
+import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
-import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateCommentResponseDto } from './DTO/create-comment.dto';
 import { GetCommentDetailResponseDto } from './DTO/get-comment-detail.dto';
 import { GetCommentsResponseDto } from './DTO/get-comments.dto';
+import {
+  UpdateCommentDto,
+  UpdateCommentResponseDto,
+} from './DTO/update-comment.dto';
 import { CommentsService } from './comment.service';
 import { parseCommentable } from './commentable.enum';
 @Controller('/comments')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class CommentsController {
@@ -37,13 +39,9 @@ export class CommentsController {
 
   @Get('/:commentableType/:commentableId')
   async getComments(
-    @Param('commentableType')
-    commentableType: string,
+    @Param('commentableType') commentableType: string,
     @Param('commentableId', ParseIntPipe) commentableId: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number = 20,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -74,12 +72,13 @@ export class CommentsController {
     };
   }
 
-  // This method must be put above createComment()
-  // to avoid routing ambiguous problem
+  //! The static route `/:commentId/attitudes` should come
+  //! before the dynamic route `/:commentableType/:commentableId`
+  //! so that it is not overridden.
   @Post('/:commentId/attitudes')
   async updateAttitudeToComment(
     @Param('commentId', ParseIntPipe) commentId: number,
-    @Body('attitude_type') attitude: string,
+    @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateAttitudeRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -93,7 +92,7 @@ export class CommentsController {
     const attitudes = await this.commentsService.setAttitudeToComment(
       commentId,
       userId,
-      parseAttitude(attitude),
+      attitudeType,
     );
     return {
       code: 200,
@@ -139,7 +138,7 @@ export class CommentsController {
   async deleteComment(
     @Param('commentId', ParseIntPipe) commentId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<void> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -149,10 +148,6 @@ export class CommentsController {
       commentId,
     );
     await this.commentsService.deleteComment(commentId, userId);
-    return {
-      code: 204,
-      message: 'Comment deleted already',
-    };
   }
 
   @Get('/:commentId')
@@ -181,6 +176,26 @@ export class CommentsController {
       data: {
         comment,
       },
+    };
+  }
+
+  @Patch('/:commentId')
+  async updateComment(
+    @Param('commentId', ParseIntPipe) commentId: number,
+    @Body() { content }: UpdateCommentDto,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<UpdateCommentResponseDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.commentsService.getCommentCreatedById(commentId),
+      'comment',
+      commentId,
+    );
+    await this.commentsService.updateComment(commentId, content);
+    return {
+      code: 200,
+      message: 'Comment updated successfully',
     };
   }
 }

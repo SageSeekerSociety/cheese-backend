@@ -22,13 +22,12 @@ import {
   Query,
   UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
+import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
-import { parseAttitude } from '../attitude/attitude.enum';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
 import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { PageDto, PageWithKeywordDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import {
@@ -49,13 +48,16 @@ import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto'
 import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
 import { GetQuestionRecommendationsRespondDto } from './DTO/get-question-recommendations.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
-import { InviteUsersAnswerResponseDto } from './DTO/invite-user-answer.dto';
+import {
+  InviteUsersAnswerRequestDto,
+  InviteUsersAnswerResponseDto,
+} from './DTO/invite-user-answer.dto';
 import { SearchQuestionResponseDto } from './DTO/search-question.dto';
+import { SetBountyDto } from './DTO/set-bounty.dto';
 import { UpdateQuestionRequestDto } from './DTO/update-question.dto';
 import { QuestionsService } from './questions.service';
 
 @Controller('/questions')
-@UsePipes(ValidationPipe)
 @UseFilters(BaseErrorExceptionFilter)
 @UseInterceptors(TokenValidateInterceptor)
 export class QuestionsController {
@@ -66,17 +68,12 @@ export class QuestionsController {
 
   @Get('/')
   async searchQuestion(
-    @Query('q') q: string,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number,
+    @Query()
+    { q, page_start: pageStart, page_size: pageSize }: PageWithKeywordDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<SearchQuestionResponseDto> {
-    if (pageSize == undefined || pageSize == 0) pageSize = 20;
-    if (q == undefined) q = '';
     // try get viewer id
     let searcherId: number | undefined;
     try {
@@ -105,7 +102,8 @@ export class QuestionsController {
 
   @Post('/')
   async addQuestion(
-    @Body() body: AddQuestionRequestDto,
+    @Body()
+    { title, content, type, topics, groupId, bounty }: AddQuestionRequestDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<AddQuestionResponseDto> {
     const userId = this.authService.verify(auth).userId;
@@ -118,11 +116,12 @@ export class QuestionsController {
     );
     const questionId = await this.questionsService.addQuestion(
       userId,
-      body.title,
-      body.content,
-      body.type,
-      body.topics,
-      body.groupId,
+      title,
+      content,
+      type,
+      topics,
+      groupId,
+      bounty,
     );
     return {
       code: 201,
@@ -164,7 +163,7 @@ export class QuestionsController {
   @Put('/:id')
   async updateQuestion(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: UpdateQuestionRequestDto,
+    @Body() { title, content, type, topics }: UpdateQuestionRequestDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     this.authService.audit(
@@ -176,10 +175,10 @@ export class QuestionsController {
     );
     await this.questionsService.updateQuestion(
       id,
-      body.title,
-      body.content,
-      body.type,
-      body.topics,
+      title,
+      content,
+      type,
+      topics,
       this.authService.verify(auth).userId,
     );
     return {
@@ -192,7 +191,7 @@ export class QuestionsController {
   async deleteQuestion(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<void> {
     this.authService.audit(
       auth,
       AuthorizedAction.delete,
@@ -201,23 +200,16 @@ export class QuestionsController {
       id,
     );
     await this.questionsService.deleteQuestion(id);
-    return {
-      code: 200,
-      message: 'OK',
-    };
   }
 
   @Get('/:id/followers')
   async getQuestionFollowers(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number,
-    @Query('page_size', new ParseIntPipe({ optional: true })) pageSize: number,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionFollowerResponseDto> {
-    if (pageSize == undefined || pageSize == 0) pageSize = 20;
     let userId: number | undefined;
     try {
       userId = this.authService.verify(auth).userId;
@@ -289,10 +281,10 @@ export class QuestionsController {
     };
   }
 
-  @Post('/:questionId/attitudes')
+  @Post('/:id/attitudes')
   async updateAttitudeToQuestion(
-    @Param('questionId', ParseIntPipe) questionId: number,
-    @Body('attitude_type') attitude: string,
+    @Param('id', ParseIntPipe) questionId: number,
+    @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UpdateAttitudeRespondDto> {
     const userId = this.authService.verify(auth).userId;
@@ -306,7 +298,7 @@ export class QuestionsController {
     const attitudes = await this.questionsService.setAttitudeToQuestion(
       questionId,
       userId,
-      parseAttitude(attitude),
+      attitudeType,
     );
     return {
       code: 201,
@@ -320,10 +312,7 @@ export class QuestionsController {
   @Get('/:id/invitations')
   async getQuestionInvitations(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_start', new ParseIntPipe({ optional: true }))
-    pageStart: number | undefined,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
-    pageSize: number | undefined,
+    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
     @Query(
       'sort',
       new SnakeCaseToCamelCasePipe({ prefixIgnorePattern: '[+-]' }),
@@ -332,9 +321,8 @@ export class QuestionsController {
         allowedFields: ['createdAt'],
       }),
     )
-    sort: SortPattern | undefined,
+    sort: SortPattern = { createdAt: 'desc' },
   ): Promise<GetQuestionInvitationsResponseDto> {
-    if (sort == undefined) sort = { createdAt: 'desc' };
     const [invitations, page] =
       await this.questionsService.getQuestionInvitations(
         id,
@@ -355,8 +343,8 @@ export class QuestionsController {
   @Post('/:id/invitations')
   async inviteUserAnswerQuestion(
     @Param('id', ParseIntPipe) id: number,
+    @Body() { user_id: invitedUserId }: InviteUsersAnswerRequestDto,
     @Headers('Authorization') auth: string | undefined,
-    @Body('user_id', ParseIntPipe) invitedUserId: number,
   ): Promise<InviteUsersAnswerResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -382,29 +370,30 @@ export class QuestionsController {
   @Delete('/:id/invitations/:invitation_id')
   async cancelInvition(
     @Param('id', ParseIntPipe) id: number,
-    @Param('invitation_id', ParseIntPipe) invitation_id: number,
+    @Param('invitation_id', ParseIntPipe) invitationId: number,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<BaseRespondDto> {
     this.authService.audit(
       auth,
       AuthorizedAction.delete,
-      await this.questionsService.getInvitedById(id, invitation_id),
+      await this.questionsService.getInvitedById(id, invitationId),
       'questions/invitation',
-      invitation_id,
+      invitationId,
     );
-    await this.questionsService.cancelInvitation(id, invitation_id);
+    await this.questionsService.cancelInvitation(id, invitationId);
     return {
       code: 204,
       message: 'successfully cancelled',
     };
   }
 
-  //don't change the position of the below two functions
-  //because if the order is swapped, the route is incorrectly identified
+  //! The static route `/:id/invitations/recommendations` should come
+  //! before the dynamic route `/:id/invitations/:invitation_id`
+  //! so that it is not overridden.
   @Get('/:id/invitations/recommendations')
   async getRecommendations(
     @Param('id', ParseIntPipe) id: number,
-    @Query('page_size', new ParseIntPipe({ optional: true }))
+    @Query('page_size')
     pageSize: number,
   ): Promise<GetQuestionRecommendationsRespondDto> {
     const users =
@@ -424,11 +413,11 @@ export class QuestionsController {
   @Get('/:id/invitations/:invitation_id')
   async getInvitationDetail(
     @Param('id', ParseIntPipe) id: number,
-    @Param('invitation_id', ParseIntPipe) invitation_id: number,
+    @Param('invitation_id', ParseIntPipe) invitationId: number,
   ): Promise<GetQuestionInvitationDetailResponseDto> {
     const invitationDto = await this.questionsService.getQuestionInvitationDto(
       id,
-      invitation_id,
+      invitationId,
     );
     return {
       code: 200,
@@ -436,6 +425,46 @@ export class QuestionsController {
       data: {
         invitation: invitationDto,
       },
+    };
+  }
+
+  @Put('/:id/bounty')
+  async setBounty(
+    @Param('id', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Body() { bounty }: SetBountyDto,
+  ): Promise<BaseRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
+    await this.questionsService.setBounty(id, bounty);
+    return {
+      code: 200,
+      message: 'OK',
+    };
+  }
+
+  @Put('/:id/acceptance')
+  async acceptAnswer(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('answer_id', ParseIntPipe) answer_id: number,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<BaseRespondDto> {
+    this.authService.audit(
+      auth,
+      AuthorizedAction.modify,
+      await this.questionsService.getQuestionCreatedById(id),
+      'questions',
+      id,
+    );
+    await this.questionsService.acceptAnswer(id, answer_id);
+    return {
+      code: 200,
+      message: 'OK',
     };
   }
 }

@@ -7,6 +7,7 @@ import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionsService } from '../questions/questions.service';
 import { UsersService } from '../users/users.service';
 import { CommentDto } from './DTO/comment.dto';
@@ -29,6 +30,7 @@ export class CommentsService {
     @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
     private readonly questionService: QuestionsService,
+    private readonly prismaService: PrismaService,
     @InjectRepository(Comment)
     private commentRepository: Repository<Comment>,
     @InjectRepository(CommentDeleteLog)
@@ -111,7 +113,16 @@ export class CommentsService {
     if (comment == null) {
       throw new CommentNotFoundError(commentId);
     }
-    const commentDto: CommentDto = {
+    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
+      const log = this.commentQueryLogRepository.create({
+        commentId,
+        viewerId,
+        ip,
+        userAgent,
+      });
+      await this.commentQueryLogRepository.save(log);
+    }
+    return {
       id: comment.id,
       content: comment.content,
       commentable_id: comment.commentableId,
@@ -129,16 +140,6 @@ export class CommentsService {
         viewerId,
       ),
     };
-    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
-      const log = this.commentQueryLogRepository.create({
-        commentId,
-        viewerId,
-        ip,
-        userAgent,
-      });
-      await this.commentQueryLogRepository.save(log);
-    }
-    return commentDto;
   }
 
   async getComments(
@@ -227,6 +228,13 @@ export class CommentsService {
     });
     if (comment == undefined) throw new CommentNotFoundError(commentId);
     return comment.createdById;
+  }
+
+  async updateComment(commentId: number, content: string): Promise<void> {
+    const comment = await this.commentRepository.findOneBy({ id: commentId });
+    if (comment == undefined) throw new CommentNotFoundError(commentId);
+    comment.content = content;
+    await this.commentRepository.save(comment);
   }
 
   async countCommentsByCommentable(

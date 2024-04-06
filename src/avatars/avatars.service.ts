@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import path, { join } from 'path';
+import { join } from 'path';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AvatarNotFoundError } from './avatars.error';
 import { AvatarType } from './avatars.legacy.entity';
@@ -58,7 +58,7 @@ export class AvatarsService implements OnModuleInit {
       where: { id: avatarId },
     });
     if (file == undefined) throw new AvatarNotFoundError(avatarId);
-    return path.join(__dirname, '//images', file.name);
+    return file.url;
   }
 
   async getDefaultAvatarId(): Promise<number> {

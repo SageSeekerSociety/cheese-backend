@@ -15,7 +15,7 @@ import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
 import { PageRespondDto } from '../common/DTO/page-respond.dto';
 import { PageHelper } from '../common/helper/page.helper';
-import { QuestionIdNotFoundError } from '../questions/questions.error';
+import { QuestionNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
@@ -27,8 +27,8 @@ import { GroupProfile } from './group-profile.entity';
 import {
   CannotDeleteGroupError,
   GroupAlreadyJoinedError,
-  GroupIdNotFoundError,
   GroupNameAlreadyUsedError,
+  GroupNotFoundError,
   GroupNotJoinedError,
   GroupProfileNotFoundError,
   InvalidGroupNameError,
@@ -172,7 +172,7 @@ export class GroupsService {
         id: page_start_id,
       });
       if (!referenceGroup) {
-        throw new GroupIdNotFoundError(page_start_id);
+        throw new GroupNotFoundError(page_start_id);
       }
 
       let referenceValue;
@@ -262,7 +262,7 @@ export class GroupsService {
       relations: ['profile'],
     });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     const ownership = await this.groupMembershipsRepository.findOneBy({
@@ -331,7 +331,7 @@ export class GroupsService {
       relations: ['profile'],
     });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     const userMembership = await this.groupMembershipsRepository.findOneBy({
@@ -369,7 +369,7 @@ export class GroupsService {
       relations: ['profile'],
     });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     const owner = await this.groupMembershipsRepository.findOneBy({
@@ -394,7 +394,7 @@ export class GroupsService {
   ): Promise<JoinGroupResultDto> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     if (
@@ -423,7 +423,7 @@ export class GroupsService {
   async quitGroup(userId: number, groupId: number): Promise<number> {
     const group = await this.groupsRepository.findOneBy({ id: groupId });
     if (group == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     const membership = await this.groupMembershipsRepository.findOneBy({
@@ -451,7 +451,7 @@ export class GroupsService {
     page_size: number,
   ): Promise<[UserDto[], PageRespondDto]> {
     if ((await this.groupsRepository.findOneBy({ id: groupId })) == undefined) {
-      throw new GroupIdNotFoundError(groupId);
+      throw new GroupNotFoundError(groupId);
     }
 
     if (!firstMemberId) {
@@ -521,7 +521,7 @@ export class GroupsService {
           questionId: page_start_id,
         });
       if (!referenceRelationship) {
-        throw new QuestionIdNotFoundError(page_start_id);
+        throw new QuestionNotFoundError(page_start_id);
       }
       const referenceValue = referenceRelationship.createdAt;
       const prev = await this.groupQuestionRelationshipsRepository

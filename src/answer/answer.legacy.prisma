@@ -21,9 +21,9 @@ model answer {
   questionId               Int
   groupId                  Int?
   content                  String
-  createdAt                DateTime                   @default(now()) @db.Timestamp(6)
-  updatedAt                DateTime                   @default(now()) @db.Timestamp(6)
-  deletedAt                DateTime?                  @db.Timestamp(6)
+  createdAt                DateTime                   @default(now()) @db.Timestamptz(6)
+  updatedAt                DateTime                   @default(now()) @db.Timestamptz(6)
+  deletedAt                DateTime?                  @db.Timestamptz(6)
   group                    group?                     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1887685ce6667b435b01c646a2c")
   question                 question                   @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a4013f10cd6924793fbd5f0d637")
   user                     user                       @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f636f6e852686173ea947f29045")
@@ -32,6 +32,7 @@ model answer {
   answer_query_log         answer_query_log[]
   answer_update_log        answer_update_log[]
   answer_user_attitude     answer_user_attitude[]
+  accepted_by_question     question?                  @relation("AcceptedAnswer")
 
   @@index([groupId], map: "IDX_1887685ce6667b435b01c646a2")
   @@index([questionId], map: "IDX_a4013f10cd6924793fbd5f0d63")
@@ -42,7 +43,7 @@ model answer_delete_log {
   id        Int      @id(map: "PK_f1696d27f69ec9c6133a12aadcf") @default(autoincrement())
   deleterId Int?
   answerId  Int
-  createdAt DateTime @default(now()) @db.Timestamp(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
   answer    answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_910393b814aac627593588c17fd")
   user      user?    @relation(fields: [deleterId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c2d0251df4669e17a57d6dbc06f")
 
@@ -67,7 +68,7 @@ model answer_query_log {
   answerId  Int
   ip        String   @db.VarChar
   userAgent String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamp(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
   answer    answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_71ed57d6bb340716f5e17043bbb")
   user      user?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f4b7cd859700f8928695b6c2bab")
 
@@ -81,7 +82,7 @@ model answer_update_log {
   answerId   Int
   oldContent String
   newContent String
-  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
   user       user?    @relation(fields: [updaterId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_0ef2a982b61980d95b5ae7f1a60")
   answer     answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_6f0964cf74c12678a86e49b23fe")
 
