@@ -13,7 +13,7 @@ import { In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { AnswerService } from '../answer/answer.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { QuestionNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
@@ -133,7 +133,7 @@ export class GroupsService {
     page_start_id: number | undefined,
     page_size: number,
     order_type: GroupQueryType,
-  ): Promise<[GroupDto[], PageRespondDto]> {
+  ): Promise<[GroupDto[], PageDto]> {
     let queryBuilder = this.groupsRepository.createQueryBuilder('group');
 
     if (keyword) {
@@ -447,7 +447,7 @@ export class GroupsService {
     groupId: number,
     firstMemberId: number | undefined,
     page_size: number,
-  ): Promise<[UserDto[], PageRespondDto]> {
+  ): Promise<[UserDto[], PageDto]> {
     if ((await this.groupsRepository.findOneBy({ id: groupId })) == undefined) {
       throw new GroupNotFoundError(groupId);
     }

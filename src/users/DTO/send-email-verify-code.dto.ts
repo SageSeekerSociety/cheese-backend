@@ -1,9 +1,9 @@
 import { IsString } from 'class-validator';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
 export class SendEmailVerifyCodeRequestDto {
   @IsString()
   email: string;
 }
 
-export class SendEmailVerifyCodeResponseDto extends BaseRespondDto {}
+export class SendEmailVerifyCodeResponseDto extends BaseResponseDto {}

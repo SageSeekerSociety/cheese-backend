@@ -21,7 +21,7 @@ import {
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
 import { AvatarsService } from '../avatars/avatars.service';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionsService } from '../questions/questions.service';
@@ -667,7 +667,7 @@ export class UsersService {
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[UserDto[], PageRespondDto]> {
+  ): Promise<[UserDto[], PageDto]> {
     if (firstFollowerId == undefined) {
       const relations = await this.userFollowingRepository.find({
         where: { followeeId: followeeId },
@@ -720,7 +720,7 @@ export class UsersService {
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[UserDto[], PageRespondDto]> {
+  ): Promise<[UserDto[], PageDto]> {
     if (firstFolloweeId == undefined) {
       const relations = await this.userFollowingRepository.find({
         where: { followerId: followerId },

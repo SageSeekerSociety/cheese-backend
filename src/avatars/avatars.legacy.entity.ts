@@ -6,9 +6,9 @@ import {
 } from 'typeorm';
 
 export enum AvatarType {
-  Default = 'default',
-  PreDefined = 'predefined',
-  Upload = 'upload',
+  default = 'default',
+  predefined = 'predefined',
+  upload = 'upload',
 }
 
 @Entity()

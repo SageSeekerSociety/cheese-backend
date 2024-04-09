@@ -18,10 +18,10 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { GetMaterialRespondDto } from './DTO/get-material.dto';
-import { UploadMaterialRespondDto } from './DTO/upload-material.dto';
-import { MaterialsService } from './materials.service';
+import { GetMaterialResponseDto } from './DTO/get-material.dto';
 import { MaterialTypeDto } from './DTO/material.dto';
+import { UploadMaterialResponseDto } from './DTO/upload-material.dto';
+import { MaterialsService } from './materials.service';
 
 @Controller('/materials')
 @UsePipes(new ValidationPipe())
@@ -38,7 +38,7 @@ export class MaterialsController {
     @Body() { type: materialType }: MaterialTypeDto,
     @UploadedFile() file: Express.Multer.File,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<UploadMaterialRespondDto> {
+  ): Promise<UploadMaterialResponseDto> {
     this.authService.verify(auth);
     const materialId = await this.materialsService.uploadMaterial(
       materialType,
@@ -58,7 +58,7 @@ export class MaterialsController {
     @Param('materialId', ParseIntPipe) id: number,
     @Query('fields', new ParseArrayPipe({ separator: ',', optional: true }))
     fields: string[] = ['meta', 'url'],
-  ): Promise<GetMaterialRespondDto> {
+  ): Promise<GetMaterialResponseDto> {
     const material = await this.materialsService.getMaterial(id, fields);
     return {
       code: 200,

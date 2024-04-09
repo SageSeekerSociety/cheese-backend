@@ -1,8 +1,15 @@
-model avatar {
+enum AvatarType {
+  default
+  predefined
+  upload
+}
+
+
+model Avatar {
   id         Int      @id @default(autoincrement())
   url        String   @db.VarChar
   name       String   @db.VarChar
   createdAt  DateTime @default(now()) @db.Timestamptz(6)
-  avatarType String   @db.VarChar
+  avatarType AvatarType
   usageCount Int      @default(0)
 }

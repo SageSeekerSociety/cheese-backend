@@ -1,6 +1,6 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
-export class QuitGroupRespondDto extends BaseRespondDto {
+export class QuitGroupResponseDto extends BaseResponseDto {
   data: {
     member_count: number;
   };

@@ -1,6 +1,6 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
-export class CreateAnswerRespondDto extends BaseRespondDto {
+export class CreateAnswerResponseDto extends BaseResponseDto {
   data: {
     id: number;
   };

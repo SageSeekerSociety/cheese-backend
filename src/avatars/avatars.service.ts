@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { readdirSync } from 'fs';
 import { join } from 'path';
 import { Repository } from 'typeorm';
 import { AvatarNotFoundError } from './avatars.error';
@@ -14,35 +15,56 @@ export class AvatarsService implements OnModuleInit {
     this.initialize();
   }
   private async initialize(): Promise<void> {
-    const sourcePath = join(__dirname, '../../src/avatars/resources');
-    if (
-      !(await this.avatarRepository.findOneBy({
-        avatarType: AvatarType.Default,
-      }))
-    ) {
-      const defaultAvatar = this.avatarRepository.create({
-        url: join(sourcePath, 'default.jpg'),
-        name: 'default.jpg',
-        avatarType: AvatarType.Default,
+    const sourcePath = join(__dirname, '../resources/avatars');
+
+    const avatarFiles = readdirSync(sourcePath);
+    /* istanbul ignore if */
+    if (!process.env.DEFAULT_AVATAR_NAME) {
+      throw new Error(
+        'DEFAULT_AVATAR_NAME environment variable is not defined',
+      );
+    }
+    const defaultAvatarName = process.env.DEFAULT_AVATAR_NAME;
+
+    const defaultAvatarPath = join(sourcePath, defaultAvatarName);
+
+    let defaultAvatar = await this.avatarRepository.findOneBy({
+      avatarType: AvatarType.default,
+    });
+
+    if (!defaultAvatar) {
+      defaultAvatar = this.avatarRepository.create({
+        url: defaultAvatarPath,
+        name: defaultAvatarName,
+        avatarType: AvatarType.default,
         usageCount: 0,
       });
       await this.avatarRepository.save(defaultAvatar);
     }
+
     if (
       !(await this.avatarRepository.findOneBy({
-        avatarType: AvatarType.PreDefined,
+        avatarType: AvatarType.predefined,
       }))
     ) {
-      const PreDefinedAvatarNames = ['pre1.jpg', 'pre2.jpg', 'pre3.jpg'];
-      for (const name of PreDefinedAvatarNames) {
-        const PreDefinedAvatar = this.avatarRepository.create({
-          url: join(sourcePath, name),
-          name: name,
-          avatarType: AvatarType.PreDefined,
-          usageCount: 0,
-        });
-        await this.avatarRepository.save(PreDefinedAvatar);
+      const predefinedAvatars = avatarFiles.filter(
+        (file) => file !== defaultAvatarName,
+      );
+      if (predefinedAvatars.length === 0) {
+        throw new Error('no predefined avatars found');
       }
+      await Promise.all(
+        predefinedAvatars.map(async (name) => {
+          const avatarPath = join(sourcePath, name);
+          const predefinedAvatar = this.avatarRepository.create({
+            url: avatarPath,
+            name,
+            avatarType: AvatarType.predefined,
+            usageCount: 0,
+          });
+          await this.avatarRepository.save(predefinedAvatar);
+        }),
+      );
     }
   }
 
@@ -50,7 +72,7 @@ export class AvatarsService implements OnModuleInit {
     const avatar = this.avatarRepository.create({
       url: path,
       name: filename,
-      avatarType: AvatarType.Upload,
+      avatarType: AvatarType.upload,
     });
     return this.avatarRepository.save(avatar);
   }
@@ -67,16 +89,17 @@ export class AvatarsService implements OnModuleInit {
 
   async getDefaultAvatarId(): Promise<number> {
     const defaultAvatar = await this.avatarRepository.findOneBy({
-      avatarType: AvatarType.Default,
+      avatarType: AvatarType.default,
     });
-    if (defaultAvatar == undefined) throw new Error();
+    if (defaultAvatar == undefined) throw new Error('Default avatar not found');
+
     const defaultAvatarId = defaultAvatar.id;
     return defaultAvatarId;
   }
 
   async getPreDefinedAvatarIds(): Promise<number[]> {
     const PreDefinedAvatars = await this.avatarRepository.findBy({
-      avatarType: AvatarType.PreDefined,
+      avatarType: AvatarType.predefined,
     });
     const PreDefinedAvatarIds = PreDefinedAvatars.map(
       (PreDefinedAvatars) => PreDefinedAvatars.id,

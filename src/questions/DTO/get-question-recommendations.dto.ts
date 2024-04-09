@@ -1,7 +1,7 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 import { UserDto } from '../../users/DTO/user.dto';
 
-export class GetQuestionRecommendationsRespondDto extends BaseRespondDto {
+export class GetQuestionRecommendationsResponseDto extends BaseResponseDto {
   data: {
     users: UserDto[];
   };

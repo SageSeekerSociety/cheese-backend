@@ -9,7 +9,7 @@
 
 import { IsInt, IsString } from 'class-validator';
 
-export class BaseRespondDto {
+export class BaseResponseDto {
   constructor(code: number, message: string) {
     this.code = code;
     this.message = message;

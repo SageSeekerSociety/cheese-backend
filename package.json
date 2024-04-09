@@ -30,14 +30,14 @@
   "dependencies": {
     "@elastic/elasticsearch": "^8.13.0",
     "@nestjs/common": "^10.3.7",
-    "@nestjs/config": "^3.2.1",
+    "@nestjs/config": "^3.2.2",
     "@nestjs/core": "^10.3.7",
     "@nestjs/elasticsearch": "^10.0.1",
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/platform-express": "^10.3.7",
     "@nestjs/serve-static": "^4.0.1",
     "@nestjs/typeorm": "^10.0.2",
-    "@prisma/client": "5.11.0",
+    "@prisma/client": "5.12.1",
     "ajv": "^8.12.0",
     "bcryptjs": "^2.4.3",
     "class-transformer": "^0.5.1",
@@ -66,7 +66,7 @@
     "@types/jest": "^29.5.12",
     "@types/mime-types": "^2.1.4",
     "@types/multer": "^1.4.11",
-    "@types/node": "^20.12.2",
+    "@types/node": "^20.12.5",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
@@ -77,7 +77,7 @@
     "jest": "^29.7.0",
     "lint-staged": "^15.2.2",
     "prettier": "^3.2.5",
-    "prisma": "^5.11.0",
+    "prisma": "^5.12.1",
     "prisma-case-format": "^2.2.1",
     "prisma-import": "^1.0.5",
     "source-map-support": "^0.5.21",
@@ -87,6 +87,6 @@
     "ts-loader": "^9.5.1",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.4"
   }
 }

@@ -18,11 +18,7 @@ FROM dev-deps AS dev
 WORKDIR /app
 COPY . ./
 EXPOSE 8000
-CMD ["pnpm", "start:dev"]
-
-FROM dev AS test
-WORKDIR /app
-RUN pnpm lint && pnpm test && pnpm test:cov
+CMD ["tail", "-f", "/dev/null"]
 
 FROM dev-deps AS prod-deps
 WORKDIR /app

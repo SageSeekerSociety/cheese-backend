@@ -1,4 +1,4 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 import { UserDto } from '../../users/DTO/user.dto';
 
 export class GroupDto {
@@ -17,7 +17,7 @@ export class GroupDto {
   is_public: boolean;
 }
 
-export class GroupRespondDto extends BaseRespondDto {
+export class GroupResponseDto extends BaseResponseDto {
   data: {
     group: GroupDto;
   };

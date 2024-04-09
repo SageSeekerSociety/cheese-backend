@@ -14,18 +14,16 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
-import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
+import { UpdateAttitudeResponseDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateCommentResponseDto } from './DTO/create-comment.dto';
 import { GetCommentDetailResponseDto } from './DTO/get-comment-detail.dto';
 import { GetCommentsResponseDto } from './DTO/get-comments.dto';
-import {
-  UpdateCommentDto,
-  UpdateCommentResponseDto,
-} from './DTO/update-comment.dto';
+import { UpdateCommentDto } from './DTO/update-comment.dto';
 import { CommentsService } from './comment.service';
 import { parseCommentable } from './commentable.enum';
 @Controller('/comments')
@@ -41,7 +39,8 @@ export class CommentsController {
   async getComments(
     @Param('commentableType') commentableType: string,
     @Param('commentableId', ParseIntPipe) commentableId: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -80,7 +79,7 @@ export class CommentsController {
     @Param('commentId', ParseIntPipe) commentId: number,
     @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<UpdateAttitudeRespondDto> {
+  ): Promise<UpdateAttitudeResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -184,7 +183,7 @@ export class CommentsController {
     @Param('commentId', ParseIntPipe) commentId: number,
     @Body() { content }: UpdateCommentDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<UpdateCommentResponseDto> {
+  ): Promise<BaseResponseDto> {
     this.authService.audit(
       auth,
       AuthorizedAction.modify,

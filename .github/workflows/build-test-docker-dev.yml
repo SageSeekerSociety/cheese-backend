@@ -51,17 +51,26 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          load: true
 
       - name: Create env file
         run: cp sample.env .env
 
+      - name: set backend image tag
+        run: echo "BACKEND_DEV_VERSION=${{ steps.meta.outputs.version }}" >> "$GITHUB_ENV"
+
       - name: Start compose
-        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
       - name: Sync Database Structures with Prisma
+        run: docker compose exec backend pnpm prisma migrate deploy
+
+      - name: Check Prisma Structures Sync With Database
         run: |
-          docker compose exec backend pnpm prisma migrate resolve --applied 20240321040602_init
-          docker compose exec backend pnpm prisma migrate deploy
+          docker compose exec backend pnpm prisma migrate diff \
+          --from-schema-datasource prisma/schema.prisma \
+          --to-schema-datamodel prisma/schema.prisma \
+          --exit-code
 
       - name: Run Test
         run: docker compose exec backend pnpm run test:cov

@@ -11,7 +11,7 @@ import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
 import { CommentsService } from '../comments/comment.service';
 import { CommentableType } from '../comments/commentable.enum';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { GroupsService } from '../groups/groups.service';
 import { QuestionNotFoundError } from '../questions/questions.error';
@@ -95,7 +95,7 @@ export class AnswerService {
     viewerId?: number,
     ip?: string,
     userAgent?: string,
-  ): Promise<[AnswerDto[], PageRespondDto]> {
+  ): Promise<[AnswerDto[], PageDto]> {
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
         where: { questionId },
@@ -163,7 +163,7 @@ export class AnswerService {
     viewerId?: number,
     ip?: string,
     userAgent?: string,
-  ): Promise<[AnswerDto[], PageRespondDto]> {
+  ): Promise<[AnswerDto[], PageDto]> {
     if ((await this.usersService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
     if (!pageStart) {
@@ -447,7 +447,7 @@ export class AnswerService {
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[AnswerDto[], PageRespondDto]> {
+  ): Promise<[AnswerDto[], PageDto]> {
     if ((await this.usersService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
     if (!pageStart) {
