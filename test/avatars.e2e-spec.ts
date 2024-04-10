@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { AvatarType } from '../src/avatars/avatars.legacy.entity';
-jest.mock('../src/users/email.service');
+jest.mock('../src/email/email.service');
 
 describe('Avatar Module', () => {
   let app: INestApplication;

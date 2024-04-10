@@ -10,13 +10,10 @@
 import { BaseError } from '../common/error/base-error';
 
 export class InvalidEmailAddressError extends BaseError {
-  constructor(
-    public readonly email: string,
-    public readonly rule: string,
-  ) {
+  constructor(public readonly email: string) {
     super(
       'InvalidEmailAddressError',
-      `Invalid email address: ${email}. ${rule}`,
+      `Invalid email address: ${email}. Email should look like someone@example.com`,
       422,
     );
   }

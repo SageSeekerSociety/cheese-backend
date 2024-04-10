@@ -12,8 +12,8 @@ import { AnswerModule } from '../answer/answer.module';
 import { AuthModule } from '../auth/auth.module';
 import { AvatarsModule } from '../avatars/avatars.module';
 import { PrismaModule } from '../common/prisma/prisma.module';
+import { EmailModule } from '../email/email.module';
 import { QuestionsModule } from '../questions/questions.module';
-import { EmailService } from './email.service';
 import { UsersPermissionService } from './users-permission.service';
 import { UsersController } from './users.controller';
 import {
@@ -41,13 +41,14 @@ import { UsersService } from './users.service';
       UserResetPasswordLog,
     ]),
     PrismaModule,
+    EmailModule,
     AuthModule,
     AvatarsModule,
     forwardRef(() => AnswerModule),
     forwardRef(() => QuestionsModule),
   ],
   controllers: [UsersController],
-  providers: [UsersService, UsersPermissionService, EmailService],
+  providers: [UsersService, UsersPermissionService],
   exports: [UsersService],
 })
 export class UsersModule {}
