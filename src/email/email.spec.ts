@@ -15,7 +15,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../app.module';
 import { EmailService } from './email.service';
 
-if (process.env.EMAILTEST_ENABLE) {
+if (process.env.EMAILTEST_ENABLE == 'true') {
   const receiver = process.env.EMAILTEST_RECEIVER as string;
   describe('Email Module', () => {
     let app: TestingModule;
