@@ -16,7 +16,12 @@ export class MaterialsService implements OnModuleInit {
       ffmpeg.getAvailableCodecs((err) => {
         /* istanbul ignore if */
         if (err) {
-          reject(new Error('FFmpeg not found on system.'));
+          // The error might be caused by other reasons. See: https://github.com/SageSeekerSociety/cheese-backend/issues/156
+          reject(
+            new Error(
+              'Service fail to init, maybe due to FFmpeg not found on system.',
+            ),
+          );
         } else {
           resolve();
         }
