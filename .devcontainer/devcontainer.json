@@ -8,7 +8,6 @@
       "extensions": [
         "ajmnz.prisma-import",
         "donjayamanne.git-extension-pack",
-        "ms-vscode.vscode-typescript-next",
         "AndrewButson.vscode-openapi-viewer"
       ]
     }
