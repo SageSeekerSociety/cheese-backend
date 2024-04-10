@@ -10,7 +10,7 @@ export class LoginRequestDto {
   password: string;
 }
 
-export class LoginResponseDto extends BaseResponseDto {
+export interface LoginResponseDto extends BaseResponseDto {
   data: {
     accessToken: string;
     user: UserDto;

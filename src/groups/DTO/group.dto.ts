@@ -17,7 +17,7 @@ export class GroupDto {
   is_public: boolean;
 }
 
-export class GroupResponseDto extends BaseResponseDto {
+export interface GroupResponseDto extends BaseResponseDto {
   data: {
     group: GroupDto;
   };

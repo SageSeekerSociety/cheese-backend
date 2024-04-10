@@ -36,7 +36,7 @@ export class AddQuestionRequestDto {
   bounty: number = 0;
 }
 
-export class AddQuestionResponseDto extends BaseResponseDto {
+export interface AddQuestionResponseDto extends BaseResponseDto {
   data: {
     id: number;
   };

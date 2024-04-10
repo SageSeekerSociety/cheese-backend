@@ -18,4 +18,4 @@ export class RegisterRequestDto {
   emailCode: string;
 }
 
-export class RegisterResponseDto extends LoginResponseDto {}
+export interface RegisterResponseDto extends LoginResponseDto {}

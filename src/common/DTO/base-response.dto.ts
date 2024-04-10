@@ -7,17 +7,7 @@
  *
  */
 
-import { IsInt, IsString } from 'class-validator';
-
-export class BaseResponseDto {
-  constructor(code: number, message: string) {
-    this.code = code;
-    this.message = message;
-  }
-
-  @IsInt()
+export interface BaseResponseDto {
   code: number;
-
-  @IsString()
   message: string;
 }

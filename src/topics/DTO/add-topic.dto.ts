@@ -6,7 +6,7 @@ export class AddTopicRequestDto {
   name: string;
 }
 
-export class AddTopicResponseDto extends BaseResponseDto {
+export interface AddTopicResponseDto extends BaseResponseDto {
   data: {
     id: number;
   };

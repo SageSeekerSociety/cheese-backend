@@ -6,7 +6,7 @@ export class InviteUsersAnswerRequestDto {
   user_id: number;
 }
 
-export class InviteUsersAnswerResponseDto extends BaseResponseDto {
+export interface InviteUsersAnswerResponseDto extends BaseResponseDto {
   data: {
     invitationId: number;
   };
