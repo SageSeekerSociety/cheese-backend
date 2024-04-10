@@ -60,7 +60,7 @@ jobs:
         run: echo "BACKEND_DEV_VERSION=${{ steps.meta.outputs.version }}" >> "$GITHUB_ENV"
 
       - name: Start compose
-        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --no-build -d
 
       - name: Sync Database Structures with Prisma
         run: docker compose exec backend pnpm prisma migrate deploy
