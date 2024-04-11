@@ -2,8 +2,8 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { EmailService } from '../src/users/email.service';
-jest.mock('../src/users/email.service');
+import { EmailService } from '../src/email/email.service';
+jest.mock('../src/email/email.service');
 
 describe('comments Module', () => {
   let app: INestApplication;
