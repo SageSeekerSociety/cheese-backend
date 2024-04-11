@@ -21,3 +21,9 @@ export class InvalidAvatarTypeError extends BaseError {
     super('InvalidAvatarTypeError', `Invalid Avatar type: ${avatarType}`, 400);
   }
 }
+
+export class InvalidPathError extends BaseError {
+  constructor() {
+    super('InvalidPathError', `Invalid path`, 400);
+  }
+}

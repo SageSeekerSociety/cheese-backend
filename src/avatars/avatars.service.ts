@@ -1,10 +1,10 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { readdirSync } from 'fs';
-import { join } from 'path';
 import { Repository } from 'typeorm';
-import { AvatarNotFoundError } from './avatars.error';
+import { AvatarNotFoundError, InvalidPathError } from './avatars.error';
 import { Avatar, AvatarType } from './avatars.legacy.entity';
+import { pathJoinSafe } from './avatars.module';
 @Injectable()
 export class AvatarsService implements OnModuleInit {
   constructor(
@@ -15,8 +15,10 @@ export class AvatarsService implements OnModuleInit {
     this.initialize();
   }
   private async initialize(): Promise<void> {
-    const sourcePath = join(__dirname, '../resources/avatars');
-
+    const sourcePath = pathJoinSafe(__dirname, '../avatars');
+    if (!sourcePath) {
+      throw new InvalidPathError();
+    }
     const avatarFiles = readdirSync(sourcePath);
     /* istanbul ignore if */
     if (!process.env.DEFAULT_AVATAR_NAME) {
@@ -26,8 +28,10 @@ export class AvatarsService implements OnModuleInit {
     }
     const defaultAvatarName = process.env.DEFAULT_AVATAR_NAME;
 
-    const defaultAvatarPath = join(sourcePath, defaultAvatarName);
-
+    const defaultAvatarPath = pathJoinSafe(sourcePath, defaultAvatarName);
+    if (!defaultAvatarPath) {
+      throw new InvalidPathError();
+    }
     let defaultAvatar = await this.avatarRepository.findOneBy({
       avatarType: AvatarType.default,
     });
@@ -55,7 +59,7 @@ export class AvatarsService implements OnModuleInit {
       }
       await Promise.all(
         predefinedAvatars.map(async (name) => {
-          const avatarPath = join(sourcePath, name);
+          const avatarPath = pathJoinSafe(sourcePath, name);
           const predefinedAvatar = this.avatarRepository.create({
             url: avatarPath,
             name,

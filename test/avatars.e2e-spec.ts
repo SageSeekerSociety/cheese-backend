@@ -29,6 +29,16 @@ describe('Avatar Module', () => {
       AvatarId = respond.body.data.avatarid;
     });
   });
+  describe('get Invalid path', () => {
+    it('should return InvalidPathError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/resources/avatars')
+        .attach('avatar', 'src/resources/avatars/default.jpg');
+      expect(respond.status).toBe(400);
+      expect(respond.body.message).toContain('Invalid path');
+      expect(respond.body.data).toBeUndefined();
+    });
+  });
   describe('get avatar', () => {
     it('should get the uploaded avatar', async () => {
       const avatarId = AvatarId;
