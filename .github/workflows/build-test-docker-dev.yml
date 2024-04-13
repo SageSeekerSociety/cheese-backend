@@ -68,7 +68,7 @@ jobs:
           docker compose exec backend pnpm build-prisma
           docker compose exec backend diff prisma/schema.prisma prisma/schema.prisma.origin
 
-      - name: Sync Database Structures with Prisma
+      - name: Deploy migrations to Database
         run: docker compose exec backend pnpm prisma migrate deploy
 
       - name: Check Prisma Structures Sync With Database
