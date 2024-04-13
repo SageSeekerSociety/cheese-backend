@@ -62,6 +62,12 @@ jobs:
       - name: Start compose
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --no-build -d
 
+      - name: Check Schema up to Date
+        run: |
+          docker compose exec backend cp prisma/schema.prisma prisma/schema.prisma.origin
+          docker compose exec backend pnpm build-prisma
+          docker compose exec backend diff prisma/schema.prisma prisma/schema.prisma.origin
+
       - name: Sync Database Structures with Prisma
         run: docker compose exec backend pnpm prisma migrate deploy
 
