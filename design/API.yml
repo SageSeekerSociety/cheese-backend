@@ -730,7 +730,6 @@ components:
           type: string
       required:
         - username
-        - nickname
         - password
         - email
         - emailCode
