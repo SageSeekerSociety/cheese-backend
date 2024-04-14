@@ -22,7 +22,6 @@ import {
   Entity,
   Index,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -59,9 +58,6 @@ export class Answer {
   @Column('text')
   content: string;
 
-  @OneToMany(() => AnswerUserAttitude, (attitude) => attitude.answer)
-  attitudes: AnswerUserAttitude[];
-
   @CreateDateColumn()
   createdAt: Date;
 
@@ -70,24 +66,6 @@ export class Answer {
 
   @DeleteDateColumn()
   deletedAt?: Date;
-}
-
-@Entity()
-export class AnswerUserAttitude {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  @Column()
-  userId: number;
-
-  @ManyToOne(() => Answer, (answer) => answer.attitudes)
-  answer: Answer;
-
-  @Column()
-  answerId: number;
-
-  @Column({ default: AnswerAttitudeUndefined })
-  type: number;
 }
 
 // export enum AttitudeType {

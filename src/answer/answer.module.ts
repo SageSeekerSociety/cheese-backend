@@ -13,7 +13,6 @@ import {
   AnswerDeleteLog,
   AnswerQueryLog,
   AnswerUpdateLog,
-  AnswerUserAttitude,
 } from './answer.legacy.entity';
 import { AnswerService } from './answer.service';
 
@@ -21,7 +20,6 @@ import { AnswerService } from './answer.service';
   imports: [
     TypeOrmModule.forFeature([
       Answer,
-      AnswerUserAttitude,
       AnswerQueryLog,
       AnswerUpdateLog,
       AnswerDeleteLog,
