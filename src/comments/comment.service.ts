@@ -103,9 +103,9 @@ export class CommentsService {
 
   async getCommentDto(
     commentId: number,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<CommentDto> {
     const comment = await this.commentRepository.findOneBy({
       id: commentId,
@@ -147,9 +147,9 @@ export class CommentsService {
     commentableId: number,
     pageStart: number | undefined,
     pageSize: number = 20,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<[CommentDto[], PageDto]> {
     if (pageStart == undefined) {
       const comments = await this.commentRepository.find({

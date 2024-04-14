@@ -5,6 +5,7 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthModule } from '../auth/auth.module';
+import { PrismaModule } from '../common/prisma/prisma.module';
 import { AvatarsController } from './avatars.controller';
 import { Avatar } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
@@ -52,6 +53,7 @@ import { existsSync, mkdirSync } from 'fs';
       },
     }),
     AuthModule,
+    PrismaModule,
   ],
   controllers: [AvatarsController],
   providers: [AvatarsService],

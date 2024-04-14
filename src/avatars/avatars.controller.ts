@@ -3,6 +3,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Res,
@@ -39,13 +40,13 @@ export class AvatarsController {
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<UploadAvatarResponseDto> {
-    //const userid = this.authService.verify(auth).userId;
+    //const userId = this.authService.verify(auth).userId;
     const avatar = await this.avatarsService.save(file.path, file.filename);
     return {
       code: 201,
       message: 'Upload avatar successfully',
       data: {
-        avatarid: avatar.id,
+        avatarId: avatar.id,
       },
     };
   }
@@ -84,7 +85,7 @@ export class AvatarsController {
   @Get('/:id')
   async getAvatar(
     @Headers('If-None-Match') ifNoneMatch: string,
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Res({ passthrough: true }) res: Response,
   ) {
     const avatarPath = await this.avatarsService.getAvatarPath(id);

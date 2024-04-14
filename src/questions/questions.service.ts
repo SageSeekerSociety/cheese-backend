@@ -14,6 +14,7 @@ import {
   AttitudableType,
   AttitudeType,
   QuestionInvitationRelation,
+  User,
 } from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { AnswerNotFoundError } from '../answer/answer.error';
@@ -35,7 +36,6 @@ import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
-import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
@@ -227,13 +227,23 @@ export class QuestionsService {
   }
 
   // returns: a list of topicId
-  async getTopicDtosOfQuestion(questionId: number): Promise<TopicDto[]> {
+  async getTopicDtosOfQuestion(
+    questionId: number,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<TopicDto[]> {
     const relations = await this.questionTopicRelationRepository.findBy({
       questionId,
     });
     return await Promise.all(
       relations.map((relation) =>
-        this.topicService.getTopicDtoById(relation.topicId),
+        this.topicService.getTopicDtoById(
+          relation.topicId,
+          viewerId,
+          ip,
+          userAgent,
+        ),
       ),
     );
   }
@@ -248,9 +258,9 @@ export class QuestionsService {
 
   async getQuestionDto(
     questionId: number,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<QuestionDto> {
     const question = await this.prismaService.question.findUnique({
       where: { id: questionId },
@@ -273,7 +283,12 @@ export class QuestionsService {
       // does not exist now. This is NOT a data integrity problem, since user can be
       // deleted. So we just return a null and not throw an error.
     }
-    const topicsPromise = this.getTopicDtosOfQuestion(questionId);
+    const topicsPromise = this.getTopicDtosOfQuestion(
+      questionId,
+      viewerId,
+      ip,
+      userAgent,
+    );
     const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
     const followCountPromise = this.getFollowCountOfQuestion(questionId);
     const viewCountPromise = this.getViewCountOfQuestion(questionId);
@@ -302,7 +317,12 @@ export class QuestionsService {
     const groupDtoPromise =
       question.groupId == undefined
         ? Promise.resolve(null)
-        : this.groupService.getGroupDtoById(undefined, question.groupId);
+        : this.groupService.getGroupDtoById(
+            undefined,
+            question.groupId,
+            ip,
+            userAgent,
+          );
     const acceptedAnswerDtoPromise =
       question.acceptedAnswer == undefined
         ? Promise.resolve(null)
@@ -375,9 +395,9 @@ export class QuestionsService {
     keywords: string,
     firstQuestionId: number | undefined, // if from start
     pageSize: number,
-    searcherId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    searcherId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
   ): Promise<[QuestionDto[], PageDto]> {
     const timeBegin = Date.now();
     const result = !keywords
@@ -580,9 +600,9 @@ export class QuestionsService {
     followerId: number,
     firstQuestionId: number | undefined, // if from start
     pageSize: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
   ): Promise<[QuestionDto[], PageDto]> {
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
@@ -635,9 +655,9 @@ export class QuestionsService {
     questionId: number,
     firstFollowerId: number | undefined, // if from start
     pageSize: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
   ): Promise<[UserDto[], PageDto]> {
     if (firstFollowerId == undefined) {
       const relations = await this.questionFollowRelationRepository.find({
@@ -739,6 +759,9 @@ export class QuestionsService {
     sort: SortPattern,
     pageStart: number | undefined,
     pageSize: number | undefined = 20,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<[QuestionInvitationDto[], PageDto]> {
     const record2dto = async (
       invitation: QuestionInvitationRelation,
@@ -746,7 +769,12 @@ export class QuestionsService {
       return {
         id: invitation.id,
         question_id: invitation.questionId,
-        user: await this.userService.getUserDtoById(invitation.userId),
+        user: await this.userService.getUserDtoById(
+          invitation.userId,
+          viewerId,
+          ip,
+          userAgent,
+        ),
         created_at: invitation.createdAt.getTime(),
         updated_at: invitation.updatedAt.getTime(),
         is_answered: await this.isQuestionAnsweredBy(
@@ -810,6 +838,9 @@ export class QuestionsService {
   async getQuestionInvitationRecommendations(
     questionId: number,
     pageSize = 5,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<UserDto[]> {
     const question = await this.questionRepository.findOne({
       where: { id: questionId },
@@ -847,7 +878,7 @@ export class QuestionsService {
 
     const userDtos = await Promise.all(
       randomUserEntities.map((entity) =>
-        this.userService.getUserDtoById(entity.id),
+        this.userService.getUserDtoById(entity.id, viewerId, ip, userAgent),
       ),
     );
 
@@ -856,6 +887,9 @@ export class QuestionsService {
   async getQuestionInvitationDto(
     questionId: number,
     invitationId: number,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<QuestionInvitationDto> {
     if ((await this.isQuestionExists(questionId)) == false)
       throw new QuestionNotFoundError(questionId);
@@ -866,7 +900,12 @@ export class QuestionsService {
     if (!invitation) {
       throw new QuestionInvitationNotFoundError(invitationId);
     }
-    const userdto = await this.userService.getUserDtoById(invitation.userId);
+    const userdto = await this.userService.getUserDtoById(
+      invitation.userId,
+      viewerId,
+      ip,
+      userAgent,
+    );
     return {
       id: invitation.id,
       question_id: invitation.questionId,
@@ -1007,9 +1046,9 @@ export class QuestionsService {
     userId: number,
     pageStart: number | undefined,
     pageSize: number,
-    viewerId?: number,
-    userAgent?: string,
-    ip?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<[QuestionDto[], PageDto]> {
     if ((await this.userService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);

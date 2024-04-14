@@ -122,4 +122,8 @@ export class AvatarsService implements OnModuleInit {
     await this.avatarRepository.save(avatar);
     return;
   }
+
+  async isAvatarExists(avatarId: number): Promise<boolean> {
+    return (await this.avatarRepository.countBy({ id: avatarId })) > 0;
+  }
 }

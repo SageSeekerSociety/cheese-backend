@@ -30,11 +30,9 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
-  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { isMySQL } from '../common/helper/db.helper';
-import { User } from '../users/users.legacy.entity';
 
 @Entity()
 export class Topic {
@@ -45,10 +43,6 @@ export class Topic {
   @Index('idx_topic_name_ft', { fulltext: true, parser: 'ngram' }) // For fulltext search.
   @Index('idx_topic_name_unique', { unique: true }) // For uniqueness.
   name: string;
-
-  @ManyToOne(() => User)
-  @Index()
-  createdBy: User;
 
   // This property does not generate a new column, because the column `createdById` is
   // generated automatically according to the @ManyToOne decorator by TypeORM engine.
@@ -93,10 +87,6 @@ export class TopicSearchLog {
   @Column({ type: isMySQL() ? 'double' : 'float' })
   // The search duration in seconds.
   duration: number;
-
-  @ManyToOne(() => User)
-  @Index()
-  searcher: User;
 
   // This property does not generate a new column, because the column `searcherId` is
   // generated automatically according to the @ManyToOne decorator by TypeORM engine.

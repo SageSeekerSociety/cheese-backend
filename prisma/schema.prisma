@@ -625,7 +625,7 @@ model TopicSearchLog {
 }
 
 //
-// users.legacy.prisma
+// users.prisma
 //
 
 //
@@ -697,7 +697,7 @@ model UserLoginLog {
   id        Int      @id(map: "PK_f8db79b1af1f385db4f45a2222e") @default(autoincrement())
   userId    Int      @map("user_id")
   ip        String   @db.VarChar
-  userAgent String   @map("user_agent") @db.VarChar
+  userAgent String?  @map("user_agent") @db.VarChar
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66c592c7f7f20d1214aba2d0046")
 
@@ -725,7 +725,7 @@ model UserProfileQueryLog {
   viewerId                              Int?     @map("viewer_id")
   vieweeId                              Int      @map("viewee_id")
   ip                                    String   @db.VarChar
-  userAgent                             String   @map("user_agent") @db.VarChar
+  userAgent                             String?  @map("user_agent") @db.VarChar
   createdAt                             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   userUserProfileQueryLogViewerIdTouser User?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1261db28434fde159acda6094bc")
   userUserProfileQueryLogVieweeIdTouser User     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff592e4403b328be0de4f2b3973")
@@ -735,14 +735,24 @@ model UserProfileQueryLog {
   @@map("user_profile_query_log")
 }
 
+enum UserRegisterLogType {
+  RequestSuccess
+  RequestFailDueToAlreadyRegistered
+  RequestFailDueToInvalidOrNotSupportedEmail
+  RequestFailDurToSecurity
+  RequestFailDueToSendEmailFailure
+  Success
+  FailDueToUserExistence
+  FailDueToWrongCodeOrExpired
+}
+
 model UserRegisterLog {
-  id                Int      @id(map: "PK_3596a6f74bd2a80be930f6d1e39") @default(autoincrement())
-  email             String   @db.VarChar
-  type              Int
-  registerRequestId Int?     @map("register_request_id")
-  ip                String   @db.VarChar
-  userAgent         String   @map("user_agent") @db.VarChar
-  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        Int                 @id(map: "PK_3596a6f74bd2a80be930f6d1e39") @default(autoincrement())
+  email     String              @db.VarChar
+  type      UserRegisterLogType
+  ip        String              @db.VarChar
+  userAgent String?             @map("user_agent") @db.VarChar
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([email], map: "IDX_3af79f07534d9f1c945cd4c702")
   @@map("user_register_log")
@@ -758,13 +768,23 @@ model UserRegisterRequest {
   @@map("user_register_request")
 }
 
+enum UserResetPasswordLogType {
+  RequestSuccess
+  RequestFailDueToNoneExistentEmail
+  RequestFailDueToSecurity
+  Success
+  FailDueToInvalidToken
+  FailDueToExpiredRequest
+  FailDueToNoUser
+}
+
 model UserResetPasswordLog {
-  id        Int      @id(map: "PK_3ee4f25e7f4f1d5a9bd9817b62b") @default(autoincrement())
-  userId    Int?     @map("user_id")
-  type      Int
-  ip        String   @db.VarChar
-  userAgent String   @map("user_agent") @db.VarChar
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id        Int                      @id(map: "PK_3ee4f25e7f4f1d5a9bd9817b62b") @default(autoincrement())
+  userId    Int?                     @map("user_id")
+  type      UserResetPasswordLogType
+  ip        String                   @db.VarChar
+  userAgent String?                  @map("user_agent") @db.VarChar
+  createdAt DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("user_reset_password_log")
 }

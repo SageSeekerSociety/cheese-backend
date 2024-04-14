@@ -28,7 +28,7 @@ describe('Users Module', () => {
     /* eslint-disable no-constant-condition */
     while (true) {
       try {
-        await usersService.getUserDtoById(1);
+        await usersService.getUserDtoById(1, 1, '127.0.0.1', 'some user agent');
       } catch (e) {
         // wait one second
         await new Promise((resolve) => setTimeout(resolve, 1000));

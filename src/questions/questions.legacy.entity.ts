@@ -37,8 +37,6 @@ import {
 } from 'typeorm';
 import { GroupQuestionRelationship } from '../groups/groups.legacy.entity';
 import { Topic } from '../topics/topics.legacy.entity';
-import { User } from '../users/users.legacy.entity';
-
 import { Answer } from '../answer/answer.legacy.entity';
 import { isMySQL } from '../common/helper/db.helper';
 
@@ -51,9 +49,6 @@ import { isMySQL } from '../common/helper/db.helper';
 export class Question {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => User)
-  createdBy: User;
 
   @Column()
   @Index({ unique: false })
@@ -115,11 +110,6 @@ export class QuestionTopicRelation {
   @Index({ unique: false })
   topicId: number;
 
-  // In the future, we may want to add a feature to add a topic to a question.
-  // So we reserved this field.
-  @ManyToOne(() => User)
-  createdBy: User;
-
   @Column()
   createdById: number;
 
@@ -142,9 +132,6 @@ export class QuestionFollowerRelation {
   @Index({ unique: false })
   questionId: number;
 
-  @ManyToOne(() => User)
-  follower: User;
-
   @Column()
   @Index({ unique: false })
   followerId: number;
@@ -160,9 +147,6 @@ export class QuestionFollowerRelation {
 export class QuestionQueryLog {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => User)
-  viewer: User;
 
   @Column('int', { nullable: true })
   @Index({ unique: false })
@@ -214,10 +198,6 @@ export class QuestionSearchLog {
   @Column({ type: 'float' })
   // The search duration in seconds.
   duration: number;
-
-  @ManyToOne(() => User)
-  @Index()
-  searcher: User;
 
   // This property does not generate a new column, because the column `searcherId` is
   // generated automatically according to the @ManyToOne decorator by TypeORM engine.

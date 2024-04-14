@@ -25,7 +25,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../users/users.legacy.entity';
 import { CommentableType } from './commentable.enum';
 
 @Entity()
@@ -45,9 +44,6 @@ export class Comment {
 
   @Column('text')
   content: string;
-
-  @ManyToOne(() => User)
-  createdBy: User;
 
   @Column()
   @Index()
@@ -75,9 +71,6 @@ export class CommentDeleteLog {
   @Index()
   commentId: number;
 
-  @ManyToOne(() => User)
-  operatedBy: User;
-
   @Column()
   @Index()
   operatedById: number;
@@ -97,9 +90,6 @@ export class CommentQueryLog {
   @Column()
   @Index()
   commentId: number;
-
-  @ManyToOne(() => User)
-  viewer: User;
 
   @Column('int', { nullable: true })
   @Index()

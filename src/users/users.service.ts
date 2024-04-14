@@ -7,11 +7,17 @@
  *
  */
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import {
+  User,
+  UserFollowingRelationship,
+  UserProfile,
+  UserRegisterLogType,
+  UserResetPasswordLogType,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
-import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import assert from 'node:assert';
 import { AnswerService } from '../answer/answer.service';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import {
@@ -20,6 +26,7 @@ import {
   AuthorizedAction,
 } from '../auth/auth.service';
 import { SessionService } from '../auth/session.service';
+import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
 import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
@@ -29,6 +36,7 @@ import { EmailService } from '../email/email.service';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
 import { UsersPermissionService } from './users-permission.service';
+import { UsersRegisterRequestService } from './users-register-request.service';
 import {
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
@@ -47,18 +55,6 @@ import {
   UsernameAlreadyRegisteredError,
   UsernameNotFoundError,
 } from './users.error';
-import {
-  User,
-  UserFollowingRelationship,
-  UserLoginLog,
-  UserProfile,
-  UserProfileQueryLog,
-  UserRegisterLog,
-  UserRegisterLogType,
-  UserRegisterRequest,
-  UserResetPasswordLog,
-  UserResetPasswordLogType,
-} from './users.legacy.entity';
 
 @Injectable()
 export class UsersService {
@@ -68,31 +64,15 @@ export class UsersService {
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly usersPermissionService: UsersPermissionService,
+    private readonly usersRegisterRequestService: UsersRegisterRequestService,
     private readonly avatarsService: AvatarsService,
     @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
     @Inject(forwardRef(() => QuestionsService))
     private readonly questionsService: QuestionsService,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(UserProfile)
-    private readonly userProfileRepository: Repository<UserProfile>,
-    @InjectRepository(UserFollowingRelationship)
-    private readonly userFollowingRepository: Repository<UserFollowingRelationship>,
-    @InjectRepository(UserRegisterRequest)
-    private readonly userRegisterRequestRepository: Repository<UserRegisterRequest>,
-    @InjectRepository(UserLoginLog)
-    private readonly userLoginLogRepository: Repository<UserLoginLog>,
-    @InjectRepository(UserProfileQueryLog)
-    private readonly userProfileQueryLogRepository: Repository<UserProfileQueryLog>,
-    @InjectRepository(UserRegisterLog)
-    private readonly userRegisterLogRepository: Repository<UserRegisterLog>,
-    @InjectRepository(UserResetPasswordLog)
-    private readonly userResetPasswordLogRepository: Repository<UserResetPasswordLog>,
     private readonly prismaService: PrismaService,
   ) {}
 
-  private readonly registerCodeValidSeconds = 10 * 60; // 10 minutes
   private readonly passwordResetEmailValidSeconds = 10 * 60; // 10 minutes
 
   private generateVerifyCode(): string {
@@ -103,51 +83,145 @@ export class UsersService {
     return code;
   }
 
-  private isEmailSuffixSupported(email: string): boolean {
-    return this.emailRuleService.isEmailSuffixSupported(email);
-  }
-
   get emailSuffixRule(): string {
     return this.emailRuleService.emailSuffixRule;
+  }
+
+  async isEmailRegistered(email: string): Promise<boolean> {
+    return (
+      (await this.prismaService.user.count({
+        where: {
+          deletedAt: null,
+          email,
+        },
+      })) > 0
+    );
+  }
+
+  async findUserRecordOrThrow(userId: number): Promise<User> {
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        deletedAt: null,
+        id: userId,
+      },
+    });
+    if (user != undefined) {
+      return user;
+    } else {
+      throw new UserIdNotFoundError(userId);
+    }
+  }
+
+  async findUserRecordByUsernameOrThrow(username: string): Promise<User> {
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        deletedAt: null,
+        username,
+      },
+    });
+    if (user != undefined) {
+      return user;
+    } else {
+      throw new UsernameNotFoundError(username);
+    }
+  }
+
+  async findUserRecordAndProfileRecordOrThrow(
+    userId: number,
+  ): Promise<[User, UserProfile]> {
+    const userPromise = this.findUserRecordOrThrow(userId);
+    const profilePromise = this.prismaService.userProfile.findUnique({
+      where: {
+        deletedAt: null,
+        userId: userId,
+      },
+    });
+    const [user, profile] = await Promise.all([userPromise, profilePromise]);
+    /* istanbul ignore if */
+    // Above is a hint for istanbul to ignore the following line.
+    if (profile == undefined) {
+      throw new Error(`User '${user.username}' DO NOT has a profile!`);
+    }
+    return [user, profile];
+  }
+
+  async isUsernameRegistered(username: string): Promise<boolean> {
+    return (
+      (await this.prismaService.user.count({
+        where: {
+          deletedAt: null,
+          username,
+        },
+      })) > 0
+    );
+  }
+
+  private async createUserRegisterLog(
+    type: UserRegisterLogType,
+    email: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<void> {
+    await this.prismaService.userRegisterLog.create({
+      data: {
+        type,
+        email,
+        ip,
+        userAgent,
+      },
+    });
+  }
+
+  private async createPasswordResetLog(
+    type: UserResetPasswordLogType,
+    userId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<void> {
+    await this.prismaService.userResetPasswordLog.create({
+      data: {
+        type,
+        userId,
+        ip,
+        userAgent,
+      },
+    });
   }
 
   async sendRegisterEmailCode(
     email: string,
     ip: string,
-    userAgent: string,
+    userAgent: string | undefined,
   ): Promise<void> {
     if (isEmail(email) == false) {
-      const log = this.userRegisterLogRepository.create({
-        type: UserRegisterLogType.RequestFailDueToInvalidEmail,
-        email: email,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userRegisterLogRepository.save(log);
+      await this.createUserRegisterLog(
+        UserRegisterLogType.RequestFailDueToInvalidOrNotSupportedEmail,
+        email,
+        ip,
+        userAgent,
+      );
       throw new InvalidEmailAddressError(email);
     }
-    if (this.isEmailSuffixSupported(email) == false) {
-      const log = this.userRegisterLogRepository.create({
-        type: UserRegisterLogType.RequestFailDueToNotSupportedEmail,
-        email: email,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userRegisterLogRepository.save(log);
+    if ((await this.emailRuleService.isEmailSuffixSupported(email)) == false) {
+      await this.createUserRegisterLog(
+        UserRegisterLogType.RequestFailDueToInvalidOrNotSupportedEmail,
+        email,
+        ip,
+        userAgent,
+      );
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
     }
 
     // TODO: Add logic to determain whether code is sent too frequently.
 
     // Determine whether the email is registered.
-    if ((await this.userRepository.findOneBy({ email })) != undefined) {
-      const log = this.userRegisterLogRepository.create({
-        type: UserRegisterLogType.RequestFailDueToAlreadyRegistered,
-        email: email,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userRegisterLogRepository.save(log);
+    if (await this.isEmailRegistered(email)) {
+      await this.createUserRegisterLog(
+        UserRegisterLogType.RequestFailDueToAlreadyRegistered,
+        email,
+        ip,
+        userAgent,
+      );
       throw new EmailAlreadyRegisteredError(email);
     }
 
@@ -156,29 +230,22 @@ export class UsersService {
     const code = this.generateVerifyCode();
     try {
       await this.emailService.sendRegisterCode(email, code);
-      const requestRecord = this.userRegisterRequestRepository.create({
-        email: email,
-        code: code,
-      });
-      await this.userRegisterRequestRepository.save(requestRecord);
-      const log = this.userRegisterLogRepository.create({
-        type: UserRegisterLogType.RequestSuccess,
-        email: email,
-        registerRequestId: requestRecord.id,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userRegisterLogRepository.save(log);
     } catch (e) {
-      const log = this.userRegisterLogRepository.create({
-        type: UserRegisterLogType.RequestFailDueToSendEmailFailure,
-        email: email,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userRegisterLogRepository.save(log);
+      await this.createUserRegisterLog(
+        UserRegisterLogType.RequestFailDueToSendEmailFailure,
+        email,
+        ip,
+        userAgent,
+      );
       throw new EmailSendFailedError(email);
     }
+    await this.usersRegisterRequestService.createRequest(email, code);
+    await this.createUserRegisterLog(
+      UserRegisterLogType.RequestSuccess,
+      email,
+      ip,
+      userAgent,
+    );
   }
 
   private isValidUsername(username: string): boolean {
@@ -212,13 +279,6 @@ export class UsersService {
     return 'Password must be at least 8 characters long and must contain at least one letter, one special character and one number.';
   }
 
-  private isCodeExpired(createdAt: Date): boolean {
-    return (
-      new Date().getTime() - createdAt.getTime() >
-      this.registerCodeValidSeconds * 1000
-    );
-  }
-
   get defaultIntro(): string {
     return 'This user has not set an introduction yet.';
   }
@@ -230,7 +290,7 @@ export class UsersService {
     email: string,
     emailCode: string,
     ip: string,
-    userAgent: string,
+    userAgent: string | undefined,
   ): Promise<UserDto> {
     // todo: validate username, nickname, password, email, emailCode
     if (this.isValidUsername(username) == false) {
@@ -245,145 +305,101 @@ export class UsersService {
     if (isEmail(email) == false) {
       throw new InvalidEmailAddressError(email);
     }
-    if (this.isEmailSuffixSupported(email) == false) {
+    if ((await this.emailRuleService.isEmailSuffixSupported(email)) == false) {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
     }
 
-    // Determine whether the email code is correct.
-    const records = await this.userRegisterRequestRepository.find({
-      where: { email: email },
-    });
-    for (const record of records) {
-      if (this.isCodeExpired(record.createdAt)) {
-        // Delete expired code.
-        await this.userRegisterRequestRepository.delete(record);
-        const log = this.userRegisterLogRepository.create({
-          type: UserRegisterLogType.FailDueToExpired,
-          email: email,
-          registerRequestId: record.id,
-          ip: ip,
-          userAgent: userAgent,
-        });
-        await this.userRegisterLogRepository.save(log);
-        continue;
+    if (
+      await this.usersRegisterRequestService.verifyRequest(email, emailCode)
+    ) {
+      // Verify whether the email is registered.
+      /* istanbul ignore if */
+      if (await this.isEmailRegistered(email)) {
+        throw new Error(
+          `In a register attempt, the email is verified, but the email is already registered!` +
+            `There are 4 possible reasons:\n` +
+            `1. The user send two register email and verified them after that.\n` +
+            `2. There is a bug in the code.\n` +
+            `3. The database is corrupted.\n` +
+            `4. We are under attack!`,
+        );
       }
-      // For code that is netheir expired nor matched, just ignore it.
-      if (record.code == emailCode) {
-        // Both email and code are correct, and the code is not expired.
-        // The register request is valid, maybe not successful, but valid.
-        // Thus, the code is used and should be deleted.
-        const requestId = record.id;
-        await this.userRegisterRequestRepository.delete(record.id);
+      // Verify whether the username is registered.
+      if (await this.isUsernameRegistered(username)) {
+        await this.createUserRegisterLog(
+          UserRegisterLogType.FailDueToUserExistence,
+          email,
+          ip,
+          userAgent,
+        );
+        throw new UsernameAlreadyRegisteredError(username);
+      }
 
-        // Verify whether the email is registered.
-        /* istanbul ignore if */
-        if ((await this.userRepository.findOneBy({ email })) != undefined) {
-          const log = this.userRegisterLogRepository.create({
-            type: UserRegisterLogType.FailDueToEmailExistence,
-            email: email,
-            registerRequestId: requestId,
-            ip: ip,
-            userAgent: userAgent,
-          });
-          await this.userRegisterLogRepository.save(log);
-          throw new Error(
-            `In a register attempt, the email is verified, but the email is already registered!` +
-              `There are 4 possible reasons:\n` +
-              `1. The user send two register email and verified them after that.\n` +
-              `2. There is a bug in the code.\n` +
-              `3. The database is corrupted.\n` +
-              `4. We are under attack!`,
-          );
-        }
-        // Verify whether the username is registered.
-        if ((await this.userRepository.findOneBy({ username })) != undefined) {
-          const log = this.userRegisterLogRepository.create({
-            type: UserRegisterLogType.FailDueToUserExistence,
-            email: email,
-            registerRequestId: requestId,
-            ip: ip,
-            userAgent: userAgent,
-          });
-          await this.userRegisterLogRepository.save(log);
-          throw new UsernameAlreadyRegisteredError(username);
-        }
-
-        // Now, the request is valid, email is not registered, username is not registered.
-        // We can register the user.
-        const salt = bcrypt.genSaltSync(10);
-        const user = this.userRepository.create({
-          username: username,
+      // Now, the request is valid, email is not registered, username is not registered.
+      // We can register the user.
+      const avatarId = await this.avatarsService.getDefaultAvatarId();
+      const profile = {
+        nickname,
+        intro: this.defaultIntro,
+        avatarId,
+      };
+      const salt = bcrypt.genSaltSync(10);
+      const result = await this.prismaService.user.create({
+        data: {
+          username,
           hashedPassword: bcrypt.hashSync(password, salt),
-          email: email,
-        });
-        await this.userRepository.save(user);
-        const avatarId = await this.avatarsService.getDefaultAvatarId();
-        const profile = this.userProfileRepository.create({
-          user: user,
-          nickname: nickname,
-          intro: this.defaultIntro,
-          avatarId,
-        });
-        await this.userProfileRepository.save(profile);
-        const log = this.userRegisterLogRepository.create({
-          type: UserRegisterLogType.Success,
-          email: email,
-          registerRequestId: requestId,
-          ip: ip,
-          userAgent: userAgent,
-        });
-        await this.userRegisterLogRepository.save(log);
-        return {
-          id: user.id,
-          username: user.username,
-          nickname: profile.nickname,
-          avatarId: profile.avatarId,
-          intro: profile.intro,
-          follow_count: 0,
-          fans_count: 0,
-          question_count: 0,
-          answer_count: 0,
-          is_follow: false,
-        };
-      }
+          email,
+          userProfile: {
+            create: profile,
+          },
+        },
+      });
+      await this.createUserRegisterLog(
+        UserRegisterLogType.Success,
+        email,
+        ip,
+        userAgent,
+      );
+      return {
+        id: result.id,
+        username: result.username,
+        nickname: profile.nickname,
+        avatarId: profile.avatarId,
+        intro: profile.intro,
+        follow_count: 0,
+        fans_count: 0,
+        question_count: 0,
+        answer_count: 0,
+        is_follow: false,
+      };
+    } else {
+      await this.createUserRegisterLog(
+        UserRegisterLogType.FailDueToWrongCodeOrExpired,
+        email,
+        ip,
+        userAgent,
+      );
+      throw new CodeNotMatchError(email, emailCode);
     }
-    // No match code is found.
-    const log = this.userRegisterLogRepository.create({
-      type: UserRegisterLogType.FailDueToWrongCode,
-      email: email,
-      ip: ip,
-      userAgent: userAgent,
-    });
-    await this.userRegisterLogRepository.save(log);
-    throw new CodeNotMatchError(email, emailCode);
   }
 
   async getUserDtoById(
     userId: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
   ): Promise<UserDto> {
-    const user = await this.userRepository.findOneBy({ id: userId });
-    if (user == undefined) {
-      throw new UserIdNotFoundError(userId);
-    }
-
-    const profile = await this.userProfileRepository.findOneBy({ userId });
-    /* istanbul ignore if */
-    // Above is a hint for istanbul to ignore the following line.
-    if (profile == undefined) {
-      throw new Error(`User '${user.username}' DO NOT has a profile!`);
-    }
-    if (viewerId != undefined && ip != undefined && userAgent != undefined) {
-      const log = this.userProfileQueryLogRepository.create({
-        viewerId: viewerId,
-        vieweeId: userId,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userProfileQueryLogRepository.save(log);
-    }
+    const [user, profile] =
+      await this.findUserRecordAndProfileRecordOrThrow(userId);
+    const vieweeId = user.id;
+    await this.prismaService.userProfileQueryLog.create({
+      data: {
+        viewerId,
+        vieweeId,
+        ip,
+        userAgent,
+      },
+    });
     const followCountPromise = this.getFollowingCount(userId);
     const fansCountPromise = this.getFollowedCount(userId);
     const ifFollowPromise = this.isUserFollowUser(viewerId, userId);
@@ -417,30 +433,20 @@ export class UsersService {
     username: string,
     password: string,
     ip: string,
-    userAgent: string,
+    userAgent: string | undefined,
   ): Promise<[UserDto, string]> {
-    const user = await this.userRepository.findOneBy({ username });
-    if (user == undefined) {
-      throw new UsernameNotFoundError(username);
-    }
+    const user = await this.findUserRecordByUsernameOrThrow(username);
     if (bcrypt.compareSync(password, user.hashedPassword) == false) {
       throw new PasswordNotMatchError(username);
     }
     // Login successfully.
-    const profile = await this.userProfileRepository.findOneBy({
-      userId: user.id,
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: user.id,
+        ip,
+        userAgent,
+      },
     });
-    /* istanbul ignore if */
-    // Above is a hint for istanbul to ignore the following line.
-    if (profile == undefined) {
-      throw new Error(`User '${user.username}' DO NOT has a profile!`);
-    }
-    const log = this.userLoginLogRepository.create({
-      user: user,
-      ip: ip,
-      userAgent: userAgent,
-    });
-    await this.userLoginLogRepository.save(log);
     return [
       await this.getUserDtoById(user.id, user.id, ip, userAgent),
       await this.createSession(user.id),
@@ -456,33 +462,30 @@ export class UsersService {
   async sendResetPasswordEmail(
     email: string,
     ip: string,
-    userAgent: string,
+    userAgent: string | undefined,
   ): Promise<void> {
     // Check email.
     if (isEmail(email) == false) {
       throw new InvalidEmailAddressError(email);
     }
-    if (this.isEmailSuffixSupported(email) == false) {
+    if ((await this.emailRuleService.isEmailSuffixSupported(email)) == false) {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
     }
-
-    // Find email.
-    const user = await this.userRepository.findOneBy({ email });
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        deletedAt: null,
+        email,
+      },
+    });
     if (user == undefined) {
-      const log = this.userResetPasswordLogRepository.create({
-        type: UserResetPasswordLogType.RequestFailDueToNoneExistentEmail,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userResetPasswordLogRepository.save(log);
+      await this.createPasswordResetLog(
+        UserResetPasswordLogType.RequestFailDueToNoneExistentEmail,
+        undefined,
+        ip,
+        userAgent,
+      );
       throw new EmailNotFoundError(email);
     }
-    /*
-    const request = this.userResetPasswordRequestRepository.create({
-      user: user
-    })
-    this.userResetPasswordRequestRepository.save(request);
-    */
     const token = this.authService.sign(
       {
         userId: user.id,
@@ -509,19 +512,19 @@ export class UsersService {
     } catch {
       throw new EmailSendFailedError(email);
     }
-    const log = this.userResetPasswordLogRepository.create({
-      type: UserResetPasswordLogType.RequestSuccess,
-      ip: ip,
-      userAgent: userAgent,
-    });
-    await this.userResetPasswordLogRepository.save(log);
+    await this.createPasswordResetLog(
+      UserResetPasswordLogType.RequestSuccess,
+      user.id,
+      ip,
+      userAgent,
+    );
   }
 
   async verifyAndResetPassword(
     token: string,
     newPassword: string,
     ip: string,
-    userAgent: string,
+    userAgent: string | undefined,
   ): Promise<void> {
     // Here, we do not need to check whether the token is valid.
     // If we check, then, if the token is invalid, it won't be logged.
@@ -536,20 +539,23 @@ export class UsersService {
       );
     } catch (e) {
       if (e instanceof PermissionDeniedError) {
-        const log = this.userResetPasswordLogRepository.create({
-          type: UserResetPasswordLogType.FailDurToInvalidToken,
-          ip: ip,
-          userAgent: userAgent,
-        });
-        await this.userResetPasswordLogRepository.save(log);
+        await this.createPasswordResetLog(
+          UserResetPasswordLogType.FailDueToInvalidToken,
+          userId,
+          ip,
+          userAgent,
+        );
+        Logger.warn(
+          `Permission denied when reset password: token = "${token}", ip = "${ip}", userAgent = "${userAgent}"`,
+        );
       }
       if (e instanceof TokenExpiredError) {
-        const log = this.userResetPasswordLogRepository.create({
-          type: UserResetPasswordLogType.FailDueToExpiredRequest,
-          ip: ip,
-          userAgent: userAgent,
-        });
-        await this.userResetPasswordLogRepository.save(log);
+        await this.createPasswordResetLog(
+          UserResetPasswordLogType.FailDueToExpiredRequest,
+          userId,
+          ip,
+          userAgent,
+        );
       }
       throw e;
     }
@@ -561,16 +567,20 @@ export class UsersService {
       throw new InvalidPasswordError(this.passwordRule);
     }
 
-    const user = await this.userRepository.findOneBy({ id: userId });
+    const user = await this.prismaService.user.findUnique({
+      where: {
+        deletedAt: null,
+        id: userId,
+      },
+    });
     /* istanbul ignore if */
     if (user == undefined) {
-      const log = this.userResetPasswordLogRepository.create({
-        type: UserResetPasswordLogType.FailDueToNoUser,
-        userId: userId,
-        ip: ip,
-        userAgent: userAgent,
-      });
-      await this.userResetPasswordLogRepository.save(log);
+      await this.createPasswordResetLog(
+        UserResetPasswordLogType.FailDueToNoUser,
+        userId,
+        ip,
+        userAgent,
+      );
       throw new Error(
         `In an password reset attempt, the operation ` +
           `is permitted, but the user is not found! There are 4 possible reasons:\n` +
@@ -581,95 +591,156 @@ export class UsersService {
       );
     }
     const salt = bcrypt.genSaltSync(10);
-    user.hashedPassword = bcrypt.hashSync(newPassword, salt);
-    this.userRepository.save(user);
-    const log = this.userResetPasswordLogRepository.create({
-      type: UserResetPasswordLogType.Success,
-      userId: userId,
-      ip: ip,
-      userAgent: userAgent,
+    await this.prismaService.user.update({
+      where: {
+        deletedAt: null,
+        id: userId,
+      },
+      data: {
+        hashedPassword: bcrypt.hashSync(newPassword, salt),
+      },
     });
-    await this.userResetPasswordLogRepository.save(log);
+    await this.createPasswordResetLog(
+      UserResetPasswordLogType.Success,
+      userId,
+      ip,
+      userAgent,
+    );
   }
 
   async updateUserProfile(
     userId: number,
     nickname: string,
     intro: string,
-    avatar: number,
+    avatarId: number,
   ): Promise<void> {
-    const profile = await this.userProfileRepository.findOneBy({ userId });
-    if (profile == undefined) {
-      throw new UserIdNotFoundError(userId);
+    const [, profile] =
+      await this.findUserRecordAndProfileRecordOrThrow(userId);
+    if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
+      throw new AvatarNotFoundError(avatarId);
     }
-    const avatarId = (await this.avatarsService.getOne(avatar)).id;
-    const preAvatarId = profile.avatarId;
     await this.avatarsService.plusUsageCount(avatarId);
-    await this.avatarsService.minusUsageCount(preAvatarId);
-    profile.avatarId = avatarId;
-    profile.nickname = nickname;
-    profile.intro = intro;
-    await this.userProfileRepository.save(profile);
+    await this.avatarsService.minusUsageCount(profile.avatarId);
+    await this.prismaService.userProfile.update({
+      where: {
+        deletedAt: null,
+        userId,
+      },
+      data: {
+        nickname,
+        intro,
+        avatarId,
+      },
+    });
+  }
+
+  async getUniqueFollowRelationship(
+    followerId: number,
+    followeeId: number,
+  ): Promise<UserFollowingRelationship | undefined> {
+    let relationships =
+      await this.prismaService.userFollowingRelationship.findMany({
+        where: {
+          deletedAt: null,
+          followerId,
+          followeeId,
+        },
+      });
+    /* istanbul ignore if */
+    if (relationships.length > 1) {
+      Logger.warn(
+        `There are more than one follow relationship between user ${followerId} and user ${followeeId}. Automaticly clean them up...`,
+      );
+      await this.prismaService.userFollowingRelationship.updateMany({
+        where: {
+          deletedAt: null,
+          followerId,
+          followeeId,
+        },
+        data: {
+          deletedAt: new Date(),
+        },
+      });
+      const result = await this.prismaService.userFollowingRelationship.create({
+        data: {
+          followerId,
+          followeeId,
+        },
+      });
+      relationships = [result];
+    }
+    return relationships.length == 0 ? undefined : relationships[0];
   }
 
   async addFollowRelationship(
     followerId: number,
     followeeId: number,
   ): Promise<void> {
-    const follower = await this.userRepository.findOneBy({ id: followerId });
-    if (follower == undefined) {
-      throw new UserIdNotFoundError(followerId);
-    }
-    const followee = await this.userRepository.findOneBy({ id: followeeId });
-    if (followee == undefined) {
-      throw new UserIdNotFoundError(followeeId);
-    }
     if (followerId == followeeId) {
       throw new FollowYourselfError();
     }
-    if (
-      (await this.userFollowingRepository.findOneBy({
-        followerId,
-        followeeId,
-      })) != undefined
-    ) {
+    if ((await this.isUserExists(followerId)) == false) {
+      throw new UserIdNotFoundError(followerId);
+    }
+    if ((await this.isUserExists(followeeId)) == false) {
+      throw new UserIdNotFoundError(followeeId);
+    }
+    const oldRelationship = await this.getUniqueFollowRelationship(
+      followerId,
+      followeeId,
+    );
+    if (oldRelationship != null) {
       throw new UserAlreadyFollowedError(followeeId);
     }
-    const relationship = this.userFollowingRepository.create({
-      follower: follower,
-      followee: followee,
+    await this.prismaService.userFollowingRelationship.create({
+      data: {
+        followerId,
+        followeeId,
+      },
     });
-    await this.userFollowingRepository.save(relationship);
   }
 
   async deleteFollowRelationship(
     followerId: number,
     followeeId: number,
   ): Promise<void> {
-    const relationship = await this.userFollowingRepository.findOneBy({
+    const relationship = await this.getUniqueFollowRelationship(
       followerId,
       followeeId,
-    });
+    );
     if (relationship == undefined) {
       throw new UserNotFollowedYetError(followeeId);
     }
-    await this.userFollowingRepository.softRemove(relationship);
+    await this.prismaService.userFollowingRelationship.updateMany({
+      where: {
+        deletedAt: null,
+        followerId,
+        followeeId,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
   }
 
   async getFollowers(
     followeeId: number,
     firstFollowerId: number | undefined, // undefined if from start
     pageSize: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
   ): Promise<[UserDto[], PageDto]> {
     if (firstFollowerId == undefined) {
-      const relations = await this.userFollowingRepository.find({
-        where: { followeeId: followeeId },
-        take: pageSize + 1,
-        order: { followerId: 'ASC' },
-      });
+      const relations =
+        await this.prismaService.userFollowingRelationship.findMany({
+          where: {
+            deletedAt: null,
+            followeeId,
+          },
+          take: pageSize + 1,
+          orderBy: { followerId: 'asc' },
+        });
       const DTOs = await Promise.all(
         relations.map((r) => {
           return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
@@ -677,22 +748,26 @@ export class UsersService {
       );
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
-      const prevRelationshipsPromise = this.userFollowingRepository.find({
-        where: {
-          followeeId: followeeId,
-          followerId: LessThan(firstFollowerId),
-        },
-        take: pageSize,
-        order: { followerId: 'DESC' },
-      });
-      const queriedRelationsPromise = this.userFollowingRepository.find({
-        where: {
-          followeeId: followeeId,
-          followerId: MoreThanOrEqual(firstFollowerId),
-        },
-        take: pageSize + 1,
-        order: { followerId: 'ASC' },
-      });
+      const prevRelationshipsPromise =
+        this.prismaService.userFollowingRelationship.findMany({
+          where: {
+            deletedAt: null,
+            followeeId,
+            followerId: { lt: firstFollowerId },
+          },
+          take: pageSize,
+          orderBy: { followerId: 'desc' },
+        });
+      const queriedRelationsPromise =
+        this.prismaService.userFollowingRelationship.findMany({
+          where: {
+            deletedAt: null,
+            followeeId,
+            followerId: { gte: firstFollowerId },
+          },
+          take: pageSize + 1,
+          orderBy: { followerId: 'asc' },
+        });
       const DTOs = await Promise.all(
         (await queriedRelationsPromise).map((r) => {
           return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
@@ -713,16 +788,20 @@ export class UsersService {
     followerId: number,
     firstFolloweeId: number | undefined, // undefined if from start
     pageSize: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId: number | undefined, // optional
+    ip: string, // optional
+    userAgent: string | undefined, // optional
   ): Promise<[UserDto[], PageDto]> {
     if (firstFolloweeId == undefined) {
-      const relations = await this.userFollowingRepository.find({
-        where: { followerId: followerId },
-        take: pageSize + 1,
-        order: { followeeId: 'ASC' },
-      });
+      const relations =
+        await this.prismaService.userFollowingRelationship.findMany({
+          where: {
+            deletedAt: null,
+            followerId,
+          },
+          take: pageSize + 1,
+          orderBy: { followeeId: 'asc' },
+        });
       const DTOs = await Promise.all(
         relations.map((r) => {
           return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
@@ -730,22 +809,26 @@ export class UsersService {
       );
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
-      const prevRelationshipsPromise = this.userFollowingRepository.find({
-        where: {
-          followerId: followerId,
-          followeeId: LessThan(firstFolloweeId),
-        },
-        take: pageSize,
-        order: { followeeId: 'DESC' },
-      });
-      const queriedRelationsPromise = this.userFollowingRepository.find({
-        where: {
-          followerId: followerId,
-          followeeId: MoreThanOrEqual(firstFolloweeId),
-        },
-        take: pageSize + 1,
-        order: { followeeId: 'ASC' },
-      });
+      const prevRelationshipsPromise =
+        this.prismaService.userFollowingRelationship.findMany({
+          where: {
+            deletedAt: null,
+            followerId,
+            followeeId: { lt: firstFolloweeId },
+          },
+          take: pageSize,
+          orderBy: { followeeId: 'desc' },
+        });
+      const queriedRelationsPromise =
+        this.prismaService.userFollowingRelationship.findMany({
+          where: {
+            deletedAt: null,
+            followerId,
+            followeeId: { gte: firstFolloweeId },
+          },
+          take: pageSize + 1,
+          orderBy: { followeeId: 'asc' },
+        });
       const DTOs = await Promise.all(
         (await queriedRelationsPromise).map((r) => {
           return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
@@ -767,11 +850,21 @@ export class UsersService {
   }
 
   async getFollowingCount(followerId: number): Promise<number> {
-    return await this.userFollowingRepository.countBy({ followerId });
+    return await this.prismaService.userFollowingRelationship.count({
+      where: {
+        deletedAt: null,
+        followerId,
+      },
+    });
   }
 
   async getFollowedCount(followeeId: number): Promise<number> {
-    return await this.userFollowingRepository.countBy({ followeeId });
+    return await this.prismaService.userFollowingRelationship.count({
+      where: {
+        deletedAt: null,
+        followeeId,
+      },
+    });
   }
 
   async isUserFollowUser(
@@ -779,11 +872,14 @@ export class UsersService {
     followeeId: number | undefined,
   ): Promise<boolean> {
     if (followerId == undefined || followeeId == undefined) return false;
-    return (
-      (await this.userFollowingRepository.findOneBy({
+    const result = await this.prismaService.userFollowingRelationship.count({
+      where: {
+        deletedAt: null,
         followerId,
         followeeId,
-      })) != undefined
-    );
+      },
+    });
+    assert(result == 0 || result == 1);
+    return result > 0;
   }
 }

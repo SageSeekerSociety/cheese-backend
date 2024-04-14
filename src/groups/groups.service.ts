@@ -79,7 +79,10 @@ export class GroupsService {
     name: string,
     userId: number,
     intro: string,
-    avatar: number,
+    avatarId: number,
+    operatorId: number,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<GroupDto> {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
@@ -88,16 +91,16 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
-    if ((await this.avatarsService.getOne(avatar)) == undefined) {
-      throw new AvatarNotFoundError(avatar);
+    if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
+      throw new AvatarNotFoundError(avatarId);
     }
     const group = this.groupsRepository.create({ name });
     await this.groupsRepository.save(group);
-    await this.avatarsService.plusUsageCount(avatar);
+    await this.avatarsService.plusUsageCount(avatarId);
     const groupProfile = this.groupProfilesRepository.create({
       groupId: group.id,
       intro,
-      avatarId: avatar,
+      avatarId,
     });
     await this.groupProfilesRepository.save(groupProfile);
 
@@ -108,7 +111,12 @@ export class GroupsService {
     });
     await this.groupMembershipsRepository.save(GroupMembership);
 
-    const userDto = await this.usersService.getUserDtoById(userId);
+    const userDto = await this.usersService.getUserDtoById(
+      userId,
+      operatorId,
+      ip,
+      userAgent,
+    );
 
     return {
       id: group.id,
@@ -133,6 +141,8 @@ export class GroupsService {
     page_start_id: number | undefined,
     page_size: number,
     order_type: GroupQueryType,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<[GroupDto[], PageDto]> {
     let queryBuilder = this.groupsRepository.createQueryBuilder('group');
 
@@ -164,7 +174,9 @@ export class GroupsService {
       }
       currEntity = await queryBuilder.limit(page_size + 1).getMany();
       const currDTOs = await Promise.all(
-        currEntity.map((entity) => this.getGroupDtoById(userId, entity.id)),
+        currEntity.map((entity) =>
+          this.getGroupDtoById(userId, entity.id, ip, userAgent),
+        ),
       );
       return PageHelper.PageStart(currDTOs, page_size, (group) => group.id);
     } else {
@@ -241,7 +253,9 @@ export class GroupsService {
         }
       }
       const currDTOs = await Promise.all(
-        currEntity.map((entity) => this.getGroupDtoById(userId, entity.id)),
+        currEntity.map((entity) =>
+          this.getGroupDtoById(userId, entity.id, ip, userAgent),
+        ),
       );
       return PageHelper.PageMiddle(
         prevEntity,
@@ -256,6 +270,8 @@ export class GroupsService {
   async getGroupDtoById(
     userId: number | undefined,
     groupId: number,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<GroupDto> {
     const group = await this.groupsRepository.findOne({
       where: { id: groupId },
@@ -273,7 +289,12 @@ export class GroupsService {
       throw new Error(`Group ${groupId} has no owner.`);
     }
     const ownerId = ownership.memberId;
-    const ownerDto = await this.usersService.getUserDtoById(ownerId);
+    const ownerDto = await this.usersService.getUserDtoById(
+      ownerId,
+      userId,
+      ip,
+      userAgent,
+    );
 
     const member_count = await this.groupMembershipsRepository.countBy({
       groupId,
@@ -324,7 +345,7 @@ export class GroupsService {
     groupId: number,
     name: string,
     intro: string,
-    avatar: number,
+    avatarId: number,
   ): Promise<void> {
     const group = await this.groupsRepository.findOne({
       where: { id: groupId },
@@ -350,7 +371,9 @@ export class GroupsService {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
-    const avatarId = (await this.avatarsService.getOne(avatar)).id;
+    if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
+      throw new AvatarNotFoundError(avatarId);
+    }
     const preAvatarId = group.profile.avatarId;
     await this.avatarsService.plusUsageCount(avatarId);
     await this.avatarsService.minusUsageCount(preAvatarId);
@@ -447,6 +470,9 @@ export class GroupsService {
     groupId: number,
     firstMemberId: number | undefined,
     page_size: number,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<[UserDto[], PageDto]> {
     if ((await this.groupsRepository.findOneBy({ id: groupId })) == undefined) {
       throw new GroupNotFoundError(groupId);
@@ -460,7 +486,12 @@ export class GroupsService {
       });
       const DTOs = await Promise.all(
         entity.map((entity) =>
-          this.usersService.getUserDtoById(entity.memberId),
+          this.usersService.getUserDtoById(
+            entity.memberId,
+            viewerId,
+            ip,
+            userAgent,
+          ),
         ),
       );
       return PageHelper.PageStart(DTOs, page_size, (user) => user.id);
@@ -496,7 +527,12 @@ export class GroupsService {
     });
     const currDTOs = await Promise.all(
       (await currEntity).map((entity) =>
-        this.usersService.getUserDtoById(entity.memberId),
+        this.usersService.getUserDtoById(
+          entity.memberId,
+          viewerId,
+          ip,
+          userAgent,
+        ),
       ),
     );
     return PageHelper.PageMiddle(
@@ -512,6 +548,9 @@ export class GroupsService {
     groupId: number,
     page_start_id: number | undefined,
     page_size: number,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<GetGroupQuestionsResultDto> {
     if (page_start_id) {
       const referenceRelationship =
@@ -542,7 +581,12 @@ export class GroupsService {
         .getMany();
       const DTOs = await Promise.all(
         curr.map((relationship) =>
-          this.questionsService.getQuestionDto(relationship.questionId),
+          this.questionsService.getQuestionDto(
+            relationship.questionId,
+            viewerId,
+            ip,
+            userAgent,
+          ),
         ),
       );
       const [retDTOs, page] = PageHelper.PageMiddle(
@@ -565,7 +609,12 @@ export class GroupsService {
         .getMany();
       const DTOs = await Promise.all(
         curr.map((relationship) =>
-          this.questionsService.getQuestionDto(relationship.questionId),
+          this.questionsService.getQuestionDto(
+            relationship.questionId,
+            viewerId,
+            ip,
+            userAgent,
+          ),
         ),
       );
       const [retDTOs, page] = PageHelper.PageStart(

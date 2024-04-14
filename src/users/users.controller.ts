@@ -86,7 +86,7 @@ export class UsersController {
   async sendRegisterEmailCode(
     @Body() { email }: SendEmailVerifyCodeRequestDto,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<SendEmailVerifyCodeResponseDto> {
     await this.usersService.sendRegisterEmailCode(email, ip, userAgent);
     return {
@@ -101,7 +101,7 @@ export class UsersController {
     @Body()
     { username, nickname, password, email, emailCode }: RegisterRequestDto,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
     @Res() res: Response,
   ): Promise<Response> {
     const userDto = await this.usersService.register(
@@ -147,7 +147,7 @@ export class UsersController {
   async login(
     @Body() { username, password }: LoginRequestDto,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
     @Res() res: Response,
   ): Promise<Response> {
     const [userDto, refreshToken] = await this.usersService.login(
@@ -185,7 +185,7 @@ export class UsersController {
     @Headers('cookie') cookieHeader: string,
     @Res() res: Response,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<Response> {
     if (cookieHeader == undefined) {
       throw new AuthenticationRequiredError();
@@ -256,7 +256,7 @@ export class UsersController {
   async sendResetPasswordEmail(
     @Body() { email }: ResetPasswordRequestRequestDto,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<ResetPasswordRequestDto> {
     await this.usersService.sendResetPasswordEmail(email, ip, userAgent);
     return {
@@ -270,7 +270,7 @@ export class UsersController {
   async verifyAndResetPassword(
     @Body() { token, new_password }: ResetPasswordVerifyRequestDto,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<ResetPasswordVerifyResponseDto> {
     await this.usersService.verifyAndResetPassword(
       token,
@@ -289,7 +289,7 @@ export class UsersController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<GetUserResponseDto> {
     let viewerId: number | undefined;
     try {
@@ -385,7 +385,7 @@ export class UsersController {
     { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<GetFollowersResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
@@ -420,7 +420,7 @@ export class UsersController {
     { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<GetFollowersResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
@@ -455,7 +455,7 @@ export class UsersController {
     { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<GetAskedQuestionsResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
@@ -491,7 +491,7 @@ export class UsersController {
     { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<GetAnsweredAnswersResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
@@ -527,7 +527,7 @@ export class UsersController {
     { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,
+    @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<GetFollowedQuestionsResponseDto> {
     if (pageSize == undefined || pageSize == 0) pageSize = 20;
     // try get viewer id
