@@ -11,7 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { TopicDto } from './DTO/topic.dto';
 import { TopicAlreadyExistsError, TopicNotFoundError } from './topics.error';
@@ -56,7 +56,7 @@ export class TopicsService {
     searcherId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[TopicDto[], PageRespondDto]> {
+  ): Promise<[TopicDto[], PageDto]> {
     const timeBegin = Date.now();
     const result = !keywords
       ? { hits: { hits: [] } }

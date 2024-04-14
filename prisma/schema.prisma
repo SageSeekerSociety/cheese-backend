@@ -9,7 +9,7 @@
 
 generator client {
   provider      = "prisma-client-js"
-  binaryTargets = ["debian-openssl-3.0.x", "debian-openssl-1.1.x"]
+  binaryTargets = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]
 }
 
 datasource db {
@@ -231,15 +231,21 @@ model SessionRefreshLog {
 // avatars.legacy.prisma
 //
 
+enum AvatarType {
+  default
+  predefined
+  upload
+}
+
 model Avatar {
   id           Int            @id @default(autoincrement())
   url          String         @db.VarChar
   name         String         @db.VarChar
   createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  avatarType   String         @map("avatar_type") @db.VarChar
+  avatarType   AvatarType     @map("avatar_type")
   usageCount   Int            @default(0) @map("usage_count")
-  groupProfile GroupProfile[]
-  userProfile  UserProfile[]
+  GroupProfile GroupProfile[]
+  UserProfile  UserProfile[]
 
   @@map("avatar")
 }

@@ -22,12 +22,13 @@ import {
 import { SessionService } from '../auth/session.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { EmailRuleService } from '../email/email-rule.service';
+import { EmailService } from '../email/email.service';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
-import { EmailService } from './email.service';
 import { UsersPermissionService } from './users-permission.service';
 import {
   CodeNotMatchError,
@@ -64,6 +65,7 @@ import {
 export class UsersService {
   constructor(
     private readonly emailService: EmailService,
+    private readonly emailRuleService: EmailRuleService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly usersPermissionService: UsersPermissionService,
@@ -103,12 +105,11 @@ export class UsersService {
   }
 
   private isEmailSuffixSupported(email: string): boolean {
-    // support only @ruc.edu.cn currently
-    return email.endsWith('@ruc.edu.cn');
+    return this.emailRuleService.isEmailSuffixSupported(email);
   }
 
   get emailSuffixRule(): string {
-    return 'Only @ruc.edu.cn is supported currently.';
+    return this.emailRuleService.emailSuffixRule;
   }
 
   async sendRegisterEmailCode(
@@ -124,10 +125,7 @@ export class UsersService {
         userAgent: userAgent,
       });
       await this.userRegisterLogRepository.save(log);
-      throw new InvalidEmailAddressError(
-        email,
-        'Email should look like someone@example.com',
-      );
+      throw new InvalidEmailAddressError(email);
     }
     if (this.isEmailSuffixSupported(email) == false) {
       const log = this.userRegisterLogRepository.create({
@@ -246,10 +244,7 @@ export class UsersService {
       throw new InvalidPasswordError(this.passwordRule);
     }
     if (isEmail(email) == false) {
-      throw new InvalidEmailAddressError(
-        email,
-        'Email should look like someone@example.com',
-      );
+      throw new InvalidEmailAddressError(email);
     }
     if (this.isEmailSuffixSupported(email) == false) {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
@@ -466,10 +461,7 @@ export class UsersService {
   ): Promise<void> {
     // Check email.
     if (isEmail(email) == false) {
-      throw new InvalidEmailAddressError(
-        email,
-        'Email should look like someone@example.com',
-      );
+      throw new InvalidEmailAddressError(email);
     }
     if (this.isEmailSuffixSupported(email) == false) {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
@@ -510,7 +502,11 @@ export class UsersService {
       this.passwordResetEmailValidSeconds,
     );
     try {
-      await this.emailService.sendPasswordResetEmail(email, token);
+      await this.emailService.sendPasswordResetEmail(
+        email,
+        user.username,
+        token,
+      );
     } catch {
       throw new EmailSendFailedError(email);
     }
@@ -670,7 +666,7 @@ export class UsersService {
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[UserDto[], PageRespondDto]> {
+  ): Promise<[UserDto[], PageDto]> {
     if (firstFollowerId == undefined) {
       const relations = await this.userFollowingRepository.find({
         where: { followeeId: followeeId },
@@ -723,7 +719,7 @@ export class UsersService {
     viewerId?: number, // optional
     ip?: string, // optional
     userAgent?: string, // optional
-  ): Promise<[UserDto[], PageRespondDto]> {
+  ): Promise<[UserDto[], PageDto]> {
     if (firstFolloweeId == undefined) {
       const relations = await this.userFollowingRepository.find({
         where: { followerId: followerId },

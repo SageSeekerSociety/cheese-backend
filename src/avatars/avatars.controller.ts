@@ -20,7 +20,7 @@ import * as fs from 'fs';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { getFileHash, getFileMimeType } from '../common/helper/file.helper';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
-import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
+import { UploadAvatarResponseDto } from './DTO/upload-avatar.dto';
 import {
   CorrespondentFileNotExistError,
   InvalidAvatarTypeError,
@@ -39,14 +39,14 @@ export class AvatarsController {
   @UseInterceptors(FileInterceptor('avatar'))
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
-  ): Promise<UploadAvatarRespondDto> {
+  ): Promise<UploadAvatarResponseDto> {
     //const userId = this.authService.verify(auth).userId;
-    const avatarId = await this.avatarsService.save(file.path, file.filename);
+    const avatar = await this.avatarsService.save(file.path, file.filename);
     return {
       code: 201,
       message: 'Upload avatar successfully',
       data: {
-        avatarId,
+        avatarId: avatar.id,
       },
     };
   }
@@ -115,9 +115,9 @@ export class AvatarsController {
 
   @Get()
   async getAvailableAvatarIds(
-    @Query('type') type: AvatarType = AvatarType.PreDefined,
+    @Query('type') type: AvatarType = AvatarType.predefined,
   ) {
-    if (type == AvatarType.PreDefined) {
+    if (type == AvatarType.predefined) {
       const avatarIds = await this.avatarsService.getPreDefinedAvatarIds();
       return {
         code: 200,

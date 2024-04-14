@@ -7,7 +7,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 import { BOUNTY_LIMIT } from '../questions.error';
 
 export class AddQuestionRequestDto {
@@ -36,7 +36,7 @@ export class AddQuestionRequestDto {
   bounty: number = 0;
 }
 
-export class AddQuestionResponseDto extends BaseRespondDto {
+export class AddQuestionResponseDto extends BaseResponseDto {
   data: {
     id: number;
   };

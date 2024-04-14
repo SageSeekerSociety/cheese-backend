@@ -1,10 +1,10 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-import { PageRespondDto } from '../../common/DTO/page-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
+import { PageDto } from '../../common/DTO/page-response.dto';
 import { GroupDto } from './group.dto';
 
-export class GetGroupsRespondDto extends BaseRespondDto {
+export class GetGroupsResponseDto extends BaseResponseDto {
   data: {
     groups: GroupDto[];
-    page: PageRespondDto;
+    page: PageDto;
   };
 }

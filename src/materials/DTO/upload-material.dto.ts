@@ -1,5 +1,5 @@
 import { IsIn, IsString } from 'class-validator';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
 export class UploadMaterialRequestDto {
   @IsString()
@@ -7,7 +7,7 @@ export class UploadMaterialRequestDto {
   type: string;
 }
 
-export class UploadMaterialRespondDto extends BaseRespondDto {
+export class UploadMaterialResponseDto extends BaseResponseDto {
   data: {
     id: number;
   };

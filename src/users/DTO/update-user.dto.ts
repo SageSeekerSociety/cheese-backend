@@ -1,5 +1,5 @@
 import { IsInt, IsString } from 'class-validator';
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
 export class UpdateUserRequestDto {
   @IsString()
@@ -12,4 +12,4 @@ export class UpdateUserRequestDto {
   avatarId: number;
 }
 
-export class UpdateUserRespondDto extends BaseRespondDto {}
+export class UpdateUserResponseDto extends BaseResponseDto {}
