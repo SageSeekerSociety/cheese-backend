@@ -21,7 +21,6 @@ import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { AnswerDto } from './DTO/answer.dto';
 import {
-  AlreadyHasSameAttitudeError,
   AnswerAlreadyFavoriteError,
   AnswerNotFavoriteError,
   AnswerNotFoundError,
@@ -29,12 +28,9 @@ import {
 } from './answer.error';
 import {
   Answer,
-  AnswerAttitudeAgree,
-  AnswerAttitudeUndefined,
   AnswerDeleteLog,
   AnswerQueryLog,
   AnswerUpdateLog,
-  AnswerUserAttitude,
 } from './answer.legacy.entity';
 
 @Injectable()
@@ -51,8 +47,6 @@ export class AnswerService {
     private readonly attitudeService: AttitudeService,
     @InjectRepository(Answer)
     private readonly answerRepository: Repository<Answer>,
-    @InjectRepository(AnswerUserAttitude)
-    private readonly userAttitudeRepository: Repository<AnswerUserAttitude>,
     @InjectRepository(AnswerQueryLog)
     private readonly answerQueryLogRepository: Repository<AnswerQueryLog>,
     @InjectRepository(AnswerUpdateLog)
@@ -233,23 +227,6 @@ export class AnswerService {
   }
 
   // questionId is reserved for sharding
-  async getAgreeType(
-    questionId: number,
-    answerId: number,
-    userId: number | undefined,
-  ): Promise<number> {
-    if (userId == undefined) return AnswerAttitudeUndefined;
-    const userAttitude = await this.userAttitudeRepository.findOne({
-      where: { userId, answerId },
-    });
-    if (userAttitude) {
-      return userAttitude.type;
-    } else {
-      return AnswerAttitudeUndefined;
-    }
-  }
-
-  // questionId is reserved for sharding
   async isFavorite(
     questionId: number,
     answerId: number,
@@ -407,46 +384,6 @@ export class AnswerService {
       answerId,
     });
     await this.answerDeleteLogRepository.save(log);
-  }
-
-  // questionId is reserved for sharding
-  async getAgreeCount(questionId: number, answerId: number): Promise<number> {
-    return await this.userAttitudeRepository.count({
-      where: { answerId, type: AnswerAttitudeAgree },
-    });
-  }
-
-  async agreeAnswer(
-    questionId: number,
-    answerId: number,
-    userId: number,
-    agreeType: number,
-  ): Promise<void> {
-    const answer = await this.answerRepository.findOneBy({
-      questionId,
-      id: answerId,
-    });
-    if (!answer) {
-      throw new AnswerNotFoundError(answerId);
-    }
-
-    // check if the user has already agreed or disagreed
-    const userAttitude = await this.userAttitudeRepository.findOne({
-      where: { userId, answerId },
-    });
-    if (userAttitude) {
-      if (userAttitude.type == agreeType) {
-        throw new AlreadyHasSameAttitudeError(userId, answerId, agreeType);
-      }
-      userAttitude.type = agreeType;
-      await this.userAttitudeRepository.save(userAttitude);
-    } else {
-      await this.userAttitudeRepository.save({
-        userId,
-        answerId,
-        type: agreeType,
-      });
-    }
   }
 
   async getFavoriteAnswers(

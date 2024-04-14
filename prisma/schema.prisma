@@ -50,7 +50,6 @@ model Answer {
   answerFavoritedByUser AnswerFavoritedByUser[]
   answerQueryLog        AnswerQueryLog[]
   answerUpdateLog       AnswerUpdateLog[]
-  answerUserAttitude    AnswerUserAttitude[]
   acceptedByQuestion    Question?               @relation("AcceptedAnswer")
 
   @@index([groupId], map: "IDX_1887685ce6667b435b01c646a2")
@@ -112,17 +111,6 @@ model AnswerUpdateLog {
   @@index([updaterId], map: "IDX_0ef2a982b61980d95b5ae7f1a6")
   @@index([answerId], map: "IDX_6f0964cf74c12678a86e49b23f")
   @@map("answer_update_log")
-}
-
-model AnswerUserAttitude {
-  id       Int    @id(map: "PK_c06b4ffc5a74d07cb867d6b3f98") @default(autoincrement())
-  userId   Int    @map("user_id")
-  answerId Int    @map("answer_id")
-  type     Int    @default(0)
-  answer   Answer @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_2de5146dd65213f724e32745d06")
-  user     User   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7555fb52fdf623d67f9884ea63d")
-
-  @@map("answer_user_attitude")
 }
 
 //
@@ -654,7 +642,6 @@ model User {
   answerFavoritedByUser                                              AnswerFavoritedByUser[]
   answerQueryLog                                                     AnswerQueryLog[]
   answerUpdateLog                                                    AnswerUpdateLog[]
-  answerUserAttitude                                                 AnswerUserAttitude[]
   comment                                                            Comment[]
   commentDeleteLog                                                   CommentDeleteLog[]
   commentQueryLog                                                    CommentQueryLog[]

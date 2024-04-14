@@ -15,7 +15,7 @@ import { GroupMembership } from "../groups/groups.legacy"
 import { Question, QuestionFollowerRelation, QuestionQueryLog, QuestionSearchLog, QuestionTopicRelation } from "../questions/questions.legacy"
 import { Topic, TopicSearchLog } from "../topics/topics.legacy"
 import { Avatar } from "../avatars/avatars.legacy"
-import { Answer, AnswerDeleteLog, AnswerFavoritedByUser, AnswerQueryLog, AnswerUpdateLog, AnswerUserAttitude } from "../answer/answer.legacy"
+import { Answer, AnswerDeleteLog, AnswerFavoritedByUser, AnswerQueryLog, AnswerUpdateLog } from "../answer/answer.legacy"
 import { Attitude } from "../attitude/attitude"
 import { Comment, CommentDeleteLog, CommentQueryLog } from "../comments/comment.legacy"
 import { AttitudeLog } from "../attitude/attitude"
@@ -34,7 +34,6 @@ model User {
   answerFavoritedByUser                                              AnswerFavoritedByUser[]
   answerQueryLog                                                     AnswerQueryLog[]
   answerUpdateLog                                                    AnswerUpdateLog[]
-  answerUserAttitude                                                 AnswerUserAttitude[]
   comment                                                            Comment[]
   commentDeleteLog                                                   CommentDeleteLog[]
   commentQueryLog                                                    CommentQueryLog[]
