@@ -1,12 +1,12 @@
 import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
-export class FollowQuestionResponseDto extends BaseResponseDto {
+export interface FollowQuestionResponseDto extends BaseResponseDto {
   data: {
     follow_count: number;
   };
 }
 
-export class UnfollowQuestionResponseDto extends BaseResponseDto {
+export interface UnfollowQuestionResponseDto extends BaseResponseDto {
   data: {
     follow_count: number;
   };

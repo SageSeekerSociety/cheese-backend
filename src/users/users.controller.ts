@@ -52,8 +52,8 @@ import { LoginRequestDto, LoginResponseDto } from './DTO/login.dto';
 import { RefreshTokenResponseDto } from './DTO/refresh-token.dto';
 import { RegisterRequestDto, RegisterResponseDto } from './DTO/register.dto';
 import {
-  ResetPasswordRequestDto,
   ResetPasswordRequestRequestDto,
+  ResetPasswordRequestRespondDto,
   ResetPasswordVerifyRequestDto,
   ResetPasswordVerifyResponseDto,
 } from './DTO/reset-password.dto';
@@ -257,7 +257,7 @@ export class UsersController {
     @Body() { email }: ResetPasswordRequestRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<ResetPasswordRequestDto> {
+  ): Promise<ResetPasswordRequestRespondDto> {
     await this.usersService.sendResetPasswordEmail(email, ip, userAgent);
     return {
       code: 201,

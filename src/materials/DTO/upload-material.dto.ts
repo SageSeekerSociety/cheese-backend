@@ -7,7 +7,7 @@ export class UploadMaterialRequestDto {
   type: string;
 }
 
-export class UploadMaterialResponseDto extends BaseResponseDto {
+export interface UploadMaterialResponseDto extends BaseResponseDto {
   data: {
     id: number;
   };

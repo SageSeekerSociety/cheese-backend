@@ -1,5 +1,5 @@
 import { BaseResponseDto } from '../../common/DTO/base-response.dto';
-export class UploadAvatarResponseDto extends BaseResponseDto {
+export interface UploadAvatarResponseDto extends BaseResponseDto {
   data: {
     avatarid: number;
   };

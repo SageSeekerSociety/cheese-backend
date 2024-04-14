@@ -6,4 +6,4 @@ export class SendEmailVerifyCodeRequestDto {
   email: string;
 }
 
-export class SendEmailVerifyCodeResponseDto extends BaseResponseDto {}
+export interface SendEmailVerifyCodeResponseDto extends BaseResponseDto {}

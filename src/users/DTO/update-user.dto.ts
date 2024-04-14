@@ -12,4 +12,4 @@ export class UpdateUserRequestDto {
   avatarId: number;
 }
 
-export class UpdateUserResponseDto extends BaseResponseDto {}
+export interface UpdateUserResponseDto extends BaseResponseDto {}

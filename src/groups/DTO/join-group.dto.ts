@@ -12,6 +12,6 @@ export class JoinGroupResultDto {
   is_waiting: boolean;
 }
 
-export class JoinGroupResponseDto extends BaseResponseDto {
+export interface JoinGroupResponseDto extends BaseResponseDto {
   data: JoinGroupResultDto;
 }

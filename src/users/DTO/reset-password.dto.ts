@@ -6,7 +6,7 @@ export class ResetPasswordRequestRequestDto {
   email: string;
 }
 
-export class ResetPasswordRequestDto extends BaseResponseDto {}
+export interface ResetPasswordRequestRespondDto extends BaseResponseDto {}
 
 export class ResetPasswordVerifyRequestDto {
   @IsString()
@@ -16,4 +16,4 @@ export class ResetPasswordVerifyRequestDto {
   new_password: string;
 }
 
-export class ResetPasswordVerifyResponseDto extends BaseResponseDto {}
+export interface ResetPasswordVerifyResponseDto extends BaseResponseDto {}
