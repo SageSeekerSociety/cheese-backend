@@ -11,54 +11,55 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { user } from "../users/users.legacy"
+import { User } from "../users/users.legacy"
 
-enum comment_commentabletype_enum {
+enum CommentCommentabletypeEnum {
   ANSWER
   COMMENT
   QUESTION
 }
-
-model comment {
-  id                 Int                          @id(map: "PK_0b0e4bbc8415ec426f87f3a88e2") @default(autoincrement())
-  commentableType    comment_commentabletype_enum
-  commentableId      Int
-  content            String
-  createdById        Int
-  createdAt          DateTime                     @default(now()) @db.Timestamp(6)
-  updatedAt          DateTime                     @default(now()) @db.Timestamp(6)
-  deletedAt          DateTime?                    @db.Timestamp(6)
-  user               user                         @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_63ac916757350d28f05c5a6a4ba")
-  comment_delete_log comment_delete_log[]
-  comment_query_log  comment_query_log[]
+model Comment {
+  id               Int                        @id(map: "PK_0b0e4bbc8415ec426f87f3a88e2") @default(autoincrement())
+  commentableType  CommentCommentabletypeEnum @map("commentable_type")
+  commentableId    Int                        @map("commentable_id")
+  content          String
+  createdById      Int                        @map("created_by_id")
+  createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime                   @default(now()) @map("updated_at") @db.Timestamp(6)
+  deletedAt        DateTime?                  @map("deleted_at") @db.Timestamp(6)
+  user             User                       @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_63ac916757350d28f05c5a6a4ba")
+  commentDeleteLog CommentDeleteLog[]
+  commentQueryLog  CommentQueryLog[]
 
   @@index([commentableId], map: "IDX_525212ea7a75cba69724e42303")
   @@index([createdById], map: "IDX_63ac916757350d28f05c5a6a4b")
+  @@map("comment")
 }
 
-
-model comment_delete_log {
+model CommentDeleteLog {
   id           Int      @id(map: "PK_429889b4bdc646cb80ef8bc1814") @default(autoincrement())
-  commentId    Int
-  operatedById Int
-  createdAt    DateTime @default(now()) @db.Timestamptz(6)
-  user         user     @relation(fields: [operatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_53f0a8befcc12c0f7f2bab7584d")
-  comment      comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66705ce7d7908554cff01b260ec")
+  commentId    Int      @map("comment_id")
+  operatedById Int      @map("operated_by_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User     @relation(fields: [operatedById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_53f0a8befcc12c0f7f2bab7584d")
+  comment      Comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66705ce7d7908554cff01b260ec")
 
   @@index([operatedById], map: "IDX_53f0a8befcc12c0f7f2bab7584")
   @@index([commentId], map: "IDX_66705ce7d7908554cff01b260e")
+  @@map("comment_delete_log")
 }
 
-model comment_query_log {
+model CommentQueryLog {
   id        Int      @id(map: "PK_afbfb3d92cbf55c99cb6bdcd58f") @default(autoincrement())
-  commentId Int
-  viewerId  Int?
+  commentId Int      @map("comment_id")
+  viewerId  Int?     @map("viewer_id")
   ip        String   @db.VarChar
-  userAgent String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  comment   comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4020ff7fcffb2737e990f8bde5e")
-  user      user?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4ead8566a6fa987264484b13d54")
+  userAgent String   @map("user_agent") @db.VarChar
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4020ff7fcffb2737e990f8bde5e")
+  user      User?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4ead8566a6fa987264484b13d54")
 
   @@index([commentId], map: "IDX_4020ff7fcffb2737e990f8bde5")
   @@index([viewerId], map: "IDX_4ead8566a6fa987264484b13d5")
+  @@map("comment_query_log")
 }

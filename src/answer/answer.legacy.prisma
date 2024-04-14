@@ -11,90 +11,96 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { group } from "../groups/groups.legacy"
-import { user } from "../users/users.legacy"
-import { question } from "../questions/questions.legacy"
+import { Group } from "../groups/groups.legacy"
+import { User }from "../users/users.legacy"
+import { Question } from "../questions/questions.legacy"
 
-model answer {
+model Answer {
+  @@map("answer")
   id                       Int                        @id(map: "PK_9232db17b63fb1e94f97e5c224f") @default(autoincrement())
-  createdById              Int
-  questionId               Int
-  groupId                  Int?
+  createdById              Int @map("created_by_id")
+  questionId               Int @map("question_id")
+  groupId                  Int? @map("group_id")
   content                  String
-  createdAt                DateTime                   @default(now()) @db.Timestamptz(6)
-  updatedAt                DateTime                   @default(now()) @db.Timestamptz(6)
-  deletedAt                DateTime?                  @db.Timestamptz(6)
-  group                    group?                     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1887685ce6667b435b01c646a2c")
-  question                 question                   @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a4013f10cd6924793fbd5f0d637")
-  user                     user                       @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f636f6e852686173ea947f29045")
-  answer_delete_log        answer_delete_log[]
-  answer_favorited_by_user answer_favorited_by_user[]
-  answer_query_log         answer_query_log[]
-  answer_update_log        answer_update_log[]
-  answer_user_attitude     answer_user_attitude[]
-  accepted_by_question     question?                  @relation("AcceptedAnswer")
+  createdAt                DateTime @map("created_at")                   @default(now()) @db.Timestamptz(6)
+  updatedAt                DateTime @map("updated_at")                   @default(now()) @db.Timestamptz(6)
+  deletedAt                DateTime? @map("deleted_at")                  @db.Timestamptz(6)
+  group                    Group?                     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1887685ce6667b435b01c646a2c")
+  question                 Question                   @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a4013f10cd6924793fbd5f0d637")
+  user                     User                       @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f636f6e852686173ea947f29045")
+  answerDeleteLog        AnswerDeleteLog[]
+  answerFavoritedByUser AnswerFavoritedByUser[]
+  answerQueryLog         AnswerQueryLog[]
+  answerUpdateLog        AnswerUpdateLog[]
+  answerUserAttitude     AnswerUserAttitude[]
+  acceptedByQuestion     Question?                  @relation("AcceptedAnswer")
 
   @@index([groupId], map: "IDX_1887685ce6667b435b01c646a2")
   @@index([questionId], map: "IDX_a4013f10cd6924793fbd5f0d63")
   @@index([createdById], map: "IDX_f636f6e852686173ea947f2904")
 }
-
-model answer_delete_log {
+model AnswerDeleteLog {
   id        Int      @id(map: "PK_f1696d27f69ec9c6133a12aadcf") @default(autoincrement())
-  deleterId Int?
-  answerId  Int
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  answer    answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_910393b814aac627593588c17fd")
-  user      user?    @relation(fields: [deleterId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c2d0251df4669e17a57d6dbc06f")
+  deleterId Int?     @map("deleter_id")
+  answerId  Int      @map("answer_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_910393b814aac627593588c17fd")
+  user      User?    @relation(fields: [deleterId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c2d0251df4669e17a57d6dbc06f")
 
   @@index([answerId], map: "IDX_910393b814aac627593588c17f")
   @@index([deleterId], map: "IDX_c2d0251df4669e17a57d6dbc06")
+  @@map("answer_delete_log")
 }
 
-model answer_favorited_by_user {
-  answerId Int
-  userId   Int
-  user     user   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "FK_9556368d270d73579a68db7e1bf")
-  answer   answer @relation(fields: [answerId], references: [id], onDelete: Cascade, map: "FK_c27a91d761c26ad612a0a356971")
+model AnswerFavoritedByUser {
+  answerId Int    @map("answer_id")
+  userId   Int    @map("user_id")
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade, map: "FK_9556368d270d73579a68db7e1bf")
+  answer   Answer @relation(fields: [answerId], references: [id], onDelete: Cascade, map: "FK_c27a91d761c26ad612a0a356971")
 
   @@id([answerId, userId], map: "PK_5a857fe93c44fdb538ec5aa4771")
   @@index([userId], map: "IDX_9556368d270d73579a68db7e1b")
   @@index([answerId], map: "IDX_c27a91d761c26ad612a0a35697")
+  @@map("answer_favorited_by_user")
 }
 
-model answer_query_log {
+model AnswerQueryLog {
   id        Int      @id(map: "PK_4f65c4804d0693f458a716aa72c") @default(autoincrement())
-  viewerId  Int?
-  answerId  Int
+  viewerId  Int?     @map("viewer_id")
+  answerId  Int      @map("answer_id")
   ip        String   @db.VarChar
-  userAgent String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  answer    answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_71ed57d6bb340716f5e17043bbb")
-  user      user?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f4b7cd859700f8928695b6c2bab")
+  userAgent String   @map("user_agent") @db.VarChar
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  answer    Answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_71ed57d6bb340716f5e17043bbb")
+  user      User?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f4b7cd859700f8928695b6c2bab")
 
   @@index([answerId], map: "IDX_71ed57d6bb340716f5e17043bb")
   @@index([viewerId], map: "IDX_f4b7cd859700f8928695b6c2ba")
+  @@map("answer_query_log")
 }
 
-model answer_update_log {
+model AnswerUpdateLog {
   id         Int      @id(map: "PK_5ae381609b7ae9f2319fe26031f") @default(autoincrement())
-  updaterId  Int?
-  answerId   Int
-  oldContent String
-  newContent String
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-  user       user?    @relation(fields: [updaterId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_0ef2a982b61980d95b5ae7f1a60")
-  answer     answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_6f0964cf74c12678a86e49b23fe")
+  updaterId  Int?     @map("updater_id")
+  answerId   Int      @map("answer_id")
+  oldContent String   @map("old_content")
+  newContent String   @map("new_content")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user       User?    @relation(fields: [updaterId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_0ef2a982b61980d95b5ae7f1a60")
+  answer     Answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_6f0964cf74c12678a86e49b23fe")
 
   @@index([updaterId], map: "IDX_0ef2a982b61980d95b5ae7f1a6")
   @@index([answerId], map: "IDX_6f0964cf74c12678a86e49b23f")
+  @@map("answer_update_log")
 }
 
-model answer_user_attitude {
+model AnswerUserAttitude {
   id       Int    @id(map: "PK_c06b4ffc5a74d07cb867d6b3f98") @default(autoincrement())
-  userId   Int
-  answerId Int
+  userId   Int    @map("user_id")
+  answerId Int    @map("answer_id")
   type     Int    @default(0)
-  answer   answer @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_2de5146dd65213f724e32745d06")
-  user     user   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7555fb52fdf623d67f9884ea63d")
+  answer   Answer @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_2de5146dd65213f724e32745d06")
+  user     User   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7555fb52fdf623d67f9884ea63d")
+
+  @@map("answer_user_attitude")
 }

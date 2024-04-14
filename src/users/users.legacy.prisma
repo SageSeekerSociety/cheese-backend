@@ -11,101 +11,106 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { group_membership } from "../groups/groups.legacy"
-import { question, question_follower_relation, question_query_log, question_search_log, question_topic_relation } from "../questions/questions.legacy"
-import { topic, topic_search_log } from "../topics/topics.legacy"
-import { avatar } from "../avatars/avatars.legacy"
-import { answer, answer_delete_log, answer_favorited_by_user, answer_query_log, answer_update_log, answer_user_attitude } from "../answer/answer.legacy"
-import { Attitude } from "../attitude/attitude"
-import { comment, comment_delete_log, comment_query_log } from "../comments/comment.legacy"
-import { AttitudeLog } from "../attitude/attitude"
+import { GroupMembership } from "../groups/groups.legacy"
+import { Question, QuestionFollowerRelation, QuestionQueryLog, QuestionSearchLog, QuestionTopicRelation }from "../questions/questions.legacy"
+import { Topic, TopicSearchLog } from "../topics/topics.legacy"
+import { Avatar }from "../avatars/avatars.legacy"
+import { Answer, AnswerDeleteLog, AnswerFavoritedByUser, AnswerQueryLog, AnswerUpdateLog, AnswerUserAttitude } from "../answer/answer.legacy"
+import { Attitude }from "../attitude/attitude"
+import { Comment, CommentDeleteLog, CommentQueryLog } from "../comments/comment.legacy"
+import { AttitudeLog }from "../attitude/attitude"
 import { QuestionInvitationRelation } from "../questions/questions.invitation"
 
-model user {
+model User {
+  @@map("user")
   id                                                                       Int                           @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
   username                                                                 String                        @unique(map: "IDX_78a916df40e02a9deb1c4b75ed") @db.VarChar
-  hashedPassword                                                           String                        @db.VarChar
+  hashedPassword                                                           String @map("hashed_password")                        @db.VarChar
   email                                                                    String                        @unique(map: "IDX_e12875dfb3b1d92d7d7c5377e2") @db.VarChar
-  createdAt                                                                DateTime                      @default(now()) @db.Timestamptz(6)
-  updatedAt                                                                DateTime                      @default(now()) @db.Timestamptz(6)
-  deletedAt                                                                DateTime?                     @db.Timestamptz(6)
-  answer                                                                   answer[]
-  answer_delete_log                                                        answer_delete_log[]
-  answer_favorited_by_user                                                 answer_favorited_by_user[]
-  answer_query_log                                                         answer_query_log[]
-  answer_update_log                                                        answer_update_log[]
-  answer_user_attitude                                                     answer_user_attitude[]
-  comment                                                                  comment[]
-  comment_delete_log                                                       comment_delete_log[]
-  comment_query_log                                                        comment_query_log[]
-  group_membership                                                         group_membership[]
-  question                                                                 question[]
-  question_follower_relation                                               question_follower_relation[]
-  question_query_log                                                       question_query_log[]
-  question_search_log                                                      question_search_log[]
-  question_topic_relation                                                  question_topic_relation[]
-  topic                                                                    topic[]
-  topic_search_log                                                         topic_search_log[]
-  user_following_relationship_user_following_relationship_followerIdTouser user_following_relationship[] @relation("user_following_relationship_followerIdTouser")
-  user_following_relationship_user_following_relationship_followeeIdTouser user_following_relationship[] @relation("user_following_relationship_followeeIdTouser")
-  user_login_log                                                           user_login_log[]
-  user_profile                                                             user_profile?
-  user_profile_query_log_user_profile_query_log_viewerIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_viewerIdTouser")
-  user_profile_query_log_user_profile_query_log_vieweeIdTouser             user_profile_query_log[]      @relation("user_profile_query_log_vieweeIdTouser")
-  Attitude                                                                 Attitude[]
-  AttitudeLog                                                              AttitudeLog[]
-  QuestionInvitationRelation                                               QuestionInvitationRelation[]
+  createdAt                                                                DateTime @map("created_at")                      @default(now()) @db.Timestamptz(6)
+  updatedAt                                                                DateTime @map("updated_at")                      @default(now()) @db.Timestamptz(6)
+  deletedAt                                                                DateTime? @map("deleted_at")                     @db.Timestamptz(6)
+  answer                                                                   Answer[]
+  answerDeleteLog                                                        AnswerDeleteLog[]
+  answerFavoritedByUser                                                 AnswerFavoritedByUser[]
+  answerQueryLog                                                         AnswerQueryLog[]
+  answerUpdateLog                                                        AnswerUpdateLog[]
+  answerUserAttitude                                                     AnswerUserAttitude[]
+  comment                                                                  Comment[]
+  commentDeleteLog                                                       CommentDeleteLog[]
+  commentQueryLog                                                        CommentQueryLog[]
+  groupMembership                                                         GroupMembership[]
+  question                                                                 Question[]
+  questionFollowerRelation                                               QuestionFollowerRelation[]
+  questionQueryLog                                                       QuestionQueryLog[]
+  questionSearchLog                                                      QuestionSearchLog[]
+  questionTopicRelation                                                  QuestionTopicRelation[]
+  topic                                                                    Topic[]
+  topicSearchLog                                                         TopicSearchLog[]
+  userFollowingRelationshipUserFollowingRelationshipFollowerIdTouser UserFollowingRelationship[] @relation("user_following_relationship_followerIdTouser")
+  userFollowingRelationshipUserFollowingRelationshipFolloweeIdTouser UserFollowingRelationship[] @relation("user_following_relationship_followeeIdTouser")
+  userLoginLog                                                           UserLoginLog[]
+  userProfile                                                             UserProfile?
+  userProfileQueryLogUserProfileQueryLogViewerIdTouser             UserProfileQueryLog[]      @relation("user_profile_query_log_viewerIdTouser")
+  userProfileQueryLogUserProfileQueryLogVieweeIdTouser             UserProfileQueryLog[]      @relation("user_profile_query_log_vieweeIdTouser")
+  attitude                                                                 Attitude[]
+  attitudeLog                                                              AttitudeLog[]
+  questionInvitationRelation                                               QuestionInvitationRelation[]
 }
-
-model user_following_relationship {
-  id                                                Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
-  followeeId                                        Int
-  followerId                                        Int
-  createdAt                                         DateTime  @default(now()) @db.Timestamptz(6)
-  deletedAt                                         DateTime? @db.Timestamptz(6)
-  user_user_following_relationship_followerIdTouser user      @relation("user_following_relationship_followerIdTouser", fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_868df0c2c3a138ee54d2a515bce")
-  user_user_following_relationship_followeeIdTouser user      @relation("user_following_relationship_followeeIdTouser", fields: [followeeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c78831eeee179237b1482d0c6fb")
+model UserFollowingRelationship {
+  id                                            Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
+  followeeId                                    Int       @map("followee_id")
+  followerId                                    Int       @map("follower_id")
+  createdAt                                     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  deletedAt                                     DateTime? @map("deleted_at") @db.Timestamptz(6)
+  userUserFollowingRelationshipFollowerIdTouser User      @relation("user_following_relationship_followerIdTouser", fields: [followerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_868df0c2c3a138ee54d2a515bce")
+  userUserFollowingRelationshipFolloweeIdTouser User      @relation("user_following_relationship_followeeIdTouser", fields: [followeeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_c78831eeee179237b1482d0c6fb")
 
   @@index([followerId], map: "IDX_868df0c2c3a138ee54d2a515bc")
   @@index([followeeId], map: "IDX_c78831eeee179237b1482d0c6f")
+  @@map("user_following_relationship")
 }
 
-model user_login_log {
+model UserLoginLog {
   id        Int      @id(map: "PK_f8db79b1af1f385db4f45a2222e") @default(autoincrement())
-  userId    Int
+  userId    Int      @map("user_id")
   ip        String   @db.VarChar
-  userAgent String?   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
-  user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66c592c7f7f20d1214aba2d0046")
+  userAgent String?  @map("user_agent") @db.VarChar
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66c592c7f7f20d1214aba2d0046")
 
   @@index([userId], map: "IDX_66c592c7f7f20d1214aba2d004")
+  @@map("user_login_log")
 }
 
-model user_profile {
+model UserProfile {
   id        Int       @id(map: "PK_f44d0cd18cfd80b0fed7806c3b7") @default(autoincrement())
-  userId    Int       @unique(map: "IDX_51cb79b5555effaf7d69ba1cff")
+  userId    Int       @unique(map: "IDX_51cb79b5555effaf7d69ba1cff") @map("user_id")
   nickname  String    @db.VarChar
-  avatarId  Int
+  avatarId  Int       @map("avatar_id")
   intro     String    @db.VarChar
-  createdAt DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @db.Timestamptz(6)
-  deletedAt DateTime? @db.Timestamptz(6)
-  user      user      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_user_id")
-  avatar    avatar    @relation(fields: [avatarId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_avatar_id")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_user_id")
+  avatar    Avatar    @relation(fields: [avatarId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_avatar_id")
+
+  @@map("user_profile")
 }
 
-model user_profile_query_log {
-  id                                         Int      @id(map: "PK_9aeff7c959703fad866e9ad581a") @default(autoincrement())
-  viewerId                                   Int?
-  vieweeId                                   Int
-  ip                                         String   @db.VarChar
-  userAgent                                  String?   @db.VarChar
-  createdAt                                  DateTime @default(now()) @db.Timestamptz(6)
-  user_user_profile_query_log_viewerIdTouser user?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1261db28434fde159acda6094bc")
-  user_user_profile_query_log_vieweeIdTouser user     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff592e4403b328be0de4f2b3973")
+model UserProfileQueryLog {
+  id                                    Int      @id(map: "PK_9aeff7c959703fad866e9ad581a") @default(autoincrement())
+  viewerId                              Int?     @map("viewer_id")
+  vieweeId                              Int      @map("viewee_id")
+  ip                                    String   @db.VarChar
+  userAgent                             String?  @map("user_agent") @db.VarChar
+  createdAt                             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  userUserProfileQueryLogViewerIdTouser User?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1261db28434fde159acda6094bc")
+  userUserProfileQueryLogVieweeIdTouser User     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff592e4403b328be0de4f2b3973")
 
   @@index([viewerId], map: "IDX_1261db28434fde159acda6094b")
   @@index([vieweeId], map: "IDX_ff592e4403b328be0de4f2b397")
+  @@map("user_profile_query_log")
 }
 
 enum UserRegisterLogType {
@@ -119,24 +124,26 @@ enum UserRegisterLogType {
   FailDueToWrongCodeOrExpired
 }
 
-model user_register_log {
+model UserRegisterLog {
   id        Int                 @id(map: "PK_3596a6f74bd2a80be930f6d1e39") @default(autoincrement())
   email     String              @db.VarChar
   type      UserRegisterLogType
   ip        String              @db.VarChar
-  userAgent String?              @db.VarChar
-  createdAt DateTime            @default(now()) @db.Timestamptz(6)
+  userAgent String?             @map("user_agent") @db.VarChar
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([email], map: "IDX_3af79f07534d9f1c945cd4c702")
+  @@map("user_register_log")
 }
 
-model user_register_request {
+model UserRegisterRequest {
   id        Int      @id(map: "PK_cdf2d880551e43d9362ddd37ae0") @default(autoincrement())
   email     String   @db.VarChar
   code      String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([email], map: "IDX_c1d0ecc369d7a6a3d7e876c589")
+  @@map("user_register_request")
 }
 
 enum UserResetPasswordLogType {
@@ -149,11 +156,13 @@ enum UserResetPasswordLogType {
   FailDueToNoUser
 }
 
-model user_reset_password_log {
+model UserResetPasswordLog {
   id        Int                      @id(map: "PK_3ee4f25e7f4f1d5a9bd9817b62b") @default(autoincrement())
-  userId    Int?
+  userId    Int?                     @map("user_id")
   type      UserResetPasswordLogType
   ip        String                   @db.VarChar
-  userAgent String?                   @db.VarChar
-  createdAt DateTime                 @default(now()) @db.Timestamptz(6)
+  userAgent String?                  @map("user_agent") @db.VarChar
+  createdAt DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("user_reset_password_log")
 }

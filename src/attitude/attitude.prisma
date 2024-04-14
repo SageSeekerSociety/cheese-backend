@@ -6,14 +6,13 @@
 //
 //
 
-import { user } from "../users/users.legacy"
+import { User } from "../users/users.legacy"
 
 enum AttitudableType {
   COMMENT
   QUESTION
   ANSWER
 }
-
 enum AttitudeType {
   UNDEFINED
   POSITIVE
@@ -29,27 +28,29 @@ enum AttitudeTypeNotUndefined {
 
 model Attitude {
   id              Int                      @id @default(autoincrement())
-  user            user                     @relation(fields: [userId], references: [id])
-  userId          Int
-  attitudableType AttitudableType
-  attitudableId   Int
+  user            User                     @relation(fields: [userId], references: [id])
+  userId          Int                      @map("user_id")
+  attitudableType AttitudableType          @map("attitudable_type")
+  attitudableId   Int                      @map("attitudable_id")
   attitude        AttitudeTypeNotUndefined
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt()
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt() @map("updated_at")
 
   @@unique([attitudableId, userId, attitudableType])
   @@index([userId])
+  @@map("attitude")
 }
 
 model AttitudeLog {
   id              Int             @id @default(autoincrement())
-  user            user            @relation(fields: [userId], references: [id])
-  userId          Int
-  attitudableType AttitudableType
-  attitudableId   Int
+  user            User            @relation(fields: [userId], references: [id])
+  userId          Int             @map("user_id")
+  attitudableType AttitudableType @map("attitudable_type")
+  attitudableId   Int             @map("attitudable_id")
   attitude        AttitudeType
-  createdAt       DateTime        @default(now())
+  createdAt       DateTime        @default(now()) @map("created_at")
 
   @@index([attitudableId, attitudableType])
   @@index([userId])
+  @@map("attitude_log")
 }
