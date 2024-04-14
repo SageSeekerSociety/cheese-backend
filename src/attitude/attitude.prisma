@@ -6,13 +6,14 @@
 //
 //
 
-import { User } from "../users/users.legacy"
+import { User } from "../users/users"
 
 enum AttitudableType {
   COMMENT
   QUESTION
   ANSWER
 }
+
 enum AttitudeType {
   UNDEFINED
   POSITIVE

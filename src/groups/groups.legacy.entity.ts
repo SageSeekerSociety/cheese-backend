@@ -38,7 +38,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Question } from '../questions/questions.legacy.entity';
-import { User } from '../users/users.deprecated.entity';
 import { GroupProfile } from './group-profile.entity';
 
 @Entity()
@@ -83,10 +82,6 @@ export class GroupMembership {
 
   @Column()
   groupId: number;
-
-  @ManyToOne(() => User)
-  @Index()
-  member: User;
 
   @Column()
   memberId: number;

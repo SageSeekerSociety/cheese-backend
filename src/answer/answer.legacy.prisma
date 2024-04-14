@@ -12,33 +12,34 @@
 //
 
 import { Group } from "../groups/groups.legacy"
-import { User }from "../users/users.legacy"
+import { User } from "../users/users"
 import { Question } from "../questions/questions.legacy"
 
 model Answer {
-  @@map("answer")
-  id                       Int                        @id(map: "PK_9232db17b63fb1e94f97e5c224f") @default(autoincrement())
-  createdById              Int @map("created_by_id")
-  questionId               Int @map("question_id")
-  groupId                  Int? @map("group_id")
-  content                  String
-  createdAt                DateTime @map("created_at")                   @default(now()) @db.Timestamptz(6)
-  updatedAt                DateTime @map("updated_at")                   @default(now()) @db.Timestamptz(6)
-  deletedAt                DateTime? @map("deleted_at")                  @db.Timestamptz(6)
-  group                    Group?                     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1887685ce6667b435b01c646a2c")
-  question                 Question                   @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a4013f10cd6924793fbd5f0d637")
-  user                     User                       @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f636f6e852686173ea947f29045")
-  answerDeleteLog        AnswerDeleteLog[]
+  id                    Int                     @id(map: "PK_9232db17b63fb1e94f97e5c224f") @default(autoincrement())
+  createdById           Int                     @map("created_by_id")
+  questionId            Int                     @map("question_id")
+  groupId               Int?                    @map("group_id")
+  content               String
+  createdAt             DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt             DateTime?               @map("deleted_at") @db.Timestamptz(6)
+  group                 Group?                  @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1887685ce6667b435b01c646a2c")
+  question              Question                @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a4013f10cd6924793fbd5f0d637")
+  user                  User                    @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f636f6e852686173ea947f29045")
+  answerDeleteLog       AnswerDeleteLog[]
   answerFavoritedByUser AnswerFavoritedByUser[]
-  answerQueryLog         AnswerQueryLog[]
-  answerUpdateLog        AnswerUpdateLog[]
-  answerUserAttitude     AnswerUserAttitude[]
-  acceptedByQuestion     Question?                  @relation("AcceptedAnswer")
+  answerQueryLog        AnswerQueryLog[]
+  answerUpdateLog       AnswerUpdateLog[]
+  answerUserAttitude    AnswerUserAttitude[]
+  acceptedByQuestion    Question?               @relation("AcceptedAnswer")
 
   @@index([groupId], map: "IDX_1887685ce6667b435b01c646a2")
   @@index([questionId], map: "IDX_a4013f10cd6924793fbd5f0d63")
   @@index([createdById], map: "IDX_f636f6e852686173ea947f2904")
+  @@map("answer")
 }
+
 model AnswerDeleteLog {
   id        Int      @id(map: "PK_f1696d27f69ec9c6133a12aadcf") @default(autoincrement())
   deleterId Int?     @map("deleter_id")

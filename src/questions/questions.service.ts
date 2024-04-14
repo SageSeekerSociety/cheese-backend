@@ -14,6 +14,7 @@ import {
   AttitudableType,
   AttitudeType,
   QuestionInvitationRelation,
+  User,
 } from '@prisma/client';
 import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { AnswerNotFoundError } from '../answer/answer.error';
@@ -34,7 +35,6 @@ import { TopicDto } from '../topics/DTO/topic.dto';
 import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
-import { User } from '../users/users.deprecated.entity';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { QuestionInvitationDto } from './DTO/question-invitation.dto';

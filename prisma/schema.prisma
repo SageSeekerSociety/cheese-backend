@@ -625,7 +625,7 @@ model TopicSearchLog {
 }
 
 //
-// users.legacy.prisma
+// users.prisma
 //
 
 //

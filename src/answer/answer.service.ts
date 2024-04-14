@@ -13,15 +13,16 @@ import { CommentsService } from '../comments/comment.service';
 import { CommentableType } from '../comments/commentable.enum';
 import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { GroupsService } from '../groups/groups.service';
 import { QuestionNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
-import { User } from '../users/users.deprecated.entity';
 import { UserIdNotFoundError } from '../users/users.error';
 import { UsersService } from '../users/users.service';
 import { AnswerDto } from './DTO/answer.dto';
 import {
   AlreadyHasSameAttitudeError,
+  AnswerAlreadyFavoriteError,
   AnswerNotFavoriteError,
   AnswerNotFoundError,
   QuestionAlreadyAnsweredError,
@@ -52,14 +53,13 @@ export class AnswerService {
     private readonly answerRepository: Repository<Answer>,
     @InjectRepository(AnswerUserAttitude)
     private readonly userAttitudeRepository: Repository<AnswerUserAttitude>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
     @InjectRepository(AnswerQueryLog)
     private readonly answerQueryLogRepository: Repository<AnswerQueryLog>,
     @InjectRepository(AnswerUpdateLog)
     private readonly answerUpdateLogRepository: Repository<AnswerUpdateLog>,
     @InjectRepository(AnswerDeleteLog)
     private readonly answerDeleteLogRepository: Repository<AnswerDeleteLog>,
+    private readonly prismaService: PrismaService,
   ) {}
 
   async createAnswer(
@@ -253,17 +253,18 @@ export class AnswerService {
   async isFavorite(
     questionId: number,
     answerId: number,
-    createdById: number | undefined,
+    userId: number | undefined,
   ): Promise<boolean> {
-    if (createdById == undefined) return false;
-    const answer = await this.answerRepository.findOne({
-      where: { id: answerId },
-      relations: ['favoritedBy'],
+    if (userId == undefined) return false;
+    const answer = await this.prismaService.answer.findUnique({
+      where: {
+        id: answerId,
+        answerFavoritedByUser: {
+          some: { userId },
+        },
+      },
     });
-    if (!answer) {
-      throw new AnswerNotFoundError(answerId);
-    }
-    return answer.favoritedBy.some((user) => user.id === createdById);
+    return answer != null;
   }
 
   async getAnswerDto(
@@ -273,10 +274,13 @@ export class AnswerService {
     ip: string,
     userAgent: string | undefined,
   ): Promise<AnswerDto> {
-    const answer = await this.answerRepository.findOne({
+    const answer = await this.prismaService.answer.findUnique({
       where: {
         questionId,
         id: answerId,
+      },
+      include: {
+        answerFavoritedByUser: true,
       },
     });
     if (!answer) {
@@ -343,7 +347,7 @@ export class AnswerService {
       created_at: answer.createdAt.getTime(),
       updated_at: answer.updatedAt.getTime(),
       attitudes: attitudeStatusDto,
-      favorite_count: answer.favoritedBy?.length ?? 0,
+      favorite_count: answer.answerFavoritedByUser.length,
       view_count: viewCount,
       comment_count: commentCount,
       is_favorite: isFavorite,
@@ -456,9 +460,9 @@ export class AnswerService {
     if ((await this.usersService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
     if (!pageStart) {
-      const currPage = await this.answerRepository.find({
-        where: { favoritedBy: { id: userId } },
-        order: { id: 'ASC' },
+      const currPage = await this.prismaService.answer.findMany({
+        where: { answerFavoritedByUser: { some: { userId } } },
+        orderBy: { id: 'asc' },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
@@ -474,20 +478,20 @@ export class AnswerService {
       );
       return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
     } else {
-      const prevPage = await this.answerRepository.find({
+      const prevPage = await this.prismaService.answer.findMany({
         where: {
-          favoritedBy: { id: userId },
-          id: LessThan(pageStart),
+          answerFavoritedByUser: { some: { userId } },
+          id: { lt: pageStart },
         },
-        order: { id: 'DESC' },
+        orderBy: { id: 'desc' },
         take: pageSize,
       });
-      const currPage = await this.answerRepository.find({
+      const currPage = await this.prismaService.answer.findMany({
         where: {
-          favoritedBy: { id: userId },
-          id: MoreThanOrEqual(pageStart),
+          answerFavoritedByUser: { some: { userId } },
+          id: { gte: pageStart },
         },
-        order: { id: 'ASC' },
+        orderBy: { id: 'asc' },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
@@ -516,28 +520,31 @@ export class AnswerService {
     answerId: number,
     createdById: number,
   ): Promise<void> {
-    const answer = await this.answerRepository.findOne({
-      where: {
-        questionId,
-        id: answerId,
-      },
-      relations: ['favoritedBy'],
-    });
-    if (!answer) {
+    if ((await this.isAnswerExists(questionId, answerId)) == false) {
       throw new AnswerNotFoundError(answerId);
     }
-
-    const user = await this.userRepository.findOneBy({ id: createdById });
     /* istanbul ignore if */
-    if (!user) {
+    if ((await this.usersService.isUserExists(createdById)) == false) {
       throw new UserIdNotFoundError(createdById);
     }
-    if (
-      !answer.favoritedBy.some((favoritedUser) => favoritedUser.id === user.id)
-    ) {
-      answer.favoritedBy.push(user);
+    const oleRelation =
+      await this.prismaService.answerFavoritedByUser.findUnique({
+        where: {
+          answerId_userId: {
+            answerId,
+            userId: createdById,
+          },
+        },
+      });
+    if (oleRelation != null) {
+      throw new AnswerAlreadyFavoriteError(answerId);
     }
-    await this.answerRepository.save(answer);
+    await this.prismaService.answerFavoritedByUser.create({
+      data: {
+        answerId,
+        userId: createdById,
+      },
+    });
   }
 
   async unfavoriteAnswer(
@@ -545,33 +552,35 @@ export class AnswerService {
     answerId: number,
     createdById: number,
   ): Promise<void> {
-    const answer = await this.answerRepository.findOne({
-      where: {
-        questionId,
-        id: answerId,
-      },
-      relations: ['favoritedBy'],
-    });
-    if (!answer) {
+    if ((await this.isAnswerExists(questionId, answerId)) == false) {
       throw new AnswerNotFoundError(answerId);
     }
 
-    const user = await this.userRepository.findOneBy({ id: createdById });
     /* istanbul ignore if */
-    if (!user) {
+    if ((await this.usersService.isUserExists(createdById)) == false) {
       throw new UserIdNotFoundError(createdById);
     }
 
-    if (
-      answer.favoritedBy.some((favoriteUser) => favoriteUser.id === user.id)
-    ) {
-      const index = answer.favoritedBy.indexOf(user);
-      answer.favoritedBy.splice(index, 1);
-    } else {
+    const oleRelation =
+      await this.prismaService.answerFavoritedByUser.findUnique({
+        where: {
+          answerId_userId: {
+            answerId,
+            userId: createdById,
+          },
+        },
+      });
+    if (oleRelation == null) {
       throw new AnswerNotFavoriteError(answerId);
     }
-
-    await this.answerRepository.save(answer);
+    await this.prismaService.answerFavoritedByUser.delete({
+      where: {
+        answerId_userId: {
+          answerId,
+          userId: createdById,
+        },
+      },
+    });
   }
 
   async isAnswerExists(questionId: number, answerId: number): Promise<boolean> {

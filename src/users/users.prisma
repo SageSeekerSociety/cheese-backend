@@ -12,51 +12,53 @@
 //
 
 import { GroupMembership } from "../groups/groups.legacy"
-import { Question, QuestionFollowerRelation, QuestionQueryLog, QuestionSearchLog, QuestionTopicRelation }from "../questions/questions.legacy"
+import { Question, QuestionFollowerRelation, QuestionQueryLog, QuestionSearchLog, QuestionTopicRelation } from "../questions/questions.legacy"
 import { Topic, TopicSearchLog } from "../topics/topics.legacy"
-import { Avatar }from "../avatars/avatars.legacy"
+import { Avatar } from "../avatars/avatars.legacy"
 import { Answer, AnswerDeleteLog, AnswerFavoritedByUser, AnswerQueryLog, AnswerUpdateLog, AnswerUserAttitude } from "../answer/answer.legacy"
-import { Attitude }from "../attitude/attitude"
+import { Attitude } from "../attitude/attitude"
 import { Comment, CommentDeleteLog, CommentQueryLog } from "../comments/comment.legacy"
-import { AttitudeLog }from "../attitude/attitude"
+import { AttitudeLog } from "../attitude/attitude"
 import { QuestionInvitationRelation } from "../questions/questions.invitation"
 
 model User {
+  id                                                                 Int                          @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
+  username                                                           String                       @unique(map: "IDX_78a916df40e02a9deb1c4b75ed") @db.VarChar
+  hashedPassword                                                     String                       @map("hashed_password") @db.VarChar
+  email                                                              String                       @unique(map: "IDX_e12875dfb3b1d92d7d7c5377e2") @db.VarChar
+  createdAt                                                          DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                                                          DateTime                     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt                                                          DateTime?                    @map("deleted_at") @db.Timestamptz(6)
+  answer                                                             Answer[]
+  answerDeleteLog                                                    AnswerDeleteLog[]
+  answerFavoritedByUser                                              AnswerFavoritedByUser[]
+  answerQueryLog                                                     AnswerQueryLog[]
+  answerUpdateLog                                                    AnswerUpdateLog[]
+  answerUserAttitude                                                 AnswerUserAttitude[]
+  comment                                                            Comment[]
+  commentDeleteLog                                                   CommentDeleteLog[]
+  commentQueryLog                                                    CommentQueryLog[]
+  groupMembership                                                    GroupMembership[]
+  question                                                           Question[]
+  questionFollowerRelation                                           QuestionFollowerRelation[]
+  questionQueryLog                                                   QuestionQueryLog[]
+  questionSearchLog                                                  QuestionSearchLog[]
+  questionTopicRelation                                              QuestionTopicRelation[]
+  topic                                                              Topic[]
+  topicSearchLog                                                     TopicSearchLog[]
+  userFollowingRelationshipUserFollowingRelationshipFollowerIdTouser UserFollowingRelationship[]  @relation("user_following_relationship_followerIdTouser")
+  userFollowingRelationshipUserFollowingRelationshipFolloweeIdTouser UserFollowingRelationship[]  @relation("user_following_relationship_followeeIdTouser")
+  userLoginLog                                                       UserLoginLog[]
+  userProfile                                                        UserProfile?
+  userProfileQueryLogUserProfileQueryLogViewerIdTouser               UserProfileQueryLog[]        @relation("user_profile_query_log_viewerIdTouser")
+  userProfileQueryLogUserProfileQueryLogVieweeIdTouser               UserProfileQueryLog[]        @relation("user_profile_query_log_vieweeIdTouser")
+  attitude                                                           Attitude[]
+  attitudeLog                                                        AttitudeLog[]
+  questionInvitationRelation                                         QuestionInvitationRelation[]
+
   @@map("user")
-  id                                                                       Int                           @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
-  username                                                                 String                        @unique(map: "IDX_78a916df40e02a9deb1c4b75ed") @db.VarChar
-  hashedPassword                                                           String @map("hashed_password")                        @db.VarChar
-  email                                                                    String                        @unique(map: "IDX_e12875dfb3b1d92d7d7c5377e2") @db.VarChar
-  createdAt                                                                DateTime @map("created_at")                      @default(now()) @db.Timestamptz(6)
-  updatedAt                                                                DateTime @map("updated_at")                      @default(now()) @db.Timestamptz(6)
-  deletedAt                                                                DateTime? @map("deleted_at")                     @db.Timestamptz(6)
-  answer                                                                   Answer[]
-  answerDeleteLog                                                        AnswerDeleteLog[]
-  answerFavoritedByUser                                                 AnswerFavoritedByUser[]
-  answerQueryLog                                                         AnswerQueryLog[]
-  answerUpdateLog                                                        AnswerUpdateLog[]
-  answerUserAttitude                                                     AnswerUserAttitude[]
-  comment                                                                  Comment[]
-  commentDeleteLog                                                       CommentDeleteLog[]
-  commentQueryLog                                                        CommentQueryLog[]
-  groupMembership                                                         GroupMembership[]
-  question                                                                 Question[]
-  questionFollowerRelation                                               QuestionFollowerRelation[]
-  questionQueryLog                                                       QuestionQueryLog[]
-  questionSearchLog                                                      QuestionSearchLog[]
-  questionTopicRelation                                                  QuestionTopicRelation[]
-  topic                                                                    Topic[]
-  topicSearchLog                                                         TopicSearchLog[]
-  userFollowingRelationshipUserFollowingRelationshipFollowerIdTouser UserFollowingRelationship[] @relation("user_following_relationship_followerIdTouser")
-  userFollowingRelationshipUserFollowingRelationshipFolloweeIdTouser UserFollowingRelationship[] @relation("user_following_relationship_followeeIdTouser")
-  userLoginLog                                                           UserLoginLog[]
-  userProfile                                                             UserProfile?
-  userProfileQueryLogUserProfileQueryLogViewerIdTouser             UserProfileQueryLog[]      @relation("user_profile_query_log_viewerIdTouser")
-  userProfileQueryLogUserProfileQueryLogVieweeIdTouser             UserProfileQueryLog[]      @relation("user_profile_query_log_vieweeIdTouser")
-  attitude                                                                 Attitude[]
-  attitudeLog                                                              AttitudeLog[]
-  questionInvitationRelation                                               QuestionInvitationRelation[]
 }
+
 model UserFollowingRelationship {
   id                                            Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
   followeeId                                    Int       @map("followee_id")

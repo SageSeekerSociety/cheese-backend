@@ -1,4 +1,4 @@
-import { user } from "../users/users.legacy"
+import { user } from "../users/users"
 import { question } from "../questions/questions.legacy"
 
 model QuestionInvitationRelation {

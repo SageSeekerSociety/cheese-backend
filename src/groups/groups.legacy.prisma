@@ -11,10 +11,10 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { User } from "../users/users.legacy"
-import { Question }from "../questions/questions.legacy"
+import { User } from "../users/users"
+import { Question } from "../questions/questions.legacy"
 import { Avatar } from "../avatars/avatars.legacy"
-import { Answer }from "../answer/answer.legacy"
+import { Answer } from "../answer/answer.legacy"
 
 model Group {
   id                        Int                         @id(map: "PK_256aa0fda9b1de1a73ee0b7106b") @default(autoincrement())

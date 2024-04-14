@@ -11,13 +11,14 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { User } from "../users/users.legacy"
+import { User } from "../users/users"
 
 enum CommentCommentabletypeEnum {
   ANSWER
   COMMENT
   QUESTION
 }
+
 model Comment {
   id               Int                        @id(map: "PK_0b0e4bbc8415ec426f87f3a88e2") @default(autoincrement())
   commentableType  CommentCommentabletypeEnum @map("commentable_type")

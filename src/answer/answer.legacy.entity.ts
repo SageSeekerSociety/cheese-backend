@@ -21,8 +21,6 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -30,7 +28,6 @@ import {
 } from 'typeorm';
 import { Group } from '../groups/groups.legacy.entity';
 import { Question } from '../questions/questions.legacy.entity';
-import { User } from '../users/users.deprecated.entity';
 
 export const AnswerAttitudeUndefined = 0;
 export const AnswerAttitudeAgree = 1;
@@ -39,9 +36,6 @@ export const AnswerAttitudeAgree = 1;
 export class Answer {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => User)
-  createdBy: User;
 
   @Column()
   @Index({ unique: false })
@@ -68,10 +62,6 @@ export class Answer {
   @OneToMany(() => AnswerUserAttitude, (attitude) => attitude.answer)
   attitudes: AnswerUserAttitude[];
 
-  @ManyToMany(() => User)
-  @JoinTable()
-  favoritedBy: User[];
-
   @CreateDateColumn()
   createdAt: Date;
 
@@ -86,9 +76,6 @@ export class Answer {
 export class AnswerUserAttitude {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => User)
-  user: User;
 
   @Column()
   userId: number;
@@ -112,10 +99,6 @@ export class AnswerUserAttitude {
 export class AnswerQueryLog {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => User)
-  @Index()
-  viewer: User;
 
   @Column('int', { nullable: true })
   viewerId?: number | null;
@@ -142,10 +125,6 @@ export class AnswerUpdateLog {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User)
-  @Index()
-  updater: User;
-
   @Column('int', { nullable: true })
   updaterId?: number | null;
 
@@ -170,10 +149,6 @@ export class AnswerUpdateLog {
 export class AnswerDeleteLog {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => User)
-  @Index()
-  deleter: User;
 
   @Column('int', { nullable: true })
   deleterId?: number | null;

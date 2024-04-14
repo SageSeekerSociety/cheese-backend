@@ -12,11 +12,11 @@
 //
 
 import { GroupQuestionRelationship } from "../groups/groups.legacy"
-import { User }from "../users/users.legacy"
+import { User } from "../users/users"
 import { Topic } from "../topics/topics.legacy"
-import { Answer }from "../answer/answer.legacy"
+import { Answer } from "../answer/answer.legacy"
 import { QuestionElasticsearchRelation } from "questions.es"
-import { QuestionInvitationRelation }from "questions.invitation"
+import { QuestionInvitationRelation } from "questions.invitation"
 
 model Question {
   id                            Int                            @id(map: "PK_21e5786aa0ea704ae185a79b2d5") @default(autoincrement())

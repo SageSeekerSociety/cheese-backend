@@ -12,7 +12,7 @@
 //
 
 import { QuestionTopicRelation } from "../questions/questions.legacy"
-import { User }from "../users/users.legacy"
+import { User } from "../users/users"
 
 model Topic {
   id                    Int                     @id(map: "PK_33aa4ecb4e4f20aa0157ea7ef61") @default(autoincrement())
