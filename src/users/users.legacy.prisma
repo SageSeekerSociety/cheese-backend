@@ -74,7 +74,7 @@ model user_login_log {
   id        Int      @id(map: "PK_f8db79b1af1f385db4f45a2222e") @default(autoincrement())
   userId    Int
   ip        String   @db.VarChar
-  userAgent String   @db.VarChar
+  userAgent String?   @db.VarChar
   createdAt DateTime @default(now()) @db.Timestamptz(6)
   user      user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_66c592c7f7f20d1214aba2d0046")
 
@@ -99,7 +99,7 @@ model user_profile_query_log {
   viewerId                                   Int?
   vieweeId                                   Int
   ip                                         String   @db.VarChar
-  userAgent                                  String   @db.VarChar
+  userAgent                                  String?   @db.VarChar
   createdAt                                  DateTime @default(now()) @db.Timestamptz(6)
   user_user_profile_query_log_viewerIdTouser user?    @relation("user_profile_query_log_viewerIdTouser", fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1261db28434fde159acda6094bc")
   user_user_profile_query_log_vieweeIdTouser user     @relation("user_profile_query_log_vieweeIdTouser", fields: [vieweeId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ff592e4403b328be0de4f2b3973")
@@ -108,14 +108,24 @@ model user_profile_query_log {
   @@index([vieweeId], map: "IDX_ff592e4403b328be0de4f2b397")
 }
 
+enum UserRegisterLogType {
+  RequestSuccess
+  RequestFailDueToAlreadyRegistered
+  RequestFailDueToInvalidOrNotSupportedEmail
+  RequestFailDurToSecurity
+  RequestFailDueToSendEmailFailure
+  Success
+  FailDueToUserExistence
+  FailDueToWrongCodeOrExpired
+}
+
 model user_register_log {
-  id                Int      @id(map: "PK_3596a6f74bd2a80be930f6d1e39") @default(autoincrement())
-  email             String   @db.VarChar
-  type              Int
-  registerRequestId Int?
-  ip                String   @db.VarChar
-  userAgent         String   @db.VarChar
-  createdAt         DateTime @default(now()) @db.Timestamptz(6)
+  id        Int                 @id(map: "PK_3596a6f74bd2a80be930f6d1e39") @default(autoincrement())
+  email     String              @db.VarChar
+  type      UserRegisterLogType
+  ip        String              @db.VarChar
+  userAgent String?              @db.VarChar
+  createdAt DateTime            @default(now()) @db.Timestamptz(6)
 
   @@index([email], map: "IDX_3af79f07534d9f1c945cd4c702")
 }
@@ -129,11 +139,21 @@ model user_register_request {
   @@index([email], map: "IDX_c1d0ecc369d7a6a3d7e876c589")
 }
 
+enum UserResetPasswordLogType {
+  RequestSuccess
+  RequestFailDueToNoneExistentEmail
+  RequestFailDueToSecurity
+  Success
+  FailDueToInvalidToken
+  FailDueToExpiredRequest
+  FailDueToNoUser
+}
+
 model user_reset_password_log {
-  id        Int      @id(map: "PK_3ee4f25e7f4f1d5a9bd9817b62b") @default(autoincrement())
+  id        Int                      @id(map: "PK_3ee4f25e7f4f1d5a9bd9817b62b") @default(autoincrement())
   userId    Int?
-  type      Int
-  ip        String   @db.VarChar
-  userAgent String   @db.VarChar
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  type      UserResetPasswordLogType
+  ip        String                   @db.VarChar
+  userAgent String?                   @db.VarChar
+  createdAt DateTime                 @default(now()) @db.Timestamptz(6)
 }

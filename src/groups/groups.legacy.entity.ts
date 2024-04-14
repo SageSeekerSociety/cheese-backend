@@ -38,7 +38,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Question } from '../questions/questions.legacy.entity';
-import { User } from '../users/users.legacy.entity';
+import { User } from '../users/users.deprecated.entity';
 import { GroupProfile } from './group-profile.entity';
 
 @Entity()

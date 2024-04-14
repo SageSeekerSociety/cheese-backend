@@ -37,7 +37,7 @@ import {
 } from 'typeorm';
 import { GroupQuestionRelationship } from '../groups/groups.legacy.entity';
 import { Topic } from '../topics/topics.legacy.entity';
-import { User } from '../users/users.legacy.entity';
+import { User } from '../users/users.deprecated.entity';
 
 import { Answer } from '../answer/answer.legacy.entity';
 import { isMySQL } from '../common/helper/db.helper';

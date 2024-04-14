@@ -16,8 +16,8 @@ import { PageHelper } from '../common/helper/page.helper';
 import { GroupsService } from '../groups/groups.service';
 import { QuestionNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
+import { User } from '../users/users.deprecated.entity';
 import { UserIdNotFoundError } from '../users/users.error';
-import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { AnswerDto } from './DTO/answer.dto';
 import {
@@ -92,9 +92,9 @@ export class AnswerService {
     questionId: number,
     pageStart: number | undefined,
     pageSize: number,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<[AnswerDto[], PageDto]> {
     if (!pageStart) {
       const currPage = await this.answerRepository.find({
@@ -160,9 +160,9 @@ export class AnswerService {
     userId: number,
     pageStart: number | undefined,
     pageSize: number,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<[AnswerDto[], PageDto]> {
     if ((await this.usersService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
@@ -269,9 +269,9 @@ export class AnswerService {
   async getAnswerDto(
     questionId: number,
     answerId: number,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<AnswerDto> {
     const answer = await this.answerRepository.findOne({
       where: {
@@ -303,7 +303,12 @@ export class AnswerService {
     const groupDtoPromise =
       answer.groupId == undefined
         ? Promise.resolve(undefined)
-        : this.groupsService.getGroupDtoById(viewerId, answer.groupId);
+        : this.groupsService.getGroupDtoById(
+            viewerId,
+            answer.groupId,
+            ip,
+            userAgent,
+          );
 
     const [
       authorDto,
@@ -444,9 +449,9 @@ export class AnswerService {
     userId: number,
     pageStart: number, // undefined if from start
     pageSize: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
   ): Promise<[AnswerDto[], PageDto]> {
     if ((await this.usersService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);

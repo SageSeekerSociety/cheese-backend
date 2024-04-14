@@ -25,7 +25,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../users/users.legacy.entity';
+import { User } from '../users/users.deprecated.entity';
 import { CommentableType } from './commentable.enum';
 
 @Entity()

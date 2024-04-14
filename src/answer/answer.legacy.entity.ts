@@ -30,7 +30,7 @@ import {
 } from 'typeorm';
 import { Group } from '../groups/groups.legacy.entity';
 import { Question } from '../questions/questions.legacy.entity';
-import { User } from '../users/users.legacy.entity';
+import { User } from '../users/users.deprecated.entity';
 
 export const AnswerAttitudeUndefined = 0;
 export const AnswerAttitudeAgree = 1;

@@ -53,9 +53,9 @@ export class TopicsService {
     keywords: string,
     pageStart: number | undefined,
     pageSize: number,
-    searcherId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
+    searcherId: number | undefined,
+    ip: string,
+    userAgent: string | undefined, // optional
   ): Promise<[TopicDto[], PageDto]> {
     const timeBegin = Date.now();
     const result = !keywords
@@ -98,11 +98,11 @@ export class TopicsService {
   async getTopicDtoById(
     topicId: number,
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    viewerId?: number,
+    viewerId: number | undefined,
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    ip?: string,
+    ip: string,
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    userAgent?: string,
+    userAgent: string | undefined,
   ): Promise<TopicDto> {
     const topic = await this.topicRepository.findOneBy({ id: topicId });
     if (topic == undefined) throw new TopicNotFoundError(topicId);

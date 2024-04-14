@@ -34,7 +34,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { isMySQL } from '../common/helper/db.helper';
-import { User } from '../users/users.legacy.entity';
+import { User } from '../users/users.deprecated.entity';
 
 @Entity()
 export class Topic {

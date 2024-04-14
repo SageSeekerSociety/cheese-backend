@@ -5,7 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { CommentsModule } from '../comments/comment.module';
 import { GroupsModule } from '../groups/groups.module';
 import { QuestionsModule } from '../questions/questions.module';
-import { User } from '../users/users.legacy.entity';
+import { User } from '../users/users.deprecated.entity';
 import { UsersModule } from '../users/users.module';
 import { AnswerController } from './answer.controller';
 import {
