@@ -1,9 +1,9 @@
+import { CommentCommentabletypeEnum } from '@prisma/client';
 import { BaseError } from '../common/error/base-error';
-import { CommentableType } from './commentable.enum';
 
 export class CommentableNotFoundError extends BaseError {
   constructor(
-    public readonly commentableType: CommentableType,
+    public readonly commentableType: CommentCommentabletypeEnum,
     public readonly commentableId: number,
   ) {
     super(

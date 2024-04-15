@@ -15,6 +15,7 @@
  *
  */
 
+import { CommentCommentabletypeEnum } from '@prisma/client';
 import {
   Column,
   CreateDateColumn,
@@ -25,7 +26,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { CommentableType } from './commentable.enum';
 
 @Entity()
 export class Comment {
@@ -34,9 +34,9 @@ export class Comment {
 
   @Column({
     type: 'enum',
-    enum: CommentableType,
+    enum: CommentCommentabletypeEnum,
   })
-  commentableType: CommentableType;
+  commentableType: CommentCommentabletypeEnum;
 
   @Column()
   @Index()

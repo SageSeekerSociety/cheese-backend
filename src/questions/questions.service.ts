@@ -13,6 +13,7 @@ import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import {
   AttitudableType,
   AttitudeType,
+  CommentCommentabletypeEnum,
   QuestionInvitationRelation,
   User,
 } from '@prisma/client';
@@ -21,7 +22,6 @@ import { AnswerNotFoundError } from '../answer/answer.error';
 import { AnswerService } from '../answer/answer.service';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
-import { CommentableType } from '../comments/commentable.enum';
 import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import {
@@ -310,7 +310,7 @@ export class QuestionsService {
     const commentCountPromise = this.prismaService.comment.count({
       where: {
         deletedAt: null,
-        commentableType: CommentableType.QUESTION,
+        commentableType: CommentCommentabletypeEnum.QUESTION,
         commentableId: questionId,
       },
     });

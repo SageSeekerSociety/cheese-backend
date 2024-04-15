@@ -5,12 +5,15 @@
 
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { AttitudableType, AttitudeType } from '@prisma/client';
+import {
+  AttitudableType,
+  AttitudeType,
+  CommentCommentabletypeEnum,
+} from '@prisma/client';
 import { LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
 import { CommentsService } from '../comments/comment.service';
-import { CommentableType } from '../comments/commentable.enum';
 import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
@@ -277,7 +280,7 @@ export class AnswerService {
     );
     const viewCountPromise = this.getViewCountOfAnswer(questionId, answerId);
     const commentCountPromise = this.commentsService.countCommentsByCommentable(
-      CommentableType.ANSWER,
+      CommentCommentabletypeEnum.ANSWER,
       answerId,
     );
     const isFavoritePromise = this.isFavorite(questionId, answerId, viewerId);
