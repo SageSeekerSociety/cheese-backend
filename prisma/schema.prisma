@@ -564,7 +564,7 @@ model QuestionTopicRelation {
 }
 
 //
-// topics.legacy.prisma
+// topics.prisma
 //
 
 //
@@ -603,7 +603,7 @@ model TopicSearchLog {
   duration     Float
   searcherId   Int?     @map("searcher_id")
   ip           String   @db.VarChar
-  userAgent    String   @map("user_agent") @db.VarChar
+  userAgent    String?  @map("user_agent") @db.VarChar
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user         User?    @relation(fields: [searcherId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_fe1e75b8b625499f0119faaba5b")
 

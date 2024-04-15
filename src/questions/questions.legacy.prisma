@@ -13,7 +13,7 @@
 
 import { GroupQuestionRelationship } from "../groups/groups.legacy"
 import { User } from "../users/users"
-import { Topic } from "../topics/topics.legacy"
+import { Topic } from "../topics/topics"
 import { Answer } from "../answer/answer.legacy"
 import { QuestionElasticsearchRelation } from "questions.es"
 import { QuestionInvitationRelation } from "questions.invitation"

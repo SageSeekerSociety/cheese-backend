@@ -36,7 +36,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { GroupQuestionRelationship } from '../groups/groups.legacy.entity';
-import { Topic } from '../topics/topics.legacy.entity';
 import { Answer } from '../answer/answer.legacy.entity';
 import { isMySQL } from '../common/helper/db.helper';
 
@@ -102,9 +101,6 @@ export class QuestionTopicRelation {
   @Column()
   @Index({ unique: false })
   questionId: number;
-
-  @ManyToOne(() => Topic)
-  topic: Topic;
 
   @Column()
   @Index({ unique: false })
