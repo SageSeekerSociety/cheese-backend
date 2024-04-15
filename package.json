@@ -28,7 +28,7 @@
     ]
   },
   "dependencies": {
-    "@elastic/elasticsearch": "^8.13.0",
+    "@elastic/elasticsearch": "^8.13.1",
     "@nestjs-modules/mailer": "^1.11.2",
     "@nestjs/common": "^10.3.7",
     "@nestjs/config": "^3.2.2",

@@ -6,8 +6,8 @@ settings:
 
 dependencies:
   '@elastic/elasticsearch':
-    specifier: ^8.13.0
-    version: 8.13.0
+    specifier: ^8.13.1
+    version: 8.13.1
   '@nestjs-modules/mailer':
     specifier: ^1.11.2
     version: 1.11.2(@nestjs/common@10.3.7)(@nestjs/core@10.3.7)(nodemailer@6.9.13)
@@ -22,7 +22,7 @@ dependencies:
     version: 10.3.7(@nestjs/common@10.3.7)(@nestjs/platform-express@10.3.7)(reflect-metadata@0.2.2)(rxjs@7.8.1)
   '@nestjs/elasticsearch':
     specifier: ^10.0.1
-    version: 10.0.1(@elastic/elasticsearch@8.13.0)(@nestjs/common@10.3.7)(rxjs@7.8.1)
+    version: 10.0.1(@elastic/elasticsearch@8.13.1)(@nestjs/common@10.3.7)(rxjs@7.8.1)
   '@nestjs/jwt':
     specifier: ^10.2.0
     version: 10.2.0(@nestjs/common@10.3.7)
@@ -851,8 +851,8 @@ packages:
       '@css-inline/css-inline-win32-x64-msvc': 0.13.0
     dev: false
 
-  /@elastic/elasticsearch@8.13.0:
-    resolution: {integrity: sha512-OAYgzqArPqgDaIJ1yT0RX31YCgr1lleo53zL+36i23PFjHu08CA6Uq+BmBzEV05yEidl+ILPdeSfF3G8hPG/JQ==}
+  /@elastic/elasticsearch@8.13.1:
+    resolution: {integrity: sha512-2G4Vu6OHw4+XTrp7AGIcOEezpPEoVrWg2JTK1v/exEKSLYquZkUdd+m4yOL3/UZ6bTj7hmXwrmYzW76BnLCkJQ==}
     engines: {node: '>=18'}
     dependencies:
       '@elastic/transport': 8.4.1
@@ -1361,14 +1361,14 @@ packages:
     transitivePeerDependencies:
       - encoding
 
-  /@nestjs/elasticsearch@10.0.1(@elastic/elasticsearch@8.13.0)(@nestjs/common@10.3.7)(rxjs@7.8.1):
+  /@nestjs/elasticsearch@10.0.1(@elastic/elasticsearch@8.13.1)(@nestjs/common@10.3.7)(rxjs@7.8.1):
     resolution: {integrity: sha512-rYkcuStF7oDbyt5X3h0BAYS3thZQm8vsHUkGot6dkB8dOTsSIsQJ8UYY9j66LhghzsBiewIwUrKkhY5WM2DVqA==}
     peerDependencies:
       '@elastic/elasticsearch': ^7.4.0 || ^8.0.0
       '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0
       rxjs: ^7.2.0
     dependencies:
-      '@elastic/elasticsearch': 8.13.0
+      '@elastic/elasticsearch': 8.13.1
       '@nestjs/common': 10.3.7(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)
       rxjs: 7.8.1
     dev: false
