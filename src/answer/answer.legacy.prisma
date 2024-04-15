@@ -69,7 +69,7 @@ model AnswerQueryLog {
   viewerId  Int?     @map("viewer_id")
   answerId  Int      @map("answer_id")
   ip        String   @db.VarChar
-  userAgent String   @map("user_agent") @db.VarChar
+  userAgent String?  @map("user_agent") @db.VarChar
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   answer    Answer   @relation(fields: [answerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_71ed57d6bb340716f5e17043bbb")
   user      User?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_f4b7cd859700f8928695b6c2bab")

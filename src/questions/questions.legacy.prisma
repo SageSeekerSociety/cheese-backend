@@ -66,7 +66,7 @@ model QuestionQueryLog {
   viewerId   Int?     @map("viewer_id")
   questionId Int      @map("question_id")
   ip         String   @db.VarChar
-  userAgent  String   @map("user_agent") @db.VarChar
+  userAgent  String?  @map("user_agent") @db.VarChar
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user       User?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_8ce4bcc67caf0406e6f20923d4d")
   question   Question @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a0ee1672e103ed0a0266f217a3f")
@@ -85,7 +85,7 @@ model QuestionSearchLog {
   duration        Float
   searcherId      Int?     @map("searcher_id")
   ip              String   @db.VarChar
-  userAgent       String   @map("user_agent") @db.VarChar
+  userAgent       String?  @map("user_agent") @db.VarChar
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   user            User?    @relation(fields: [searcherId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_13c7e9fd7403cc5a87ab6524bc4")
 

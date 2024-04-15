@@ -55,7 +55,7 @@ model CommentQueryLog {
   commentId Int      @map("comment_id")
   viewerId  Int?     @map("viewer_id")
   ip        String   @db.VarChar
-  userAgent String   @map("user_agent") @db.VarChar
+  userAgent String?  @map("user_agent") @db.VarChar
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   comment   Comment  @relation(fields: [commentId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4020ff7fcffb2737e990f8bde5e")
   user      User?    @relation(fields: [viewerId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_4ead8566a6fa987264484b13d54")
