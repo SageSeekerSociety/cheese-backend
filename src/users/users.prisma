@@ -17,7 +17,7 @@ import { Topic, TopicSearchLog } from "../topics/topics"
 import { Avatar } from "../avatars/avatars.legacy"
 import { Answer, AnswerDeleteLog, AnswerFavoritedByUser, AnswerQueryLog, AnswerUpdateLog } from "../answer/answer.legacy"
 import { Attitude } from "../attitude/attitude"
-import { Comment, CommentDeleteLog, CommentQueryLog } from "../comments/comment.legacy"
+import { Comment, CommentDeleteLog, CommentQueryLog } from "../comments/comment"
 import { AttitudeLog } from "../attitude/attitude"
 import { QuestionInvitationRelation } from "../questions/questions.invitation"
 
