@@ -26,7 +26,7 @@ model Question {
   type                          Int
   groupId                       Int?                           @map("group_id")
   createdAt                     DateTime                       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                     DateTime                       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt                     DateTime                       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt                     DateTime?                      @map("deleted_at") @db.Timestamptz(6)
   answer                        Answer[]
   groupQuestionRelationship     GroupQuestionRelationship?

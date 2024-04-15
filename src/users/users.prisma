@@ -13,7 +13,7 @@
 
 import { GroupMembership } from "../groups/groups.legacy"
 import { Question, QuestionFollowerRelation, QuestionQueryLog, QuestionSearchLog, QuestionTopicRelation } from "../questions/questions.legacy"
-import { Topic, TopicSearchLog } from "../topics/topics.legacy"
+import { Topic, TopicSearchLog } from "../topics/topics"
 import { Avatar } from "../avatars/avatars.legacy"
 import { Answer, AnswerDeleteLog, AnswerFavoritedByUser, AnswerQueryLog, AnswerUpdateLog } from "../answer/answer.legacy"
 import { Attitude } from "../attitude/attitude"
@@ -27,7 +27,7 @@ model User {
   hashedPassword                                                     String                       @map("hashed_password") @db.VarChar
   email                                                              String                       @unique(map: "IDX_e12875dfb3b1d92d7d7c5377e2") @db.VarChar
   createdAt                                                          DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                                                          DateTime                     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt                                                          DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt                                                          DateTime?                    @map("deleted_at") @db.Timestamptz(6)
   answer                                                             Answer[]
   answerDeleteLog                                                    AnswerDeleteLog[]
@@ -91,7 +91,7 @@ model UserProfile {
   avatarId  Int       @map("avatar_id")
   intro     String    @db.VarChar
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   user      User      @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_user_id")
   avatar    Avatar    @relation(fields: [avatarId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_user_profile_avatar_id")

@@ -22,7 +22,7 @@ model Answer {
   groupId               Int?                    @map("group_id")
   content               String
   createdAt             DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt             DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt             DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt             DateTime?               @map("deleted_at") @db.Timestamptz(6)
   group                 Group?                  @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_1887685ce6667b435b01c646a2c")
   question              Question                @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_a4013f10cd6924793fbd5f0d637")

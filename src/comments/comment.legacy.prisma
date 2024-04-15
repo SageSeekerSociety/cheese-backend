@@ -26,7 +26,7 @@ model Comment {
   content          String
   createdById      Int                        @map("created_by_id")
   createdAt        DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt        DateTime                   @default(now()) @map("updated_at") @db.Timestamp(6)
+  updatedAt        DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   deletedAt        DateTime?                  @map("deleted_at") @db.Timestamp(6)
   user             User                       @relation(fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_63ac916757350d28f05c5a6a4ba")
   commentDeleteLog CommentDeleteLog[]

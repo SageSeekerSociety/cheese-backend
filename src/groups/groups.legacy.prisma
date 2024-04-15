@@ -20,7 +20,7 @@ model Group {
   id                        Int                         @id(map: "PK_256aa0fda9b1de1a73ee0b7106b") @default(autoincrement())
   name                      String                      @unique(map: "IDX_8a45300fd825918f3b40195fbd") @db.VarChar
   createdAt                 DateTime                    @default(dbgenerated("('now'::text)::timestamp(3) with time zone")) @map("created_at")
-  updatedAt                 DateTime                    @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt                 DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt                 DateTime?                   @map("deleted_at") @db.Timestamptz(6)
   answer                    Answer[]
   groupMembership           GroupMembership[]
@@ -37,7 +37,7 @@ model GroupMembership {
   memberId  Int       @map("member_id")
   role      String    @db.VarChar
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   user      User      @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7d88d00d8617a802b698c0cd609")
   group     Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_b1411f07fafcd5ad93c6ee16424")
@@ -54,7 +54,7 @@ model GroupProfile {
   avatar    Avatar?   @relation(fields: [avatarId], references: [id])
   groupId   Int       @unique(map: "REL_7359ba99cc116d00cf74e048ed") @map("group_id")
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   group     Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7359ba99cc116d00cf74e048edd")
 
@@ -66,7 +66,7 @@ model GroupQuestionRelationship {
   groupId    Int       @map("group_id")
   questionId Int       @unique(map: "REL_5b1232271bf29d99456fcf39e7") @map("question_id")
   createdAt  DateTime  @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
   question   Question  @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_5b1232271bf29d99456fcf39e75")
   group      Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_b31bf3b3688ec41daaced89a0ab")
@@ -81,7 +81,7 @@ model GroupTarget {
   name                String    @db.VarChar
   intro               String    @db.VarChar
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt           DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
   startedAt           DateTime  @map("started_at") @db.Date
   endedAt             DateTime  @map("ended_at") @db.Date
