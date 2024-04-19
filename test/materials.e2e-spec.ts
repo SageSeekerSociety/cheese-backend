@@ -88,8 +88,8 @@ describe('Material Module', () => {
         .field('type', 'image')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.jpg');
-      expect(respond.body.code).toBe(200);
       expect(respond.body.message).toBe('Material upload successfully');
+      expect(respond.body.code).toBe(200);
       expect(respond.body.data).toHaveProperty('id');
       ImageId = respond.body.data.id;
     });

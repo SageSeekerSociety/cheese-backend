@@ -1,15 +1,22 @@
+import { user } from "../users/users.legacy"
+
 enum MaterialType {
   image
   file
   audio
   video
 }
+
 model material {
-  id           Int          @id @default(autoincrement())
-  type         MaterialType
-  url          String
-  name         String
-  meta         Json         @db.Json
+  id            Int          @id @default(autoincrement())
+  type          MaterialType
+  url           String
+  name          String
+  uploader      user         @relation(fields: [uploaderId], references: [id])
+  uploaderId    Int
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  expires       Int?
+  downloadCount Int          @default(0) @map("download_count")
+  /// [metaType]
+  meta          Json         @db.Json
 }
-
-

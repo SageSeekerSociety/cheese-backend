@@ -1,14 +1,19 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Material, MaterialType } from '@prisma/client';
+import { MaterialType } from '@prisma/client';
 import ffmpeg from 'fluent-ffmpeg';
 import path, { join } from 'path';
 import { promisify } from 'util';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
+import { materialDto } from './DTO/material.dto';
+import { UsersService } from '../users/users.service';
 @Injectable()
 export class MaterialsService implements OnModuleInit {
   private ffprobeAsync: (file: string) => Promise<ffmpeg.FfprobeData>;
-  constructor(private readonly prismaService: PrismaService) {
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly userService: UsersService,
+  ) {
     this.ffprobeAsync = promisify(ffmpeg.ffprobe);
   }
   async onModuleInit(): Promise<void> {
@@ -78,69 +83,95 @@ export class MaterialsService implements OnModuleInit {
     }
     return { duration };
   }
-  async uploadMaterial(
-    type: MaterialType,
+
+  async getMeta(
+    type: string,
     file: Express.Multer.File,
-  ): Promise<number> {
-    let meta;
+  ): Promise<PrismaJson.metaType> {
+    let meta: PrismaJson.metaType;
     if (type === MaterialType.image) {
       const metadata = await this.getImageMetadata(file.path);
       meta = {
+        size: file.size,
+        name: file.filename,
+        mime: file.mimetype,
+        hash: '1', //todo
         width: metadata.width,
         height: metadata.height,
-        size: file.size,
         thumbnail: 'thumbnail', //todo
       };
     } else if (type === MaterialType.video) {
       const metadata = await this.getVideoMetadata(file.path);
       meta = {
+        size: file.size,
+        name: file.filename,
+        mime: file.mimetype,
+        hash: '1', //todo
         width: metadata.width,
         height: metadata.height,
         duration: metadata.duration,
-        size: file.size,
         thumbnail: metadata.thumbnail, //todo
       };
     } else if (type === MaterialType.audio) {
       const metadata = await this.getAudioMetadata(file.path);
       meta = {
-        duration: metadata.duration,
         size: file.size,
+        name: file.filename,
+        mime: file.mimetype,
+        hash: '1', //todo
+        duration: metadata.duration,
       };
     } else {
       meta = {
         size: file.size,
         name: file.filename,
         mime: file.mimetype,
-        expires: 0, // todo?
+        hash: '1', //todo
       };
     }
+    return meta;
+  }
+
+  async uploadMaterial(
+    type: MaterialType,
+    file: Express.Multer.File,
+    uploaderId: number,
+  ): Promise<number> {
+    const meta = await this.getMeta(type, file);
     const newMaterial = await this.prismaService.material.create({
       data: {
         url: `/static/${encodeURIComponent(type)}s/${encodeURIComponent(file.filename)}`,
         type,
         name: file.filename,
+        uploaderId,
         meta,
       },
     });
     return newMaterial.id;
   }
 
-  async getMaterial(id: number, fieldList: string[]): Promise<Material> {
+  async getMaterial(materialId: number): Promise<materialDto> {
     const material = await this.prismaService.material.findUnique({
       where: {
-        id,
-      },
-      select: {
-        id: fieldList.includes('id'),
-        url: fieldList.includes('url'),
-        type: fieldList.includes('type'),
-        name: fieldList.includes('name'),
-        meta: fieldList.includes('meta'),
+        id: materialId,
       },
     });
     if (material == null) {
-      throw new MaterialNotFoundError(id);
+      throw new MaterialNotFoundError(materialId);
     }
-    return material;
+    const uploaderDto = await this.userService.getUserDtoById(
+      material.uploaderId,
+    );
+    const expires = material.expires == null ? undefined : material.expires;
+    return {
+      id: material.id,
+      type: material.type,
+      uploader: uploaderDto,
+      created_at: material.createdAt.getTime(),
+      expires,
+      download_count: material.downloadCount,
+      url: material.url,
+      meta: material.meta,
+    };
   }
 }

@@ -5,10 +5,8 @@ import {
   Get,
   Headers,
   Param,
-  ParseArrayPipe,
   ParseIntPipe,
   Post,
-  Query,
   UploadedFile,
   UseFilters,
   UseInterceptors,
@@ -16,7 +14,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AuthService } from '../auth/auth.service';
+import { AuthorizedAction, AuthService } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { GetMaterialResponseDto } from './DTO/get-material.dto';
 import { MaterialTypeDto } from './DTO/material.dto';
@@ -39,10 +37,18 @@ export class MaterialsController {
     @UploadedFile() file: Express.Multer.File,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UploadMaterialResponseDto> {
-    this.authService.verify(auth);
+    const uploaderId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.create,
+      uploaderId,
+      'material',
+      undefined,
+    );
     const materialId = await this.materialsService.uploadMaterial(
       materialType,
       file,
+      uploaderId,
     );
     return {
       code: 200,
@@ -56,10 +62,8 @@ export class MaterialsController {
   @Get('/:materialId')
   async getMaterialDetail(
     @Param('materialId', ParseIntPipe) id: number,
-    @Query('fields', new ParseArrayPipe({ separator: ',', optional: true }))
-    fields: string[] = ['meta', 'url'],
   ): Promise<GetMaterialResponseDto> {
-    const material = await this.materialsService.getMaterial(id, fields);
+    const material = await this.materialsService.getMaterial(id);
     return {
       code: 200,
       message: 'Get Material successfully',
@@ -69,8 +73,9 @@ export class MaterialsController {
     };
   }
   @Delete('/:materialId') // to do
-  async deleteMaterial(): Promise<void> {
-    //@Param('materialId') id: number,
+  async deleteMaterial() //@Param('materialId') id: number,
+  //@Headers('Authorization') auth: string | undefined,
+  : Promise<void> {
     /* istanbul ignore next */
     throw new Error('deleteMaterial method is not implemented yet.');
   }

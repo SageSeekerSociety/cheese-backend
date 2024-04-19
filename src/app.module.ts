@@ -13,6 +13,8 @@ import { QuestionsModule } from './questions/questions.module';
 import { UsersModule } from './users/users.module';
 import { MaterialsModule } from './materials/materials.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { AttachmentsModule } from './attachments/attachments.module';
+import { MaterialbundlesModule } from './materialbundles/materialbundles.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration] }),
@@ -32,6 +34,8 @@ import { ServeStaticModule } from '@nestjs/serve-static';
       rootPath: process.env.FILE_UPLOAD_PATH,
       serveRoot: '/static',
     }),
+    AttachmentsModule,
+    MaterialbundlesModule,
   ],
   controllers: [],
   providers: [

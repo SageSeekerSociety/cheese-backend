@@ -1,0 +1,72 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Headers,
+  UsePipes,
+  ValidationPipe,
+  UseFilters,
+  UseInterceptors,
+  UploadedFile,
+  ParseIntPipe,
+} from '@nestjs/common';
+import { AttachmentsService } from './attachments.service';
+import { attachmentTypeDto } from './DTO/attachments.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { AuthorizedAction, AuthService } from '../auth/auth.service';
+import { getAttachmentResponseDto } from './DTO/get-attachment.dto';
+import { uploadAttachmentDto } from './DTO/upload-attachment.dto';
+@UsePipes(new ValidationPipe())
+@UseFilters(new BaseErrorExceptionFilter())
+@Controller('attachments')
+export class AttachmentsController {
+  constructor(
+    private readonly attachmentsService: AttachmentsService,
+    private readonly authService: AuthService,
+  ) {}
+
+  @Post()
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadAttachment(
+    @Body() { type }: attachmentTypeDto,
+    @UploadedFile() file: Express.Multer.File,
+    @Headers('Authorization') auth: string | undefined,
+  ): Promise<uploadAttachmentDto> {
+    const uploaderId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.create,
+      uploaderId,
+      'attachment',
+      undefined,
+    );
+    const attachmentId = await this.attachmentsService.uploadAttachment(
+      type,
+      file,
+    );
+    return {
+      code: 201,
+      message: 'Attachment uploaded successfully',
+      data: {
+        id: attachmentId,
+      },
+    };
+  }
+
+  @Get('/:attachmentId')
+  async getAttachmentDetail(
+    @Param('attachmentId', ParseIntPipe) id: number,
+  ): Promise<getAttachmentResponseDto> {
+    const attachment = await this.attachmentsService.getAttachment(id);
+    return {
+      code: 200,
+      message: 'Get Attachment successfully',
+      data: {
+        attachment,
+      },
+    };
+  }
+}

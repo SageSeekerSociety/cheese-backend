@@ -12,6 +12,13 @@ generator client {
   binaryTargets = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]
 }
 
+generator json {
+  provider  = "prisma-json-types-generator"
+  namespace = "PrismaJson"
+  // clientOutput = "<finds it automatically>"
+  // (./ -> relative to schema, or an importable path to require() it)
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("PRISMA_DATABASE_URL")
@@ -126,6 +133,27 @@ model AnswerUserAttitude {
 }
 
 //
+// attachments.prisma
+//
+
+enum AttachmentType {
+  image
+  video
+  udio
+  file
+}
+
+model Attachment {
+  id   Int            @id @default(autoincrement())
+  type AttachmentType
+  url  String
+  /// [metaType]
+  meta Json           @db.Json
+
+  @@map("attachment")
+}
+
+//
 // attitude.prisma
 //
 
@@ -231,15 +259,21 @@ model SessionRefreshLog {
 // avatars.legacy.prisma
 //
 
+enum AvatarType {
+  default
+  predefined
+  upload
+}
+
 model Avatar {
   id           Int            @id @default(autoincrement())
   url          String         @db.VarChar
   name         String         @db.VarChar
   createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  avatarType   String         @map("avatar_type") @db.VarChar
+  avatarType   AvatarType     @map("avatar_type")
   usageCount   Int            @default(0) @map("usage_count")
-  groupProfile GroupProfile[]
-  userProfile  UserProfile[]
+  GroupProfile GroupProfile[]
+  UserProfile  UserProfile[]
 
   @@map("avatar")
 }
@@ -407,6 +441,27 @@ model GroupTarget {
 }
 
 //
+// materialbundles.prisma
+//
+
+model MaterialBundle {
+  id            Int        @id @default(autoincrement())
+  title         String
+  content       String
+  creator       User       @relation(fields: [creatorId], references: [id])
+  creatorId     Int        @map("creator_id")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime   @updatedAt() @map("updated_at") @db.Timestamptz(6)
+  rating        Float      @default(0)
+  ratingCount   Int        @default(0) @map("rating_count")
+  myRating      Float?     @map("my_rating")
+  commentsCount Int        @default(0) @map("comments_count")
+  materials     Material[]
+
+  @@map("material_bundle")
+}
+
+//
 // materials.prisma
 //
 
@@ -418,11 +473,19 @@ enum MaterialType {
 }
 
 model Material {
-  id   Int          @id @default(autoincrement())
-  type MaterialType
-  url  String
-  name String
-  meta Json         @db.Json
+  id               Int             @id @default(autoincrement())
+  type             MaterialType
+  url              String
+  name             String
+  uploader         User            @relation(fields: [uploaderId], references: [id])
+  uploaderId       Int             @map("uploader_id")
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  expires          Int?
+  downloadCount    Int             @default(0) @map("download_count")
+  /// [metaType]
+  meta             Json            @db.Json
+  MaterialBundle   MaterialBundle? @relation(fields: [materialBundleId], references: [id])
+  materialBundleId Int?
 
   @@map("material")
 }
@@ -669,6 +732,8 @@ model User {
   attitude                                                           Attitude[]
   attitudeLog                                                        AttitudeLog[]
   questionInvitationRelation                                         QuestionInvitationRelation[]
+  MaterialBundle                                                     MaterialBundle[]
+  Material                                                           Material[]
 
   @@map("user")
 }

@@ -1,26 +1,23 @@
 import { Module } from '@nestjs/common';
+import { AttachmentsService } from './attachments.service';
+import { AttachmentsController } from './attachments.controller';
 import { MulterModule } from '@nestjs/platform-express';
-import { existsSync, mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import { AuthModule } from '../auth/auth.module';
+import { InvalidAttachmentTypeError } from './attachments.error';
+import { MimeTypeNotMatchError } from '../materials/materials.error';
 import { PrismaModule } from '../common/prisma/prisma.module';
-import { MaterialsController } from './materials.controller';
-import {
-  InvalidMaterialTypeError,
-  MimeTypeNotMatchError,
-} from './materials.error';
-import { MaterialsService } from './materials.service';
-import { UsersModule } from '../users/users.module';
-@Module({
-  imports: [configureMulterModule(), PrismaModule, AuthModule, UsersModule],
-  controllers: [MaterialsController],
-  providers: [MaterialsService],
-  exports: [MaterialsService],
-})
-export class MaterialsModule {}
+import { MaterialsModule } from '../materials/materials.module';
+import { AuthModule } from '../auth/auth.module';
 
+@Module({
+  imports: [configureMulterModule(), PrismaModule, MaterialsModule, AuthModule],
+  controllers: [AttachmentsController],
+  providers: [AttachmentsService],
+})
+export class AttachmentsModule {}
 function configureMulterModule() {
   return MulterModule.register({
     storage: diskStorage({
@@ -62,7 +59,7 @@ function configureMulterModule() {
       };
       const allowedTypes = typeToMimeTypes[req.body.type];
       if (!allowedTypes) {
-        return callback(new InvalidMaterialTypeError(), false);
+        return callback(new InvalidAttachmentTypeError(), false);
       }
       const isAllowed = allowedTypes.some((type) =>
         file.mimetype.includes(type),

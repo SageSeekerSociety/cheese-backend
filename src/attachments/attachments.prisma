@@ -1,0 +1,14 @@
+enum AttachmentType {
+  image
+  video
+  udio
+  file
+}
+
+model Attachment {
+  id   Int            @id @default(autoincrement())
+  type AttachmentType
+  url  String
+  /// [metaType]
+  meta Json           @db.Json
+}
