@@ -1,19 +1,26 @@
 FROM node:21 AS base
+# There is a preset user `node` in the node docker image, so no need to
+# setup a new user.
+# USER and WORKDIR are inherited from based stages. However, if the base
+# stage is a new image, those need to be set again.
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:$PATH"
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg
 RUN corepack enable
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
-COPY .husky/install.mjs ./.husky/
-COPY prisma ./prisma/
+RUN chown node:node -R /app
+COPY --chown=node:node package.json pnpm-lock.yaml ./
+COPY --chown=node:node .husky/install.mjs ./.husky/
+COPY --chown=node:node prisma ./prisma/
+USER node
 
 FROM base AS dev-deps
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 RUN pnpm prisma generate
 
 FROM dev-deps AS dev
-COPY . ./
+COPY --chown=node:node . ./
+RUN mkdir -p /app/uploads && chown node:node -R /app/uploads
 EXPOSE 8000
 CMD ["tail", "-f", "/dev/null"]
 

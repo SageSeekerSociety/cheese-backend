@@ -1,7 +1,11 @@
 {
-  "dockerComposeFile": ["../docker-compose.yml", "../docker-compose.dev.yml"],
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "../docker-compose.dev.yml"
+  ],
   "service": "backend",
   "workspaceFolder": "/app",
+  "remoteUser": "node",
   "shutdownAction": "stopCompose",
   "customizations": {
     "vscode": {
@@ -17,8 +21,21 @@
       "installZsh": true,
       "configureZshAsDefaultShell": true,
       "installOhMyZsh": true,
-      "installOhMyZshConfig": true
+      "installOhMyZshConfig": true,
+      "upgradePackages": false,
+      "nonFreePackages": true
     }
   },
-  "postCreateCommand": "bash .devcontainer/setup.sh"
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "mounts":[
+    {
+      "source": ".",
+      "target": "/app",
+      "type": "bind"
+    },
+    {
+      "target": "/app/node_modules",
+      "type": "volume"
+    }
+  ]
 }
