@@ -5,14 +5,26 @@ import { join } from 'path';
 import { Repository } from 'typeorm';
 import { AvatarNotFoundError } from './avatars.error';
 import { Avatar, AvatarType } from './avatars.legacy.entity';
+import { Mutex } from 'async-mutex';
 @Injectable()
 export class AvatarsService implements OnModuleInit {
   constructor(
     @InjectRepository(Avatar)
     private readonly avatarRepository: Repository<Avatar>,
   ) {}
+  private mutex = new Mutex();
+  private initialized: boolean = false;
+
   async onModuleInit(): Promise<void> {
-    this.initialize();
+    const release = await this.mutex.acquire();
+    try {
+      if (!this.initialized) {
+        await this.initialize();
+        this.initialized = true;
+      }
+    } finally {
+      release();
+    }
   }
   private async initialize(): Promise<void> {
     const sourcePath = join(__dirname, '../resources/avatars');
@@ -41,12 +53,10 @@ export class AvatarsService implements OnModuleInit {
       });
       await this.avatarRepository.save(defaultAvatar);
     }
-
-    if (
-      !(await this.avatarRepository.findOneBy({
-        avatarType: AvatarType.predefined,
-      }))
-    ) {
+    const predefinedAvatar = await this.avatarRepository.findOneBy({
+      avatarType: AvatarType.predefined,
+    });
+    if (!predefinedAvatar) {
       const predefinedAvatars = avatarFiles.filter(
         (file) => file !== defaultAvatarName,
       );
