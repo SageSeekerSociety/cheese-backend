@@ -5,7 +5,7 @@ import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/email/email.service';
 jest.mock('../src/email/email.service');
 
-describe('Material Module', () => {
+describe('Attachment Module', () => {
   let app: INestApplication;
   const MockedEmailService = <jest.Mock<EmailService>>EmailService;
   const TestUsername = `TestUser-${Math.floor(Math.random() * 10000000000)}`;
@@ -81,63 +81,63 @@ describe('Material Module', () => {
       expect(respond.body.data.user.id).toBeDefined();
     });
   });
-  describe('upload materials', () => {
+  describe('upload attachments', () => {
     it('should upload an image', async () => {
       const respond = await request(app.getHttpServer())
-        .post('/materials')
+        .post('/attachments')
         .field('type', 'image')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.jpg');
-      expect(respond.body.message).toBe('Material upload successfully');
-      expect(respond.body.code).toBe(200);
+      expect(respond.body.message).toBe('Attachment uploaded successfully');
+      expect(respond.body.code).toBe(201);
       expect(respond.body.data).toHaveProperty('id');
       ImageId = respond.body.data.id;
     });
     it('should upload a video ', async () => {
       const respond = await request(app.getHttpServer())
-        .post('/materials')
+        .post('/attachments')
         .field('type', 'video')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.mp4');
-      expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Material upload successfully');
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.message).toBe('Attachment uploaded successfully');
       expect(respond.body.data).toHaveProperty('id');
       VideoId = respond.body.data.id;
     });
     it('should upload an audio ', async () => {
       const respond = await request(app.getHttpServer())
-        .post('/materials')
+        .post('/attachments')
         .field('type', 'audio')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.mp3');
-      expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Material upload successfully');
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.message).toBe('Attachment uploaded successfully');
       expect(respond.body.data).toHaveProperty('id');
       AudioId = respond.body.data.id;
     });
     it('should upload a file ', async () => {
       const respond = await request(app.getHttpServer())
-        .post('/materials')
+        .post('/attachments')
         .field('type', 'file')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.pdf');
-      expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('Material upload successfully');
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.message).toBe('Attachment uploaded successfully');
       expect(respond.body.data).toHaveProperty('id');
       FileId = respond.body.data.id;
     });
-    it('should return InvalidMaterialTypeError', async () => {
+    it('should return InvalidAttachmentTypeError', async () => {
       const respond = await request(app.getHttpServer())
-        .post('/materials')
+        .post('/attachments')
         .field('type', 'yuiii')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.pdf');
       expect(respond.body.code).toBe(400);
-      expect(respond.body.message).toMatch(/InvalidMaterialTypeError: /);
+      expect(respond.body.message).toMatch(/InvalidAttachmentTypeError: /);
     });
     it('should return MimeTypeNotMatchError', async () => {
       const respond = await request(app.getHttpServer())
-        .post('/materials')
+        .post('/attachments')
         .field('type', 'image')
         .set('Authorization', `Bearer ${TestToken}`)
         .attach('file', 'src/materials/resources/test.pdf');
@@ -146,65 +146,53 @@ describe('Material Module', () => {
       expect(respond.body.message).toMatch(/MimeTypeNotMatchError: /);
     });
   });
-  describe('get material', () => {
+  describe('get attachment', () => {
     it('should get the uploaded image detail', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/materials/${ImageId}`)
+        .get(`/attachments/${ImageId}`)
         .send();
       expect(respond.status).toBe(200);
-      expect(respond.body.data.material.meta.height).toEqual(200);
-      expect(respond.body.data.material.meta.width).toEqual(200);
-      expect(respond.body.data.material.meta.hash).toBe(
-        'f50ed1d47f88ddd0934f088fb63262fd',
-      );
-      expect(respond.body.data.material.meta.size).toEqual(53102);
+      expect(respond.body.data.attachment.meta.height).toEqual(200);
+      expect(respond.body.data.attachment.meta.width).toEqual(200);
+      expect(respond.body.data.attachment.meta.size).toEqual(53102);
     });
     it('should get the uploaded video detail', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/materials/${VideoId}`)
+        .get(`/attachments/${VideoId}`)
         .send();
       expect(respond.status).toBe(200);
-      expect(respond.body.data.material.meta.height).toEqual(1080);
-      expect(respond.body.data.material.meta.width).toEqual(2160);
-      expect(respond.body.data.material.meta.size).toEqual(240563);
-      expect(respond.body.data.material.meta.hash).toBe(
-        '7333193845d631941208e2e546ff57af',
-      );
-      expect(respond.body.data.material.meta.duration).toBeCloseTo(3.1, 0.15);
-      expect(respond.body.data.material.meta.thumbnail).toMatch(
+      expect(respond.body.data.attachment.meta.height).toEqual(1080);
+      expect(respond.body.data.attachment.meta.width).toEqual(2160);
+      expect(respond.body.data.attachment.meta.size).toEqual(240563);
+      expect(respond.body.data.attachment.meta.duration).toBeCloseTo(3.1, 0.15);
+      expect(respond.body.data.attachment.meta.thumbnail).toMatch(
         /static\/images\/.*\.jpg/,
       );
     });
     it('should get the uploaded audio detail', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/materials/${AudioId}`)
+        .get(`/attachments/${AudioId}`)
         .send();
       expect(respond.status).toBe(200);
-      expect(respond.body.data.material.meta.size).toEqual(70699);
-      expect(respond.body.data.material.meta.duration).toEqual(3);
-      expect(respond.body.data.material.meta.hash).toBe(
-        'f785204fc974ae48fe818ac9052ccf0b',
-      );
+      expect(respond.body.data.attachment.meta.size).toEqual(70699);
+      expect(respond.body.data.attachment.meta.duration).toEqual(3);
     });
 
     it('should get the uploaded file detail', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/materials/${FileId}`)
+        .get(`/attachments/${FileId}`)
         .send();
       expect(respond.status).toBe(200);
-      expect(respond.body.data.material.meta.mime).toBe('application/pdf');
-      expect(respond.body.data.material.meta.hash).toBe(
-        '748cafd9b83123300f712375bba68ec3',
-      );
-      expect(respond.body.data.material.meta.size).toEqual(50146);
+      expect(respond.body.data.attachment.meta.mime).toBe('application/pdf');
+      expect(respond.body.data.attachment.meta.size).toEqual(50146);
     });
-    it('should return MaterialNotFoundError', async () => {
+    it('should return AttachmentNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/materials/${FileId + 20}`)
+        .get(`/attachments/${FileId + 20}`)
         .send();
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/MaterialNotFoundError: /);
+      expect(respond.body.message).toMatch(/AttachmentNotFoundError: /);
     });
   });
   afterAll(async () => {

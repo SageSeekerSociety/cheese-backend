@@ -1,7 +1,7 @@
 enum AttachmentType {
   image
   video
-  udio
+  audio
   file
 }
 

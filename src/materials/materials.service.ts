@@ -2,11 +2,13 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { MaterialType } from '@prisma/client';
 import ffmpeg from 'fluent-ffmpeg';
 import path, { join } from 'path';
+import { readFileSync } from 'fs';
 import { promisify } from 'util';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
 import { materialDto } from './DTO/material.dto';
 import { UsersService } from '../users/users.service';
+import md5 from 'md5';
 @Injectable()
 export class MaterialsService implements OnModuleInit {
   private ffprobeAsync: (file: string) => Promise<ffmpeg.FfprobeData>;
@@ -89,13 +91,17 @@ export class MaterialsService implements OnModuleInit {
     file: Express.Multer.File,
   ): Promise<PrismaJson.metaType> {
     let meta: PrismaJson.metaType;
+
+    const buf = readFileSync(file.path);
+    const hash = md5(buf);
+
     if (type === MaterialType.image) {
       const metadata = await this.getImageMetadata(file.path);
       meta = {
         size: file.size,
         name: file.filename,
         mime: file.mimetype,
-        hash: '1', //todo
+        hash,
         width: metadata.width,
         height: metadata.height,
         thumbnail: 'thumbnail', //todo
@@ -106,7 +112,7 @@ export class MaterialsService implements OnModuleInit {
         size: file.size,
         name: file.filename,
         mime: file.mimetype,
-        hash: '1', //todo
+        hash,
         width: metadata.width,
         height: metadata.height,
         duration: metadata.duration,
@@ -118,7 +124,7 @@ export class MaterialsService implements OnModuleInit {
         size: file.size,
         name: file.filename,
         mime: file.mimetype,
-        hash: '1', //todo
+        hash,
         duration: metadata.duration,
       };
     } else {
@@ -126,7 +132,7 @@ export class MaterialsService implements OnModuleInit {
         size: file.size,
         name: file.filename,
         mime: file.mimetype,
-        hash: '1', //todo
+        hash,
       };
     }
     return meta;

@@ -1,12 +1,16 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
   ParseIntPipe,
   Patch,
   Post,
+  UseFilters,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { AuthorizedAction, AuthService } from '../auth/auth.service';
 import {
@@ -17,8 +21,12 @@ import {
 import { BundleResponseDto } from './DTO/materialbundle.dto';
 import { MaterialbundlesService } from './materialbundles.service';
 import { updateMaterialBundleDto } from './DTO/update-materialbundle.dto';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { BaseResponseDto } from '../common/DTO/base-response.dto';
 
 @Controller('/material-bundles')
+@UsePipes(new ValidationPipe())
+@UseFilters(new BaseErrorExceptionFilter())
 export class MaterialbundlesController {
   constructor(
     private readonly materialbundlesService: MaterialbundlesService,
@@ -88,7 +96,7 @@ export class MaterialbundlesController {
       await this.materialbundlesService.getBundleDetail(id);
     return {
       code: 200,
-      message: ' get material bundle detail successfully',
+      message: 'get material bundle detail successfully',
       data: {
         materialBundle,
       },
@@ -99,8 +107,8 @@ export class MaterialbundlesController {
     @Param('materialBundleId', ParseIntPipe) id: number,
     @Body() { title, content, materials }: updateMaterialBundleDto,
     @Headers('Authorization') auth: string | undefined,
-  ) {
-    console.log(title, content, materials);
+  ): Promise<BaseResponseDto> {
+    //console.log(title, content, materials);
     const userId = this.authService.verify(auth).userId;
     await this.materialbundlesService.updateMaterialBundle(
       id,
@@ -109,5 +117,17 @@ export class MaterialbundlesController {
       content,
       materials,
     );
+    return {
+      code: 200,
+      message: 'Materialbundle updated successfully',
+    };
+  }
+  @Delete('/:materialBundleId')
+  async deleteMaterialBundle(
+    @Param('materialBundleId', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+  ) {
+    const userId = this.authService.verify(auth).userId;
+    await this.materialbundlesService.deleteMaterialBundle(id, userId);
   }
 }

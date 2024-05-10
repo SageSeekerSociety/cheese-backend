@@ -1,18 +1,19 @@
 import { user } from "../users/users.legacy"
-import { material } from "../materials/materials"
+import { material }from "../materials/materials"
 
 model materialBundle {
-  id            Int      @id @default(autoincrement())
+  id            Int                       @id @default(autoincrement())
   title         String
   content       String
-  creator       user     @relation(fields: [creatorId], references: [id])
+  creator       user                      @relation(fields: [creatorId], references: [id])
   creatorId     Int
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime @updatedAt() @map("updated_at") @db.Timestamptz(6)
-  rating        Float @default(0)
-  ratingCount   Int      @map("rating_count")@default(0)
-  myRating      Float?   @map("my_rating")  
-  commentsCount Int      @map("comments_count") @default(0)
-  materials material[]
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime                  @updatedAt() @map("updated_at") @db.Timestamptz(6)
+  rating        Float                     @default(0)
+  ratingCount   Int                       @default(0) @map("rating_count")
+  myRating      Float?                    @map("my_rating")
+  commentsCount Int                       @default(0) @map("comments_count")
+  materials     materialbundlesRelation[]
+
   @@map("material_bundle")
 }

@@ -4,6 +4,12 @@ import { materialBundleDto } from './DTO/materialbundle.dto';
 import { UserDto } from '../users/DTO/user.dto';
 import { UsersService } from '../users/users.service';
 import { MaterialsService } from '../materials/materials.service';
+import { MaterialNotFoundError } from '../materials/materials.error';
+import {
+  BundleNotFoundError,
+  DeleteBundleDeniedError,
+  UpdateBundleDeniedError,
+} from './materialbundles.error';
 
 @Injectable()
 export class MaterialbundlesService {
@@ -19,14 +25,31 @@ export class MaterialbundlesService {
     materialIds: number[],
     creatorId: number,
   ): Promise<number> {
+    for (const i in materialIds) {
+      const material = await this.prismaService.material.findUnique({
+        where: {
+          id: materialIds[i],
+        },
+      });
+      if (!material) {
+        throw new MaterialNotFoundError(materialIds[i]);
+      }
+    }
+    const materialBundleCreateArray = materialIds.map((materialId) => ({
+      material: {
+        connect: {
+          id: materialId,
+        },
+      },
+    }));
     const newBundle = await this.prismaService.materialBundle.create({
       data: {
         title,
         content,
-        materials: {
-          connect: materialIds.map((id) => ({ id })),
-        },
         creatorId,
+        materials: {
+          create: materialBundleCreateArray,
+        },
       },
     });
     return newBundle.id;
@@ -51,12 +74,9 @@ export class MaterialbundlesService {
       where: {
         id: bundleId,
       },
-      include: {
-        materials: true,
-      },
     });
     if (!bundle) {
-      throw new Error();
+      throw new BundleNotFoundError(bundleId);
     }
     let userDto: UserDto | null = null; // For case that user is deleted.
     try {
@@ -66,7 +86,13 @@ export class MaterialbundlesService {
       // does not exist now. This is NOT a data integrity problem, since user can be
       // deleted. So we just return a null and not throw an error.
     }
-    const materialIds = bundle.materials.map((material) => material.id);
+    const materialIds = (
+      await this.prismaService.materialbundlesRelation.findMany({
+        where: {
+          bundleId: bundle.id,
+        },
+      })
+    ).map((i) => i.materialId);
     const materialDtos = await Promise.all(
       materialIds.map((id) => this.materialsService.getMaterial(id)),
     );
@@ -96,9 +122,12 @@ export class MaterialbundlesService {
       where: {
         id: bundleId,
       },
+      include: {
+        materials: true,
+      },
     });
-    if (!bundle) throw new Error();
-    if (bundle.creatorId != userId) throw new Error();
+    if (!bundle) throw new BundleNotFoundError(bundleId);
+    if (bundle.creatorId != userId) throw new UpdateBundleDeniedError(bundleId);
     const data: any = {};
     if (title !== undefined) {
       data.title = title;
@@ -107,23 +136,62 @@ export class MaterialbundlesService {
       data.content = content;
     }
     if (materials !== undefined) {
-      data.materials = {
-        connect: materials.map((id) => ({ id })),
-        disconnect: materials.map((id) => ({ id })),
-      };
+      for (const materialId of materials) {
+        const material = await this.prismaService.material.findUnique({
+          where: { id: materialId },
+        });
+        if (!material) {
+          throw new MaterialNotFoundError(materialId);
+        }
+      }
+      await this.prismaService.$transaction(async () => {
+        const currentMaterialIds = bundle.materials.map((i) => i.materialId);
+        const materialIdsToAdd = materials.filter(
+          (id) => !currentMaterialIds.includes(id),
+        );
+        const materialIdsToRemove = currentMaterialIds.filter(
+          (id) => !materials.includes(id),
+        );
+        if (materialIdsToRemove.length > 0) {
+          // delete if not exist in updated bundle
+          await this.prismaService.materialbundlesRelation.deleteMany({
+            where: {
+              bundleId: bundleId,
+              materialId: { in: materialIdsToRemove },
+            },
+          });
+        }
+        // add new
+        if (materialIdsToAdd.length > 0) {
+          // 添加新的材料
+          data.materials = {
+            create: materialIdsToAdd.map((id) => ({
+              material: {
+                connect: { id },
+              },
+            })),
+          };
+        }
+        await this.prismaService.materialBundle.update({
+          where: { id: bundleId },
+          data: data,
+        });
+      });
     }
-    await this.prismaService.materialBundle.update({
+  }
+  async deleteMaterialBundle(id: number, userId: number) {
+    const bundle = await this.prismaService.materialBundle.findUnique({
       where: {
-        id: bundleId,
-      },
-      data: {
-        title,
-        content,
-        materials: {
-          connect: materials ? materials.map((id) => ({ id })) : undefined,
-          disconnect: materials ? materials.map((id) => ({ id })) : undefined,
-        },
+        id,
       },
     });
+    if (!bundle) throw new BundleNotFoundError(id);
+    if (bundle.creatorId != userId) throw new DeleteBundleDeniedError(id);
+    await this.prismaService.materialBundle.delete({
+      where: {
+        id,
+      },
+    });
+    return;
   }
 }

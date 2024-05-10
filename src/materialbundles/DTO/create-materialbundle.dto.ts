@@ -1,4 +1,4 @@
-import { IsArray, IsInt, IsNotEmpty, IsString } from 'class-validator';
+import { IsArray, IsInt, IsString } from 'class-validator';
 import { BaseResponseDto } from '../../common/DTO/base-response.dto';
 
 export class createMaterialBundleRequestDto {
@@ -7,7 +7,6 @@ export class createMaterialBundleRequestDto {
   @IsString()
   content: string;
   @IsArray()
-  @IsNotEmpty()
   @IsInt({ each: true })
   materials: number[];
 }

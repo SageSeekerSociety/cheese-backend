@@ -3,6 +3,7 @@ import { MaterialsService } from '../materials/materials.service';
 import { AttachmentType } from '@prisma/client';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { attachmentDto } from './DTO/attachments.dto';
+import { AttachmentNotFoundError } from './attachments.error';
 
 @Injectable()
 export class AttachmentsService {
@@ -33,7 +34,7 @@ export class AttachmentsService {
       },
     });
     if (attachment == null) {
-      throw new Error();
+      throw new AttachmentNotFoundError(id);
     }
     return attachment;
   }

@@ -139,7 +139,7 @@ model AnswerUserAttitude {
 enum AttachmentType {
   image
   video
-  udio
+  audio
   file
 }
 
@@ -445,18 +445,18 @@ model GroupTarget {
 //
 
 model MaterialBundle {
-  id            Int        @id @default(autoincrement())
+  id            Int                       @id @default(autoincrement())
   title         String
   content       String
-  creator       User       @relation(fields: [creatorId], references: [id])
-  creatorId     Int        @map("creator_id")
-  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime   @updatedAt() @map("updated_at") @db.Timestamptz(6)
-  rating        Float      @default(0)
-  ratingCount   Int        @default(0) @map("rating_count")
-  myRating      Float?     @map("my_rating")
-  commentsCount Int        @default(0) @map("comments_count")
-  materials     Material[]
+  creator       User                      @relation(fields: [creatorId], references: [id])
+  creatorId     Int                       @map("creator_id")
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime                  @updatedAt() @map("updated_at") @db.Timestamptz(6)
+  rating        Float                     @default(0)
+  ratingCount   Int                       @default(0) @map("rating_count")
+  myRating      Float?                    @map("my_rating")
+  commentsCount Int                       @default(0) @map("comments_count")
+  materials     MaterialbundlesRelation[]
 
   @@map("material_bundle")
 }
@@ -473,21 +473,30 @@ enum MaterialType {
 }
 
 model Material {
-  id               Int             @id @default(autoincrement())
-  type             MaterialType
-  url              String
-  name             String
-  uploader         User            @relation(fields: [uploaderId], references: [id])
-  uploaderId       Int             @map("uploader_id")
-  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  expires          Int?
-  downloadCount    Int             @default(0) @map("download_count")
+  id              Int                       @id @default(autoincrement())
+  type            MaterialType
+  url             String
+  name            String
+  uploader        User                      @relation(fields: [uploaderId], references: [id])
+  uploaderId      Int                       @map("uploader_id")
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expires         Int?
+  downloadCount   Int                       @default(0) @map("download_count")
+  materialBundles MaterialbundlesRelation[]
   /// [metaType]
-  meta             Json            @db.Json
-  MaterialBundle   MaterialBundle? @relation(fields: [materialBundleId], references: [id])
-  materialBundleId Int?
+  meta            Json                      @db.Json
 
   @@map("material")
+}
+
+model MaterialbundlesRelation {
+  material   Material       @relation(fields: [materialId], references: [id])
+  materialId Int            @map("material_id")
+  bundle     MaterialBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  bundleId   Int            @map("bundle_id")
+
+  @@id([materialId, bundleId])
+  @@map("materialbundles_relation")
 }
 
 //
