@@ -8,8 +8,18 @@ import { MaterialNotFoundError } from '../materials/materials.error';
 import {
   BundleNotFoundError,
   DeleteBundleDeniedError,
+  QueryKeywordError,
   UpdateBundleDeniedError,
+  KeywordTooLongError,
 } from './materialbundles.error';
+import { PageDto } from '../common/DTO/page-response.dto';
+import { PageHelper } from '../common/helper/page.helper';
+import { Prisma } from '@prisma/client';
+import {
+  getPrevWhereBySort,
+  getCurrWhereBySort,
+} from '../common/helper/where.helper';
+import { SortPattern } from '../common/pipe/parse-sort-pattern.pipe';
 
 @Injectable()
 export class MaterialbundlesService {
@@ -54,20 +64,121 @@ export class MaterialbundlesService {
     });
     return newBundle.id;
   }
-  /*async getBundles(
+  async getBundles(
     keywords: string,
-    pageStart: number | undefined, // if from start
+    firstBundleId: number | undefined, // if from start
     pageSize: number,
-    sortRule: string,
-    searcherId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
-  ) {
+    sort: string,
+  ): Promise<[materialBundleDto[], PageDto]> {
+    if (keywords.length > 100) throw new KeywordTooLongError();
+    const take = pageSize + 1;
+    let sortPattern: SortPattern;
+    if (sort === 'rating') {
+      sortPattern = { rating: 'desc' };
+    } else if (sort === 'download') {
+      //to do
+      sortPattern = { downloads: 'desc' };
+    } else if (sort === 'newest') {
+      sortPattern = { createdAt: 'desc' };
+    } else {
+      sortPattern = { id: 'asc' };
+    }
+    if (firstBundleId == undefined) {
+      const bundles = await this.prismaService.materialBundle.findMany({
+        take,
+        where: {
+          ...this.buildWhereCondition(keywords),
+        },
+        orderBy: sortPattern,
+      });
+      const DTOs = await Promise.all(
+        bundles.map((r) => {
+          return this.getBundleDetail(r.id);
+        }),
+      );
+      return PageHelper.PageStart(DTOs, pageSize, (i) => i.id);
+    } else {
+      const cursor = await this.prismaService.materialBundle.findUnique({
+        where: { id: firstBundleId },
+      });
+      if (cursor == undefined) {
+        throw new BundleNotFoundError(firstBundleId);
+      }
+      const prev = await this.prismaService.materialBundle.findMany({
+        where: {
+          ...getPrevWhereBySort(sortPattern, cursor),
+          ...this.buildWhereCondition(keywords),
+        },
+        orderBy: sortPattern,
+        take: pageSize,
+      });
 
-    await this.prismaService.materialBundle.findMany({
+      const curr = await this.prismaService.materialBundle.findMany({
+        where: {
+          ...getCurrWhereBySort(sortPattern, cursor),
+          ...this.buildWhereCondition(keywords),
+        },
+        orderBy: sortPattern,
+        take: pageSize + 1,
+      });
+      const currDtos = await Promise.all(
+        curr.map((r) => this.getBundleDetail(r.id)),
+      );
+      return PageHelper.PageMiddle(
+        prev,
+        currDtos,
+        pageSize,
+        (i) => i.id,
+        (i) => i.id,
+      );
+    }
+  }
+  private buildWhereCondition(query: string): Prisma.MaterialBundleWhereInput {
+    if (!query) {
+      return {};
+    }
 
-    })
-  }*/
+    const conditions: Prisma.MaterialBundleWhereInput[] = [];
+    const regex = /(\w+)(:>=|:<=|:>|:<|:)(\w+)/g;
+    let match;
+
+    // Parsing special conditions like rating:>=4
+    while ((match = regex.exec(query)) !== null) {
+      const [, field, operator, value] = match;
+      let condition: Prisma.MaterialBundleWhereInput;
+      switch (operator) {
+        case ':>=':
+          condition = { [field]: { gte: parseFloat(value) } };
+          break;
+        case ':<=':
+          condition = { [field]: { lte: parseFloat(value) } };
+          break;
+        case ':>':
+          condition = { [field]: { gt: parseFloat(value) } };
+          break;
+        case ':<':
+          condition = { [field]: { lt: parseFloat(value) } };
+          break;
+        case ':':
+          condition = { [field]: { contains: value, mode: 'insensitive' } };
+          break;
+        default:
+          throw new QueryKeywordError(query);
+      }
+
+      conditions.push(condition);
+    }
+    // If no special conditions were matched, treat the entire query as a keyword search
+    if (conditions.length === 0) {
+      conditions.push({
+        OR: [
+          { title: { contains: query, mode: 'insensitive' } },
+          { content: { contains: query, mode: 'insensitive' } },
+        ],
+      });
+    }
+    return conditions.length > 0 ? { AND: conditions } : {};
+  }
 
   async getBundleDetail(bundleId: number): Promise<materialBundleDto> {
     const bundle = await this.prismaService.materialBundle.findUnique({
@@ -82,7 +193,7 @@ export class MaterialbundlesService {
     try {
       userDto = await this.usersService.getUserDtoById(bundle.creatorId);
     } catch (e) {
-      // If user is null, it means that one user created this question, but the user
+      // If user is null, it means that one user created this, but the user
       // does not exist now. This is NOT a data integrity problem, since user can be
       // deleted. So we just return a null and not throw an error.
     }
@@ -127,7 +238,8 @@ export class MaterialbundlesService {
       },
     });
     if (!bundle) throw new BundleNotFoundError(bundleId);
-    if (bundle.creatorId != userId) throw new UpdateBundleDeniedError(bundleId);
+    if (bundle.creatorId !== userId)
+      throw new UpdateBundleDeniedError(bundleId);
     const data: any = {};
     if (title !== undefined) {
       data.title = title;
@@ -161,9 +273,7 @@ export class MaterialbundlesService {
             },
           });
         }
-        // add new
         if (materialIdsToAdd.length > 0) {
-          // 添加新的材料
           data.materials = {
             create: materialIdsToAdd.map((id) => ({
               material: {
@@ -186,7 +296,7 @@ export class MaterialbundlesService {
       },
     });
     if (!bundle) throw new BundleNotFoundError(id);
-    if (bundle.creatorId != userId) throw new DeleteBundleDeniedError(id);
+    if (bundle.creatorId !== userId) throw new DeleteBundleDeniedError(id);
     await this.prismaService.materialBundle.delete({
       where: {
         id,

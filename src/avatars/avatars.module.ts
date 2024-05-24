@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { extname, join } from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthModule } from '../auth/auth.module';
 import { AvatarsController } from './avatars.controller';
 import { Avatar } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync } from 'node:fs';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Avatar]),

@@ -1,9 +1,9 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { MaterialType } from '@prisma/client';
 import ffmpeg from 'fluent-ffmpeg';
-import path, { join } from 'path';
-import { readFileSync } from 'fs';
-import { promisify } from 'util';
+import path, { join } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { promisify } from 'node:util';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
 import { materialDto } from './DTO/material.dto';

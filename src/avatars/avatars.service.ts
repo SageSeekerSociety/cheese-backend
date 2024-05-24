@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { readdirSync } from 'fs';
-import { join } from 'path';
+import { join } from 'node:path';
 import { Repository } from 'typeorm';
 import { AvatarNotFoundError } from './avatars.error';
 import { Avatar, AvatarType } from './avatars.legacy.entity';

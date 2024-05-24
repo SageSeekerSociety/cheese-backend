@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseFilters,
   UsePipes,
   ValidationPipe,
@@ -23,6 +24,10 @@ import { MaterialbundlesService } from './materialbundles.service';
 import { updateMaterialBundleDto } from './DTO/update-materialbundle.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
+import {
+  getMaterialBundleListDto,
+  getMaterialBundlesResponseDto,
+} from './DTO/get-materialbundle.dto';
 
 @Controller('/material-bundles')
 @UsePipes(new ValidationPipe())
@@ -61,13 +66,17 @@ export class MaterialbundlesController {
       },
     };
   }
-  /*@Get()
+  @Get()
   async getMaterialBundleList(
-  @Query()
-  { q, page_start: pageStart, page_size: pageSize ,sort}: getMaterialBundleListDto,
+    @Query()
+    {
+      q,
+      page_start: pageStart,
+      page_size: pageSize,
+      sort,
+    }: getMaterialBundleListDto,
     @Headers('Authorization') auth: string | undefined,
-    @Ip() ip: string,
-    @Headers('User-Agent') userAgent: string,) {
+  ): Promise<getMaterialBundlesResponseDto> {
     let viewerId: number | undefined;
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -75,19 +84,21 @@ export class MaterialbundlesController {
     } catch {
       // The user is not logged in.
     }
-      const [bundles, page] = await this.materialbundlesService.getBundles(
-        q,
-        pageStart,
-        pageSize,
-        sort,
-        viewerId,
-        ip,
-        userAgent,
-      );
-      return {
-
-      }
-  } */
+    const [bundles, page] = await this.materialbundlesService.getBundles(
+      q,
+      pageStart,
+      pageSize,
+      sort.toString(),
+    );
+    return {
+      code: 200,
+      message: 'get material bundles successfully',
+      data: {
+        materials: bundles,
+        page,
+      },
+    };
+  }
   @Get('/:materialBundleId')
   async getMaterialBundleDetail(
     @Param('materialBundleId', ParseIntPipe) id: number,
