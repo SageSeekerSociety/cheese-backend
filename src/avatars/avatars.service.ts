@@ -38,6 +38,11 @@ export class AvatarsService implements OnModuleInit {
 
     const defaultAvatarPath = join(sourcePath, defaultAvatarName);
 
+    // Before one test run, the table is ether empty or has the default avatar
+    // so the test will not cover all branches.
+    // However, the test will cover all branches in the second run.
+    // So we ignore the coverage for this part.
+    /* istanbul ignore next */
     await this.entityManager.transaction(
       async (entityManager: EntityManager) => {
         const avatarRepository = entityManager.getRepository(Avatar);
