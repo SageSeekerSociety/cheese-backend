@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { readdirSync } from 'fs';
 import { join } from 'path';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { AvatarNotFoundError } from './avatars.error';
 import { Avatar, AvatarType } from './avatars.legacy.entity';
 import { Mutex } from 'async-mutex';
@@ -11,6 +11,7 @@ export class AvatarsService implements OnModuleInit {
   constructor(
     @InjectRepository(Avatar)
     private readonly avatarRepository: Repository<Avatar>,
+    private readonly entityManager: EntityManager,
   ) {}
   private mutex = new Mutex();
   private initialized: boolean = false;
@@ -37,42 +38,50 @@ export class AvatarsService implements OnModuleInit {
 
     const defaultAvatarPath = join(sourcePath, defaultAvatarName);
 
-    let defaultAvatar = await this.avatarRepository.findOneBy({
-      avatarType: AvatarType.default,
-    });
+    await this.entityManager.transaction(
+      async (entityManager: EntityManager) => {
+        const avatarRepository = entityManager.getRepository(Avatar);
+        // Lock the table to prevent multiple initializations in testing
+        // The SQL syntax is for PostgreSQL, so it may need to be changed for other databases
+        entityManager.query('LOCK TABLE "avatar" IN ACCESS EXCLUSIVE MODE');
+        let defaultAvatar = await avatarRepository.findOneBy({
+          avatarType: AvatarType.default,
+        });
 
-    if (!defaultAvatar) {
-      defaultAvatar = this.avatarRepository.create({
-        url: defaultAvatarPath,
-        name: defaultAvatarName,
-        avatarType: AvatarType.default,
-        usageCount: 0,
-      });
-      await this.avatarRepository.save(defaultAvatar);
-    }
-    const predefinedAvatar = await this.avatarRepository.findOneBy({
-      avatarType: AvatarType.predefined,
-    });
-    if (!predefinedAvatar) {
-      const predefinedAvatars = avatarFiles.filter(
-        (file) => file !== defaultAvatarName,
-      );
-      if (predefinedAvatars.length === 0) {
-        throw new Error('no predefined avatars found');
-      }
-      await Promise.all(
-        predefinedAvatars.map(async (name) => {
-          const avatarPath = join(sourcePath, name);
-          const predefinedAvatar = this.avatarRepository.create({
-            url: avatarPath,
-            name,
-            avatarType: AvatarType.predefined,
+        if (!defaultAvatar) {
+          defaultAvatar = avatarRepository.create({
+            url: defaultAvatarPath,
+            name: defaultAvatarName,
+            avatarType: AvatarType.default,
             usageCount: 0,
           });
-          await this.avatarRepository.save(predefinedAvatar);
-        }),
-      );
-    }
+          await avatarRepository.save(defaultAvatar);
+        }
+        const predefinedAvatar = await avatarRepository.findOneBy({
+          avatarType: AvatarType.predefined,
+        });
+        if (!predefinedAvatar) {
+          const predefinedAvatars = avatarFiles.filter(
+            (file) => file !== defaultAvatarName,
+          );
+          if (predefinedAvatars.length === 0) {
+            throw new Error('no predefined avatars found');
+          }
+          await Promise.all(
+            predefinedAvatars.map(async (name) => {
+              const avatarPath = join(sourcePath, name);
+              const predefinedAvatar = avatarRepository.create({
+                url: avatarPath,
+                name,
+                avatarType: AvatarType.predefined,
+                usageCount: 0,
+              });
+              await avatarRepository.save(predefinedAvatar);
+            }),
+          );
+        }
+      },
+    );
   }
 
   async save(path: string, filename: string) {
