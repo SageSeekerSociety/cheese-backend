@@ -16,15 +16,12 @@ export class AvatarsService implements OnModuleInit {
   private initialized: boolean = false;
 
   async onModuleInit(): Promise<void> {
-    const release = await this.mutex.acquire();
-    try {
+    await this.mutex.runExclusive(async () => {
       if (!this.initialized) {
         await this.initialize();
         this.initialized = true;
       }
-    } finally {
-      release();
-    }
+    });
   }
   private async initialize(): Promise<void> {
     const sourcePath = join(__dirname, '../resources/avatars');
