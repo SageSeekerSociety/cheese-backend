@@ -87,7 +87,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
           version: ${{ matrix.pnpm-version }}
           run_install: false
@@ -129,7 +129,7 @@ jobs:
           done
 
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.2.0
+        uses: codecov/codecov-action@v4.4.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: SageSeekerSociety/cheese-backend
