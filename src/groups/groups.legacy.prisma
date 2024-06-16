@@ -13,7 +13,7 @@
 
 import { User } from "../users/users"
 import { Question } from "../questions/questions"
-import { Avatar } from "../avatars/avatars.legacy"
+import { Avatar } from "../avatars/avatars"
 import { Answer } from "../answer/answer"
 
 model Group {

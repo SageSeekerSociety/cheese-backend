@@ -1,8 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AvatarType } from '@prisma/client';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { AvatarType } from '../src/avatars/avatars.legacy.entity';
 jest.mock('../src/email/email.service');
 
 describe('Avatar Module', () => {

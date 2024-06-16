@@ -14,7 +14,7 @@
 import { GroupMembership } from "../groups/groups.legacy"
 import { Question, QuestionFollowerRelation, QuestionQueryLog, QuestionSearchLog, QuestionTopicRelation } from "../questions/questions"
 import { Topic, TopicSearchLog } from "../topics/topics"
-import { Avatar } from "../avatars/avatars.legacy"
+import { Avatar } from "../avatars/avatars"
 import { Answer, AnswerDeleteLog, AnswerFavoritedByUser, AnswerQueryLog, AnswerUpdateLog } from "../answer/answer"
 import { Attitude } from "../attitude/attitude"
 import { Comment, CommentDeleteLog, CommentQueryLog } from "../comments/comment"

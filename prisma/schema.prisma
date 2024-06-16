@@ -216,7 +216,7 @@ model SessionRefreshLog {
 }
 
 //
-// avatars.legacy.prisma
+// avatars.prisma
 //
 
 enum AvatarType {

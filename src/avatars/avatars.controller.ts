@@ -15,6 +15,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AvatarType } from '@prisma/client';
 import { Response } from 'express';
 import * as fs from 'fs';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
@@ -25,7 +26,6 @@ import {
   CorrespondentFileNotExistError,
   InvalidAvatarTypeError,
 } from './avatars.error';
-import { AvatarType } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
 
 @Controller('/avatars')
