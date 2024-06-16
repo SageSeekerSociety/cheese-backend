@@ -58,6 +58,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --name my_postgres_container
         ports:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
@@ -78,6 +79,16 @@ jobs:
           - 9200:9200
 
     steps:
+      # See: https://remarkablemark.org/blog/2022/05/12/github-actions-postgresql-increase-max-connections-and-shared-buffers/
+      # See: https://stackoverflow.com/questions/70673766/how-to-increase-max-connection-in-github-action-postgres
+      - name: Increase PostgreSQL max_connections
+        run: |
+          docker exec -i my_postgres_container bash << EOF
+            sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
+            sed -i -e 's/shared_buffers = 128MB/shared_buffers = 2GB/' /var/lib/postgresql/data/postgresql.conf
+          EOF
+          docker restart --time 0 my_postgres_container
+
       - name: Checkout Repository
         uses: actions/checkout@v4
 

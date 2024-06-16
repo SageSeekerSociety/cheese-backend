@@ -18,7 +18,7 @@ datasource db {
 }
 
 //
-// answer.legacy.prisma
+// answer.prisma
 //
 
 //
