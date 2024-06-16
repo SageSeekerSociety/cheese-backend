@@ -13,7 +13,7 @@
 
 import { Group } from "../groups/groups.legacy"
 import { User } from "../users/users"
-import { Question } from "../questions/questions.legacy"
+import { Question } from "../questions/questions"
 
 model Answer {
   id                    Int                     @id(map: "PK_9232db17b63fb1e94f97e5c224f") @default(autoincrement())

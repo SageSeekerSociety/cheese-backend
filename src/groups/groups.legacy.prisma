@@ -12,7 +12,7 @@
 //
 
 import { User } from "../users/users"
-import { Question } from "../questions/questions.legacy"
+import { Question } from "../questions/questions"
 import { Avatar } from "../avatars/avatars.legacy"
 import { Answer } from "../answer/answer.legacy"
 

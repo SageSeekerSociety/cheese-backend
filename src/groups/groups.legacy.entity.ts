@@ -30,14 +30,12 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
-  JoinColumn,
   ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Question } from '../questions/questions.legacy.entity';
 import { GroupProfile } from './group-profile.entity';
 
 @Entity()
@@ -111,9 +109,9 @@ export class GroupQuestionRelationship {
   @Column()
   groupId: number;
 
-  @OneToOne(() => Question, (question) => question.groupQuestionRelationship)
-  @JoinColumn()
-  question: Question;
+  // @OneToOne(() => Question, (question) => question.groupQuestionRelationship)
+  // @JoinColumn()
+  // question: Question;
 
   @Column()
   questionId: number;

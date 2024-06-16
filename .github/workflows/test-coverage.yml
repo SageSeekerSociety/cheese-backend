@@ -21,7 +21,7 @@ jobs:
       TEST_REPEAT: 1 # Tests will be repeated
       PORT: 7777
       JWT_SECRET: Test JWT Secret
-      PRISMA_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PRISMA_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?connection_limit=16
       TYPEORM_DB_TYPE: postgres
       TYPEORM_DB_HOST: localhost
       TYPEORM_DB_PORT: 5432

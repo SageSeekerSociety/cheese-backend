@@ -455,7 +455,7 @@ model QuestionInvitationRelation {
 }
 
 //
-// questions.legacy.prisma
+// questions.prisma
 //
 
 //

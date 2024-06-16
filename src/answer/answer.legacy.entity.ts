@@ -26,7 +26,6 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Group } from '../groups/groups.legacy.entity';
-import { Question } from '../questions/questions.legacy.entity';
 
 export const AnswerAttitudeUndefined = 0;
 export const AnswerAttitudeAgree = 1;
@@ -40,8 +39,8 @@ export class Answer {
   @Index({ unique: false })
   createdById: number;
 
-  @ManyToOne(() => Question)
-  question: Question;
+  // @ManyToOne(() => Question)
+  // question: Question;
 
   @Column()
   @Index({ unique: false })
