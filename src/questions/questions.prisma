@@ -11,7 +11,7 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { GroupQuestionRelationship } from "../groups/groups.legacy"
+import { GroupQuestionRelationship } from "../groups/groups"
 import { User } from "../users/users"
 import { Topic } from "../topics/topics"
 import { Answer } from "../answer/answer"

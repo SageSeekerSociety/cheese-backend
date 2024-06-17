@@ -308,7 +308,7 @@ model CommentQueryLog {
 }
 
 //
-// groups.legacy.prisma
+// groups.prisma
 //
 
 //

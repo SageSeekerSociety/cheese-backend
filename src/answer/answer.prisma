@@ -11,7 +11,7 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { Group } from "../groups/groups.legacy"
+import { Group } from "../groups/groups"
 import { User } from "../users/users"
 import { Question } from "../questions/questions"
 

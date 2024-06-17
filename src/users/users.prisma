@@ -11,7 +11,7 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { GroupMembership } from "../groups/groups.legacy"
+import { GroupMembership } from "../groups/groups"
 import { Question, QuestionFollowerRelation, QuestionQueryLog, QuestionSearchLog, QuestionTopicRelation } from "../questions/questions"
 import { Topic, TopicSearchLog } from "../topics/topics"
 import { Avatar } from "../avatars/avatars"

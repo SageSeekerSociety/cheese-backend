@@ -11,7 +11,7 @@
 //  2024-02-19 by Nictheboy <nictheboy@outlook.com>
 //
 
-import { QuestionTopicRelation } from "../questions/questions.legacy"
+import { QuestionTopicRelation } from "../questions/questions"
 import { User } from "../users/users"
 
 model Topic {

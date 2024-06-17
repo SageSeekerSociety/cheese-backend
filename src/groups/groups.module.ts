@@ -10,6 +10,8 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnswerModule } from '../answer/answer.module';
 import { AuthModule } from '../auth/auth.module';
+import { AvatarsModule } from '../avatars/avatars.module';
+import { PrismaModule } from '../common/prisma/prisma.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { UsersModule } from '../users/users.module';
 import { GroupProfile } from './group-profile.entity';
@@ -19,9 +21,8 @@ import {
   GroupMembership,
   GroupQuestionRelationship,
   GroupTarget,
-} from './groups.legacy.entity';
+} from './groups.entity';
 import { GroupsService } from './groups.service';
-import { AvatarsModule } from '../avatars/avatars.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AvatarsModule } from '../avatars/avatars.module';
     forwardRef(() => QuestionsModule),
     forwardRef(() => AnswerModule),
     AvatarsModule,
+    PrismaModule,
   ],
   controllers: [GroupsController],
   providers: [GroupsService],

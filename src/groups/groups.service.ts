@@ -7,14 +7,19 @@
  *
  */
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
+import {
+  Inject,
+  Injectable,
+  NotImplementedException,
+  forwardRef,
+} from '@nestjs/common';
+import { Group, GroupProfile } from '@prisma/client';
 import { AnswerService } from '../answer/answer.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
 import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionNotFoundError } from '../questions/questions.error';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from '../users/DTO/user.dto';
@@ -23,7 +28,6 @@ import { UsersService } from '../users/users.service';
 import { GetGroupQuestionsResultDto } from './DTO/get-group-questions.dto';
 import { GroupDto } from './DTO/group.dto';
 import { JoinGroupResultDto } from './DTO/join-group.dto';
-import { GroupProfile } from './group-profile.entity';
 import {
   CannotDeleteGroupError,
   GroupAlreadyJoinedError,
@@ -33,12 +37,6 @@ import {
   GroupProfileNotFoundError,
   InvalidGroupNameError,
 } from './groups.error';
-import {
-  Group,
-  GroupMembership,
-  GroupQuestionRelationship,
-  GroupTarget,
-} from './groups.legacy.entity';
 
 export enum GroupQueryType {
   Recommend = 'recommend',
@@ -55,16 +53,7 @@ export class GroupsService {
     @Inject(forwardRef(() => AnswerService))
     private answerService: AnswerService,
     private avatarsService: AvatarsService,
-    @InjectRepository(Group)
-    private groupsRepository: Repository<Group>,
-    @InjectRepository(GroupProfile)
-    private groupProfilesRepository: Repository<GroupProfile>,
-    @InjectRepository(GroupMembership)
-    private groupMembershipsRepository: Repository<GroupMembership>,
-    @InjectRepository(GroupQuestionRelationship)
-    private groupQuestionRelationshipsRepository: Repository<GroupQuestionRelationship>,
-    @InjectRepository(GroupTarget)
-    private groupTargetsRepository: Repository<GroupTarget>,
+    private prismaService: PrismaService,
   ) {}
 
   private isValidGroupName(name: string): boolean {
@@ -73,6 +62,17 @@ export class GroupsService {
 
   get groupNameRule(): string {
     return 'Group display name must be 1-16 characters long and can only contain letters, numbers, underscores, hyphens and Chinese characters.';
+  }
+
+  async isGroupExists(groupId: number): Promise<boolean> {
+    return (
+      (await this.prismaService.group.findUnique({
+        where: {
+          id: groupId,
+          deletedAt: null,
+        },
+      })) != undefined
+    );
   }
 
   async createGroup(
@@ -87,29 +87,47 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if ((await this.groupsRepository.findOneBy({ name })) != undefined) {
+    if (
+      (await this.prismaService.group.count({
+        where: {
+          name,
+          deletedAt: null,
+        },
+      })) > 0
+    ) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
     if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
       throw new AvatarNotFoundError(avatarId);
     }
-    const group = this.groupsRepository.create({ name });
-    await this.groupsRepository.save(group);
+    const group = await this.prismaService.group.create({
+      data: {
+        name,
+        createdAt: new Date(),
+        deletedAt: null,
+      },
+    });
     await this.avatarsService.plusUsageCount(avatarId);
-    const groupProfile = this.groupProfilesRepository.create({
-      groupId: group.id,
-      intro,
-      avatarId,
+    const groupProfile = await this.prismaService.groupProfile.create({
+      data: {
+        intro,
+        avatarId,
+        createdAt: new Date(),
+        groupId: group.id,
+        updatedAt: new Date(),
+      },
     });
-    await this.groupProfilesRepository.save(groupProfile);
 
-    const GroupMembership = this.groupMembershipsRepository.create({
-      memberId: userId,
-      groupId: group.id,
-      role: 'owner',
+    await this.prismaService.groupMembership.create({
+      data: {
+        memberId: userId,
+        groupId: group.id,
+        role: 'owner',
+        createdAt: new Date(),
+        deletedAt: null,
+      },
     });
-    await this.groupMembershipsRepository.save(GroupMembership);
 
     const userDto = await this.usersService.getUserDtoById(
       userId,
@@ -122,7 +140,7 @@ export class GroupsService {
       id: group.id,
       name: group.name,
       intro: groupProfile.intro,
-      avatarId: groupProfile.avatarId,
+      avatarId: avatarId,
       owner: userDto,
       created_at: group.createdAt.getTime(),
       updated_at: group.updatedAt.getTime(),
@@ -136,14 +154,23 @@ export class GroupsService {
   }
 
   async getGroups(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     userId: number | undefined,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     keyword: string | undefined,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     page_start_id: number | undefined,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     page_size: number,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     order_type: GroupQueryType,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ip: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     userAgent: string | undefined,
   ): Promise<[GroupDto[], PageDto]> {
+    throw new NotImplementedException();
+    /*
     let queryBuilder = this.groupsRepository.createQueryBuilder('group');
 
     if (keyword) {
@@ -265,6 +292,7 @@ export class GroupsService {
         (group) => group.id,
       );
     }
+      */
   }
 
   async getGroupDtoById(
@@ -273,17 +301,25 @@ export class GroupsService {
     ip: string,
     userAgent: string | undefined,
   ): Promise<GroupDto> {
-    const group = await this.groupsRepository.findOne({
-      where: { id: groupId },
-      relations: ['profile'],
+    const group = await this.prismaService.group.findUnique({
+      where: {
+        id: groupId,
+        deletedAt: null,
+      },
+      include: {
+        groupProfile: true,
+      },
     });
     if (group == undefined) {
       throw new GroupNotFoundError(groupId);
     }
 
-    const ownership = await this.groupMembershipsRepository.findOneBy({
-      groupId,
-      role: 'owner',
+    const ownership = await this.prismaService.groupMembership.findFirst({
+      where: {
+        deletedAt: null,
+        groupId,
+        role: 'owner',
+      },
     });
     if (ownership == undefined) {
       throw new Error(`Group ${groupId} has no owner.`);
@@ -296,12 +332,19 @@ export class GroupsService {
       userAgent,
     );
 
-    const member_count = await this.groupMembershipsRepository.countBy({
-      groupId,
+    const member_count = await this.prismaService.groupMembership.count({
+      where: {
+        deletedAt: null,
+        groupId,
+      },
     });
-    const questions = await this.groupQuestionRelationshipsRepository.findBy({
-      groupId,
-    });
+    const questions =
+      await this.prismaService.groupQuestionRelationship.findMany({
+        where: {
+          deletedAt: null,
+          groupId,
+        },
+      });
     const question_count = questions.length;
     const answer_count_promises = questions.map((question) =>
       this.answerService.countQuestionAnswers(question.id),
@@ -312,9 +355,12 @@ export class GroupsService {
     );
 
     const is_member = userId
-      ? (await this.groupMembershipsRepository.findOneBy({
-          groupId,
-          memberId: userId,
+      ? (await this.prismaService.groupMembership.findFirst({
+          where: {
+            groupId,
+            memberId: userId,
+            deletedAt: null,
+          },
         })) != undefined
       : false;
     const is_owner = userId ? ownerId == userId : false;
@@ -322,8 +368,11 @@ export class GroupsService {
     return {
       id: group.id,
       name: group.name,
-      intro: group.profile.intro,
-      avatarId: group.profile.avatarId,
+      intro:
+        group.groupProfile?.intro ?? 'This user does not have an introduction.',
+      avatarId:
+        group.groupProfile?.avatarId ??
+        (await this.avatarsService.getDefaultAvatarId()),
       owner: ownerDto,
       created_at: group.createdAt.getTime(),
       updated_at: group.updatedAt.getTime(),
@@ -336,7 +385,12 @@ export class GroupsService {
     };
   }
   async getGroupProfile(groupId: number): Promise<GroupProfile> {
-    const profile = await this.groupProfilesRepository.findOneBy({ groupId });
+    const profile = await this.prismaService.groupProfile.findFirst({
+      where: {
+        groupId,
+        deletedAt: null,
+      },
+    });
     if (profile == undefined) throw new GroupProfileNotFoundError(groupId);
     return profile;
   }
@@ -347,18 +401,26 @@ export class GroupsService {
     intro: string,
     avatarId: number,
   ): Promise<void> {
-    const group = await this.groupsRepository.findOne({
-      where: { id: groupId },
-      relations: ['profile'],
+    const group = await this.prismaService.group.findUnique({
+      where: {
+        id: groupId,
+        deletedAt: null,
+      },
+      include: {
+        groupProfile: true,
+      },
     });
     if (group == undefined) {
       throw new GroupNotFoundError(groupId);
     }
 
-    const userMembership = await this.groupMembershipsRepository.findOneBy({
-      groupId,
-      memberId: userId,
-      role: In(['owner', 'admin']),
+    const userMembership = await this.prismaService.groupMembership.findFirst({
+      where: {
+        groupId,
+        memberId: userId,
+        role: { in: ['owner', 'admin'] },
+        deletedAt: null,
+      },
     });
     if (userMembership == undefined) {
       throw new CannotDeleteGroupError(groupId);
@@ -367,44 +429,99 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if ((await this.groupsRepository.findOneBy({ name })) != undefined) {
+    if (
+      (await this.prismaService.group.findFirst({
+        where: {
+          name,
+          deletedAt: null,
+        },
+      })) != undefined
+    ) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
     if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
       throw new AvatarNotFoundError(avatarId);
     }
-    const preAvatarId = group.profile.avatarId;
+    const preAvatarId = group.groupProfile?.avatarId;
+    if (preAvatarId) await this.avatarsService.minusUsageCount(preAvatarId);
     await this.avatarsService.plusUsageCount(avatarId);
-    await this.avatarsService.minusUsageCount(preAvatarId);
-    group.profile.avatarId = avatarId;
-    group.name = name;
-    group.profile.intro = intro;
-    await this.groupsRepository.save(group);
-    await this.groupProfilesRepository.save(group.profile);
+    await this.prismaService.group.update({
+      where: {
+        id: groupId,
+        deletedAt: null,
+      },
+      data: {
+        name,
+      },
+    });
+    await this.prismaService.groupProfile.update({
+      where: {
+        groupId,
+        deletedAt: null,
+      },
+      data: {
+        intro,
+        avatarId,
+      },
+    });
   }
 
   async deleteGroup(userId: number, groupId: number): Promise<void> {
-    const group = await this.groupsRepository.findOne({
-      where: { id: groupId },
-      relations: ['profile'],
-    });
-    if (group == undefined) {
+    if ((await this.isGroupExists(groupId)) == false)
       throw new GroupNotFoundError(groupId);
-    }
 
-    const owner = await this.groupMembershipsRepository.findOneBy({
-      groupId,
-      memberId: userId,
-      role: 'owner',
+    const owner = await this.prismaService.groupMembership.findFirst({
+      where: {
+        groupId,
+        memberId: userId,
+        role: 'owner',
+        deletedAt: null,
+      },
     });
     if (owner == undefined) {
       throw new CannotDeleteGroupError(groupId);
     }
 
-    await this.groupProfilesRepository.softRemove(group.profile);
-    await this.groupMembershipsRepository.softRemove({ groupId });
-    await this.groupsRepository.softRemove(group);
+    await this.prismaService.group.update({
+      where: {
+        id: groupId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+    await this.prismaService.groupProfile.update({
+      where: {
+        groupId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+    await this.prismaService.groupMembership.updateMany({
+      where: {
+        groupId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+  async isUserWithinGroup(userId: number, groupId: number): Promise<boolean> {
+    return (
+      (await this.prismaService.groupMembership.findFirst({
+        where: {
+          memberId: userId,
+          groupId,
+          deletedAt: null,
+        },
+      })) != undefined
+    );
   }
 
   async joinGroup(
@@ -413,28 +530,26 @@ export class GroupsService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     intro: string,
   ): Promise<JoinGroupResultDto> {
-    const group = await this.groupsRepository.findOneBy({ id: groupId });
-    if (group == undefined) {
+    if ((await this.isGroupExists(groupId)) == false)
       throw new GroupNotFoundError(groupId);
-    }
 
-    if (
-      (await this.groupMembershipsRepository.findOneBy({
+    if (await this.isUserWithinGroup(userId, groupId))
+      throw new GroupAlreadyJoinedError(groupId);
+
+    await this.prismaService.groupMembership.create({
+      data: {
         groupId,
         memberId: userId,
-      })) != undefined
-    ) {
-      throw new GroupAlreadyJoinedError(groupId);
-    }
-
-    await this.groupMembershipsRepository.insert({
-      groupId,
-      memberId: userId,
-      role: 'member',
+        role: 'member',
+        createdAt: new Date(),
+      },
     });
 
-    const member_count = await this.groupMembershipsRepository.countBy({
-      groupId,
+    const member_count = await this.prismaService.groupMembership.count({
+      where: {
+        groupId,
+        deletedAt: null,
+      },
     });
     const is_member = true;
     const is_waiting = false; // todo: pending logic
@@ -442,26 +557,27 @@ export class GroupsService {
   }
 
   async quitGroup(userId: number, groupId: number): Promise<number> {
-    const group = await this.groupsRepository.findOneBy({ id: groupId });
-    if (group == undefined) {
+    if ((await this.isGroupExists(groupId)) == false)
       throw new GroupNotFoundError(groupId);
-    }
 
-    const membership = await this.groupMembershipsRepository.findOneBy({
-      groupId,
-      memberId: userId,
-    });
-    if (membership == undefined) {
+    if ((await this.isUserWithinGroup(userId, groupId)) == false)
       throw new GroupNotJoinedError(groupId);
-    }
 
-    // todo: check if user is owner
-    await this.groupMembershipsRepository.softDelete({
-      groupId,
-      memberId: userId,
+    await this.prismaService.groupMembership.updateMany({
+      where: {
+        groupId,
+        memberId: userId,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
     });
-    const member_count = await this.groupMembershipsRepository.countBy({
-      groupId,
+    const member_count = await this.prismaService.groupMembership.count({
+      where: {
+        groupId,
+        deletedAt: null,
+      },
     });
     return member_count;
   }
@@ -474,14 +590,18 @@ export class GroupsService {
     ip: string,
     userAgent: string | undefined,
   ): Promise<[UserDto[], PageDto]> {
-    if ((await this.groupsRepository.findOneBy({ id: groupId })) == undefined) {
+    if ((await this.isGroupExists(groupId)) == false)
       throw new GroupNotFoundError(groupId);
-    }
 
     if (!firstMemberId) {
-      const entity = await this.groupMembershipsRepository.find({
-        where: { groupId },
-        order: { id: 'ASC' },
+      const entity = await this.prismaService.groupMembership.findMany({
+        where: {
+          groupId,
+          deletedAt: null,
+        },
+        orderBy: {
+          id: 'asc',
+        },
         take: page_size + 1,
       });
       const DTOs = await Promise.all(
@@ -497,10 +617,13 @@ export class GroupsService {
       return PageHelper.PageStart(DTOs, page_size, (user) => user.id);
     }
     // firstMemberId is not undefined
-    const firstMember = await this.groupMembershipsRepository.findOne({
-      where: { groupId, memberId: firstMemberId },
-      withDeleted: true,
-    }); // ! first member may be deleted while the request on sending
+    const firstMember = await this.prismaService.groupMembership.findFirst({
+      where: {
+        groupId,
+        memberId: firstMemberId,
+      },
+    });
+    // ! first member may be deleted while the request on sending
     // ! so we need to include deleted members to get the correct reference value
     // ! i.e. member joined time(id) here
 
@@ -509,21 +632,27 @@ export class GroupsService {
     }
     const firstMemberJoinedId = firstMember.id;
 
-    const prevEntity = this.groupMembershipsRepository.find({
+    const prevEntity = this.prismaService.groupMembership.findMany({
       where: {
         groupId,
-        id: LessThan(firstMemberJoinedId),
+        id: { lt: firstMemberJoinedId },
+        deletedAt: null,
       },
       take: page_size,
-      order: { id: 'DESC' },
+      orderBy: {
+        id: 'desc',
+      },
     });
-    const currEntity = this.groupMembershipsRepository.find({
+    const currEntity = this.prismaService.groupMembership.findMany({
       where: {
         groupId,
-        id: MoreThanOrEqual(firstMemberJoinedId),
+        id: { gte: firstMemberJoinedId },
+        deletedAt: null,
       },
       take: page_size + 1,
-      order: { id: 'ASC' },
+      orderBy: {
+        id: 'asc',
+      },
     });
     const currDTOs = await Promise.all(
       (await currEntity).map((entity) =>
@@ -554,31 +683,39 @@ export class GroupsService {
   ): Promise<GetGroupQuestionsResultDto> {
     if (page_start_id) {
       const referenceRelationship =
-        await this.groupQuestionRelationshipsRepository.findOneBy({
-          questionId: page_start_id,
+        await this.prismaService.groupQuestionRelationship.findFirst({
+          where: {
+            questionId: page_start_id,
+            groupId,
+            deletedAt: null,
+          },
         });
       if (!referenceRelationship) {
         throw new QuestionNotFoundError(page_start_id);
       }
       const referenceValue = referenceRelationship.createdAt;
-      const prev = await this.groupQuestionRelationshipsRepository
-        .createQueryBuilder('relationship')
-        .where('relationship.groupId = :groupId', { groupId })
-        .andWhere('relationship.createdAt > :referenceValue', {
-          referenceValue,
-        })
-        .orderBy('relationship.createdAt', 'DESC')
-        .limit(page_size)
-        .getMany();
-      const curr = await this.groupQuestionRelationshipsRepository
-        .createQueryBuilder('relationship')
-        .where('relationship.groupId = :groupId', { groupId })
-        .andWhere('relationship.createdAt <= :referenceValue', {
-          referenceValue,
-        })
-        .orderBy('relationship.createdAt', 'DESC')
-        .limit(page_size + 1)
-        .getMany();
+      const prev = await this.prismaService.groupQuestionRelationship.findMany({
+        where: {
+          groupId,
+          createdAt: { gt: referenceValue },
+          deletedAt: null,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: page_size,
+      });
+      const curr = await this.prismaService.groupQuestionRelationship.findMany({
+        where: {
+          groupId,
+          createdAt: { lte: referenceValue },
+          deletedAt: null,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: page_size + 1,
+      });
       const DTOs = await Promise.all(
         curr.map((relationship) =>
           this.questionsService.getQuestionDto(
@@ -601,12 +738,16 @@ export class GroupsService {
         page,
       };
     } else {
-      const curr = await this.groupQuestionRelationshipsRepository
-        .createQueryBuilder('relationship')
-        .where('relationship.groupId = :groupId', { groupId })
-        .orderBy('relationship.createdAt', 'DESC')
-        .limit(page_size + 1)
-        .getMany();
+      const curr = await this.prismaService.groupQuestionRelationship.findMany({
+        where: {
+          groupId,
+          deletedAt: null,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: page_size + 1,
+      });
       const DTOs = await Promise.all(
         curr.map((relationship) =>
           this.questionsService.getQuestionDto(
