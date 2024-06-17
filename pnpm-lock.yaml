@@ -179,8 +179,8 @@ devDependencies:
     specifier: ^29.1.2
     version: 29.1.2(@babel/core@7.23.9)(jest@29.7.0)(typescript@5.4.5)
   ts-json-schema-generator:
-    specifier: ^2.1.1
-    version: 2.1.1
+    specifier: ^2.3.0
+    version: 2.3.0
   ts-loader:
     specifier: ^9.5.1
     version: 9.5.1(typescript@5.4.5)(webpack@5.90.1)
@@ -3201,11 +3201,6 @@ packages:
     dev: false
     optional: true
 
-  /commander@12.0.0:
-    resolution: {integrity: sha512-MwVNWlYjDTtOjX5PiD7o5pK0UrFU/OYgcJfjjK4RaHZETNtjJqrZa9Y9ds88+A+f+d5lv+561eZ+yCKoS3gbAA==}
-    engines: {node: '>=18'}
-    dev: true
-
   /commander@12.1.0:
     resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
     engines: {node: '>=18'}
@@ -4581,6 +4576,7 @@ packages:
 
   /glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
+    deprecated: Glob versions prior to v9 are no longer supported
     dependencies:
       fs.realpath: 1.0.0
       inflight: 1.0.6
@@ -4604,6 +4600,7 @@ packages:
   /glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
     engines: {node: '>=12'}
+    deprecated: Glob versions prior to v9 are no longer supported
     dependencies:
       fs.realpath: 1.0.0
       inflight: 1.0.6
@@ -8688,17 +8685,18 @@ packages:
       yargs-parser: 21.1.1
     dev: true
 
-  /ts-json-schema-generator@2.1.1:
-    resolution: {integrity: sha512-ha5/w3A2APOOn9ET2CfunEXdVOnKmjISTGcxhCkDszmrsRWFfG5F+re5U5onLXo665sZ4BuE2g5jZAjC+CUcgA==}
+  /ts-json-schema-generator@2.3.0:
+    resolution: {integrity: sha512-t4lBQAwZc0sOJq9LJt3NgbznIcslVnm0JeEMFq8qIRklpMRY8jlYD0YmnRWbqBKANxkby91P1XanSSlSOFpUmg==}
     engines: {node: '>=18.0.0'}
     hasBin: true
     dependencies:
       '@types/json-schema': 7.0.15
-      commander: 12.0.0
+      commander: 12.1.0
       glob: 10.3.12
       json5: 2.2.3
       normalize-path: 3.0.0
       safe-stable-stringify: 2.4.3
+      tslib: 2.6.2
       typescript: 5.4.5
     dev: true
 
