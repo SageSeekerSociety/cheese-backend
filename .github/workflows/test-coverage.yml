@@ -22,17 +22,6 @@ jobs:
       PORT: 7777
       JWT_SECRET: Test JWT Secret
       PRISMA_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?connection_limit=16
-      TYPEORM_DB_TYPE: postgres
-      TYPEORM_DB_HOST: localhost
-      TYPEORM_DB_PORT: 5432
-      TYPEORM_DB_USERNAME: postgres
-      TYPEORM_DB_PASSWORD: postgres
-      TYPEORM_DB_NAME: postgres
-      TYPEORM_DB_SYNCHRONIZE: false
-      TYPEORM_DB_AUTO_LOAD_ENTITIES: true
-      TYPEORM_DB_CONNECT_TIMEOUT: 60000
-      TYPEORM_DB_LOGGING_ALL: false
-      TYPEORM_DB_LOGGING_ERROR: true
       DEFAULT_AVATAR_NAME: default.jpg
       FILE_UPLOAD_PATH: /home/runner/work/cheese-backend
       ELASTICSEARCH_NODE: http://127.0.0.1:9200/

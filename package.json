@@ -37,7 +37,6 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/platform-express": "^10.3.8",
     "@nestjs/serve-static": "^4.0.1",
-    "@nestjs/typeorm": "^10.0.2",
     "@prisma/client": "5.14.0",
     "ajv": "^8.13.0",
     "async-mutex": "^0.5.0",
@@ -53,8 +52,6 @@
     "pg": "^8.11.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.20",
-    "typeorm-naming-strategies": "^4.1.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
