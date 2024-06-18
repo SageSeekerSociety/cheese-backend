@@ -63,7 +63,6 @@ export class CommentsService {
   async findCommentOrThrow(commentId: number): Promise<Comment> {
     const comment = await this.prismaService.comment.findUnique({
       where: {
-        deletedAt: null,
         id: commentId,
       },
     });
@@ -74,7 +73,6 @@ export class CommentsService {
   async isCommentExists(commentId: number): Promise<boolean> {
     const count = await this.prismaService.comment.count({
       where: {
-        deletedAt: null,
         id: commentId,
       },
     });
@@ -165,7 +163,6 @@ export class CommentsService {
     if (pageStart == undefined) {
       const comments = await this.prismaService.comment.findMany({
         where: {
-          deletedAt: null,
           commentableType,
           commentableId,
         },
@@ -184,7 +181,6 @@ export class CommentsService {
       const start = await this.findCommentOrThrow(pageStart);
       const prev = await this.prismaService.comment.findMany({
         where: {
-          deletedAt: null,
           commentableType,
           commentableId,
           createdAt: {
@@ -198,7 +194,6 @@ export class CommentsService {
       });
       const curr = await this.prismaService.comment.findMany({
         where: {
-          deletedAt: null,
           commentableType,
           commentableId,
           createdAt: {
@@ -269,7 +264,6 @@ export class CommentsService {
   ): Promise<number> {
     return await this.prismaService.comment.count({
       where: {
-        deletedAt: null,
         commentableType,
         commentableId,
       },

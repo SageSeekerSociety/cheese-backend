@@ -10,6 +10,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   NotImplementedException,
   forwardRef,
 } from '@nestjs/common';
@@ -69,10 +70,20 @@ export class GroupsService {
       (await this.prismaService.group.findUnique({
         where: {
           id: groupId,
-          deletedAt: null,
         },
       })) != undefined
     );
+  }
+
+  async isGroupNameExists(groupName: string): Promise<boolean> {
+    const ret = await this.prismaService.group.count({
+      where: {
+        name: groupName,
+      },
+    });
+    if (ret > 1)
+      Logger.error(`Group name ${groupName} is used more than once.`);
+    return ret > 0;
   }
 
   async createGroup(
@@ -87,14 +98,7 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if (
-      (await this.prismaService.group.count({
-        where: {
-          name,
-          deletedAt: null,
-        },
-      })) > 0
-    ) {
+    if (await this.isGroupNameExists(name)) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
@@ -105,7 +109,6 @@ export class GroupsService {
       data: {
         name,
         createdAt: new Date(),
-        deletedAt: null,
       },
     });
     await this.avatarsService.plusUsageCount(avatarId);
@@ -125,7 +128,6 @@ export class GroupsService {
         groupId: group.id,
         role: 'owner',
         createdAt: new Date(),
-        deletedAt: null,
       },
     });
 
@@ -304,7 +306,6 @@ export class GroupsService {
     const group = await this.prismaService.group.findUnique({
       where: {
         id: groupId,
-        deletedAt: null,
       },
       include: {
         groupProfile: true,
@@ -316,7 +317,6 @@ export class GroupsService {
 
     const ownership = await this.prismaService.groupMembership.findFirst({
       where: {
-        deletedAt: null,
         groupId,
         role: 'owner',
       },
@@ -334,14 +334,12 @@ export class GroupsService {
 
     const member_count = await this.prismaService.groupMembership.count({
       where: {
-        deletedAt: null,
         groupId,
       },
     });
     const questions =
       await this.prismaService.groupQuestionRelationship.findMany({
         where: {
-          deletedAt: null,
           groupId,
         },
       });
@@ -359,7 +357,6 @@ export class GroupsService {
           where: {
             groupId,
             memberId: userId,
-            deletedAt: null,
           },
         })) != undefined
       : false;
@@ -388,7 +385,6 @@ export class GroupsService {
     const profile = await this.prismaService.groupProfile.findFirst({
       where: {
         groupId,
-        deletedAt: null,
       },
     });
     if (profile == undefined) throw new GroupProfileNotFoundError(groupId);
@@ -404,7 +400,6 @@ export class GroupsService {
     const group = await this.prismaService.group.findUnique({
       where: {
         id: groupId,
-        deletedAt: null,
       },
       include: {
         groupProfile: true,
@@ -419,7 +414,6 @@ export class GroupsService {
         groupId,
         memberId: userId,
         role: { in: ['owner', 'admin'] },
-        deletedAt: null,
       },
     });
     if (userMembership == undefined) {
@@ -429,14 +423,7 @@ export class GroupsService {
     if (!this.isValidGroupName(name)) {
       throw new InvalidGroupNameError(name, this.groupNameRule);
     }
-    if (
-      (await this.prismaService.group.findFirst({
-        where: {
-          name,
-          deletedAt: null,
-        },
-      })) != undefined
-    ) {
+    if (await this.isGroupNameExists(name)) {
       // todo: create log?
       throw new GroupNameAlreadyUsedError(name);
     }
@@ -449,7 +436,6 @@ export class GroupsService {
     await this.prismaService.group.update({
       where: {
         id: groupId,
-        deletedAt: null,
       },
       data: {
         name,
@@ -458,7 +444,6 @@ export class GroupsService {
     await this.prismaService.groupProfile.update({
       where: {
         groupId,
-        deletedAt: null,
       },
       data: {
         intro,
@@ -476,7 +461,6 @@ export class GroupsService {
         groupId,
         memberId: userId,
         role: 'owner',
-        deletedAt: null,
       },
     });
     if (owner == undefined) {
@@ -486,7 +470,6 @@ export class GroupsService {
     await this.prismaService.group.update({
       where: {
         id: groupId,
-        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
@@ -495,7 +478,6 @@ export class GroupsService {
     await this.prismaService.groupProfile.update({
       where: {
         groupId,
-        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
@@ -504,7 +486,6 @@ export class GroupsService {
     await this.prismaService.groupMembership.updateMany({
       where: {
         groupId,
-        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
@@ -518,7 +499,6 @@ export class GroupsService {
         where: {
           memberId: userId,
           groupId,
-          deletedAt: null,
         },
       })) != undefined
     );
@@ -548,7 +528,6 @@ export class GroupsService {
     const member_count = await this.prismaService.groupMembership.count({
       where: {
         groupId,
-        deletedAt: null,
       },
     });
     const is_member = true;
@@ -567,7 +546,6 @@ export class GroupsService {
       where: {
         groupId,
         memberId: userId,
-        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
@@ -576,7 +554,6 @@ export class GroupsService {
     const member_count = await this.prismaService.groupMembership.count({
       where: {
         groupId,
-        deletedAt: null,
       },
     });
     return member_count;
@@ -597,7 +574,6 @@ export class GroupsService {
       const entity = await this.prismaService.groupMembership.findMany({
         where: {
           groupId,
-          deletedAt: null,
         },
         orderBy: {
           id: 'asc',
@@ -615,62 +591,63 @@ export class GroupsService {
         ),
       );
       return PageHelper.PageStart(DTOs, page_size, (user) => user.id);
-    }
-    // firstMemberId is not undefined
-    const firstMember = await this.prismaService.groupMembership.findFirst({
-      where: {
-        groupId,
-        memberId: firstMemberId,
-      },
-    });
-    // ! first member may be deleted while the request on sending
-    // ! so we need to include deleted members to get the correct reference value
-    // ! i.e. member joined time(id) here
+    } else {
+      // firstMemberId is not undefined
+      const firstMember = await this.prismaService
+        .withoutExtensions()
+        .groupMembership.findFirst({
+          where: {
+            groupId,
+            memberId: firstMemberId,
+          },
+        });
+      // ! first member may be deleted while the request on sending
+      // ! so we need to include deleted members to get the correct reference value
+      // ! i.e. member joined time(id) here
 
-    if (firstMember == undefined) {
-      throw new UserIdNotFoundError(firstMemberId);
-    }
-    const firstMemberJoinedId = firstMember.id;
+      if (firstMember == undefined) {
+        throw new UserIdNotFoundError(firstMemberId);
+      }
+      const firstMemberJoinedId = firstMember.id;
 
-    const prevEntity = this.prismaService.groupMembership.findMany({
-      where: {
-        groupId,
-        id: { lt: firstMemberJoinedId },
-        deletedAt: null,
-      },
-      take: page_size,
-      orderBy: {
-        id: 'desc',
-      },
-    });
-    const currEntity = this.prismaService.groupMembership.findMany({
-      where: {
-        groupId,
-        id: { gte: firstMemberJoinedId },
-        deletedAt: null,
-      },
-      take: page_size + 1,
-      orderBy: {
-        id: 'asc',
-      },
-    });
-    const currDTOs = await Promise.all(
-      (await currEntity).map((entity) =>
-        this.usersService.getUserDtoById(
-          entity.memberId,
-          viewerId,
-          ip,
-          userAgent,
+      const prevEntity = this.prismaService.groupMembership.findMany({
+        where: {
+          groupId,
+          id: { lt: firstMemberJoinedId },
+        },
+        take: page_size,
+        orderBy: {
+          id: 'desc',
+        },
+      });
+      const currEntity = this.prismaService.groupMembership.findMany({
+        where: {
+          groupId,
+          id: { gte: firstMemberJoinedId },
+        },
+        take: page_size + 1,
+        orderBy: {
+          id: 'asc',
+        },
+      });
+      const currDTOs = await Promise.all(
+        (await currEntity).map((entity) =>
+          this.usersService.getUserDtoById(
+            entity.memberId,
+            viewerId,
+            ip,
+            userAgent,
+          ),
         ),
-      ),
-    );
-    return PageHelper.PageMiddle(
-      await prevEntity,
-      currDTOs,
-      page_size,
-      (user) => user.memberId,
-      (user) => user.id,
-    );
+      );
+      return PageHelper.PageMiddle(
+        await prevEntity,
+        currDTOs,
+        page_size,
+        (user) => user.memberId,
+        (user) => user.id,
+      );
+    }
   }
 
   async getGroupQuestions(
@@ -687,7 +664,6 @@ export class GroupsService {
           where: {
             questionId: page_start_id,
             groupId,
-            deletedAt: null,
           },
         });
       if (!referenceRelationship) {
@@ -698,7 +674,6 @@ export class GroupsService {
         where: {
           groupId,
           createdAt: { gt: referenceValue },
-          deletedAt: null,
         },
         orderBy: {
           createdAt: 'desc',
@@ -709,7 +684,6 @@ export class GroupsService {
         where: {
           groupId,
           createdAt: { lte: referenceValue },
-          deletedAt: null,
         },
         orderBy: {
           createdAt: 'desc',
@@ -741,7 +715,6 @@ export class GroupsService {
       const curr = await this.prismaService.groupQuestionRelationship.findMany({
         where: {
           groupId,
-          deletedAt: null,
         },
         orderBy: {
           createdAt: 'desc',

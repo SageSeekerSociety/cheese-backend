@@ -96,7 +96,6 @@ export class TopicsService {
   async findTopicRecordOrThrow(topicId: number): Promise<Topic> {
     const topic = await this.prismaService.topic.findUnique({
       where: {
-        deletedAt: null,
         id: topicId,
       },
     });
@@ -123,7 +122,6 @@ export class TopicsService {
   async isTopicExists(topicId: number): Promise<boolean> {
     const count = await this.prismaService.topic.count({
       where: {
-        deletedAt: null,
         id: topicId,
       },
     });
@@ -133,7 +131,6 @@ export class TopicsService {
   async isTopicNameExists(topicName: string): Promise<boolean> {
     const count = await this.prismaService.topic.count({
       where: {
-        deletedAt: null,
         name: topicName,
       },
     });

@@ -66,7 +66,6 @@ export class AnswerService {
         createdById,
         content,
         createdAt: new Date(),
-        deletedAt: null,
       },
     });
     return answer.id;
@@ -84,7 +83,6 @@ export class AnswerService {
       const currPage = await this.prismaService.answer.findMany({
         where: {
           questionId,
-          deletedAt: null,
         },
         orderBy: { id: 'asc' },
         take: pageSize + 1,
@@ -105,7 +103,6 @@ export class AnswerService {
       const start = await this.prismaService.answer.findUnique({
         where: {
           id: pageStart,
-          deletedAt: null,
         },
       });
       if (!start) {
@@ -114,7 +111,6 @@ export class AnswerService {
       const prevPage = await this.prismaService.answer.findMany({
         where: {
           questionId,
-          deletedAt: null,
           id: { lt: pageStart },
         },
         orderBy: { id: 'desc' },
@@ -123,7 +119,6 @@ export class AnswerService {
       const currPage = await this.prismaService.answer.findMany({
         where: {
           questionId,
-          deletedAt: null,
           id: { gte: pageStart },
         },
         orderBy: { id: 'asc' },
@@ -164,7 +159,6 @@ export class AnswerService {
       const currPage = await this.prismaService.answer.findMany({
         where: {
           createdById: userId,
-          deletedAt: null,
         },
         orderBy: { id: 'asc' },
         take: pageSize + 1,
@@ -185,7 +179,6 @@ export class AnswerService {
       const prevPage = await this.prismaService.answer.findMany({
         where: {
           createdById: userId,
-          deletedAt: null,
           id: { lt: pageStart },
         },
         orderBy: { id: 'desc' },
@@ -194,7 +187,6 @@ export class AnswerService {
       const currPage = await this.prismaService.answer.findMany({
         where: {
           createdById: userId,
-          deletedAt: null,
           id: { gte: pageStart },
         },
         orderBy: { id: 'asc' },
@@ -350,7 +342,6 @@ export class AnswerService {
       where: {
         questionId,
         id: answerId,
-        deletedAt: null,
       },
     });
     if (!answer) {
@@ -362,7 +353,6 @@ export class AnswerService {
       where: {
         questionId,
         id: answerId,
-        deletedAt: null,
       },
       data: {
         content,
@@ -393,7 +383,6 @@ export class AnswerService {
       where: {
         questionId,
         id: answerId,
-        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
@@ -549,7 +538,6 @@ export class AnswerService {
         where: {
           questionId,
           id: answerId,
-          deletedAt: null,
         },
       })) > 0
     );
@@ -560,7 +548,6 @@ export class AnswerService {
       (await this.prismaService.answer.count({
         where: {
           id: answerId,
-          deletedAt: null,
         },
       })) > 0
     );
@@ -571,7 +558,6 @@ export class AnswerService {
       where: {
         questionId,
         id: answerId,
-        deletedAt: null,
       },
     });
     if (!answer) {
@@ -586,7 +572,6 @@ export class AnswerService {
     return await this.prismaService.answer.count({
       where: {
         questionId,
-        deletedAt: null,
       },
     });
   }
@@ -601,7 +586,6 @@ export class AnswerService {
       where: {
         questionId,
         id: answerId,
-        deletedAt: null,
       },
     });
     if (!answer) {
@@ -624,7 +608,6 @@ export class AnswerService {
     return await this.prismaService.answer.count({
       where: {
         createdById: userId,
-        deletedAt: null,
       },
     });
   }
@@ -635,7 +618,6 @@ export class AnswerService {
   ): Promise<number | undefined> {
     const answer = await this.prismaService.answer.findFirst({
       where: {
-        deletedAt: null,
         questionId,
         createdById,
       },

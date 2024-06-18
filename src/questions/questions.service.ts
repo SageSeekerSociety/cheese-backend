@@ -7,7 +7,7 @@
  *
  */
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
 import {
   AttitudableType,
@@ -93,7 +93,6 @@ export class QuestionsService {
         topicId,
         createdById,
         createdAt: new Date(),
-        deletedAt: null,
       },
     });
   }
@@ -109,7 +108,6 @@ export class QuestionsService {
       where: {
         topicId,
         questionId,
-        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
@@ -119,7 +117,7 @@ export class QuestionsService {
       throw new QuestionNotHasThisTopicError(questionId, topicId);
     /* istanbul ignore if */
     if (ret.count > 1)
-      throw new Error(
+      Logger.error(
         `More than one question-topic relation deleted. questionId: ${questionId}, topicId: ${topicId}`,
       );
   }
@@ -164,7 +162,6 @@ export class QuestionsService {
             bounty,
             bountyStartAt: bounty ? new Date() : undefined,
             createdAt: new Date(),
-            deletedAt: null,
           },
         });
         for (const topicId of topicIds) {
@@ -213,7 +210,6 @@ export class QuestionsService {
         where: {
           followerId: userId,
           questionId,
-          deletedAt: null,
         },
       })) > 0
     );
@@ -229,7 +225,6 @@ export class QuestionsService {
     const relations = await this.prismaService.questionTopicRelation.findMany({
       where: {
         questionId,
-        deletedAt: null,
       },
     });
     return await Promise.all(
@@ -248,7 +243,6 @@ export class QuestionsService {
     return await this.prismaService.questionFollowerRelation.count({
       where: {
         questionId,
-        deletedAt: null,
       },
     });
   }
@@ -270,13 +264,10 @@ export class QuestionsService {
     const question = await this.prismaService.question.findUnique({
       where: {
         id: questionId,
-        deletedAt: null,
       },
       include: { acceptedAnswer: true },
     });
-    if (question == undefined || question.deletedAt)
-      //! workaround before soft delete middleware
-      throw new QuestionNotFoundError(questionId);
+    if (question == undefined) throw new QuestionNotFoundError(questionId);
 
     let userDto: UserDto | null = null; // For case that user is deleted.
     try {
@@ -311,13 +302,11 @@ export class QuestionsService {
     );
     const answerCountPromise = this.prismaService.answer.count({
       where: {
-        deletedAt: null,
         questionId,
       },
     });
     const commentCountPromise = this.prismaService.comment.count({
       where: {
-        deletedAt: null,
         commentableType: CommentCommentabletypeEnum.QUESTION,
         commentableId: questionId,
       },
@@ -477,7 +466,6 @@ export class QuestionsService {
         await prismaClient.question.update({
           where: {
             id: questionId,
-            deletedAt: null,
           },
           data: {
             title,
@@ -489,7 +477,6 @@ export class QuestionsService {
           await prismaClient.questionTopicRelation.findMany({
             where: {
               questionId,
-              deletedAt: null,
             },
           })
         ).map((r) => r.topicId);
@@ -544,7 +531,6 @@ export class QuestionsService {
     const question = await this.prismaService.question.findUnique({
       where: {
         id: questionId,
-        deletedAt: null,
       },
     });
     if (question == undefined) throw new QuestionNotFoundError(questionId);
@@ -595,7 +581,6 @@ export class QuestionsService {
         where: {
           followerId,
           questionId,
-          deletedAt: null,
         },
       })) > 0
     )
@@ -606,7 +591,6 @@ export class QuestionsService {
         followerId,
         questionId,
         createdAt: new Date(),
-        deletedAt: null,
       },
     });
   }
@@ -625,7 +609,6 @@ export class QuestionsService {
         where: {
           followerId,
           questionId,
-          deletedAt: null,
         },
       })) == 0
     )
@@ -634,7 +617,6 @@ export class QuestionsService {
       where: {
         followerId,
         questionId,
-        deletedAt: null,
       },
       data: {
         deletedAt: new Date(),
@@ -664,7 +646,6 @@ export class QuestionsService {
         await this.prismaService.questionFollowerRelation.findMany({
           where: {
             followerId,
-            deletedAt: null,
           },
           take: pageSize + 1,
           orderBy: {
@@ -684,7 +665,6 @@ export class QuestionsService {
           questionId: {
             lt: firstQuestionId,
           },
-          deletedAt: null,
         },
         take: pageSize,
         orderBy: {
@@ -697,7 +677,6 @@ export class QuestionsService {
           questionId: {
             gte: firstQuestionId,
           },
-          deletedAt: null,
         },
         take: pageSize + 1,
         orderBy: {
@@ -733,7 +712,6 @@ export class QuestionsService {
         await this.prismaService.questionFollowerRelation.findMany({
           where: {
             questionId,
-            deletedAt: null,
           },
           take: pageSize + 1,
           orderBy: {
@@ -759,7 +737,6 @@ export class QuestionsService {
             followerId: {
               lt: firstFollowerId,
             },
-            deletedAt: null,
           },
           take: pageSize,
           orderBy: {
@@ -773,7 +750,6 @@ export class QuestionsService {
             followerId: {
               gte: firstFollowerId,
             },
-            deletedAt: null,
           },
           take: pageSize + 1,
           orderBy: {
@@ -1026,7 +1002,6 @@ export class QuestionsService {
       (await this.prismaService.question.count({
         where: {
           id: questionId,
-          deletedAt: null,
         },
       })) > 0
     );
@@ -1131,7 +1106,6 @@ export class QuestionsService {
     return this.prismaService.question.count({
       where: {
         createdById: userId,
-        deletedAt: null,
       },
     });
   }
@@ -1150,7 +1124,6 @@ export class QuestionsService {
       const currPage = await this.prismaService.question.findMany({
         where: {
           createdById: userId,
-          deletedAt: null,
         },
         orderBy: {
           id: 'asc',
@@ -1170,7 +1143,6 @@ export class QuestionsService {
           id: {
             lt: pageStart,
           },
-          deletedAt: null,
         },
         orderBy: {
           id: 'desc',
@@ -1183,7 +1155,6 @@ export class QuestionsService {
           id: {
             gte: pageStart,
           },
-          deletedAt: null,
         },
         orderBy: {
           id: 'asc',
