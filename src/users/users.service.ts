@@ -91,7 +91,6 @@ export class UsersService {
     return (
       (await this.prismaService.user.count({
         where: {
-          deletedAt: null,
           email,
         },
       })) > 0
@@ -101,7 +100,6 @@ export class UsersService {
   async findUserRecordOrThrow(userId: number): Promise<User> {
     const user = await this.prismaService.user.findUnique({
       where: {
-        deletedAt: null,
         id: userId,
       },
     });
@@ -115,7 +113,6 @@ export class UsersService {
   async findUserRecordByUsernameOrThrow(username: string): Promise<User> {
     const user = await this.prismaService.user.findUnique({
       where: {
-        deletedAt: null,
         username,
       },
     });
@@ -132,7 +129,6 @@ export class UsersService {
     const userPromise = this.findUserRecordOrThrow(userId);
     const profilePromise = this.prismaService.userProfile.findUnique({
       where: {
-        deletedAt: null,
         userId: userId,
       },
     });
@@ -149,7 +145,6 @@ export class UsersService {
     return (
       (await this.prismaService.user.count({
         where: {
-          deletedAt: null,
           username,
         },
       })) > 0
@@ -473,7 +468,6 @@ export class UsersService {
     }
     const user = await this.prismaService.user.findUnique({
       where: {
-        deletedAt: null,
         email,
       },
     });
@@ -569,7 +563,6 @@ export class UsersService {
 
     const user = await this.prismaService.user.findUnique({
       where: {
-        deletedAt: null,
         id: userId,
       },
     });
@@ -593,7 +586,6 @@ export class UsersService {
     const salt = bcrypt.genSaltSync(10);
     await this.prismaService.user.update({
       where: {
-        deletedAt: null,
         id: userId,
       },
       data: {
@@ -623,7 +615,6 @@ export class UsersService {
     await this.avatarsService.minusUsageCount(profile.avatarId);
     await this.prismaService.userProfile.update({
       where: {
-        deletedAt: null,
         userId,
       },
       data: {
@@ -641,7 +632,6 @@ export class UsersService {
     let relationships =
       await this.prismaService.userFollowingRelationship.findMany({
         where: {
-          deletedAt: null,
           followerId,
           followeeId,
         },
@@ -653,7 +643,6 @@ export class UsersService {
       );
       await this.prismaService.userFollowingRelationship.updateMany({
         where: {
-          deletedAt: null,
           followerId,
           followeeId,
         },
@@ -713,7 +702,6 @@ export class UsersService {
     }
     await this.prismaService.userFollowingRelationship.updateMany({
       where: {
-        deletedAt: null,
         followerId,
         followeeId,
       },
@@ -735,7 +723,6 @@ export class UsersService {
       const relations =
         await this.prismaService.userFollowingRelationship.findMany({
           where: {
-            deletedAt: null,
             followeeId,
           },
           take: pageSize + 1,
@@ -751,7 +738,6 @@ export class UsersService {
       const prevRelationshipsPromise =
         this.prismaService.userFollowingRelationship.findMany({
           where: {
-            deletedAt: null,
             followeeId,
             followerId: { lt: firstFollowerId },
           },
@@ -761,7 +747,6 @@ export class UsersService {
       const queriedRelationsPromise =
         this.prismaService.userFollowingRelationship.findMany({
           where: {
-            deletedAt: null,
             followeeId,
             followerId: { gte: firstFollowerId },
           },
@@ -796,7 +781,6 @@ export class UsersService {
       const relations =
         await this.prismaService.userFollowingRelationship.findMany({
           where: {
-            deletedAt: null,
             followerId,
           },
           take: pageSize + 1,
@@ -812,7 +796,6 @@ export class UsersService {
       const prevRelationshipsPromise =
         this.prismaService.userFollowingRelationship.findMany({
           where: {
-            deletedAt: null,
             followerId,
             followeeId: { lt: firstFolloweeId },
           },
@@ -822,7 +805,6 @@ export class UsersService {
       const queriedRelationsPromise =
         this.prismaService.userFollowingRelationship.findMany({
           where: {
-            deletedAt: null,
             followerId,
             followeeId: { gte: firstFolloweeId },
           },
@@ -852,7 +834,6 @@ export class UsersService {
   async getFollowingCount(followerId: number): Promise<number> {
     return await this.prismaService.userFollowingRelationship.count({
       where: {
-        deletedAt: null,
         followerId,
       },
     });
@@ -861,7 +842,6 @@ export class UsersService {
   async getFollowedCount(followeeId: number): Promise<number> {
     return await this.prismaService.userFollowingRelationship.count({
       where: {
-        deletedAt: null,
         followeeId,
       },
     });
@@ -874,7 +854,6 @@ export class UsersService {
     if (followerId == undefined || followeeId == undefined) return false;
     const result = await this.prismaService.userFollowingRelationship.count({
       where: {
-        deletedAt: null,
         followerId,
         followeeId,
       },

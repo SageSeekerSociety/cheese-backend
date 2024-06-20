@@ -83,7 +83,7 @@ export class QuestionsController {
     }
     const [questions, pageRespond] =
       await this.questionsService.searchQuestions(
-        q,
+        q ?? '',
         pageStart,
         pageSize,
         searcherId,

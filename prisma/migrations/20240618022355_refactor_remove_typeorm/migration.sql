@@ -13,6 +13,24 @@ CREATE TYPE "UserRegisterLogType" AS ENUM ('RequestSuccess', 'RequestFailDueToAl
 CREATE TYPE "UserResetPasswordLogType" AS ENUM ('RequestSuccess', 'RequestFailDueToNoneExistentEmail', 'RequestFailDueToSecurity', 'Success', 'FailDueToInvalidToken', 'FailDueToExpiredRequest', 'FailDueToNoUser');
 
 -- AlterTable
+ALTER TABLE "answer_query_log" ALTER COLUMN "user_agent" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "attitude" ALTER COLUMN "updated_at" SET DEFAULT CURRENT_TIMESTAMP;
+
+-- AlterTable
+ALTER TABLE "comment_query_log" ALTER COLUMN "user_agent" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "question_query_log" ALTER COLUMN "user_agent" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "question_search_log" ALTER COLUMN "user_agent" DROP NOT NULL;
+
+-- AlterTable
+ALTER TABLE "topic_search_log" ALTER COLUMN "user_agent" DROP NOT NULL;
+
+-- AlterTable
 ALTER TABLE "user_login_log" ALTER COLUMN "user_agent" DROP NOT NULL;
 
 -- AlterTable

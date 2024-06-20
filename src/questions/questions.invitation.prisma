@@ -1,12 +1,12 @@
-import { user } from "../users/users"
-import { question } from "../questions/questions.legacy"
+import { User } from "../users/users"
+import { Question } from "../questions/questions"
 
 model QuestionInvitationRelation {
   id         Int      @id @default(autoincrement())
   questionId Int
-  question   question @relation(fields: [questionId], references: [id])
+  question   Question @relation(fields: [questionId], references: [id])
   userId     Int
-  user       user     @relation(fields: [userId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

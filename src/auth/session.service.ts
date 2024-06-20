@@ -7,8 +7,7 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { PrismaService } from '../common/prisma/prisma.service';
 import {
   NotRefreshTokenError,
   RefreshTokenAlreadyUsedError,
@@ -16,16 +15,12 @@ import {
   SessionRevokedError,
 } from './auth.error';
 import { AuthService, Authorization, AuthorizedAction } from './auth.service';
-import { Session, SessionRefreshLog } from './session.legacy.entity';
 
 @Injectable()
 export class SessionService {
   constructor(
     private readonly authService: AuthService,
-    @InjectRepository(Session)
-    private readonly sessionRepository: Repository<Session>,
-    @InjectRepository(SessionRefreshLog)
-    private readonly sessionRefreshLogRepository: Repository<SessionRefreshLog>,
+    private readonly prismaService: PrismaService,
   ) {}
 
   private readonly defaultSessionValidSeconds = 60 * 60 * 24 * 30 * 12;
@@ -61,13 +56,15 @@ export class SessionService {
     refreshTokenValidSeconds: number = this.defaultRefreshTokenValidSeconds,
     sessionValidSeconds: number = this.defaultSessionValidSeconds,
   ): Promise<string> {
-    const session = new Session();
-    session.userId = userId;
-    session.authorization = JSON.stringify(authorization);
-    session.validUntil = new Date(Date.now() + sessionValidSeconds * 1000);
-    session.revoked = false;
-    session.lastRefreshedAt = new Date().getTime();
-    await this.sessionRepository.save(session);
+    const session = await this.prismaService.session.create({
+      data: {
+        userId: userId,
+        authorization: JSON.stringify(authorization),
+        validUntil: new Date(Date.now() + sessionValidSeconds * 1000),
+        revoked: false,
+        lastRefreshedAt: new Date().getTime(),
+      },
+    });
     return this.authService.sign(
       this.getRefreshAuthorization(userId, session.id),
       refreshTokenValidSeconds,
@@ -99,7 +96,9 @@ export class SessionService {
       'auth/session:refresh',
       sessionId,
     );
-    const session = await this.sessionRepository.findOneBy({ id: sessionId });
+    let session = await this.prismaService.session.findUnique({
+      where: { id: sessionId },
+    });
     /* istanbul ignore if */
     if (session == undefined) {
       throw new Error(
@@ -142,16 +141,20 @@ export class SessionService {
     );
 
     // Update lastRefreshedAt
-    session.lastRefreshedAt = lastRefreshedAt;
-    await this.sessionRepository.save(session);
+    session = await this.prismaService.session.update({
+      where: { id: sessionId },
+      data: { lastRefreshedAt: lastRefreshedAt },
+    });
 
     // Insert a log
-    const log = new SessionRefreshLog();
-    log.sessionId = session.id;
-    log.oldRefreshToken = oldRefreshToken;
-    log.newRefreshToken = newRefreshToken;
-    log.accessToken = accessToken;
-    await this.sessionRefreshLogRepository.save(log);
+    await this.prismaService.sessionRefreshLog.create({
+      data: {
+        sessionId: session.id,
+        oldRefreshToken: oldRefreshToken,
+        newRefreshToken: newRefreshToken,
+        accessToken: accessToken,
+      },
+    });
 
     return [newRefreshToken, accessToken];
   }
@@ -173,12 +176,12 @@ export class SessionService {
       'auth/session:revoke',
       sessionId,
     );
-    const ret = await this.sessionRepository.update(
-      { id: sessionId },
-      { revoked: true },
-    );
+    const ret = await this.prismaService.session.update({
+      where: { id: sessionId },
+      data: { revoked: true },
+    });
     /* istanbul ignore if */
-    if (ret.affected !== 1) {
+    if (ret == undefined) {
       throw new Error(
         `In an attempt to revoke session with id ${sessionId},\n` +
           `the refresh token is valid, but the session does not exist.\n` +
