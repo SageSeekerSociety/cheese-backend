@@ -75,9 +75,8 @@ export class QuestionsService {
     createdById: number,
     // for transaction
     omitQuestionExistsCheck: boolean = false,
-    prismaClient?: PrismaClient,
+    prismaClient: PrismaClient | undefined = this.prismaService,
   ): Promise<void> {
-    if (prismaClient == undefined) prismaClient = this.prismaService;
     if (
       !omitQuestionExistsCheck &&
       (await this.isQuestionExists(questionId)) == false
@@ -101,9 +100,8 @@ export class QuestionsService {
     questionId: number,
     topicId: number,
     // for transaction
-    prismaClient: PrismaClient,
+    prismaClient: PrismaClient | undefined = this.prismaService,
   ): Promise<void> {
-    if (prismaClient == undefined) prismaClient = this.prismaService;
     const ret = await prismaClient.questionTopicRelation.updateMany({
       where: {
         topicId,
