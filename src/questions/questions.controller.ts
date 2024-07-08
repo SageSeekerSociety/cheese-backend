@@ -24,9 +24,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
-import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
+import { UpdateAttitudeResponseDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto, PageWithKeywordDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
@@ -46,7 +46,7 @@ import {
 import { GetQuestionInvitationDetailResponseDto } from './DTO/get-invitation-detail.dto';
 import { GetQuestionFollowerResponseDto } from './DTO/get-question-follower.dto';
 import { GetQuestionInvitationsResponseDto } from './DTO/get-question-invitation.dto';
-import { GetQuestionRecommendationsRespondDto } from './DTO/get-question-recommendations.dto';
+import { GetQuestionRecommendationsResponseDto } from './DTO/get-question-recommendations.dto';
 import { GetQuestionResponseDto } from './DTO/get-question.dto';
 import {
   InviteUsersAnswerRequestDto,
@@ -83,7 +83,7 @@ export class QuestionsController {
     }
     const [questions, pageRespond] =
       await this.questionsService.searchQuestions(
-        q,
+        q ?? '',
         pageStart,
         pageSize,
         searcherId,
@@ -165,7 +165,7 @@ export class QuestionsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() { title, content, type, topics }: UpdateQuestionRequestDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<BaseResponseDto> {
     this.authService.audit(
       auth,
       AuthorizedAction.modify,
@@ -205,7 +205,8 @@ export class QuestionsController {
   @Get('/:id/followers')
   async getQuestionFollowers(
     @Param('id', ParseIntPipe) id: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
@@ -286,7 +287,7 @@ export class QuestionsController {
     @Param('id', ParseIntPipe) questionId: number,
     @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<UpdateAttitudeRespondDto> {
+  ): Promise<UpdateAttitudeResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -312,7 +313,8 @@ export class QuestionsController {
   @Get('/:id/invitations')
   async getQuestionInvitations(
     @Param('id', ParseIntPipe) id: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Query(
       'sort',
       new SnakeCaseToCamelCasePipe({ prefixIgnorePattern: '[+-]' }),
@@ -322,13 +324,25 @@ export class QuestionsController {
       }),
     )
     sort: SortPattern = { createdAt: 'desc' },
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionInvitationsResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const [invitations, page] =
       await this.questionsService.getQuestionInvitations(
         id,
         sort,
         pageStart,
         pageSize,
+        userId,
+        ip,
+        userAgent,
       );
     return {
       code: 200,
@@ -372,7 +386,7 @@ export class QuestionsController {
     @Param('id', ParseIntPipe) id: number,
     @Param('invitation_id', ParseIntPipe) invitationId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<BaseResponseDto> {
     this.authService.audit(
       auth,
       AuthorizedAction.delete,
@@ -395,11 +409,23 @@ export class QuestionsController {
     @Param('id', ParseIntPipe) id: number,
     @Query('page_size')
     pageSize: number,
-  ): Promise<GetQuestionRecommendationsRespondDto> {
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
+  ): Promise<GetQuestionRecommendationsResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const users =
       await this.questionsService.getQuestionInvitationRecommendations(
         id,
         pageSize,
+        userId,
+        ip,
+        userAgent,
       );
     return {
       code: 200,
@@ -414,10 +440,22 @@ export class QuestionsController {
   async getInvitationDetail(
     @Param('id', ParseIntPipe) id: number,
     @Param('invitation_id', ParseIntPipe) invitationId: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionInvitationDetailResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const invitationDto = await this.questionsService.getQuestionInvitationDto(
       id,
       invitationId,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,
@@ -433,7 +471,7 @@ export class QuestionsController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
     @Body() { bounty }: SetBountyDto,
-  ): Promise<BaseRespondDto> {
+  ): Promise<BaseResponseDto> {
     this.authService.audit(
       auth,
       AuthorizedAction.modify,
@@ -453,7 +491,7 @@ export class QuestionsController {
     @Param('id', ParseIntPipe) id: number,
     @Query('answer_id', ParseIntPipe) answer_id: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<BaseResponseDto> {
     this.authService.audit(
       auth,
       AuthorizedAction.modify,

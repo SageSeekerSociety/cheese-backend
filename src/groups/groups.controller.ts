@@ -13,6 +13,7 @@ import {
   Delete,
   Get,
   Headers,
+  Ip,
   Param,
   ParseIntPipe,
   Post,
@@ -22,17 +23,18 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
+import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { GroupPageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateGroupDto } from './DTO/create-group.dto';
-import { GetGroupsRespondDto } from './DTO/get-groups.dto';
-import { GetGroupMembersRespondDto } from './DTO/get-members.dto';
-import { GetGroupQuestionsRespondDto } from './DTO/get-questions.dto';
-import { GroupRespondDto } from './DTO/group.dto';
-import { JoinGroupDto, JoinGroupRespondDto } from './DTO/join-group.dto';
-import { QuitGroupRespondDto } from './DTO/quit-group.dto';
-import { UpdateGroupDto, UpdateGroupRespondDto } from './DTO/update-group.dto';
+import { GetGroupsResponseDto } from './DTO/get-groups.dto';
+import { GetGroupMembersResponseDto } from './DTO/get-members.dto';
+import { GetGroupQuestionsResponseDto } from './DTO/get-questions.dto';
+import { GroupResponseDto } from './DTO/group.dto';
+import { JoinGroupDto, JoinGroupResponseDto } from './DTO/join-group.dto';
+import { QuitGroupResponseDto } from './DTO/quit-group.dto';
+import { UpdateGroupDto } from './DTO/update-group.dto';
 import { GroupsService } from './groups.service';
 
 @Controller('/groups')
@@ -48,13 +50,18 @@ export class GroupsController {
   async createGroup(
     @Body() { name, intro, avatarId }: CreateGroupDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<GroupRespondDto> {
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+  ): Promise<GroupResponseDto> {
     const userId = this.authService.verify(auth).userId;
     const group = await this.groupsService.createGroup(
       name,
       userId,
       intro,
       avatarId,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 201,
@@ -67,7 +74,9 @@ export class GroupsController {
   async getGroups(
     @Query() { q: key, page_start, page_size, type }: GroupPageDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<GetGroupsRespondDto> {
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+  ): Promise<GetGroupsResponseDto> {
     let userId: number | undefined;
     try {
       userId = this.authService.verify(auth).userId;
@@ -80,6 +89,8 @@ export class GroupsController {
       page_start,
       page_size,
       type,
+      ip,
+      userAgent,
     );
     return {
       code: 200,
@@ -95,9 +106,21 @@ export class GroupsController {
   async getGroupDetail(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<GroupRespondDto> {
-    const userId = this.authService.verify(auth).userId;
-    const group = await this.groupsService.getGroupDtoById(userId, id);
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+  ): Promise<GroupResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
+    const group = await this.groupsService.getGroupDtoById(
+      userId,
+      id,
+      ip,
+      userAgent,
+    );
     return {
       code: 200,
       message: 'Group fetched successfully.',
@@ -110,7 +133,7 @@ export class GroupsController {
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
     @Body() req: UpdateGroupDto,
-  ): Promise<UpdateGroupRespondDto> {
+  ): Promise<BaseResponseDto> {
     const userId = this.authService.verify(auth).userId;
     await this.groupsService.updateGroup(
       userId,
@@ -138,11 +161,23 @@ export class GroupsController {
   async getGroupMembers(
     @Param('id', ParseIntPipe) id: number,
     @Query() { page_start, page_size }: GroupPageDto,
-  ): Promise<GetGroupMembersRespondDto> {
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+  ): Promise<GetGroupMembersResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const [members, page] = await this.groupsService.getGroupMembers(
       id,
       page_start,
       page_size,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,
@@ -159,7 +194,7 @@ export class GroupsController {
     @Param('id', ParseIntPipe) groupId: number,
     @Body() { intro }: JoinGroupDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<JoinGroupRespondDto> {
+  ): Promise<JoinGroupResponseDto> {
     const userId = this.authService.verify(auth).userId;
     const joinResult = await this.groupsService.joinGroup(
       userId,
@@ -177,7 +212,7 @@ export class GroupsController {
   async quitGroup(
     @Param('id', ParseIntPipe) groupId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<QuitGroupRespondDto> {
+  ): Promise<QuitGroupResponseDto> {
     const userId = this.authService.verify(auth).userId;
     const member_count = await this.groupsService.quitGroup(userId, groupId);
     return {
@@ -191,11 +226,23 @@ export class GroupsController {
   async getGroupQuestions(
     @Param('id', ParseIntPipe) id: number,
     @Query() { page_start, page_size }: GroupPageDto,
-  ): Promise<GetGroupQuestionsRespondDto> {
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+  ): Promise<GetGroupQuestionsResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const getGroupQuestionsResult = await this.groupsService.getGroupQuestions(
       id,
       page_start,
       page_size,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,

@@ -14,16 +14,16 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
-import { UpdateAttitudeRespondDto } from '../attitude/DTO/update-attitude.dto';
+import { UpdateAttitudeResponseDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
-import { BaseRespondDto } from '../common/DTO/base-respond.dto';
+import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
-import { CreateAnswerRespondDto } from './DTO/create-answer.dto';
-import { GetAnswerDetailRespondDto } from './DTO/get-answer-detail.dto';
-import { GetAnswersRespondDto } from './DTO/get-answers.dto';
+import { CreateAnswerResponseDto } from './DTO/create-answer.dto';
+import { GetAnswerDetailResponseDto } from './DTO/get-answer-detail.dto';
+import { GetAnswersResponseDto } from './DTO/get-answers.dto';
 import { UpdateAnswerRequestDto } from './DTO/update-answer.dto';
 import { AnswerService } from './answer.service';
 
@@ -40,11 +40,12 @@ export class AnswerController {
   @Get('/')
   async getQuestionAnswers(
     @Param('question_id') questionId: number,
-    @Query() { page_start: pageStart, page_size: pageSize }: PageDto,
+    @Query()
+    { page_start: pageStart, page_size: pageSize }: PageDto,
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<GetAnswersRespondDto> {
+  ): Promise<GetAnswersResponseDto> {
     let userId: number | undefined;
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -75,7 +76,7 @@ export class AnswerController {
     @Param('question_id', ParseIntPipe) questionId: number,
     @Body('content') content: string,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<CreateAnswerRespondDto> {
+  ): Promise<CreateAnswerResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -105,7 +106,7 @@ export class AnswerController {
     @Headers('Authorization') auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
-  ): Promise<GetAnswerDetailRespondDto> {
+  ): Promise<GetAnswerDetailResponseDto> {
     let userId;
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -142,7 +143,7 @@ export class AnswerController {
     @Param('answer_id', ParseIntPipe) answerId: number,
     @Body() { content }: UpdateAnswerRequestDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<BaseResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -186,7 +187,7 @@ export class AnswerController {
     @Param('answer_id', ParseIntPipe) answerId: number,
     @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<UpdateAttitudeRespondDto> {
+  ): Promise<UpdateAttitudeResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,
@@ -215,7 +216,7 @@ export class AnswerController {
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
     @Headers('Authorization') auth: string | undefined,
-  ): Promise<BaseRespondDto> {
+  ): Promise<BaseResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
       auth,

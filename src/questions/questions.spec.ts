@@ -37,7 +37,7 @@ describe('Questions Module', () => {
     /* eslint-disable no-constant-condition */
     while (true) {
       try {
-        await usersService.getUserDtoById(1);
+        await usersService.getUserDtoById(1, 1, '127.0.0.1', 'some user agent');
       } catch (e) {
         // wait one second
         await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -65,14 +65,24 @@ describe('Questions Module', () => {
       0,
       [topicId1],
     );
-    const questionDto1 = await questionsService.getQuestionDto(questionId);
+    const questionDto1 = await questionsService.getQuestionDto(
+      questionId,
+      1,
+      '127.0.0.1',
+      'some user agent',
+    );
     expect(questionDto1.topics.length).toBe(1);
     expect(questionDto1.topics).toContainEqual({
       id: topicId1,
       name: `${randomString} unit test topic 1`,
     });
     await questionsService.addTopicToQuestion(questionId, topicId2, 1);
-    const questionDto2 = await questionsService.getQuestionDto(questionId);
+    const questionDto2 = await questionsService.getQuestionDto(
+      questionId,
+      1,
+      '127.0.0.1',
+      'some user agent',
+    );
     expect(questionDto2.topics.length).toBe(2);
     expect(questionDto2.topics).toContainEqual({
       id: topicId1,

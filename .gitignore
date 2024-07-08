@@ -41,3 +41,9 @@ lerna-debug.log*
 .pnpm-store/
 
 src/avatars/images
+
+# for customizing devContainer on container startup
+.devcontainer/customize.sh
+
+# Runtime data
+uploads/

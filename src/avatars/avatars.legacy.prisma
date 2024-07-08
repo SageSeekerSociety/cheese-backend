@@ -1,8 +1,0 @@
-model avatar {
-  id         Int      @id @default(autoincrement())
-  url        String   @db.VarChar
-  name       String   @db.VarChar
-  createdAt  DateTime @default(now()) @db.Timestamptz(6)
-  avatarType String   @db.VarChar
-  usageCount Int      @default(0)
-}

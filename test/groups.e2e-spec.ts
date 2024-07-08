@@ -10,8 +10,8 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { EmailService } from '../src/users/email.service';
-jest.mock('../src/users/email.service');
+import { EmailService } from '../src/email/email.service';
+jest.mock('../src/email/email.service');
 
 describe('Groups Module', () => {
   let app: INestApplication;
@@ -90,11 +90,11 @@ describe('Groups Module', () => {
         const respond = await request(app.getHttpServer())
           .post('/avatars')
           //.set('Authorization', `Bearer ${TestToken}`)
-          .attach('avatar', 'src/avatars/resources/default.jpg');
+          .attach('avatar', 'src/resources/avatars/default.jpg');
         expect(respond.status).toBe(201);
         expect(respond.body.message).toBe('Upload avatar successfully');
-        expect(respond.body.data).toHaveProperty('avatarid');
-        return respond.body.data.avatarid;
+        expect(respond.body.data).toHaveProperty('avatarId');
+        return respond.body.data.avatarId;
       }
       PreAvatarId = await uploadAvatar();
       UpdateAvatarId = await uploadAvatar();

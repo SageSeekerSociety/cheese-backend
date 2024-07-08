@@ -8,7 +8,7 @@
 
 import { IsNumber } from 'class-validator';
 
-export class PageRespondDto {
+export class PageDto {
   @IsNumber()
   page_start: number;
 

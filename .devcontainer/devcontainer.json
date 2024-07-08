@@ -1,0 +1,24 @@
+{
+  "dockerComposeFile": ["../docker-compose.yml", "../docker-compose.dev.yml"],
+  "service": "backend",
+  "workspaceFolder": "/app",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ajmnz.prisma-import",
+        "donjayamanne.git-extension-pack",
+        "AndrewButson.vscode-openapi-viewer"
+      ]
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true,
+      "installOhMyZshConfig": true
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/setup.sh"
+}

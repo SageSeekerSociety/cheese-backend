@@ -1,10 +1,10 @@
-import { BaseRespondDto } from '../../common/DTO/base-respond.dto';
-import { PageRespondDto } from '../../common/DTO/page-respond.dto';
+import { BaseResponseDto } from '../../common/DTO/base-response.dto';
+import { PageDto } from '../../common/DTO/page-response.dto';
 import { QuestionDto } from '../../questions/DTO/question.dto';
 
-export class GetAskedQuestionsRespondDto extends BaseRespondDto {
+export class GetAskedQuestionsResponseDto extends BaseResponseDto {
   data: {
     questions: QuestionDto[];
-    page: PageRespondDto;
+    page: PageDto;
   };
 }

@@ -1,11 +1,14 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { AttitudableType, AttitudeType } from '@prisma/client';
-import { LessThanOrEqual, MoreThan, Repository } from 'typeorm';
+import {
+  AttitudableType,
+  AttitudeType,
+  Comment,
+  CommentCommentabletypeEnum,
+} from '@prisma/client';
 import { AnswerService } from '../answer/answer.service';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionsService } from '../questions/questions.service';
@@ -15,12 +18,6 @@ import {
   CommentNotFoundError,
   CommentableNotFoundError,
 } from './comment.error';
-import {
-  Comment,
-  CommentDeleteLog,
-  CommentQueryLog,
-} from './comment.legacy.entity';
-import { CommentableType } from './commentable.enum';
 
 @Injectable()
 export class CommentsService {
@@ -31,20 +28,14 @@ export class CommentsService {
     private readonly answerService: AnswerService,
     private readonly questionService: QuestionsService,
     private readonly prismaService: PrismaService,
-    @InjectRepository(Comment)
-    private commentRepository: Repository<Comment>,
-    @InjectRepository(CommentDeleteLog)
-    private commentDeleteLogRepository: Repository<CommentDeleteLog>,
-    @InjectRepository(CommentQueryLog)
-    private commentQueryLogRepository: Repository<CommentQueryLog>,
   ) {}
 
   private async ensureCommentableExists(
-    commentableType: CommentableType,
+    commentableType: CommentCommentabletypeEnum,
     commentableId: number,
   ): Promise<void> {
     switch (commentableType) {
-      case CommentableType.ANSWER:
+      case CommentCommentabletypeEnum.ANSWER:
         if (
           (await this.answerService.isAnswerExistsAcrossQuestions(
             commentableId,
@@ -52,11 +43,11 @@ export class CommentsService {
         )
           throw new CommentableNotFoundError(commentableType, commentableId);
         break;
-      case CommentableType.COMMENT:
+      case CommentCommentabletypeEnum.COMMENT:
         if ((await this.isCommentExists(commentableId)) == false)
           throw new CommentableNotFoundError(commentableType, commentableId);
         break;
-      case CommentableType.QUESTION:
+      case CommentCommentabletypeEnum.QUESTION:
         if (
           (await this.questionService.isQuestionExists(commentableId)) == false
         )
@@ -69,59 +60,77 @@ export class CommentsService {
     }
   }
 
+  async findCommentOrThrow(commentId: number): Promise<Comment> {
+    const comment = await this.prismaService.comment.findUnique({
+      where: {
+        id: commentId,
+      },
+    });
+    if (comment == null) throw new CommentNotFoundError(commentId);
+    return comment;
+  }
+
   async isCommentExists(commentId: number): Promise<boolean> {
-    return (await this.commentRepository.countBy({ id: commentId })) > 0;
+    const count = await this.prismaService.comment.count({
+      where: {
+        id: commentId,
+      },
+    });
+    return count > 0;
   }
 
   async createComment(
-    commentableType: CommentableType,
+    commentableType: CommentCommentabletypeEnum,
     commentableId: number,
     content: string,
     createdById: number,
   ): Promise<number> {
     await this.ensureCommentableExists(commentableType, commentableId);
-    const comment = this.commentRepository.create({
-      commentableType,
-      commentableId,
-      content,
-      createdById,
+    const result = await this.prismaService.comment.create({
+      data: {
+        commentableType,
+        commentableId,
+        content,
+        createdById,
+      },
     });
-    await this.commentRepository.save(comment);
-    return comment.id;
+    return result.id;
   }
 
   async deleteComment(commentId: number, operatedById: number): Promise<void> {
-    const comment = await this.commentRepository.findOneBy({ id: commentId });
-    if (comment == null) throw new CommentNotFoundError(commentId);
-    await this.commentRepository.softRemove(comment);
-    const log = this.commentDeleteLogRepository.create({
-      commentId,
-      operatedById,
+    if ((await this.isCommentExists(commentId)) == false)
+      throw new CommentNotFoundError(commentId);
+    await this.prismaService.comment.update({
+      where: {
+        id: commentId,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
     });
-    await this.commentDeleteLogRepository.save(log);
+    await this.prismaService.commentDeleteLog.create({
+      data: {
+        commentId,
+        operatedById,
+      },
+    });
   }
 
   async getCommentDto(
     commentId: number,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<CommentDto> {
-    const comment = await this.commentRepository.findOneBy({
-      id: commentId,
-    });
-    if (comment == null) {
-      throw new CommentNotFoundError(commentId);
-    }
-    if (viewerId != undefined || ip != undefined || userAgent != undefined) {
-      const log = this.commentQueryLogRepository.create({
+    const comment = await this.findCommentOrThrow(commentId);
+    await this.prismaService.commentQueryLog.create({
+      data: {
         commentId,
         viewerId,
         ip,
         userAgent,
-      });
-      await this.commentQueryLogRepository.save(log);
-    }
+      },
+    });
     return {
       id: comment.id,
       content: comment.content,
@@ -143,21 +152,23 @@ export class CommentsService {
   }
 
   async getComments(
-    commentableType: CommentableType,
+    commentableType: CommentCommentabletypeEnum,
     commentableId: number,
     pageStart: number | undefined,
     pageSize: number = 20,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
-  ): Promise<[CommentDto[], PageRespondDto]> {
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[CommentDto[], PageDto]> {
     if (pageStart == undefined) {
-      const comments = await this.commentRepository.find({
+      const comments = await this.prismaService.comment.findMany({
         where: {
           commentableType,
           commentableId,
         },
-        order: { createdAt: 'DESC' },
+        orderBy: {
+          createdAt: 'desc',
+        },
         take: pageSize + 1,
       });
       const commentDtos = await Promise.all(
@@ -167,24 +178,31 @@ export class CommentsService {
       );
       return PageHelper.PageStart(commentDtos, pageSize, (i) => i.id);
     } else {
-      const start = await this.commentRepository.findOneBy({ id: pageStart });
-      if (start == null) throw new CommentNotFoundError(pageStart);
-      const prev = await this.commentRepository.find({
+      const start = await this.findCommentOrThrow(pageStart);
+      const prev = await this.prismaService.comment.findMany({
         where: {
           commentableType,
           commentableId,
-          createdAt: MoreThan(start.createdAt),
+          createdAt: {
+            gt: start.createdAt,
+          },
         },
-        order: { createdAt: 'ASC' },
+        orderBy: {
+          createdAt: 'asc',
+        },
         take: pageSize,
       });
-      const curr = await this.commentRepository.find({
+      const curr = await this.prismaService.comment.findMany({
         where: {
           commentableType,
           commentableId,
-          createdAt: LessThanOrEqual(start.createdAt),
+          createdAt: {
+            lte: start.createdAt,
+          },
         },
-        order: { createdAt: 'DESC' },
+        orderBy: {
+          createdAt: 'desc',
+        },
         take: pageSize + 1,
       });
       const currDtos = await Promise.all(
@@ -207,8 +225,8 @@ export class CommentsService {
     userId: number,
     attitudeType: AttitudeType,
   ): Promise<AttitudeStateDto> {
-    const commment = await this.commentRepository.findOneBy({ id: commentId });
-    if (commment == null) throw new CommentNotFoundError(commentId);
+    if ((await this.isCommentExists(commentId)) == false)
+      throw new CommentNotFoundError(commentId);
     await this.attitudeService.setAttitude(
       userId,
       AttitudableType.COMMENT,
@@ -223,27 +241,32 @@ export class CommentsService {
   }
 
   async getCommentCreatedById(commentId: number): Promise<number> {
-    const comment = await this.commentRepository.findOneBy({
-      id: commentId,
-    });
-    if (comment == undefined) throw new CommentNotFoundError(commentId);
+    const comment = await this.findCommentOrThrow(commentId);
     return comment.createdById;
   }
 
   async updateComment(commentId: number, content: string): Promise<void> {
-    const comment = await this.commentRepository.findOneBy({ id: commentId });
-    if (comment == undefined) throw new CommentNotFoundError(commentId);
-    comment.content = content;
-    await this.commentRepository.save(comment);
+    if ((await this.isCommentExists(commentId)) == false)
+      throw new CommentNotFoundError(commentId);
+    await this.prismaService.comment.update({
+      where: {
+        id: commentId,
+      },
+      data: {
+        content,
+      },
+    });
   }
 
   async countCommentsByCommentable(
-    commentableType: CommentableType,
+    commentableType: CommentCommentabletypeEnum,
     commentableId: number,
   ): Promise<number> {
-    return this.commentRepository.countBy({
-      commentableType,
-      commentableId,
+    return await this.prismaService.comment.count({
+      where: {
+        commentableType,
+        commentableId,
+      },
     });
   }
 }

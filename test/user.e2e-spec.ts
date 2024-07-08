@@ -10,8 +10,8 @@ import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { EmailService } from '../src/users/email.service';
-jest.mock('../src/users/email.service');
+import { EmailService } from '../src/email/email.service';
+jest.mock('../src/email/email.service');
 
 describe('User Module', () => {
   let app: INestApplication;
@@ -775,10 +775,10 @@ describe('User Module', () => {
       ).toHaveReturnedTimes(1);
       expect(
         MockedEmailService.mock.instances[0].sendPasswordResetEmail,
-      ).toHaveBeenCalledWith(TestEmail, expect.any(String));
+      ).toHaveBeenCalledWith(TestEmail, TestUsername, expect.any(String));
       const token = (
         MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-      ).mock.calls[0][1];
+      ).mock.calls[0][2];
 
       jest.advanceTimersByTime(9 * 60 * 1000);
 
@@ -838,10 +838,10 @@ describe('User Module', () => {
       ).toHaveReturnedTimes(1);
       expect(
         MockedEmailService.mock.instances[0].sendPasswordResetEmail,
-      ).toHaveBeenCalledWith(TestEmail, expect.any(String));
+      ).toHaveBeenCalledWith(TestEmail, TestUsername, expect.any(String));
       const token = (
         MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-      ).mock.calls[0][1];
+      ).mock.calls[0][2];
 
       jest.advanceTimersByTime(11 * 60 * 1000);
 
@@ -876,10 +876,10 @@ describe('User Module', () => {
       ).toHaveReturnedTimes(1);
       expect(
         MockedEmailService.mock.instances[0].sendPasswordResetEmail,
-      ).toHaveBeenCalledWith(TestEmail, expect.any(String));
+      ).toHaveBeenCalledWith(TestEmail, TestUsername, expect.any(String));
       const token = (
         MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-      ).mock.calls[0][1];
+      ).mock.calls[0][2];
 
       jest.advanceTimersByTime(9 * 60 * 1000);
 

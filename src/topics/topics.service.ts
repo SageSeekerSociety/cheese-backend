@@ -9,43 +9,40 @@
 
 import { Injectable } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { Topic } from '@prisma/client';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { TopicDto } from './DTO/topic.dto';
 import { TopicAlreadyExistsError, TopicNotFoundError } from './topics.error';
 import { TopicElasticsearchDocument } from './topics.es-doc';
-import { Topic, TopicSearchLog } from './topics.legacy.entity';
 
 @Injectable()
 export class TopicsService {
   constructor(
-    @InjectRepository(Topic)
-    private readonly topicRepository: Repository<Topic>,
-    @InjectRepository(TopicSearchLog)
-    private readonly topicSearchLogRepository: Repository<TopicSearchLog>,
+    private readonly prismaService: PrismaService,
     private readonly elasticsearchService: ElasticsearchService,
   ) {}
 
   async addTopic(topicName: string, userId: number): Promise<TopicDto> {
-    if (await this.topicRepository.findOneBy({ name: topicName }))
+    if (await this.isTopicNameExists(topicName))
       throw new TopicAlreadyExistsError(topicName);
-    const topic = this.topicRepository.create({
-      name: topicName,
-      createdById: userId,
+    const result = await this.prismaService.topic.create({
+      data: {
+        name: topicName,
+        createdById: userId,
+      },
     });
-    const topicSaved = await this.topicRepository.save(topic);
     await this.elasticsearchService.index<TopicElasticsearchDocument>({
       index: 'topics',
       document: {
-        id: topicSaved.id,
-        name: topicSaved.name,
+        id: result.id,
+        name: result.name,
       },
     });
     return {
-      id: topicSaved.id,
-      name: topicSaved.name,
+      id: result.id,
+      name: result.name,
     };
   }
 
@@ -53,10 +50,10 @@ export class TopicsService {
     keywords: string,
     pageStart: number | undefined,
     pageSize: number,
-    searcherId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
-  ): Promise<[TopicDto[], PageRespondDto]> {
+    searcherId: number | undefined,
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<[TopicDto[], PageDto]> {
     const timeBegin = Date.now();
     const result = !keywords
       ? { hits: { hits: [] } }
@@ -81,31 +78,41 @@ export class TopicsService {
         throw new TopicNotFoundError(pageStart);
       },
     );
-    const log = this.topicSearchLogRepository.create({
-      keywords: keywords,
-      firstTopicId: pageStart,
-      pageSize: pageSize,
-      result: data.map((t) => t.id).join(','),
-      duration: (Date.now() - timeBegin) / 1000,
-      searcherId: searcherId,
-      ip: ip,
-      userAgent: userAgent,
+    await this.prismaService.topicSearchLog.create({
+      data: {
+        keywords: keywords,
+        firstTopicId: pageStart,
+        pageSize: pageSize,
+        result: data.map((t) => t.id).join(','),
+        duration: (Date.now() - timeBegin) / 1000,
+        searcherId: searcherId,
+        ip: ip,
+        userAgent: userAgent,
+      },
     });
-    await this.topicSearchLogRepository.save(log);
     return [data, page];
+  }
+
+  async findTopicRecordOrThrow(topicId: number): Promise<Topic> {
+    const topic = await this.prismaService.topic.findUnique({
+      where: {
+        id: topicId,
+      },
+    });
+    if (topic == undefined) throw new TopicNotFoundError(topicId);
+    return topic;
   }
 
   async getTopicDtoById(
     topicId: number,
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    viewerId?: number,
+    viewerId: number | undefined,
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    ip?: string,
+    ip: string,
     /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-    userAgent?: string,
+    userAgent: string | undefined,
   ): Promise<TopicDto> {
-    const topic = await this.topicRepository.findOneBy({ id: topicId });
-    if (topic == undefined) throw new TopicNotFoundError(topicId);
+    const topic = await this.findTopicRecordOrThrow(topicId);
     return {
       id: topic.id,
       name: topic.name,
@@ -113,6 +120,20 @@ export class TopicsService {
   }
 
   async isTopicExists(topicId: number): Promise<boolean> {
-    return (await this.topicRepository.findOneBy({ id: topicId })) != undefined;
+    const count = await this.prismaService.topic.count({
+      where: {
+        id: topicId,
+      },
+    });
+    return count > 0;
+  }
+
+  async isTopicNameExists(topicName: string): Promise<boolean> {
+    const count = await this.prismaService.topic.count({
+      where: {
+        name: topicName,
+      },
+    });
+    return count > 0;
   }
 }

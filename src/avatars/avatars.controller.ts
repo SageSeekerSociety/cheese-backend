@@ -3,6 +3,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Res,
@@ -14,17 +15,17 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AvatarType } from '@prisma/client';
 import { Response } from 'express';
 import * as fs from 'fs';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { getFileHash, getFileMimeType } from '../common/helper/file.helper';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
-import { UploadAvatarRespondDto } from './DTO/upload-avatar.dto';
+import { UploadAvatarResponseDto } from './DTO/upload-avatar.dto';
 import {
   CorrespondentFileNotExistError,
   InvalidAvatarTypeError,
 } from './avatars.error';
-import { AvatarType } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
 
 @Controller('/avatars')
@@ -38,14 +39,14 @@ export class AvatarsController {
   @UseInterceptors(FileInterceptor('avatar'))
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
-  ): Promise<UploadAvatarRespondDto> {
-    //const userid = this.authService.verify(auth).userId;
+  ): Promise<UploadAvatarResponseDto> {
+    //const userId = this.authService.verify(auth).userId;
     const avatar = await this.avatarsService.save(file.path, file.filename);
     return {
       code: 201,
       message: 'Upload avatar successfully',
       data: {
-        avatarid: avatar.id,
+        avatarId: avatar.id,
       },
     };
   }
@@ -84,7 +85,7 @@ export class AvatarsController {
   @Get('/:id')
   async getAvatar(
     @Headers('If-None-Match') ifNoneMatch: string,
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Res({ passthrough: true }) res: Response,
   ) {
     const avatarPath = await this.avatarsService.getAvatarPath(id);
@@ -114,9 +115,9 @@ export class AvatarsController {
 
   @Get()
   async getAvailableAvatarIds(
-    @Query('type') type: AvatarType = AvatarType.PreDefined,
+    @Query('type') type: AvatarType = AvatarType.predefined,
   ) {
-    if (type == AvatarType.PreDefined) {
+    if (type == AvatarType.predefined) {
       const avatarIds = await this.avatarsService.getPreDefinedAvatarIds();
       return {
         code: 200,

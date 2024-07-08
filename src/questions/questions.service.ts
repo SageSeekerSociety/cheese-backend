@@ -7,21 +7,22 @@
  *
  */
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { ElasticsearchService } from '@nestjs/elasticsearch';
-import { InjectEntityManager, InjectRepository } from '@nestjs/typeorm';
 import {
   AttitudableType,
   AttitudeType,
+  CommentCommentabletypeEnum,
+  PrismaClient,
+  Question,
   QuestionInvitationRelation,
+  User,
 } from '@prisma/client';
-import { EntityManager, LessThan, MoreThanOrEqual, Repository } from 'typeorm';
 import { AnswerNotFoundError } from '../answer/answer.error';
 import { AnswerService } from '../answer/answer.service';
 import { AttitudeStateDto } from '../attitude/DTO/attitude-state.dto';
 import { AttitudeService } from '../attitude/attitude.service';
-import { CommentableType } from '../comments/commentable.enum';
-import { PageRespondDto } from '../common/DTO/page-respond.dto';
+import { PageDto } from '../common/DTO/page-response.dto';
 import { PageHelper } from '../common/helper/page.helper';
 import {
   getCurrWhereBySort,
@@ -35,7 +36,6 @@ import { TopicNotFoundError } from '../topics/topics.error';
 import { TopicsService } from '../topics/topics.service';
 import { UserDto } from '../users/DTO/user.dto';
 import { UserIdNotFoundError } from '../users/users.error';
-import { User } from '../users/users.legacy.entity';
 import { UsersService } from '../users/users.service';
 import { QuestionInvitationDto } from './DTO/question-invitation.dto';
 import { QuestionDto } from './DTO/question.dto';
@@ -52,13 +52,6 @@ import {
   UserAlreadyInvitedError,
 } from './questions.error';
 import { QuestionElasticsearchDocument } from './questions.es-doc';
-import {
-  Question,
-  QuestionFollowerRelation,
-  QuestionQueryLog,
-  QuestionSearchLog,
-  QuestionTopicRelation,
-} from './questions.legacy.entity';
 
 @Injectable()
 export class QuestionsService {
@@ -72,18 +65,6 @@ export class QuestionsService {
     private readonly groupService: GroupsService,
     @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
-    @InjectEntityManager()
-    private readonly entityManager: EntityManager,
-    @InjectRepository(Question)
-    private readonly questionRepository: Repository<Question>,
-    @InjectRepository(QuestionTopicRelation)
-    private readonly questionTopicRelationRepository: Repository<QuestionTopicRelation>,
-    @InjectRepository(QuestionQueryLog)
-    private readonly questionQueryLogRepository: Repository<QuestionQueryLog>,
-    @InjectRepository(QuestionFollowerRelation)
-    private readonly questionFollowRelationRepository: Repository<QuestionFollowerRelation>,
-    @InjectRepository(QuestionSearchLog)
-    private readonly questionSearchLogRepository: Repository<QuestionSearchLog>,
     private readonly elasticSearchService: ElasticsearchService,
     private readonly prismaService: PrismaService,
   ) {}
@@ -94,43 +75,49 @@ export class QuestionsService {
     createdById: number,
     // for transaction
     omitQuestionExistsCheck: boolean = false,
-    questionTopicRelationRepository?: Repository<QuestionTopicRelation>,
+    prismaClient: PrismaClient | undefined = this.prismaService,
   ): Promise<void> {
-    if (questionTopicRelationRepository == undefined)
-      questionTopicRelationRepository = this.questionTopicRelationRepository;
-    if (omitQuestionExistsCheck == false) {
-      const question = await this.questionRepository.findOneBy({
-        id: questionId,
-      });
-      if (question == undefined) throw new QuestionNotFoundError(questionId);
-    }
-    const topicExists = await this.topicService.isTopicExists(topicId);
-    if (topicExists == false) throw new TopicNotFoundError(topicId);
-    const createByExists = await this.userService.isUserExists(createdById);
-    if (createByExists == false) throw new UserIdNotFoundError(createdById);
-    const relation = questionTopicRelationRepository.create({
-      questionId,
-      topicId,
-      createdById,
+    if (
+      !omitQuestionExistsCheck &&
+      (await this.isQuestionExists(questionId)) == false
+    )
+      throw new QuestionNotFoundError(questionId);
+    if ((await this.topicService.isTopicExists(topicId)) == false)
+      throw new TopicNotFoundError(topicId);
+    if ((await this.userService.isUserExists(createdById)) == false)
+      throw new UserIdNotFoundError(createdById);
+    await prismaClient.questionTopicRelation.create({
+      data: {
+        questionId,
+        topicId,
+        createdById,
+        createdAt: new Date(),
+      },
     });
-    await questionTopicRelationRepository.save(relation);
   }
 
   async deleteTopicFromQuestion(
     questionId: number,
     topicId: number,
     // for transaction
-    questionTopicRelationRepository?: Repository<QuestionTopicRelation>,
+    prismaClient: PrismaClient | undefined = this.prismaService,
   ): Promise<void> {
-    if (questionTopicRelationRepository == undefined)
-      questionTopicRelationRepository = this.questionTopicRelationRepository;
-    const relation = await questionTopicRelationRepository.findOneBy({
-      questionId,
-      topicId,
+    const ret = await prismaClient.questionTopicRelation.updateMany({
+      where: {
+        topicId,
+        questionId,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
     });
-    if (relation == null)
+    if (ret.count == 0)
       throw new QuestionNotHasThisTopicError(questionId, topicId);
-    await questionTopicRelationRepository.softRemove({ id: relation.id });
+    /* istanbul ignore if */
+    if (ret.count > 1)
+      Logger.error(
+        `More than one question-topic relation deleted. questionId: ${questionId}, topicId: ${topicId}`,
+      );
   }
 
   // returns: question id
@@ -161,34 +148,31 @@ export class QuestionsService {
     // TODO: Validate groupId.
 
     let question: Question;
-    await this.entityManager.transaction(
-      async (entityManager: EntityManager) => {
-        const questionRepository = entityManager.getRepository(Question);
-        question = questionRepository.create({
-          createdById: askerUserId,
-          title,
-          content,
-          type,
-          groupId,
-          bounty,
-          bountyStartAt: bounty ? new Date() : undefined,
+    await this.prismaService.$transaction(
+      async (prismaClient) => {
+        question = await prismaClient.question.create({
+          data: {
+            createdById: askerUserId,
+            title,
+            content,
+            type,
+            groupId,
+            bounty,
+            bountyStartAt: bounty ? new Date() : undefined,
+            createdAt: new Date(),
+          },
         });
-        await questionRepository.save(question);
-        const questionTopicRelationRepository = entityManager.getRepository(
-          QuestionTopicRelation,
-        );
-        await Promise.all(
-          topicIds.map((topicId) =>
-            this.addTopicToQuestion(
-              question.id,
-              topicId,
-              askerUserId,
-              true,
-              questionTopicRelationRepository,
-            ),
-          ),
-        );
+        for (const topicId of topicIds) {
+          await this.addTopicToQuestion(
+            question.id,
+            topicId,
+            askerUserId,
+            true,
+            prismaClient as PrismaClient, // for transaction
+          );
+        }
       },
+      { maxWait: 60000, timeout: 60000 },
     );
 
     /* istanbul ignore if */
@@ -219,46 +203,69 @@ export class QuestionsService {
     questionId: number,
   ): Promise<boolean> {
     if (userId == undefined) return false;
-    const relation = await this.questionFollowRelationRepository.findOneBy({
-      followerId: userId,
-      questionId,
-    });
-    return relation != undefined;
+    return (
+      (await this.prismaService.questionFollowerRelation.count({
+        where: {
+          followerId: userId,
+          questionId,
+        },
+      })) > 0
+    );
   }
 
   // returns: a list of topicId
-  async getTopicDtosOfQuestion(questionId: number): Promise<TopicDto[]> {
-    const relations = await this.questionTopicRelationRepository.findBy({
-      questionId,
+  async getTopicDtosOfQuestion(
+    questionId: number,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<TopicDto[]> {
+    const relations = await this.prismaService.questionTopicRelation.findMany({
+      where: {
+        questionId,
+      },
     });
     return await Promise.all(
       relations.map((relation) =>
-        this.topicService.getTopicDtoById(relation.topicId),
+        this.topicService.getTopicDtoById(
+          relation.topicId,
+          viewerId,
+          ip,
+          userAgent,
+        ),
       ),
     );
   }
 
   async getFollowCountOfQuestion(questionId: number): Promise<number> {
-    return await this.questionFollowRelationRepository.countBy({ questionId });
+    return await this.prismaService.questionFollowerRelation.count({
+      where: {
+        questionId,
+      },
+    });
   }
 
   async getViewCountOfQuestion(questionId: number): Promise<number> {
-    return await this.questionQueryLogRepository.countBy({ questionId });
+    return await this.prismaService.questionQueryLog.count({
+      where: {
+        questionId,
+      },
+    });
   }
 
   async getQuestionDto(
     questionId: number,
-    viewerId?: number,
-    ip?: string,
-    userAgent?: string,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<QuestionDto> {
     const question = await this.prismaService.question.findUnique({
-      where: { id: questionId },
+      where: {
+        id: questionId,
+      },
       include: { acceptedAnswer: true },
     });
-    if (question == undefined || question.deletedAt)
-      //! workaround before soft delete middleware
-      throw new QuestionNotFoundError(questionId);
+    if (question == undefined) throw new QuestionNotFoundError(questionId);
 
     let userDto: UserDto | null = null; // For case that user is deleted.
     try {
@@ -273,7 +280,12 @@ export class QuestionsService {
       // does not exist now. This is NOT a data integrity problem, since user can be
       // deleted. So we just return a null and not throw an error.
     }
-    const topicsPromise = this.getTopicDtosOfQuestion(questionId);
+    const topicsPromise = this.getTopicDtosOfQuestion(
+      questionId,
+      viewerId,
+      ip,
+      userAgent,
+    );
     const hasFollowedPromise = this.hasFollowedQuestion(viewerId, questionId);
     const followCountPromise = this.getFollowCountOfQuestion(questionId);
     const viewCountPromise = this.getViewCountOfQuestion(questionId);
@@ -288,21 +300,24 @@ export class QuestionsService {
     );
     const answerCountPromise = this.prismaService.answer.count({
       where: {
-        deletedAt: null,
         questionId,
       },
     });
     const commentCountPromise = this.prismaService.comment.count({
       where: {
-        deletedAt: null,
-        commentableType: CommentableType.QUESTION,
+        commentableType: CommentCommentabletypeEnum.QUESTION,
         commentableId: questionId,
       },
     });
     const groupDtoPromise =
       question.groupId == undefined
         ? Promise.resolve(null)
-        : this.groupService.getGroupDtoById(undefined, question.groupId);
+        : this.groupService.getGroupDtoById(
+            undefined,
+            question.groupId,
+            ip,
+            userAgent,
+          );
     const acceptedAnswerDtoPromise =
       question.acceptedAnswer == undefined
         ? Promise.resolve(null)
@@ -340,13 +355,15 @@ export class QuestionsService {
     if (viewerId != undefined && ip != undefined) {
       // TODO: is checking all fields necessary? This is only a temporary solution to meet the not-null constraint.
       // TODO: userAgent maybe null when testing
-      const log = this.questionQueryLogRepository.create({
-        viewerId,
-        questionId,
-        ip,
-        userAgent: userAgent ?? '',
+      await this.prismaService.questionQueryLog.create({
+        data: {
+          viewerId,
+          questionId,
+          ip,
+          userAgent: userAgent ?? '',
+          createdAt: new Date(),
+        },
       });
-      await this.questionQueryLogRepository.save(log);
     }
     return {
       id: question.id,
@@ -375,10 +392,10 @@ export class QuestionsService {
     keywords: string,
     firstQuestionId: number | undefined, // if from start
     pageSize: number,
-    searcherId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
-  ): Promise<[QuestionDto[], PageRespondDto]> {
+    searcherId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<[QuestionDto[], PageDto]> {
     const timeBegin = Date.now();
     const result = !keywords
       ? { hits: { hits: [] } }
@@ -411,17 +428,19 @@ export class QuestionsService {
         this.getQuestionDto(questionId.id, searcherId, ip, userAgent),
       ),
     );
-    const log = this.questionSearchLogRepository.create({
-      keywords,
-      firstQuestionId: firstQuestionId,
-      pageSize,
-      result: questionEsDocs.map((t) => t.id).join(','),
-      duration: (Date.now() - timeBegin) / 1000,
-      searcherId,
-      ip,
-      userAgent,
+    await this.prismaService.questionSearchLog.create({
+      data: {
+        keywords,
+        firstQuestionId: firstQuestionId,
+        pageSize,
+        result: questionEsDocs.map((t) => t.id).join(','),
+        duration: (Date.now() - timeBegin) / 1000,
+        searcherId,
+        ip,
+        userAgent: userAgent ?? '',
+        createdAt: new Date(),
+      },
     });
-    await this.questionSearchLogRepository.save(log);
     return [questions, page];
   }
 
@@ -433,39 +452,50 @@ export class QuestionsService {
     topicIds: number[],
     updateById: number,
   ): Promise<void> {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
-    });
-    if (question == undefined) throw new QuestionNotFoundError(questionId);
-    await this.entityManager.transaction(
-      async (entityManager: EntityManager) => {
-        const questionRepository = entityManager.getRepository(Question);
-        question.title = title;
-        question.content = content;
-        question.type = type;
-        await questionRepository.save(question);
-        const questionTopicRelationRepository = entityManager.getRepository(
-          QuestionTopicRelation,
-        );
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionNotFoundError(questionId);
+    await this.prismaService.$transaction(
+      async (prismaClient) => {
+        // const questionRepository = entityManager.getRepository(Question);
+        // question.title = title;
+        // question.content = content;
+        // question.type = type;
+        // await questionRepository.save(question);
+        await prismaClient.question.update({
+          where: {
+            id: questionId,
+          },
+          data: {
+            title,
+            content,
+            type,
+          },
+        });
         const oldTopicIds = (
-          await questionTopicRelationRepository.findBy({ questionId })
+          await prismaClient.questionTopicRelation.findMany({
+            where: {
+              questionId,
+            },
+          })
         ).map((r) => r.topicId);
         const toDelete = oldTopicIds.filter((id) => !topicIds.includes(id));
         const toAdd = topicIds.filter((id) => !oldTopicIds.includes(id));
-        await Promise.all(
-          toDelete.map((id) => this.deleteTopicFromQuestion(questionId, id)),
-        );
-        await Promise.all(
-          toAdd.map((id) =>
-            this.addTopicToQuestion(
-              questionId,
-              id,
-              updateById,
-              true,
-              questionTopicRelationRepository,
-            ),
-          ),
-        );
+        for (const id of toDelete) {
+          await this.deleteTopicFromQuestion(
+            questionId,
+            id,
+            prismaClient as PrismaClient,
+          );
+        }
+        for (const id of toAdd) {
+          await this.addTopicToQuestion(
+            questionId,
+            id,
+            updateById,
+            false,
+            prismaClient as PrismaClient,
+          );
+        }
         const esRelation =
           await this.prismaService.questionElasticsearchRelation.findUnique({
             where: { questionId },
@@ -491,22 +521,23 @@ export class QuestionsService {
           doc: questionEsDocNew,
         });
       },
+      { maxWait: 60000, timeout: 60000 },
     );
   }
 
   async getQuestionCreatedById(questionId: number): Promise<number> {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
+    const question = await this.prismaService.question.findUnique({
+      where: {
+        id: questionId,
+      },
     });
     if (question == undefined) throw new QuestionNotFoundError(questionId);
     return question.createdById;
   }
 
   async deleteQuestion(questionId: number): Promise<void> {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
-    });
-    if (question == undefined) throw new QuestionNotFoundError(questionId);
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionNotFoundError(questionId);
     const esRelation =
       await this.prismaService.questionElasticsearchRelation.findUnique({
         where: { questionId },
@@ -528,70 +559,97 @@ export class QuestionsService {
     await this.prismaService.questionElasticsearchRelation.delete({
       where: { questionId },
     });
-    await this.questionRepository.softDelete({ id: questionId });
+    // await this.questionRepository.softDelete({ id: questionId });
+    await this.prismaService.question.update({
+      where: { id: questionId },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
   }
 
   async followQuestion(followerId: number, questionId: number): Promise<void> {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
-    });
-    if (question == undefined) throw new QuestionNotFoundError(questionId);
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionNotFoundError(questionId);
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
 
-    const relationOld = await this.questionFollowRelationRepository.findOneBy({
-      followerId,
-      questionId,
-    });
-    if (relationOld != undefined)
+    if (
+      (await this.prismaService.questionFollowerRelation.count({
+        where: {
+          followerId,
+          questionId,
+        },
+      })) > 0
+    )
       throw new QuestionAlreadyFollowedError(questionId);
 
-    const relation = this.questionFollowRelationRepository.create({
-      followerId,
-      questionId,
+    await this.prismaService.questionFollowerRelation.create({
+      data: {
+        followerId,
+        questionId,
+        createdAt: new Date(),
+      },
     });
-    await this.questionFollowRelationRepository.save(relation);
   }
 
   async unfollowQuestion(
     followerId: number,
     questionId: number,
   ): Promise<void> {
-    const question = await this.questionRepository.findOneBy({
-      id: questionId,
-    });
-    if (question == undefined) throw new QuestionNotFoundError(questionId);
+    if ((await this.isQuestionExists(questionId)) == false)
+      throw new QuestionNotFoundError(questionId);
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
 
-    const relation = await this.questionFollowRelationRepository.findOneBy({
-      followerId,
-      questionId,
-    });
-    if (relation == undefined)
+    if (
+      (await this.prismaService.questionFollowerRelation.count({
+        where: {
+          followerId,
+          questionId,
+        },
+      })) == 0
+    )
       throw new QuestionNotFollowedYetError(questionId);
-    await this.questionFollowRelationRepository.softDelete({
-      followerId,
-      questionId,
+    const ret = await this.prismaService.questionFollowerRelation.updateMany({
+      where: {
+        followerId,
+        questionId,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
     });
+    /* istanbul ignore if */
+    if (ret.count == 0) throw new QuestionNotFollowedYetError(questionId);
+    /* istanbul ignore if */
+    if (ret.count > 1)
+      throw new Error(
+        `More than one question-follower relation deleted. followerId: ${followerId}, questionId: ${questionId}`,
+      );
   }
 
   async getFollowedQuestions(
     followerId: number,
     firstQuestionId: number | undefined, // if from start
     pageSize: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
-  ): Promise<[QuestionDto[], PageRespondDto]> {
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<[QuestionDto[], PageDto]> {
     if ((await this.userService.isUserExists(followerId)) == false)
       throw new UserIdNotFoundError(followerId);
     if (firstQuestionId == undefined) {
-      const relations = await this.questionFollowRelationRepository.find({
-        where: { followerId },
-        take: pageSize + 1,
-        order: { questionId: 'ASC' },
-      });
+      const relations =
+        await this.prismaService.questionFollowerRelation.findMany({
+          where: {
+            followerId,
+          },
+          take: pageSize + 1,
+          orderBy: {
+            questionId: 'asc',
+          },
+        });
       const DTOs = await Promise.all(
         relations.map((r) => {
           return this.getQuestionDto(r.questionId, viewerId, ip, userAgent);
@@ -599,21 +657,29 @@ export class QuestionsService {
       );
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
-      const prevPromise = this.questionFollowRelationRepository.find({
+      const prevPromise = this.prismaService.questionFollowerRelation.findMany({
         where: {
           followerId,
-          questionId: LessThan(firstQuestionId),
+          questionId: {
+            lt: firstQuestionId,
+          },
         },
         take: pageSize,
-        order: { questionId: 'DESC' },
+        orderBy: {
+          questionId: 'desc',
+        },
       });
-      const currPromise = this.questionFollowRelationRepository.find({
+      const currPromise = this.prismaService.questionFollowerRelation.findMany({
         where: {
           followerId,
-          questionId: MoreThanOrEqual(firstQuestionId),
+          questionId: {
+            gte: firstQuestionId,
+          },
         },
         take: pageSize + 1,
-        order: { questionId: 'ASC' },
+        orderBy: {
+          questionId: 'asc',
+        },
       });
       const [prev, curr] = await Promise.all([prevPromise, currPromise]);
       const currDTOs = await Promise.all(
@@ -635,16 +701,21 @@ export class QuestionsService {
     questionId: number,
     firstFollowerId: number | undefined, // if from start
     pageSize: number,
-    viewerId?: number, // optional
-    ip?: string, // optional
-    userAgent?: string, // optional
-  ): Promise<[UserDto[], PageRespondDto]> {
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<[UserDto[], PageDto]> {
     if (firstFollowerId == undefined) {
-      const relations = await this.questionFollowRelationRepository.find({
-        where: { questionId },
-        take: pageSize + 1,
-        order: { followerId: 'ASC' },
-      });
+      const relations =
+        await this.prismaService.questionFollowerRelation.findMany({
+          where: {
+            questionId,
+          },
+          take: pageSize + 1,
+          orderBy: {
+            followerId: 'asc',
+          },
+        });
       const DTOs = await Promise.all(
         relations.map((r) => {
           return this.userService.getUserDtoById(
@@ -658,22 +729,30 @@ export class QuestionsService {
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise =
-        this.questionFollowRelationRepository.find({
+        this.prismaService.questionFollowerRelation.findMany({
           where: {
             questionId,
-            followerId: LessThan(firstFollowerId),
+            followerId: {
+              lt: firstFollowerId,
+            },
           },
           take: pageSize,
-          order: { followerId: 'DESC' },
+          orderBy: {
+            followerId: 'desc',
+          },
         });
       const queriedRelationsPromise =
-        this.questionFollowRelationRepository.find({
+        this.prismaService.questionFollowerRelation.findMany({
           where: {
             questionId,
-            followerId: MoreThanOrEqual(firstFollowerId),
+            followerId: {
+              gte: firstFollowerId,
+            },
           },
           take: pageSize + 1,
-          order: { followerId: 'ASC' },
+          orderBy: {
+            followerId: 'asc',
+          },
         });
       const DTOs = await Promise.all(
         (await queriedRelationsPromise).map((r) => {
@@ -739,14 +818,22 @@ export class QuestionsService {
     sort: SortPattern,
     pageStart: number | undefined,
     pageSize: number | undefined = 20,
-  ): Promise<[QuestionInvitationDto[], PageRespondDto]> {
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[QuestionInvitationDto[], PageDto]> {
     const record2dto = async (
       invitation: QuestionInvitationRelation,
     ): Promise<QuestionInvitationDto> => {
       return {
         id: invitation.id,
         question_id: invitation.questionId,
-        user: await this.userService.getUserDtoById(invitation.userId),
+        user: await this.userService.getUserDtoById(
+          invitation.userId,
+          viewerId,
+          ip,
+          userAgent,
+        ),
         created_at: invitation.createdAt.getTime(),
         updated_at: invitation.updatedAt.getTime(),
         is_answered: await this.isQuestionAnsweredBy(
@@ -810,11 +897,11 @@ export class QuestionsService {
   async getQuestionInvitationRecommendations(
     questionId: number,
     pageSize = 5,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<UserDto[]> {
-    const question = await this.questionRepository.findOne({
-      where: { id: questionId },
-    });
-    if (!question) {
+    if ((await this.isQuestionExists(questionId)) == false) {
       throw new QuestionNotFoundError(questionId);
     }
     // No sql injection here:
@@ -847,7 +934,7 @@ export class QuestionsService {
 
     const userDtos = await Promise.all(
       randomUserEntities.map((entity) =>
-        this.userService.getUserDtoById(entity.id),
+        this.userService.getUserDtoById(entity.id, viewerId, ip, userAgent),
       ),
     );
 
@@ -856,6 +943,9 @@ export class QuestionsService {
   async getQuestionInvitationDto(
     questionId: number,
     invitationId: number,
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
   ): Promise<QuestionInvitationDto> {
     if ((await this.isQuestionExists(questionId)) == false)
       throw new QuestionNotFoundError(questionId);
@@ -866,7 +956,12 @@ export class QuestionsService {
     if (!invitation) {
       throw new QuestionInvitationNotFoundError(invitationId);
     }
-    const userdto = await this.userService.getUserDtoById(invitation.userId);
+    const userdto = await this.userService.getUserDtoById(
+      invitation.userId,
+      viewerId,
+      ip,
+      userAgent,
+    );
     return {
       id: invitation.id,
       question_id: invitation.questionId,
@@ -901,7 +996,13 @@ export class QuestionsService {
   }
 
   async isQuestionExists(questionId: number): Promise<boolean> {
-    return (await this.questionRepository.countBy({ id: questionId })) > 0;
+    return (
+      (await this.prismaService.question.count({
+        where: {
+          id: questionId,
+        },
+      })) > 0
+    );
   }
 
   async setAttitudeToQuestion(
@@ -999,24 +1100,32 @@ export class QuestionsService {
     });
   }
 
-  async getQuestionCount(userId: number): Promise<number> {
-    return await this.questionRepository.countBy({ createdById: userId });
+  getQuestionCount(userId: number): Promise<number> {
+    return this.prismaService.question.count({
+      where: {
+        createdById: userId,
+      },
+    });
   }
 
   async getUserAskedQuestions(
     userId: number,
     pageStart: number | undefined,
     pageSize: number,
-    viewerId?: number,
-    userAgent?: string,
-    ip?: string,
-  ): Promise<[QuestionDto[], PageRespondDto]> {
+    viewerId: number | undefined,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[QuestionDto[], PageDto]> {
     if ((await this.userService.isUserExists(userId)) == false)
       throw new UserIdNotFoundError(userId);
     if (!pageStart) {
-      const currPage = await this.questionRepository.find({
-        where: { createdById: userId },
-        order: { id: 'ASC' },
+      const currPage = await this.prismaService.question.findMany({
+        where: {
+          createdById: userId,
+        },
+        orderBy: {
+          id: 'asc',
+        },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
@@ -1026,20 +1135,28 @@ export class QuestionsService {
       );
       return PageHelper.PageStart(currDto, pageSize, (answer) => answer.id);
     } else {
-      const prevPage = await this.questionRepository.find({
+      const prevPage = await this.prismaService.question.findMany({
         where: {
           createdById: userId,
-          id: LessThan(pageStart),
+          id: {
+            lt: pageStart,
+          },
         },
-        order: { id: 'DESC' },
+        orderBy: {
+          id: 'desc',
+        },
         take: pageSize,
       });
-      const currPage = await this.questionRepository.find({
+      const currPage = await this.prismaService.question.findMany({
         where: {
           createdById: userId,
-          id: MoreThanOrEqual(pageStart),
+          id: {
+            gte: pageStart,
+          },
         },
-        order: { id: 'ASC' },
+        orderBy: {
+          id: 'asc',
+        },
         take: pageSize + 1,
       });
       const currDto = await Promise.all(
