@@ -1,4 +1,4 @@
-FROM node:21 AS base
+FROM node:22 AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:$PATH"
@@ -31,7 +31,7 @@ WORKDIR /app
 COPY . ./
 RUN pnpm run build
 
-FROM node:21-slim AS prod
+FROM node:22-slim AS prod
 ENV NODE_ENV="production"
 RUN apt-get update && apt-get install -y openssl
 WORKDIR /app

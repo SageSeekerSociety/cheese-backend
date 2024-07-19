@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Headers,
+  Ip,
   Param,
   ParseIntPipe,
   Post,
@@ -62,8 +63,22 @@ export class MaterialsController {
   @Get('/:materialId')
   async getMaterialDetail(
     @Param('materialId', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetMaterialResponseDto> {
-    const material = await this.materialsService.getMaterial(id);
+    let viewerId: number | undefined;
+    try {
+      viewerId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
+    const material = await this.materialsService.getMaterial(
+      id,
+      viewerId,
+      ip,
+      userAgent,
+    );
     return {
       code: 200,
       message: 'Get Material successfully',

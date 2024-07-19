@@ -16,6 +16,16 @@ export class AnswerNotFavoriteError extends BaseError {
   }
 }
 
+export class AnswerAlreadyFavoriteError extends BaseError {
+  constructor(public readonly id: number) {
+    super(
+      'AnswerAlreadyFavoriteError',
+      `Answer with id ${id} is already favorited.`,
+      400,
+    );
+  }
+}
+
 export class AlreadyHasSameAttitudeError extends BaseError {
   constructor(
     public readonly userId: number,

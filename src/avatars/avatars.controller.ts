@@ -3,6 +3,7 @@ import {
   Get,
   Headers,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Res,
@@ -14,6 +15,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AvatarType } from '@prisma/client';
 import { Response } from 'express';
 import * as fs from 'fs';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
@@ -24,7 +26,6 @@ import {
   CorrespondentFileNotExistError,
   InvalidAvatarTypeError,
 } from './avatars.error';
-import { AvatarType } from './avatars.legacy.entity';
 import { AvatarsService } from './avatars.service';
 
 @Controller('/avatars')
@@ -39,13 +40,13 @@ export class AvatarsController {
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<UploadAvatarResponseDto> {
-    //const userid = this.authService.verify(auth).userId;
+    //const userId = this.authService.verify(auth).userId;
     const avatar = await this.avatarsService.save(file.path, file.filename);
     return {
       code: 201,
       message: 'Upload avatar successfully',
       data: {
-        avatarid: avatar.id,
+        avatarId: avatar.id,
       },
     };
   }
@@ -84,7 +85,7 @@ export class AvatarsController {
   @Get('/:id')
   async getAvatar(
     @Headers('If-None-Match') ifNoneMatch: string,
-    @Param('id') id: number,
+    @Param('id', ParseIntPipe) id: number,
     @Res({ passthrough: true }) res: Response,
   ) {
     const avatarPath = await this.avatarsService.getAvatarPath(id);

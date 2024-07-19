@@ -1,8 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AvatarType } from '@prisma/client';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { AvatarType } from '../src/avatars/avatars.legacy.entity';
 jest.mock('../src/email/email.service');
 
 describe('Avatar Module', () => {
@@ -25,8 +25,8 @@ describe('Avatar Module', () => {
       //.set('Authorization', `Bearer ${TestToken}`);
       expect(respond.status).toBe(201);
       expect(respond.body.message).toBe('Upload avatar successfully');
-      expect(respond.body.data).toHaveProperty('avatarid');
-      AvatarId = respond.body.data.avatarid;
+      expect(respond.body.data).toHaveProperty('avatarId');
+      AvatarId = respond.body.data.avatarId;
     });
   });
   describe('get avatar', () => {

@@ -156,7 +156,12 @@ export class MaterialsService implements OnModuleInit {
     return newMaterial.id;
   }
 
-  async getMaterial(materialId: number): Promise<materialDto> {
+  async getMaterial(
+    materialId: number,
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<materialDto> {
     const material = await this.prismaService.material.findUnique({
       where: {
         id: materialId,
@@ -167,6 +172,9 @@ export class MaterialsService implements OnModuleInit {
     }
     const uploaderDto = await this.userService.getUserDtoById(
       material.uploaderId,
+      viewerId,
+      ip,
+      userAgent,
     );
     const expires = material.expires == null ? undefined : material.expires;
     return {

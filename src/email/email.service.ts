@@ -23,7 +23,7 @@ export class EmailService {
     username: string,
     token: string,
   ): Promise<void> {
-    this.emailRuleService.emailPolicyEnsure(email);
+    await this.emailRuleService.emailPolicyEnsure(email);
     await this.mailerService.sendMail({
       to: email,
       subject: 'Password Reset',
@@ -36,7 +36,7 @@ export class EmailService {
   }
 
   async sendRegisterCode(email: string, code: string): Promise<void> {
-    this.emailRuleService.emailPolicyEnsure(email);
+    await this.emailRuleService.emailPolicyEnsure(email);
     await this.mailerService.sendMail({
       to: email,
       subject: 'Register Code',

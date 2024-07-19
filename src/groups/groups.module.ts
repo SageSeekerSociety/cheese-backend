@@ -7,36 +7,23 @@
  */
 
 import { Module, forwardRef } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnswerModule } from '../answer/answer.module';
 import { AuthModule } from '../auth/auth.module';
+import { AvatarsModule } from '../avatars/avatars.module';
+import { PrismaModule } from '../common/prisma/prisma.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { UsersModule } from '../users/users.module';
-import { GroupProfile } from './group-profile.entity';
 import { GroupsController } from './groups.controller';
-import {
-  Group,
-  GroupMembership,
-  GroupQuestionRelationship,
-  GroupTarget,
-} from './groups.legacy.entity';
 import { GroupsService } from './groups.service';
-import { AvatarsModule } from '../avatars/avatars.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Group,
-      GroupProfile,
-      GroupMembership,
-      GroupQuestionRelationship,
-      GroupTarget,
-    ]),
     AuthModule,
     forwardRef(() => UsersModule),
     forwardRef(() => QuestionsModule),
     forwardRef(() => AnswerModule),
     AvatarsModule,
+    PrismaModule,
   ],
   controllers: [GroupsController],
   providers: [GroupsService],

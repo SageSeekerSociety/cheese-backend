@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Headers,
+  Ip,
   Param,
   ParseIntPipe,
   Patch,
@@ -19,15 +20,15 @@ import {
   createMaterialBundleResponseDto,
 } from './DTO/create-materialbundle.dto';
 //import { getMaterialBundleListDto } from './DTO/get-materialbundle.dto';
-import { BundleResponseDto } from './DTO/materialbundle.dto';
-import { MaterialbundlesService } from './materialbundles.service';
-import { updateMaterialBundleDto } from './DTO/update-materialbundle.dto';
-import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import {
   getMaterialBundleListDto,
   getMaterialBundlesResponseDto,
 } from './DTO/get-materialbundle.dto';
+import { BundleResponseDto } from './DTO/materialbundle.dto';
+import { updateMaterialBundleDto } from './DTO/update-materialbundle.dto';
+import { MaterialbundlesService } from './materialbundles.service';
 
 @Controller('/material-bundles')
 @UsePipes(new ValidationPipe())
@@ -76,10 +77,11 @@ export class MaterialbundlesController {
       sort,
     }: getMaterialBundleListDto,
     @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<getMaterialBundlesResponseDto> {
     let viewerId: number | undefined;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       viewerId = this.authService.verify(auth).userId;
     } catch {
       // The user is not logged in.
@@ -89,6 +91,9 @@ export class MaterialbundlesController {
       pageStart,
       pageSize,
       sort.toString(),
+      viewerId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,
@@ -102,9 +107,22 @@ export class MaterialbundlesController {
   @Get('/:materialBundleId')
   async getMaterialBundleDetail(
     @Param('materialBundleId', ParseIntPipe) id: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<BundleResponseDto> {
-    const materialBundle =
-      await this.materialbundlesService.getBundleDetail(id);
+    let viewerId: number | undefined;
+    try {
+      viewerId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
+    const materialBundle = await this.materialbundlesService.getBundleDetail(
+      id,
+      viewerId,
+      ip,
+      userAgent,
+    );
     return {
       code: 200,
       message: 'get material bundle detail successfully',

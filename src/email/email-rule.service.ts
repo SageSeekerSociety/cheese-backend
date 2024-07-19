@@ -23,7 +23,7 @@ export class EmailRuleService {
   // support only @ruc.edu.cn currently
   readonly emailSuffix = '@ruc.edu.cn';
 
-  isEmailSuffixSupported(email: string): boolean {
+  async isEmailSuffixSupported(email: string): Promise<boolean> {
     return email.endsWith(this.emailSuffix);
   }
 
@@ -31,12 +31,12 @@ export class EmailRuleService {
     return `Only ${this.emailSuffix} is supported currently.`;
   }
 
-  emailPolicyEnsure(email: string): void {
+  async emailPolicyEnsure(email: string): Promise<void> {
     if (isEmail(email) == false) throw new InvalidEmailAddressError(email);
 
     // Double check the email policy
     // Although the email policy is checked in UsersService, it is still not a bad thing to check it here.
-    if (this.isEmailSuffixSupported(email) == false)
+    if ((await this.isEmailSuffixSupported(email)) == false)
       throw new EmailPolicyViolationError(email);
   }
 }

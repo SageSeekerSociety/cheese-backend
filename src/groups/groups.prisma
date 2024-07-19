@@ -1,0 +1,80 @@
+import { User } from "../users/users"
+import { Question } from "../questions/questions"
+import { Avatar } from "../avatars/avatars"
+import { Answer } from "../answer/answer"
+
+model Group {
+  id                        Int                         @id(map: "PK_256aa0fda9b1de1a73ee0b7106b") @default(autoincrement())
+  name                      String                      @unique(map: "IDX_8a45300fd825918f3b40195fbd") @db.VarChar
+  createdAt                 DateTime                    @default(dbgenerated("('now'::text)::timestamp(3) with time zone")) @map("created_at")
+  updatedAt                 DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt                 DateTime?                   @map("deleted_at") @db.Timestamptz(6)
+  answer                    Answer[]
+  groupMembership           GroupMembership[]
+  groupProfile              GroupProfile?
+  groupQuestionRelationship GroupQuestionRelationship[]
+  groupTarget               GroupTarget[]
+
+  @@map("group")
+}
+
+model GroupMembership {
+  id        Int       @id(map: "PK_b631623cf04fa74513b975e7059") @default(autoincrement())
+  groupId   Int       @map("group_id")
+  memberId  Int       @map("member_id")
+  role      String    @db.VarChar
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  user      User      @relation(fields: [memberId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7d88d00d8617a802b698c0cd609")
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_b1411f07fafcd5ad93c6ee16424")
+
+  @@index([memberId], map: "IDX_7d88d00d8617a802b698c0cd60")
+  @@index([groupId], map: "IDX_b1411f07fafcd5ad93c6ee1642")
+  @@map("group_membership")
+}
+
+model GroupProfile {
+  id        Int       @id(map: "PK_2a62b59d1bf8a3191c992e8daf4") @default(autoincrement())
+  intro     String    @db.VarChar
+  avatarId  Int?      @map("avatar_id")
+  avatar    Avatar?   @relation(fields: [avatarId], references: [id])
+  groupId   Int       @unique(map: "REL_7359ba99cc116d00cf74e048ed") @map("group_id")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  group     Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_7359ba99cc116d00cf74e048edd")
+
+  @@map("group_profile")
+}
+
+model GroupQuestionRelationship {
+  id         Int       @id(map: "PK_47ee7be0b0f0e51727012382922") @default(autoincrement())
+  groupId    Int       @map("group_id")
+  questionId Int       @unique(map: "REL_5b1232271bf29d99456fcf39e7") @map("question_id")
+  createdAt  DateTime  @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt  DateTime? @map("deleted_at") @db.Timestamptz(6)
+  question   Question  @relation(fields: [questionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_5b1232271bf29d99456fcf39e75")
+  group      Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_b31bf3b3688ec41daaced89a0ab")
+
+  @@index([groupId], map: "IDX_b31bf3b3688ec41daaced89a0a")
+  @@map("group_question_relationship")
+}
+
+model GroupTarget {
+  id                  Int       @id(map: "PK_f1671a42b347bd96ce6595f91ee") @default(autoincrement())
+  groupId             Int       @map("group_id")
+  name                String    @db.VarChar
+  intro               String    @db.VarChar
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
+  startedAt           DateTime  @map("started_at") @db.Date
+  endedAt             DateTime  @map("ended_at") @db.Date
+  attendanceFrequency String    @map("attendance_frequency") @db.VarChar
+  group               Group     @relation(fields: [groupId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_19d57f140124c5100e8e1ca3088")
+
+  @@index([groupId], map: "IDX_19d57f140124c5100e8e1ca308")
+  @@map("group_target")
+}

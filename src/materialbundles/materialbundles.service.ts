@@ -69,6 +69,9 @@ export class MaterialbundlesService {
     firstBundleId: number | undefined, // if from start
     pageSize: number,
     sort: string,
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
   ): Promise<[materialBundleDto[], PageDto]> {
     if (keywords.length > 100) throw new KeywordTooLongError();
     const take = pageSize + 1;
@@ -93,7 +96,7 @@ export class MaterialbundlesService {
       });
       const DTOs = await Promise.all(
         bundles.map((r) => {
-          return this.getBundleDetail(r.id);
+          return this.getBundleDetail(r.id, viewerId, ip, userAgent);
         }),
       );
       return PageHelper.PageStart(DTOs, pageSize, (i) => i.id);
@@ -122,7 +125,7 @@ export class MaterialbundlesService {
         take: pageSize + 1,
       });
       const currDtos = await Promise.all(
-        curr.map((r) => this.getBundleDetail(r.id)),
+        curr.map((r) => this.getBundleDetail(r.id, viewerId, ip, userAgent)),
       );
       return PageHelper.PageMiddle(
         prev,
@@ -180,7 +183,12 @@ export class MaterialbundlesService {
     return conditions.length > 0 ? { AND: conditions } : {};
   }
 
-  async getBundleDetail(bundleId: number): Promise<materialBundleDto> {
+  async getBundleDetail(
+    bundleId: number,
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<materialBundleDto> {
     const bundle = await this.prismaService.materialBundle.findUnique({
       where: {
         id: bundleId,
@@ -191,7 +199,12 @@ export class MaterialbundlesService {
     }
     let userDto: UserDto | null = null; // For case that user is deleted.
     try {
-      userDto = await this.usersService.getUserDtoById(bundle.creatorId);
+      userDto = await this.usersService.getUserDtoById(
+        bundle.creatorId,
+        viewerId,
+        ip,
+        userAgent,
+      );
     } catch (e) {
       // If user is null, it means that one user created this, but the user
       // does not exist now. This is NOT a data integrity problem, since user can be
@@ -205,7 +218,9 @@ export class MaterialbundlesService {
       })
     ).map((i) => i.materialId);
     const materialDtos = await Promise.all(
-      materialIds.map((id) => this.materialsService.getMaterial(id)),
+      materialIds.map((id) =>
+        this.materialsService.getMaterial(id, viewerId, ip, userAgent),
+      ),
     );
     const myRating = bundle.myRating == null ? undefined : bundle.myRating;
     return {

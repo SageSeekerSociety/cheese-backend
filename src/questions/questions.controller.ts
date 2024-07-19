@@ -83,7 +83,7 @@ export class QuestionsController {
     }
     const [questions, pageRespond] =
       await this.questionsService.searchQuestions(
-        q,
+        q ?? '',
         pageStart,
         pageSize,
         searcherId,
@@ -324,13 +324,25 @@ export class QuestionsController {
       }),
     )
     sort: SortPattern = { createdAt: 'desc' },
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionInvitationsResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const [invitations, page] =
       await this.questionsService.getQuestionInvitations(
         id,
         sort,
         pageStart,
         pageSize,
+        userId,
+        ip,
+        userAgent,
       );
     return {
       code: 200,
@@ -397,11 +409,23 @@ export class QuestionsController {
     @Param('id', ParseIntPipe) id: number,
     @Query('page_size')
     pageSize: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionRecommendationsResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const users =
       await this.questionsService.getQuestionInvitationRecommendations(
         id,
         pageSize,
+        userId,
+        ip,
+        userAgent,
       );
     return {
       code: 200,
@@ -416,10 +440,22 @@ export class QuestionsController {
   async getInvitationDetail(
     @Param('id', ParseIntPipe) id: number,
     @Param('invitation_id', ParseIntPipe) invitationId: number,
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetQuestionInvitationDetailResponseDto> {
+    let userId: number | undefined;
+    try {
+      userId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
     const invitationDto = await this.questionsService.getQuestionInvitationDto(
       id,
       invitationId,
+      userId,
+      ip,
+      userAgent,
     );
     return {
       code: 200,

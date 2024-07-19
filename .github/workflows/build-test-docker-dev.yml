@@ -42,7 +42,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           target: dev
@@ -62,7 +62,13 @@ jobs:
       - name: Start compose
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --no-build -d
 
-      - name: Sync Database Structures with Prisma
+      - name: Check Schema up to Date
+        run: |
+          docker compose exec backend cp prisma/schema.prisma prisma/schema.prisma.origin
+          docker compose exec backend pnpm build-prisma
+          docker compose exec backend diff prisma/schema.prisma prisma/schema.prisma.origin
+
+      - name: Deploy migrations to Database
         run: docker compose exec backend pnpm prisma migrate deploy
 
       - name: Check Prisma Structures Sync With Database

@@ -1,18 +1,23 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Avatar, AvatarType } from '@prisma/client';
+import { Mutex } from 'async-mutex';
 import { readdirSync } from 'fs';
 import { join } from 'node:path';
-import { Repository } from 'typeorm';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { AvatarNotFoundError } from './avatars.error';
-import { Avatar, AvatarType } from './avatars.legacy.entity';
 @Injectable()
 export class AvatarsService implements OnModuleInit {
-  constructor(
-    @InjectRepository(Avatar)
-    private readonly avatarRepository: Repository<Avatar>,
-  ) {}
+  constructor(private readonly prismaService: PrismaService) {}
+  private mutex = new Mutex();
+  private initialized: boolean = false;
+
   async onModuleInit(): Promise<void> {
-    this.initialize();
+    await this.mutex.runExclusive(async () => {
+      if (!this.initialized) {
+        await this.initialize();
+        this.initialized = true;
+      }
+    });
   }
   private async initialize(): Promise<void> {
     const sourcePath = join(__dirname, '../resources/avatars');
@@ -28,68 +33,97 @@ export class AvatarsService implements OnModuleInit {
 
     const defaultAvatarPath = join(sourcePath, defaultAvatarName);
 
-    let defaultAvatar = await this.avatarRepository.findOneBy({
-      avatarType: AvatarType.default,
-    });
-
-    if (!defaultAvatar) {
-      defaultAvatar = this.avatarRepository.create({
-        url: defaultAvatarPath,
-        name: defaultAvatarName,
-        avatarType: AvatarType.default,
-        usageCount: 0,
+    // Before one test run, the table is ether empty or has the default avatar
+    // so the test will not cover all branches.
+    // However, the test will cover all branches in the second run.
+    // So we ignore the coverage for this part.
+    /* istanbul ignore next */
+    await this.prismaService.$transaction(async (prismaClient) => {
+      // Lock the table to prevent multiple initializations in testing
+      // The SQL syntax is for PostgreSQL, so it may need to be changed for other databases
+      prismaClient.$executeRaw`LOCK TABLE "avatar" IN ACCESS EXCLUSIVE MODE`;
+      const defaultAvatar = await this.prismaService.avatar.findFirst({
+        where: {
+          avatarType: AvatarType.default,
+        },
       });
-      await this.avatarRepository.save(defaultAvatar);
-    }
 
-    if (
-      !(await this.avatarRepository.findOneBy({
-        avatarType: AvatarType.predefined,
-      }))
-    ) {
-      const predefinedAvatars = avatarFiles.filter(
-        (file) => file !== defaultAvatarName,
-      );
-      if (predefinedAvatars.length === 0) {
-        throw new Error('no predefined avatars found');
-      }
-      await Promise.all(
-        predefinedAvatars.map(async (name) => {
-          const avatarPath = join(sourcePath, name);
-          const predefinedAvatar = this.avatarRepository.create({
-            url: avatarPath,
-            name,
-            avatarType: AvatarType.predefined,
+      if (!defaultAvatar) {
+        await this.prismaService.avatar.create({
+          data: {
+            url: defaultAvatarPath,
+            name: defaultAvatarName,
+            avatarType: AvatarType.default,
             usageCount: 0,
-          });
-          await this.avatarRepository.save(predefinedAvatar);
-        }),
-      );
-    }
+            createdAt: new Date(),
+          },
+        });
+      }
+      const predefinedAvatar = await this.prismaService.avatar.findFirst({
+        where: {
+          avatarType: AvatarType.predefined,
+        },
+      });
+      if (!predefinedAvatar) {
+        const predefinedAvatars = avatarFiles.filter(
+          (file) => file !== defaultAvatarName,
+        );
+        if (predefinedAvatars.length === 0) {
+          throw new Error('no predefined avatars found');
+        }
+        await Promise.all(
+          predefinedAvatars.map(async (name) => {
+            const avatarPath = join(sourcePath, name);
+            await this.prismaService.avatar.create({
+              data: {
+                url: avatarPath,
+                name,
+                avatarType: AvatarType.predefined,
+                usageCount: 0,
+                createdAt: new Date(),
+              },
+            });
+          }),
+        );
+      }
+    });
   }
 
-  async save(path: string, filename: string) {
-    const avatar = this.avatarRepository.create({
-      url: path,
-      name: filename,
-      avatarType: AvatarType.upload,
+  save(path: string, filename: string): Promise<Avatar> {
+    return this.prismaService.avatar.create({
+      data: {
+        url: path,
+        name: filename,
+        avatarType: AvatarType.upload,
+        usageCount: 0,
+        createdAt: new Date(),
+      },
     });
-    return this.avatarRepository.save(avatar);
   }
   async getOne(avatarId: number): Promise<Avatar> {
-    const file = await this.avatarRepository.findOneBy({ id: avatarId });
+    const file = await this.prismaService.avatar.findUnique({
+      where: {
+        id: avatarId,
+      },
+    });
     if (file == undefined) throw new AvatarNotFoundError(avatarId);
     return file;
   }
   async getAvatarPath(avatarId: number): Promise<string> {
-    const file = await this.avatarRepository.findOneBy({ id: avatarId });
+    const file = await this.prismaService.avatar.findUnique({
+      where: {
+        id: avatarId,
+      },
+    });
     if (file == undefined) throw new AvatarNotFoundError(avatarId);
     return file.url;
   }
 
   async getDefaultAvatarId(): Promise<number> {
-    const defaultAvatar = await this.avatarRepository.findOneBy({
-      avatarType: AvatarType.default,
+    const defaultAvatar = await this.prismaService.avatar.findFirst({
+      where: {
+        avatarType: AvatarType.default,
+      },
     });
     if (defaultAvatar == undefined) throw new Error('Default avatar not found');
 
@@ -98,8 +132,10 @@ export class AvatarsService implements OnModuleInit {
   }
 
   async getPreDefinedAvatarIds(): Promise<number[]> {
-    const PreDefinedAvatars = await this.avatarRepository.findBy({
-      avatarType: AvatarType.predefined,
+    const PreDefinedAvatars = await this.prismaService.avatar.findMany({
+      where: {
+        avatarType: AvatarType.predefined,
+      },
     });
     const PreDefinedAvatarIds = PreDefinedAvatars.map(
       (PreDefinedAvatars) => PreDefinedAvatars.id,
@@ -108,18 +144,42 @@ export class AvatarsService implements OnModuleInit {
   }
 
   async plusUsageCount(avatarId: number): Promise<void> {
-    const avatar = await this.avatarRepository.findOneBy({ id: avatarId });
-    if (avatar == undefined) throw new AvatarNotFoundError(avatarId);
-    avatar.usageCount += 1;
-    await this.avatarRepository.save(avatar);
-    return;
+    if ((await this.isAvatarExists(avatarId)) == false)
+      throw new AvatarNotFoundError(avatarId);
+    await this.prismaService.avatar.update({
+      where: {
+        id: avatarId,
+      },
+      data: {
+        usageCount: {
+          increment: 1,
+        },
+      },
+    });
   }
 
   async minusUsageCount(avatarId: number): Promise<void> {
-    const avatar = await this.avatarRepository.findOneBy({ id: avatarId });
-    if (avatar == undefined) throw new AvatarNotFoundError(avatarId);
-    avatar.usageCount -= 1;
-    await this.avatarRepository.save(avatar);
-    return;
+    if ((await this.isAvatarExists(avatarId)) == false)
+      throw new AvatarNotFoundError(avatarId);
+    await this.prismaService.avatar.update({
+      where: {
+        id: avatarId,
+      },
+      data: {
+        usageCount: {
+          decrement: 1,
+        },
+      },
+    });
+  }
+
+  async isAvatarExists(avatarId: number): Promise<boolean> {
+    return (
+      (await this.prismaService.avatar.count({
+        where: {
+          id: avatarId,
+        },
+      })) > 0
+    );
   }
 }

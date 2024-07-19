@@ -22,18 +22,7 @@ jobs:
       TEST_REPEAT: 10 # Tests will be repeated
       PORT: 7777
       JWT_SECRET: Test JWT Secret
-      PRISMA_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
-      TYPEORM_DB_TYPE: postgres
-      TYPEORM_DB_HOST: localhost
-      TYPEORM_DB_PORT: 5432
-      TYPEORM_DB_USERNAME: postgres
-      TYPEORM_DB_PASSWORD: postgres
-      TYPEORM_DB_NAME: postgres
-      TYPEORM_DB_SYNCHRONIZE: false
-      TYPEORM_DB_AUTO_LOAD_ENTITIES: true
-      TYPEORM_DB_CONNECT_TIMEOUT: 60000
-      TYPEORM_DB_LOGGING_ALL: false
-      TYPEORM_DB_LOGGING_ERROR: true
+      PRISMA_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres?connection_limit=16
       DEFAULT_AVATAR_NAME: default.jpg
       FILE_UPLOAD_PATH: /home/runner/work/cheese-backend
       ELASTICSEARCH_NODE: http://127.0.0.1:9200/
@@ -59,6 +48,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+          --name my_postgres_container
         ports:
           # Maps tcp port 5432 on service container to the host
           - 5432:5432
@@ -79,6 +69,16 @@ jobs:
           - 9200:9200
     
     steps:
+      # See: https://remarkablemark.org/blog/2022/05/12/github-actions-postgresql-increase-max-connections-and-shared-buffers/
+      # See: https://stackoverflow.com/questions/70673766/how-to-increase-max-connection-in-github-action-postgres
+      - name: Increase PostgreSQL max_connections
+        run: |
+          docker exec -i my_postgres_container bash << EOF
+            sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
+            sed -i -e 's/shared_buffers = 128MB/shared_buffers = 2GB/' /var/lib/postgresql/data/postgresql.conf
+          EOF
+          docker restart --time 0 my_postgres_container
+
       - name: Checkout Repository
         uses: actions/checkout@v4
 
@@ -88,7 +88,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
           version: ${{ matrix.pnpm-version }}
           run_install: false

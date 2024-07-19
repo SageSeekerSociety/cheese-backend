@@ -1,49 +1,9 @@
 import { ConfigService } from '@nestjs/config';
 import { ElasticsearchModuleOptions } from '@nestjs/elasticsearch';
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
-import { isMySQL } from '../helper/db.helper';
 
 export default () => {
-  if (process.env.TYPEORM_DB_SYNCHRONIZE === 'true')
-    throw new Error(
-      'Typeorm synchronize is deprecated. Use "pnpm prisma db push" to update database structure instead.',
-    );
-
-  // See: https://orkhan.gitbook.io/typeorm/docs/logging
-  const typeormLoggingMode =
-    process.env.TYPEORM_DB_LOGGING_ALL === 'true'
-      ? true
-      : process.env.TYPEORM_DB_LOGGING_ERROR === 'true'
-        ? ['error']
-        : false;
   return {
     port: parseInt(process.env.PORT || '3000', 10),
-    database: {
-      type: process.env.TYPEORM_DB_TYPE,
-      host: process.env.TYPEORM_DB_HOST,
-      port: parseInt(process.env.TYPEORM_DB_PORT || '3306', 10),
-      username: process.env.TYPEORM_DB_USERNAME,
-      password: process.env.TYPEORM_DB_PASSWORD,
-      database: process.env.TYPEORM_DB_NAME,
-      synchronize: process.env.TYPEORM_DB_SYNCHRONIZE === 'true',
-      logging: typeormLoggingMode,
-      autoLoadEntities: process.env.TYPEORM_DB_AUTO_LOAD_ENTITIES === 'true',
-      ...(isMySQL()
-        ? {
-            connectTimeout: parseInt(
-              process.env.TYPEORM_DB_CONNECT_TIMEOUT || '60000',
-              10,
-            ),
-          }
-        : {
-            ConnectTimeoutMS: parseInt(
-              process.env.TYPEORM_DB_CONNECT_TIMEOUT || '60000',
-              10,
-            ),
-          }),
-      namingStrategy: new SnakeNamingStrategy(),
-    },
     elasticsearch: {
       node: process.env.ELASTICSEARCH_NODE,
       maxRetries: parseInt(process.env.ELASTICSEARCH_MAX_RETRIES || '3', 10),
@@ -67,14 +27,6 @@ export default () => {
     },
   };
 };
-
-export function databaseConfigFactory(
-  configService: ConfigService,
-): TypeOrmModuleOptions {
-  const config = configService.get<TypeOrmModuleOptions>('database');
-  if (config == undefined) throw new Error('Database configuration not found');
-  return config;
-}
 
 export function elasticsearchConfigFactory(
   configService: ConfigService,
