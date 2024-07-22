@@ -109,14 +109,14 @@ jobs:
         run: |
           pnpm start | tee output &
           while true; do
-              sleep 10
+              sleep 1
               if grep -q "Nest application successfully started" output; then
                   echo "Detected 'Nest application successfully started'. Stopping pnpm..."
                   pid=$(netstat -nlp | grep :$PORT | awk '{print $7}' | awk -F'/' '{print $1}')
                   kill $pid
                   break
               fi
-              if [[ -z "$(netstat -nlp | grep :$PORT | awk '{print $7}' | awk -F'/' '{print $1}')" ]]; then
+              if grep -q "Command failed" output; then
                   echo "Nest application failed to start."
                   exit -1
               fi
