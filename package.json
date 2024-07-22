@@ -31,7 +31,7 @@
     "@elastic/elasticsearch": "^8.13.1",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^10.3.9",
-    "@nestjs/config": "^3.2.2",
+    "@nestjs/config": "^3.2.3",
     "@nestjs/core": "^10.3.9",
     "@nestjs/elasticsearch": "^10.0.1",
     "@nestjs/jwt": "^10.2.0",
