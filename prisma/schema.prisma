@@ -641,8 +641,8 @@ model User {
   attitude                                                           Attitude[]
   attitudeLog                                                        AttitudeLog[]
   questionInvitationRelation                                         QuestionInvitationRelation[]
-  MaterialBundle                                                     MaterialBundle[]
-  Material                                                           Material[]
+  material                                                           Material[]
+  materialBundle                                                     MaterialBundle[]
 
   @@map("user")
 }

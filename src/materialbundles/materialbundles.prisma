@@ -1,11 +1,11 @@
-import { user } from "../users/users.legacy"
-import { material }from "../materials/materials"
+import { User } from "../users/users"
+import { MaterialbundlesRelation } from "../materials/materials"
 
-model materialBundle {
+model MaterialBundle {
   id            Int                       @id @default(autoincrement())
   title         String
   content       String
-  creator       user                      @relation(fields: [creatorId], references: [id])
+  creator       User                      @relation(fields: [creatorId], references: [id])
   creatorId     Int
   createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime                  @updatedAt() @map("updated_at") @db.Timestamptz(6)
@@ -13,7 +13,7 @@ model materialBundle {
   ratingCount   Int                       @default(0) @map("rating_count")
   myRating      Float?                    @map("my_rating")
   commentsCount Int                       @default(0) @map("comments_count")
-  materials     materialbundlesRelation[]
+  materials     MaterialbundlesRelation[]
 
   @@map("material_bundle")
 }

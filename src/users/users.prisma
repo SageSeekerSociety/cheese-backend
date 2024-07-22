@@ -41,9 +41,12 @@ model User {
   attitude                                                           Attitude[]
   attitudeLog                                                        AttitudeLog[]
   questionInvitationRelation                                         QuestionInvitationRelation[]
+  Material                                                           Material[]
+  MaterialBundle                                                     MaterialBundle[]
 
   @@map("user")
 }
+
 
 model UserFollowingRelationship {
   id                                            Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())

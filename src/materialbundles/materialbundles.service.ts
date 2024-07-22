@@ -8,7 +8,6 @@ import { MaterialNotFoundError } from '../materials/materials.error';
 import {
   BundleNotFoundError,
   DeleteBundleDeniedError,
-  QueryKeywordError,
   UpdateBundleDeniedError,
   KeywordTooLongError,
 } from './materialbundles.error';
@@ -166,7 +165,8 @@ export class MaterialbundlesService {
           condition = { [field]: { contains: value, mode: 'insensitive' } };
           break;
         default:
-          throw new QueryKeywordError(query);
+          // This should never happen
+          throw new Error(`Invalid operator: ${operator}`);
       }
 
       conditions.push(condition);

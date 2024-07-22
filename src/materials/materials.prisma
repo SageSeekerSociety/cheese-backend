@@ -1,5 +1,5 @@
-import { user } from "../users/users.legacy"
-import {materialBundle}from "../materialbudles/materialbudles"
+import { User } from "../users/users"
+import {MaterialBundle} from "../materialbundles/materialbundles"
 enum MaterialType {
   image
   file
@@ -7,27 +7,26 @@ enum MaterialType {
   video
 }
 
-model material {
-  id              Int               @id @default(autoincrement())
+model Material {
+  id              Int                       @id @default(autoincrement())
   type            MaterialType
   url             String
   name            String
-  uploader        user              @relation(fields: [uploaderId], references: [id])
+  uploader        User                      @relation(fields: [uploaderId], references: [id])
   uploaderId      Int
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
   expires         Int?
-  downloadCount   Int               @default(0) @map("download_count")
-  materialBundles materialbundlesRelation[]
+  downloadCount   Int                       @default(0) @map("download_count")
+  materialBundles MaterialbundlesRelation[]
   /// [metaType]
-  meta            Json              @db.Json
+  meta            Json                      @db.Json
 }
 
-model materialbundlesRelation {
- 
-  material   material       @relation(fields: [materialId], references: [id])
+model MaterialbundlesRelation {
+  material   Material       @relation(fields: [materialId], references: [id])
   materialId Int
-  bundle     materialBundle @relation(fields: [bundleId], references: [id],onDelete: Cascade)
+  bundle     MaterialBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
   bundleId   Int
 
-  @@id([materialId,bundleId])
+  @@id([materialId, bundleId])
 }

@@ -278,6 +278,29 @@ describe('MaterialBundle Module', () => {
       expect(respond.body.data.page.has_more).toBe(true);
       expect(respond.body.data.page.next_start).toBe(bundleIds[14]);
     });
+    it('should get the materialbundles with keyword,size and search syntax string as start', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/material-bundles`)
+        .query({
+          q: `title:${unique.toString()} id:>=${bundleIds[4]}`,
+          page_size: 10,
+          sort: '',
+        });
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.message).toBe('get material bundles successfully');
+      expect(respond.body.data.materials.length).toEqual(10);
+      respond.body.data.materials
+        .slice(0, 10)
+        .map((material: { id: number }, index: number) => {
+          expect(material.id).toEqual(bundleIds[index + 4]);
+        });
+      expect(respond.body.data.page.page_size).toBe(10);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(true);
+      expect(respond.body.data.page.next_start).toBe(bundleIds[14]);
+    });
     it('should get the materialbundles with keyword,size,start and sort', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles`)

@@ -37,6 +37,7 @@ function configureMulterModule() {
         };
         const fileType = req.body.type;
         const uploadPath = uploadPaths[fileType];
+        /* istanbul ignore if */
         if (!existsSync(uploadPath)) {
           mkdirSync(uploadPath, { recursive: true });
         }
