@@ -23,7 +23,7 @@ CMD ["tail", "-f", "/dev/null"]
 FROM dev-deps AS prod-deps
 WORKDIR /app
 ENV NODE_ENV="production"
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm prune --prod
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm prune --prod --ignore-scripts
 
 # note that we need to use development deps to build the product
 FROM dev-deps AS prod-build
