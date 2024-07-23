@@ -1,15 +1,32 @@
+import { User } from "../users/users"
+import {MaterialBundle} from "../materialbundles/materialbundles"
 enum MaterialType {
   image
   file
   audio
   video
 }
-model material {
-  id           Int          @id @default(autoincrement())
-  type         MaterialType
-  url          String
-  name         String
-  meta         Json         @db.Json
+
+model Material {
+  id              Int                       @id @default(autoincrement())
+  type            MaterialType
+  url             String
+  name            String
+  uploader        User                      @relation(fields: [uploaderId], references: [id])
+  uploaderId      Int
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expires         Int?
+  downloadCount   Int                       @default(0) @map("download_count")
+  materialBundles MaterialbundlesRelation[]
+  /// [metaType]
+  meta            Json                      @db.Json
 }
 
+model MaterialbundlesRelation {
+  material   Material       @relation(fields: [materialId], references: [id])
+  materialId Int
+  bundle     MaterialBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  bundleId   Int
 
+  @@id([materialId, bundleId])
+}

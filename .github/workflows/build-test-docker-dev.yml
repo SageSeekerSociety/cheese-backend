@@ -62,6 +62,16 @@ jobs:
       - name: Start compose
         run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --no-build -d
 
+      # See: https://remarkablemark.org/blog/2022/05/12/github-actions-postgresql-increase-max-connections-and-shared-buffers/
+      # See: https://stackoverflow.com/questions/70673766/how-to-increase-max-connection-in-github-action-postgres
+      - name: Increase PostgreSQL max_connections
+        run: |
+          docker exec -i cheese-backend-database-1 bash << EOF
+            sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
+            sed -i -e 's/shared_buffers = 128MB/shared_buffers = 2GB/' /var/lib/postgresql/data/postgresql.conf
+          EOF
+          docker restart --time 0 cheese-backend-database-1
+
       - name: Check Schema up to Date
         run: |
           docker compose exec backend cp prisma/schema.prisma prisma/schema.prisma.origin
