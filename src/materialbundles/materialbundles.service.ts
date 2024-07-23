@@ -1,3 +1,12 @@
+/*
+ *  Description: This file implements the MaterialbundlesService class,
+ *               which is responsible for handling the business logic of material bundles
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { materialBundleDto } from './DTO/materialbundle.dto';

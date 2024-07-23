@@ -1,3 +1,12 @@
+/*
+ *  Description: This file implements the AttachmentsController class,
+ *               which is responsible for handling the requests to /attachments/...
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import {
   Body,
   Controller,

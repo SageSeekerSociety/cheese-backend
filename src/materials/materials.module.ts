@@ -1,3 +1,11 @@
+/*
+ *  Description: This file defines the material module
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import { Module } from '@nestjs/common';
 import { MulterModule } from '@nestjs/platform-express';
 import { existsSync, mkdirSync } from 'fs';

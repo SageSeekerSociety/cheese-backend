@@ -1,3 +1,11 @@
+/*
+ *  Description: This file defines the errors related to attachments service.
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import { BaseError } from '../common/error/base-error';
 
 export class InvalidAttachmentTypeError extends BaseError {

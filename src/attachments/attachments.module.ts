@@ -1,3 +1,11 @@
+/*
+ *  Description: This file defines the attachments module
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import { Module } from '@nestjs/common';
 import { AttachmentsService } from './attachments.service';
 import { AttachmentsController } from './attachments.controller';

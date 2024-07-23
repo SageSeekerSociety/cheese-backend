@@ -1,3 +1,12 @@
+/*
+ *  Description: This file implements the MaterialsController class,
+ *               which is responsible for handling the requests to /materials
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import {
   Body,
   Controller,

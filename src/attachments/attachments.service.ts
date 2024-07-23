@@ -1,3 +1,12 @@
+/*
+ *  Description: This file implements the AttachmentsService class,
+ *               which is responsible for handling the business logic of attachments
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import { Injectable } from '@nestjs/common';
 import { MaterialsService } from '../materials/materials.service';
 import { AttachmentType } from '@prisma/client';

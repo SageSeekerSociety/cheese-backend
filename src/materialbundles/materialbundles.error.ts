@@ -1,3 +1,11 @@
+/*
+ *  Description: This file defines the errors related to material bundles service.
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import { BaseError } from '../common/error/base-error';
 
 export class BundleNotFoundError extends BaseError {

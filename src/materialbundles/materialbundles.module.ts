@@ -1,3 +1,11 @@
+/*
+ *  Description: This file defines the material bundles module
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import { Module } from '@nestjs/common';
 import { MaterialbundlesService } from './materialbundles.service';
 import { MaterialbundlesController } from './materialbundles.controller';

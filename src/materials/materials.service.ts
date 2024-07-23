@@ -1,3 +1,12 @@
+/*
+ *  Description: This file implements the MaterialsService class,
+ *               which is responsible for handling the business logic of material
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { MaterialType } from '@prisma/client';
 import ffmpeg from 'fluent-ffmpeg';

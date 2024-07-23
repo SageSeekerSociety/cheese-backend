@@ -1,3 +1,12 @@
+/*
+ *  Description: This file implements the MaterialbundlesController class,
+ *               which is responsible for handling the requests to /material-bundles
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import {
   Body,
   Controller,

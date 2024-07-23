@@ -7,6 +7,8 @@ import { Attitude } from "../attitude/attitude"
 import { Comment, CommentDeleteLog, CommentQueryLog } from "../comments/comment"
 import { AttitudeLog } from "../attitude/attitude"
 import { QuestionInvitationRelation } from "../questions/questions.invitation"
+import { Material } from "../materials/materials"
+import { MaterialBundle } from "../materialbundles/materialbundles"
 
 model User {
   id                                                                 Int                          @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
@@ -46,7 +48,6 @@ model User {
 
   @@map("user")
 }
-
 
 model UserFollowingRelationship {
   id                                            Int       @id(map: "PK_3b0199015f8814633fc710ff09d") @default(autoincrement())
