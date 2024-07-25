@@ -132,6 +132,15 @@ export class UsersPermissionService {
             resourceIds: undefined,
           },
         },
+        {
+          // An user can upload material,attachment or materialbundle
+          authorizedActions: [AuthorizedAction.create],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['material', 'attachment', 'materialbundle'],
+            resourceIds: undefined,
+          },
+        },
       ],
     };
   }

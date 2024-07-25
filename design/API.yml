@@ -66,6 +66,22 @@ components:
       schema:
         type: integer
         format: int64
+    materialId:
+      name: materialId
+      in: path
+      description: 资料 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    materialBundleId:
+      name: materialBundleId
+      in: path
+      description: 资料包 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
     commentId:
       name: commentId
       in: path
@@ -94,6 +110,7 @@ components:
           - COMMENT
           - INSIGHT
           - QUESTION
+          - MATERIAL_BUNDLE
     page_start:
       name: page_start
       in: query
@@ -276,6 +293,11 @@ components:
         content:
           type: string
           description: 问题详情
+        attachments:
+          type: array
+          description: 详情中出现的所有附件
+          items:
+            $ref: "#/components/schemas/Attachment"
         author:
           $ref: "#/components/schemas/User"
         type:
@@ -389,6 +411,11 @@ components:
         content:
           type: string
           description: 回答内容
+        attachments:
+          type: array
+          description: 内容中出现的所有附件
+          items:
+            $ref: "#/components/schemas/Attachment"
         author:
           $ref: "#/components/schemas/User"
         created_at:
@@ -815,11 +842,25 @@ components:
           description: 浏览数量
         medias:
           type: array
-          description: 媒体文件，如果没有则为空数组
+          description: 媒体文件，如果没有则为空数组（只支持图片和视频）
           items:
-            $ref: "#/components/schemas/Media"
-        attachment:
-          $ref: "#/components/schemas/Attachment"
+            $ref: "#/components/schemas/Attachment"
+        share_link:
+          type: object
+          description: 分享的链接，若无则为 undefined
+          properties:
+            title:
+              type: string
+              description: 页面标题
+            abstract:
+              type: string
+              description: 页面摘要
+            image:
+              type: string
+              description: 图片 URL
+            url:
+              type: string
+              description: 页面 URL
       required:
         - id
         - content
@@ -835,31 +876,9 @@ components:
       type: object
       description: 附件
       properties:
-        type:
-          type: string
-          description: 类型
-          enum:
-            - file
-            - link
-        url:
-          type: string
-          description: URL
-        title:
-          type: string
-          description: 标题
-        description:
-          type: string
-          description: 描述
-    Media:
-      type: object
-      properties:
-        material_id:
+        id:
           type: integer
-          description: 材料 ID
-          format: int64
-        created_at:
-          type: integer
-          description: 创建时间
+          description: 附件 ID
           format: int64
         type:
           type: string
@@ -867,67 +886,67 @@ components:
           enum:
             - image
             - video
+            - audio
+            - file
         url:
           type: string
-          description: URL
+          description: 访问 URL
         meta:
           oneOf:
             - $ref: "#/components/schemas/ImageMeta"
             - $ref: "#/components/schemas/VideoMeta"
+            - $ref: "#/components/schemas/AudioMeta"
+            - $ref: "#/components/schemas/FileMeta"
     ImageMeta:
-      type: object
-      description: 图片元数据
-      properties:
-        width:
-          type: integer
-          description: 宽度
-        height:
-          type: integer
-          description: 高度
-        size:
-          type: integer
-          description: 大小
-        thumbnail:
-          type: string
-          description: 缩略图 URL
+      allOf:
+        - $ref: "#/components/schemas/FileMeta"
+        - type: object
+          description: 图片元数据
+          properties:
+            height:
+              type: integer
+              description: 高度
+            width:
+              type: integer
+              description: 宽度
+            thumbnail:
+              type: string
+              description: 缩略图 URL
     VideoMeta:
-      type: object
-      description: 视频元数据
-      properties:
-        width:
-          type: integer
-          description: 宽度
-        height:
-          type: integer
-          description: 高度
-        size:
-          type: integer
-          description: 大小
-        duration:
-          type: integer
-          description: 时长
-        thumbnail:
-          type: string
-          description: 缩略图 URL
+      allOf:
+        - $ref: "#/components/schemas/FileMeta"
+        - type: object
+          description: 视频元数据
+          properties:
+            duration:
+              type: integer
+              description: 时长
+            height:
+              type: integer
+              description: 高度
+            width:
+              type: integer
+              description: 宽度
+            thumbnail:
+              type: string
+              description: 缩略图 URL
     AudioMeta:
-      type: object
-      description: 音频元数据
-      properties:
-        size:
-          type: integer
-          description: 大小
-          format: int64
-        duration:
-          type: integer
-          description: 时长
-          format: int64
+      allOf:
+        - $ref: "#/components/schemas/FileMeta"
+        - type: object
+          description: 音频元数据
+          properties:
+            duration:
+              type: integer
+              description: 时长
+              format: int64
     FileMeta:
       type: object
       description: 文件元数据
       properties:
         size:
           type: integer
-          description: 大小
+          description: 文件大小
           format: int64
         name:
           type: string
@@ -935,10 +954,9 @@ components:
         mime:
           type: string
           description: MIME 类型
-        expires:
-          type: integer
-          description: 过期时间，如果为 0 表示永不过期
-          format: int64
+        hash:
+          type: string
+          description: 文件哈希
     LinkMeta:
       type: object
       description: 链接元数据
@@ -1017,23 +1035,38 @@ components:
             - data
     Material:
       type: object
-      description: 上传的“材料”（图片、视频、音频、文件等）
+      description: 用户上传的资料（图片、视频、音频、文件等）
       properties:
         id:
           type: integer
-          description: 材料 ID
+          description: 资料 ID
           format: int64
         type:
           type: string
-          description: 材料类型
+          description: 资料类型
           enum:
             - image
             - video
             - audio
             - file
+        uploader:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          description: 创建时间
+          format: int64
+        expires:
+          type: integer
+          description: 过期时间，永不过期则为 undefined
+          format: int64
+          nullable: true
+        download_count:
+          type: integer
+          description: 下载数
+          format: int64
         url:
           type: string
-          description: 材料 URL
+          description: 资料下载 URL
         meta:
           oneOf:
             - $ref: "#/components/schemas/ImageMeta"
@@ -1043,6 +1076,77 @@ components:
       required:
         - id
         - type
+        - uploader
+        - created_at
+        - download_count
+        - url
+        - meta
+    MaterialBundle:
+      type: object
+      description: 用户分享的资料包
+      properties:
+        id:
+          type: integer
+          description: 资料包 ID
+          format: int64
+        title:
+          type: string
+          description: 资料包标题
+        content:
+          type: string
+          description: 资料包描述
+        creator:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          description: 创建时间
+          format: int64
+        updated_at:
+          type: integer
+          description: 最后更新时间
+          format: int64
+        rating:
+          type: number
+          description: 评分
+          format: float
+          example: 4.5
+          minimum: 1
+          maximum: 5
+        rating_count:
+          type: integer
+          description: 评分人数
+          format: int64
+        my_rating:
+          type: number
+          description: 当前登录用户的评分，未评分则为 undefined
+          format: float
+          example: 4.5
+          minimum: 1
+          maximum: 5
+          nullable: true
+        comments_count:
+          type: integer
+          description: 评论数
+          format: int64
+        materials:
+          type: array
+          description: 资料列表
+          items:
+            $ref: "#/components/schemas/Material"
+      required:
+        - id
+        - type
+        - title
+        - content
+        - uploader
+        - created_at
+        - updated_at
+        - rating
+        - rating_count
+        - download_count
+        - comments_count
+        - url
+        - meta
 
 paths:
   /users:
@@ -3871,11 +3975,10 @@ paths:
                           type: integer
                           format: int64
                           description: Predefined avatarIds
-            
-  /materials:
+  /attachments:
     post:
-      summary: 上传材料
-      operationId: uploadMaterial
+      summary: 上传附件
+      operationId: uploadAttachment
       security:
         - bearerAuth: []
       requestBody:
@@ -3886,14 +3989,45 @@ paths:
               properties:
                 type:
                   type: string
-                  description: 材料类型
                   enum:
                     - image
                     - video
+                    - audio
                     - file
+                  description: 附件类型
                 file:
                   type: string
                   format: binary
+      responses:
+        "201":
+          description: Attachment uploaded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /attachments/{attachmentId}:
+    get:
+      summary: 获取附件详情
+      operationId: getAttachmentDetail
+      parameters:
+        - name: attachmentId
+          in: path
+          description: 附件 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
       responses:
         "200":
           description: OK
@@ -3907,28 +4041,49 @@ paths:
                       data:
                         type: object
                         properties:
+                          attachment:
+                            $ref: "#/components/schemas/Attachment"
+                    required:
+                      - data
+  /materials:
+    post:
+      summary: 上传资料
+      operationId: uploadMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Material uploaded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
                           id:
                             type: string
-                            description: 材料 ID
+                            description: 资料 ID
                     required:
                       - data
   /materials/{materialId}:
     get:
-      summary: 获取材料详情
+      summary: 获取资料详情
       operationId: getMaterialDetail
       parameters:
-        - name: materialId
-          in: path
-          description: 材料 ID
-          required: true
-          schema:
-            type: string
-        - name: fields
-          in: query
-          description: 需要返回的字段
-          schema:
-            type: string
-            default: url,meta
+        - $ref: "#/components/parameters/materialId"
       responses:
         "200":
           description: OK
@@ -3947,15 +4102,163 @@ paths:
                     required:
                       - data
     delete:
-      summary: 删除材料
+      summary: 删除资料
       operationId: deleteMaterial
       parameters:
-        - name: materialId
-          in: path
-          description: 材料 ID
-          required: true
+        - $ref: "#/components/parameters/materialId" 
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /material-bundles:
+    get:
+      summary: 获取资料包列表
+      operationId: getMaterialBundleList
+      parameters:
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+        - name: q
+          in: query
+          description: 搜索查询，支持 Search Syntax（如 "rating:>=4"），留空则为返回全部
           schema:
             type: string
+        - name: sort
+          in: query
+          description: 排序方式，留空则为默认（推荐）
+          schema:
+            type: string
+            enum:
+              - rating
+              - download
+              - newest
+            nullable: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          materials:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/MaterialBundle"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 创建资料包
+      operationId: createMaterialBundle
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: 资料包标题
+                content:
+                  type: string
+                  description: 资料包简介
+                materials:
+                  type: array
+                  description: 资料包包含的资料 ID 列表
+                  items:
+                    type: number
+                    format: int64
+              required:
+                - title
+                - content
+                - materials
+      responses:
+        "201":
+          description: MaterialBundle created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /material-bundles/{materialBundleId}:
+    get:
+      summary: 获取资料包详情
+      operationId: getMaterialBundleDetail
+      parameters:
+        - $ref: "#/components/parameters/materialBundleId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          materialBundle:
+                            $ref: "#/components/schemas/MaterialBundle"
+                    required:
+                      - data
+    patch:
+      summary: 更新资料包
+      operationId: updateMaterialBundle
+      parameters:
+        - $ref: "#/components/parameters/materialBundleId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: 资料包标题
+                content:
+                  type: string
+                  description: 资料包简介
+                materials:
+                  type: array
+                  description: 资料包包含的资料 ID 列表
+                  items:
+                    type: number
+                    format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除资料包
+      operationId: deleteMaterialBundle
+      parameters:
+        - $ref: "#/components/parameters/materialBundleId"
       security:
         - bearerAuth: []
       responses:

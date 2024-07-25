@@ -12,6 +12,17 @@ generator client {
   binaryTargets = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]
 }
 
+// JSON Types Generator: This generator uses `prisma-json-types-generator` to automatically
+// generate TypeScript types for JSON fields in the schema. This enhances type safety and
+// developer experience by providing strong typing for JSON fields, which are otherwise
+// treated as a generic object in TypeScript.
+generator json {
+  provider  = "prisma-json-types-generator"
+  namespace = "PrismaJson"
+  // clientOutput = "<finds it automatically>"
+  // (./ -> relative to schema, or an importable path to require() it)
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("PRISMA_DATABASE_URL")
@@ -98,6 +109,27 @@ model AnswerUpdateLog {
   @@index([updaterId], map: "IDX_0ef2a982b61980d95b5ae7f1a6")
   @@index([answerId], map: "IDX_6f0964cf74c12678a86e49b23f")
   @@map("answer_update_log")
+}
+
+//
+// attachments.prisma
+//
+
+enum AttachmentType {
+  image
+  video
+  audio
+  file
+}
+
+model Attachment {
+  id   Int            @id @default(autoincrement())
+  type AttachmentType
+  url  String
+  /// [metaType]
+  meta Json           @db.Json
+
+  @@map("attachment")
 }
 
 //
@@ -349,6 +381,27 @@ model GroupTarget {
 }
 
 //
+// materialbundles.prisma
+//
+
+model MaterialBundle {
+  id            Int                       @id @default(autoincrement())
+  title         String
+  content       String
+  creator       User                      @relation(fields: [creatorId], references: [id])
+  creatorId     Int                       @map("creator_id")
+  createdAt     DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime                  @updatedAt() @map("updated_at") @db.Timestamptz(6)
+  rating        Float                     @default(0)
+  ratingCount   Int                       @default(0) @map("rating_count")
+  myRating      Float?                    @map("my_rating")
+  commentsCount Int                       @default(0) @map("comments_count")
+  materials     MaterialbundlesRelation[]
+
+  @@map("material_bundle")
+}
+
+//
 // materials.prisma
 //
 
@@ -360,13 +413,30 @@ enum MaterialType {
 }
 
 model Material {
-  id   Int          @id @default(autoincrement())
-  type MaterialType
-  url  String
-  name String
-  meta Json         @db.Json
+  id              Int                       @id @default(autoincrement())
+  type            MaterialType
+  url             String
+  name            String
+  uploader        User                      @relation(fields: [uploaderId], references: [id])
+  uploaderId      Int                       @map("uploader_id")
+  createdAt       DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expires         Int?
+  downloadCount   Int                       @default(0) @map("download_count")
+  materialBundles MaterialbundlesRelation[]
+  /// [metaType]
+  meta            Json                      @db.Json
 
   @@map("material")
+}
+
+model MaterialbundlesRelation {
+  material   Material       @relation(fields: [materialId], references: [id])
+  materialId Int            @map("material_id")
+  bundle     MaterialBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  bundleId   Int            @map("bundle_id")
+
+  @@id([materialId, bundleId])
+  @@map("materialbundles_relation")
 }
 
 //
@@ -571,6 +641,8 @@ model User {
   attitude                                                           Attitude[]
   attitudeLog                                                        AttitudeLog[]
   questionInvitationRelation                                         QuestionInvitationRelation[]
+  material                                                           Material[]
+  materialBundle                                                     MaterialBundle[]
 
   @@map("user")
 }

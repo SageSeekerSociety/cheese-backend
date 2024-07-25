@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Avatar, AvatarType } from '@prisma/client';
 import { Mutex } from 'async-mutex';
 import { readdirSync } from 'fs';
-import { join } from 'path';
+import { join } from 'node:path';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { AvatarNotFoundError } from './avatars.error';
 @Injectable()

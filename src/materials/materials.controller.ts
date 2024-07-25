@@ -1,14 +1,22 @@
+/*
+ *  Description: This file implements the MaterialsController class,
+ *               which is responsible for handling the requests to /materials
+ *
+ *  Author(s):
+ *      nameisyui
+ *
+ */
+
 import {
   Body,
   Controller,
   Delete,
   Get,
   Headers,
+  Ip,
   Param,
-  ParseArrayPipe,
   ParseIntPipe,
   Post,
-  Query,
   UploadedFile,
   UseFilters,
   UseInterceptors,
@@ -16,7 +24,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AuthService } from '../auth/auth.service';
+import { AuthorizedAction, AuthService } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { GetMaterialResponseDto } from './DTO/get-material.dto';
 import { MaterialTypeDto } from './DTO/material.dto';
@@ -39,10 +47,18 @@ export class MaterialsController {
     @UploadedFile() file: Express.Multer.File,
     @Headers('Authorization') auth: string | undefined,
   ): Promise<UploadMaterialResponseDto> {
-    this.authService.verify(auth);
+    const uploaderId = this.authService.verify(auth).userId;
+    this.authService.audit(
+      auth,
+      AuthorizedAction.create,
+      uploaderId,
+      'material',
+      undefined,
+    );
     const materialId = await this.materialsService.uploadMaterial(
       materialType,
       file,
+      uploaderId,
     );
     return {
       code: 200,
@@ -56,10 +72,22 @@ export class MaterialsController {
   @Get('/:materialId')
   async getMaterialDetail(
     @Param('materialId', ParseIntPipe) id: number,
-    @Query('fields', new ParseArrayPipe({ separator: ',', optional: true }))
-    fields: string[] = ['meta', 'url'],
+    @Headers('Authorization') auth: string | undefined,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string,
   ): Promise<GetMaterialResponseDto> {
-    const material = await this.materialsService.getMaterial(id, fields);
+    let viewerId: number | undefined;
+    try {
+      viewerId = this.authService.verify(auth).userId;
+    } catch {
+      // The user is not logged in.
+    }
+    const material = await this.materialsService.getMaterial(
+      id,
+      viewerId,
+      ip,
+      userAgent,
+    );
     return {
       code: 200,
       message: 'Get Material successfully',
@@ -69,8 +97,9 @@ export class MaterialsController {
     };
   }
   @Delete('/:materialId') // to do
-  async deleteMaterial(): Promise<void> {
-    //@Param('materialId') id: number,
+  async deleteMaterial() //@Param('materialId') id: number,
+  //@Headers('Authorization') auth: string | undefined,
+  : Promise<void> {
     /* istanbul ignore next */
     throw new Error('deleteMaterial method is not implemented yet.');
   }
