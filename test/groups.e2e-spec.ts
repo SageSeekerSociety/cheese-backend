@@ -169,6 +169,7 @@ describe('Groups Module', () => {
       await createGroup('ICS膜膜膜', 'pwb txdy!');
       await createGroup('嘉然今天学什么', '学, 学个屁!');
       await createGroup('XCPC启动', '启不动了');
+      await createGroup('XCPC启动_2', '启不动了');
     }, 80000);
     it('should create some auxiliary users', async () => {
       [auxUserDto, auxAccessToken] = await createAuxiliaryUser();
@@ -429,6 +430,59 @@ describe('Groups Module', () => {
       expect(respond.body.message).toMatch(/^GroupNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
+    });
+  });
+
+  describe('get group name availability', () => {
+    it('should return group name is available', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/groups/availability')
+        .query({ name: TestGroupPrefix + '不如原神' })
+        .send();
+      expect(respond.body.message).toBe('Group name is available.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.available).toBe(true);
+      expect(respond.body.data.recommend_names).toBeUndefined();
+    });
+    it('should return group name is not available', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/groups/availability')
+        .query({ name: TestGroupPrefix + '嘉然今天学什么' })
+        .send();
+      expect(respond.body.message).toBe('Group name is not available.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.available).toBe(false);
+      expect(respond.body.data.recommend_names).toBeDefined();
+      expect(respond.body.data.recommend_names.length).toBe(1);
+      expect(respond.body.data.recommend_names[0]).toBe(
+        TestGroupPrefix + '嘉然今天学什么_2',
+      );
+    });
+    it('should return group name is not available', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/groups/availability')
+        .query({ name: TestGroupPrefix + 'XCPC启动' })
+        .send();
+      expect(respond.body.message).toBe('Group name is not available.');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.available).toBe(false);
+      expect(respond.body.data.recommend_names).toBeDefined();
+      expect(respond.body.data.recommend_names.length).toBe(1);
+      expect(respond.body.data.recommend_names[0]).toBe(
+        TestGroupPrefix + 'XCPC启动_3',
+      );
+    });
+    it('should return InvalidGroupNameError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/groups/availability')
+        .query({ name: TestGroupPrefix + 'XCPC 启动' })
+        .send();
+      expect(respond.body.message).toMatch(/^InvalidGroupNameError: /);
+      expect(respond.status).toBe(422);
+      expect(respond.body.code).toBe(422);
     });
   });
 

@@ -28,6 +28,10 @@ import { GroupPageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { CreateGroupDto } from './DTO/create-group.dto';
+import {
+  GetGroupNameAvailabilityRequestDto,
+  GetGroupNameAvailabilityResponseDto,
+} from './DTO/get-group-name-availability.dto';
 import { GetGroupsResponseDto } from './DTO/get-groups.dto';
 import { GetGroupMembersResponseDto } from './DTO/get-members.dto';
 import { GetGroupQuestionsResponseDto } from './DTO/get-questions.dto';
@@ -99,6 +103,20 @@ export class GroupsController {
         groups,
         page,
       },
+    };
+  }
+
+  @Get('/availability')
+  async getGroupAvailability(
+    @Query() { name }: GetGroupNameAvailabilityRequestDto,
+  ): Promise<GetGroupNameAvailabilityResponseDto> {
+    const result = await this.groupsService.getGroupAvailability(name);
+    return {
+      code: 200,
+      message: result.available
+        ? 'Group name is available.'
+        : 'Group name is not available.',
+      data: result,
     };
   }
 

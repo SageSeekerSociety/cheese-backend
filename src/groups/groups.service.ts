@@ -86,6 +86,33 @@ export class GroupsService {
     return ret > 0;
   }
 
+  async getGroupAvailability(
+    groupName: string,
+  ): Promise<{ available: boolean; recommend_names: string[] | undefined }> {
+    if (this.isValidGroupName(groupName) == false) {
+      throw new InvalidGroupNameError(groupName, this.groupNameRule);
+    }
+    if ((await this.isGroupNameExists(groupName)) == false) {
+      return {
+        available: true,
+        recommend_names: undefined,
+      };
+    }
+    let suffixNumber = 1;
+    let name: string;
+    do {
+      suffixNumber++;
+      name = groupName + '_' + suffixNumber;
+    } while (
+      this.isValidGroupName(name) == false ||
+      (await this.isGroupNameExists(name))
+    );
+    return {
+      available: false,
+      recommend_names: [name],
+    };
+  }
+
   async createGroup(
     name: string,
     userId: number,

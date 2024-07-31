@@ -2633,7 +2633,7 @@ paths:
                             format: int64
                     required:
                       - data
-  /groups/availablities:
+  /groups/availability:
     get:
       summary: 获取圈子名字是否可用
       operationId: checkGroupNameAvailable
