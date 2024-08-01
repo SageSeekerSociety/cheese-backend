@@ -16,6 +16,13 @@ import {
 import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeResponseDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import {
+  AuthToken,
+  CurrentUserOwnResource,
+  Guard,
+  ResourceId,
+  ResourceOwnerIdGetter,
+} from '../auth/guard.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
@@ -37,12 +44,17 @@ export class AnswerController {
     private readonly questionsService: QuestionsService,
   ) {}
 
+  @ResourceOwnerIdGetter('answer')
+  async getAnswerOwner(answerId: number): Promise<number | undefined> {
+    return this.answerService.getCreatedByIdAcrossQuestions(answerId);
+  }
+
   @Get('/')
   async getQuestionAnswers(
-    @Param('question_id') questionId: number,
+    @Param('question_id', ParseIntPipe) questionId: number,
     @Query()
     { page_start: pageStart, page_size: pageSize }: PageDto,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetAnswersResponseDto> {
@@ -72,19 +84,14 @@ export class AnswerController {
   }
 
   @Post('/')
+  @Guard(AuthorizedAction.create, 'answer')
+  @CurrentUserOwnResource()
   async answerQuestion(
     @Param('question_id', ParseIntPipe) questionId: number,
     @Body('content') content: string,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<CreateAnswerResponseDto> {
     const userId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.create,
-      userId,
-      'answer',
-      undefined,
-    );
     const answerId = await this.answerService.createAnswer(
       questionId,
       userId,
@@ -103,7 +110,7 @@ export class AnswerController {
   async getAnswerDetail(
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetAnswerDetailResponseDto> {
@@ -138,20 +145,14 @@ export class AnswerController {
   }
 
   @Put('/:answer_id')
+  @Guard(AuthorizedAction.modify, 'answer')
   async updateAnswer(
     @Param('question_id', ParseIntPipe) questionId: number,
-    @Param('answer_id', ParseIntPipe) answerId: number,
+    @Param('answer_id', ParseIntPipe) @ResourceId() answerId: number,
     @Body() { content }: UpdateAnswerRequestDto,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<BaseResponseDto> {
     const userId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.modify,
-      await this.answerService.getCreatedById(questionId, answerId),
-      'answer',
-      questionId,
-    );
     await this.answerService.updateAnswer(
       questionId,
       answerId,
@@ -165,19 +166,13 @@ export class AnswerController {
   }
 
   @Delete('/:answer_id')
+  @Guard(AuthorizedAction.delete, 'answer')
   async deleteAnswer(
     @Param('question_id', ParseIntPipe) questionId: number,
-    @Param('answer_id', ParseIntPipe) answerId: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Param('answer_id', ParseIntPipe) @ResourceId() answerId: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<void> {
     const userId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.delete,
-      await this.answerService.getCreatedById(questionId, answerId),
-      'answer',
-      answerId,
-    );
     await this.answerService.deleteAnswer(questionId, answerId, userId);
   }
 
@@ -186,7 +181,7 @@ export class AnswerController {
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
     @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<UpdateAttitudeResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -215,7 +210,7 @@ export class AnswerController {
   async favoriteAnswer(
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<BaseResponseDto> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(
@@ -236,7 +231,7 @@ export class AnswerController {
   async unfavoriteAnswer(
     @Param('question_id', ParseIntPipe) questionId: number,
     @Param('answer_id', ParseIntPipe) answerId: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<void> {
     const userId = this.authService.verify(auth).userId;
     this.authService.audit(

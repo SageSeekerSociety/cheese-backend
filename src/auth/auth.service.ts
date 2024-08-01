@@ -113,7 +113,10 @@ export class TokenPayload {
 
 @Injectable()
 export class AuthService {
+  public static instance: AuthService;
+
   constructor(private readonly jwtService: JwtService) {
+    AuthService.instance = this;
     const tokenPayloadSchemaRaw = readFileSync(
       path.resolve(__dirname, '../../src/auth/token-payload.schema.json'),
       'utf8',
