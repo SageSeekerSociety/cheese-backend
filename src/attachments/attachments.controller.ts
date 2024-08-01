@@ -11,23 +11,24 @@ import {
   Body,
   Controller,
   Get,
-  Param,
-  Post,
   Headers,
-  UsePipes,
-  ValidationPipe,
+  Param,
+  ParseIntPipe,
+  Post,
+  UploadedFile,
   UseFilters,
   UseInterceptors,
-  UploadedFile,
-  ParseIntPipe,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
-import { AttachmentsService } from './attachments.service';
-import { attachmentTypeDto } from './DTO/attachments.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthService } from '../auth/auth.service';
+import { AuthorizedAction } from '../auth/definitions';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { AuthorizedAction, AuthService } from '../auth/auth.service';
+import { attachmentTypeDto } from './DTO/attachments.dto';
 import { getAttachmentResponseDto } from './DTO/get-attachment.dto';
 import { uploadAttachmentDto } from './DTO/upload-attachment.dto';
+import { AttachmentsService } from './attachments.service';
 @UsePipes(new ValidationPipe())
 @UseFilters(new BaseErrorExceptionFilter())
 @Controller('attachments')

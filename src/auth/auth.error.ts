@@ -8,7 +8,7 @@
  */
 
 import { BaseError } from '../common/error/base-error';
-import { AuthorizedAction, authorizedActionToString } from './auth.service';
+import { AuthorizedAction, authorizedActionToString } from './definitions';
 
 export class AuthenticationRequiredError extends BaseError {
   constructor() {

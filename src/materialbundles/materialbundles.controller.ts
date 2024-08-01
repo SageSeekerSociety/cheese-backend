@@ -23,7 +23,8 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { AuthorizedAction, AuthService } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { AuthorizedAction } from '../auth/definitions';
 import {
   createMaterialBundleRequestDto,
   createMaterialBundleResponseDto,

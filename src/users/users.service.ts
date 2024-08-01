@@ -20,11 +20,8 @@ import { isEmail } from 'class-validator';
 import assert from 'node:assert';
 import { AnswerService } from '../answer/answer.service';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
-import {
-  AuthService,
-  Authorization,
-  AuthorizedAction,
-} from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { Authorization, AuthorizedAction } from '../auth/definitions';
 import { SessionService } from '../auth/session.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Authorization, AuthorizedAction } from '../auth/auth.service';
+import { Authorization, AuthorizedAction } from '../auth/definitions';
 
 @Injectable()
 export class UsersPermissionService {

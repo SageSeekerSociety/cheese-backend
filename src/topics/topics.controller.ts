@@ -20,7 +20,8 @@ import {
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
-import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { AuthorizedAction } from '../auth/definitions';
 import { PageWithKeywordDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';

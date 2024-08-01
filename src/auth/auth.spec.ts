@@ -14,12 +14,12 @@ import {
   NotRefreshTokenError,
   PermissionDeniedError,
 } from './auth.error';
+import { AuthService } from './auth.service';
 import {
-  AuthService,
   Authorization,
   AuthorizedAction,
   authorizedActionToString,
-} from './auth.service';
+} from './definitions';
 import { SessionService } from './session.service';
 
 describe('authorizedActionToString()', () => {

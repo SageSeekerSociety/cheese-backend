@@ -29,7 +29,8 @@ import {
 import { Response } from 'express';
 import { AnswerService } from '../answer/answer.service';
 import { AuthenticationRequiredError } from '../auth/auth.error';
-import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { AuthorizedAction } from '../auth/definitions';
 import { SessionService } from '../auth/session.service';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';

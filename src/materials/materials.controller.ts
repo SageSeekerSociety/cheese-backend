@@ -24,7 +24,8 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AuthorizedAction, AuthService } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { AuthorizedAction } from '../auth/definitions';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { GetMaterialResponseDto } from './DTO/get-material.dto';
 import { MaterialTypeDto } from './DTO/material.dto';

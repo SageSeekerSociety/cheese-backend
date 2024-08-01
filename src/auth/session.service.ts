@@ -14,7 +14,8 @@ import {
   SessionExpiredError,
   SessionRevokedError,
 } from './auth.error';
-import { AuthService, Authorization, AuthorizedAction } from './auth.service';
+import { AuthService } from './auth.service';
+import { Authorization, AuthorizedAction } from './definitions';
 
 @Injectable()
 export class SessionService {

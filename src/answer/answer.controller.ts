@@ -15,7 +15,8 @@ import {
 } from '@nestjs/common';
 import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeResponseDto } from '../attitude/DTO/update-attitude.dto';
-import { AuthService, AuthorizedAction } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { AuthorizedAction } from '../auth/definitions';
 import {
   AuthToken,
   CurrentUserOwnResource,

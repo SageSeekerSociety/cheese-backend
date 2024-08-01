@@ -1,5 +1,6 @@
 import { AuthenticationRequiredError } from './auth.error';
-import { AuthService, AuthorizedAction } from './auth.service';
+import { AuthService } from './auth.service';
+import { AuthorizedAction } from './definitions';
 
 const RESOURCE_ID_METADATA_KEY = Symbol('resourceIdMetadata');
 const AUTH_TOKEN_METADATA_KEY = Symbol('authTokenMetadata');
