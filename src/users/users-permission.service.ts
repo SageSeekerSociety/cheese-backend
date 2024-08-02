@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Authorization, AuthorizedAction } from '../auth/definitions';
+import { Authorization } from '../auth/definitions';
 
 @Injectable()
 export class UsersPermissionService {
@@ -10,134 +10,143 @@ export class UsersPermissionService {
       userId: userId,
       permissions: [
         {
-          authorizedActions: [AuthorizedAction.query],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: undefined,
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.modify],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['users/profile'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['users/following'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can control the questions he/she created.
           authorizedActions: [
-            AuthorizedAction.create,
-            AuthorizedAction.delete,
-            AuthorizedAction.modify,
-            AuthorizedAction.query,
-            AuthorizedAction.other,
+            'query',
+            'follow',
+            'unfollow',
+            'enumerate-followers',
+            'enumerate-answers',
+            'enumerate-questions',
+            'enumerate-followed-users',
+            'enumerate-followed-questions',
           ],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions/following'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [AuthorizedAction.create, AuthorizedAction.delete],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['questions/invitation'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // Everyone can create a topic.
-          authorizedActions: [AuthorizedAction.create],
           authorizedResource: {
             ownedByUser: undefined,
-            types: ['topics'],
+            types: ['user'],
             resourceIds: undefined,
           },
         },
         {
-          // An user can control the answer he/she created.
-          authorizedActions: [
-            AuthorizedAction.create,
-            AuthorizedAction.delete,
-            AuthorizedAction.modify,
-            AuthorizedAction.query,
-            AuthorizedAction.other,
-          ],
+          authorizedActions: ['modify-profile'],
           authorizedResource: {
             ownedByUser: userId,
+            types: ['user'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: ['query', 'enumerate'],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['question', 'answer', 'comment'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: ['create', 'delete', 'modify'],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['question', 'answer', 'comment'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: [
+            'query',
+            'query-invitation-recommendations',
+            'query-invitation',
+            'enumerate',
+            'enumerate-answers',
+            'enumerate-followers',
+            'enumerate-invitations',
+            'follow',
+            'unfollow',
+            'invite',
+            'uninvite',
+          ],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['question'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: ['accept-answer', 'set-bounty'],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['question'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: ['query', 'favorite', 'unfavorite'],
+          authorizedResource: {
+            ownedByUser: undefined,
             types: ['answer'],
             resourceIds: undefined,
           },
         },
         {
-          // An user can set attitude to any answer
-          authorizedActions: [AuthorizedAction.other],
+          authorizedActions: ['attitude'],
           authorizedResource: {
             ownedByUser: undefined,
-            types: ['answer/attitude'],
+            types: ['comment', 'question', 'answer'],
             resourceIds: undefined,
           },
         },
         {
-          // An user can favourite any answer
-          authorizedActions: [AuthorizedAction.other],
+          authorizedActions: ['create', 'query'],
           authorizedResource: {
             ownedByUser: undefined,
-            types: ['answer/favourite'],
+            types: ['attachment', 'material'],
             resourceIds: undefined,
           },
         },
         {
-          // An user can create and delete comment.
-          authorizedActions: [
-            AuthorizedAction.create,
-            AuthorizedAction.delete,
-            AuthorizedAction.modify,
-          ],
+          authorizedActions: ['query', 'enumerate'],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['material-bundle'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: ['create', 'modify', 'delete'],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['material-bundle'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: ['create', 'query', 'enumerate'],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['topic'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: ['create', 'query', 'query-default', 'enumerate'],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['avatar'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: [],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['group'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: [],
           authorizedResource: {
             ownedByUser: userId,
-            types: ['comment'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can set attitude to any comment and question
-          authorizedActions: [AuthorizedAction.other],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: [
-              'comment/attitude',
-              'questions/attitude',
-              'answer/attitude',
-            ],
-            resourceIds: undefined,
-          },
-        },
-        {
-          // An user can upload material,attachment or materialbundle
-          authorizedActions: [AuthorizedAction.create],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['material', 'attachment', 'materialbundle'],
+            types: ['group'],
             resourceIds: undefined,
           },
         },

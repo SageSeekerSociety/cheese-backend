@@ -1,4 +1,12 @@
 /*
+ *  Description: This file defines the basic structures used in authorization.
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
+/*
 
 IMPORTANT NOTICE:
 
@@ -13,29 +21,8 @@ to update the schema file, which is used in validating the token payload.
 
 */
 
-export enum AuthorizedAction {
-  create = 1,
-  delete = 2,
-  modify = 3,
-  query = 4,
+export type AuthorizedAction = string;
 
-  other = 5,
-}
-
-export function authorizedActionToString(action: AuthorizedAction): string {
-  switch (action) {
-    case AuthorizedAction.create:
-      return 'create';
-    case AuthorizedAction.delete:
-      return 'delete';
-    case AuthorizedAction.modify:
-      return 'modify';
-    case AuthorizedAction.query:
-      return 'query';
-    case AuthorizedAction.other:
-      return 'other';
-  }
-}
 // This class is used as a filter.
 //
 // If all the conditions are undefined, it matches everything.

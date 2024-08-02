@@ -11,8 +11,8 @@
     "!src/*/**/*.dto.ts",
     "!src/*/**/*.es-doc.ts",
     "!src/*/**/*.enum.ts",
-    "!src/*/**/*.deprecated.entity.ts",
-    "!src/common/config/configuration.ts"
+    "!src/common/config/configuration.ts",
+    "!src/auth/definitions.ts"
   ],
   "testTimeout": 60000
 }

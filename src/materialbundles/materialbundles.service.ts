@@ -328,4 +328,14 @@ export class MaterialbundlesService {
     });
     return;
   }
+
+  async getMaterialBundleCreatorId(bundleId: number): Promise<number> {
+    const bundle = await this.prismaService.materialBundle.findUnique({
+      where: {
+        id: bundleId,
+      },
+    });
+    if (!bundle) throw new BundleNotFoundError(bundleId);
+    return bundle.creatorId;
+  }
 }

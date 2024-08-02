@@ -15,30 +15,8 @@ import {
   PermissionDeniedError,
 } from './auth.error';
 import { AuthService } from './auth.service';
-import {
-  Authorization,
-  AuthorizedAction,
-  authorizedActionToString,
-} from './definitions';
+import { Authorization } from './definitions';
 import { SessionService } from './session.service';
-
-describe('authorizedActionToString()', () => {
-  it('should return "create" when AuthorizedAction.create is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.create)).toEqual('create');
-  });
-  it('should return "delete" when AuthorizedAction.delete is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.delete)).toEqual('delete');
-  });
-  it('should return "modify" when AuthorizedAction.modify is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.modify)).toEqual('modify');
-  });
-  it('should return "query" when AuthorizedAction.query is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.query)).toEqual('query');
-  });
-  it('should return "other" when AuthorizedAction.other is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.other)).toEqual('other');
-  });
-});
 
 describe('AuthService', () => {
   let app: TestingModule;
@@ -95,7 +73,7 @@ describe('AuthService', () => {
         userId: 1,
         permissions: [
           {
-            authorizedActions: [AuthorizedAction.create],
+            authorizedActions: ['create'],
             authorizedResource: {
               resourceType: 'user',
               resourceId: 1,
@@ -117,7 +95,7 @@ describe('AuthService', () => {
         userId: 1,
         permissions: [
           {
-            authorizedActions: [AuthorizedAction.create],
+            authorizedActions: ['create'],
             authorizedResource: {
               resourceType: 'user',
               resourceId: 1,
@@ -140,13 +118,7 @@ describe('AuthService', () => {
       permissions: [],
     });
     expect(() => {
-      authService.audit(
-        token,
-        AuthorizedAction.other,
-        '1' as any as number,
-        'type',
-        1,
-      );
+      authService.audit(token, 'other', '1' as any as number, 'type', 1);
     }).toThrow('resourceOwnerId must be a number.');
   });
   it('should throw Error("resourceId must be a number.")', () => {
@@ -155,22 +127,16 @@ describe('AuthService', () => {
       permissions: [],
     });
     expect(() => {
-      authService.audit(
-        token,
-        AuthorizedAction.other,
-        1,
-        'type',
-        '1' as any as number,
-      );
+      authService.audit(token, 'other', 1, 'type', '1' as any as number);
     }).toThrow('resourceId must be a number.');
   });
   it('should throw AuthenticationRequiredError()', () => {
-    expect(() =>
-      authService.audit('', AuthorizedAction.other, 1, 'type', 1),
-    ).toThrow(new AuthenticationRequiredError());
-    expect(() =>
-      authService.audit(undefined, AuthorizedAction.other, 1, 'type', 1),
-    ).toThrow(new AuthenticationRequiredError());
+    expect(() => authService.audit('', 'other', 1, 'type', 1)).toThrow(
+      new AuthenticationRequiredError(),
+    );
+    expect(() => authService.audit(undefined, 'other', 1, 'type', 1)).toThrow(
+      new AuthenticationRequiredError(),
+    );
     expect(() => authService.decode('')).toThrow(
       new AuthenticationRequiredError(),
     );
@@ -183,7 +149,7 @@ describe('AuthService', () => {
       userId: 0,
       permissions: [
         {
-          authorizedActions: [AuthorizedAction.query],
+          authorizedActions: ['query'],
           authorizedResource: {
             ownedByUser: 1,
             types: undefined,
@@ -192,14 +158,14 @@ describe('AuthService', () => {
         },
       ],
     });
-    authService.audit(`bearer ${token}`, AuthorizedAction.query, 1, 'type', 1);
+    authService.audit(`bearer ${token}`, 'query', 1, 'type', 1);
   });
   it('should throw PermissionDeniedError()', () => {
     const token = authService.sign({
       userId: 0,
       permissions: [
         {
-          authorizedActions: [AuthorizedAction.delete],
+          authorizedActions: ['delete'],
           authorizedResource: {
             ownedByUser: undefined,
             types: undefined,
@@ -208,9 +174,9 @@ describe('AuthService', () => {
         },
       ],
     });
-    expect(() =>
-      authService.audit(token, AuthorizedAction.delete, 1, 'type', 5),
-    ).toThrow(new PermissionDeniedError(AuthorizedAction.delete, 1, 'type', 5));
+    expect(() => authService.audit(token, 'delete', 1, 'type', 5)).toThrow(
+      new PermissionDeniedError('delete', 1, 'type', 5),
+    );
   });
   it('should verify and decode successfully', () => {
     const authorization: Authorization = {

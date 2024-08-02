@@ -1,17 +1,20 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { APP_PIPE } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { AnswerModule } from './answer/answer.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 import { AvatarsModule } from './avatars/avatars.module';
 import { CommentsModule } from './comments/comment.module';
 import configuration from './common/config/configuration';
+import { BaseErrorExceptionFilter } from './common/error/error-filter';
+import { EnsureGuardInterceptor } from './common/interceptor/ensure-guard.interceptor';
+import { TokenValidateInterceptor } from './common/interceptor/token-validate.interceptor';
 import { GroupsModule } from './groups/groups.module';
+import { MaterialbundlesModule } from './materialbundles/materialbundles.module';
 import { MaterialsModule } from './materials/materials.module';
 import { QuestionsModule } from './questions/questions.module';
 import { UsersModule } from './users/users.module';
-import { AttachmentsModule } from './attachments/attachments.module';
-import { MaterialbundlesModule } from './materialbundles/materialbundles.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration] }),
@@ -37,6 +40,18 @@ import { MaterialbundlesModule } from './materialbundles/materialbundles.module'
         transform: true,
         disableErrorMessages: false,
       }),
+    },
+    {
+      provide: APP_FILTER,
+      useClass: BaseErrorExceptionFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TokenValidateInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: EnsureGuardInterceptor,
     },
   ],
 })

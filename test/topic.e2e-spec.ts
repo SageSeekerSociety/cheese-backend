@@ -160,6 +160,7 @@ describe('Topic Module', () => {
     it('should return empty page without parameters', async () => {
       const respond = await request(app.getHttpServer())
         .get('/topics')
+        .set('authorization', 'Bearer ' + TestToken)
         .query({
           q: '',
         })
@@ -179,6 +180,7 @@ describe('Topic Module', () => {
       // Try search: `${TestTopicCode} 高等`
       const respond = await request(app.getHttpServer())
         .get(`/topics`)
+        .set('authorization', 'Bearer ' + TestToken)
         .query({
           q: `${TestTopicCode} 高等`,
         })
@@ -216,6 +218,7 @@ describe('Topic Module', () => {
 
       const respond3 = await request(app.getHttpServer())
         .get(`/topics`)
+        .set('authorization', 'Bearer ' + TestToken)
         .query({
           q: `${TestTopicCode} 高等`,
           page_size: 3,
@@ -255,6 +258,7 @@ describe('Topic Module', () => {
       // Try emoji search to see if unicode storage works.
       const respond5 = await request(app.getHttpServer())
         .get(`/topics`)
+        .set('authorization', 'Bearer ' + TestToken)
         .query({
           q: `${TestTopicCode} 🧑‍🦲`,
           page_size: 3,
@@ -271,26 +275,26 @@ describe('Topic Module', () => {
         `${TestTopicPrefix} Emojis in the topic name 🧑‍🦲 with some 中文 in it`,
       );
     }, 60000);
-    it('should return an empty page', () => {
-      return request(app.getHttpServer())
+    it('should return an empty page', async () => {
+      const respond = await request(app.getHttpServer())
         .get('/topics?q=%E6%AF%B3%E6%AF%B3%E6%AF%B3%E6%AF%B3')
-        .send()
-        .then((respond) => {
-          expect(respond.body.message).toBe('OK');
-          expect(respond.status).toBe(200);
-          expect(respond.body.code).toBe(200);
-          expect(respond.body.data.topics.length).toBe(0);
-          expect(respond.body.data.page.page_start).toBe(0);
-          expect(respond.body.data.page.page_size).toBe(0);
-          expect(respond.body.data.page.has_prev).toBe(false);
-          expect(respond.body.data.page.prev_start).toBe(0);
-          expect(respond.body.data.page.has_more).toBe(false);
-          expect(respond.body.data.page.next_start).toBe(0);
-        });
+        .set('authorization', 'Bearer ' + TestToken)
+        .send();
+      expect(respond.body.message).toBe('OK');
+      expect(respond.status).toBe(200);
+      expect(respond.body.code).toBe(200);
+      expect(respond.body.data.topics.length).toBe(0);
+      expect(respond.body.data.page.page_start).toBe(0);
+      expect(respond.body.data.page.page_size).toBe(0);
+      expect(respond.body.data.page.has_prev).toBe(false);
+      expect(respond.body.data.page.prev_start).toBe(0);
+      expect(respond.body.data.page.has_more).toBe(false);
+      expect(respond.body.data.page.next_start).toBe(0);
     });
     it('should return TopicNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get('/topics?q=something&page_start=-1')
+        .set('authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond.body.message).toMatch(/^TopicNotFoundError: /);
       expect(respond.status).toBe(404);
@@ -298,9 +302,17 @@ describe('Topic Module', () => {
     it('should return BadRequestException', async () => {
       const respond = await request(app.getHttpServer())
         .get('/topics?q=something&page_start=abc')
+        .set('authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond.body.message).toMatch(/^BadRequestException: /);
       expect(respond.status).toBe(400);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/topics?q=something')
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.status).toBe(401);
     });
   });
 
@@ -308,6 +320,7 @@ describe('Topic Module', () => {
     it('should get a topic', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/topics/${TopicIds[0]}`)
+        .set('authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond.body.message).toBe('OK');
       expect(respond.status).toBe(200);
@@ -318,6 +331,7 @@ describe('Topic Module', () => {
     it('should return TopicNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get('/topics/-1')
+        .set('authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond.body.message).toMatch(/^TopicNotFoundError: /);
       expect(respond.status).toBe(404);
@@ -325,9 +339,17 @@ describe('Topic Module', () => {
     it('should return BadRequestException', async () => {
       const respond = await request(app.getHttpServer())
         .get('/topics/abc')
+        .set('authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond.body.message).toMatch(/^BadRequestException: /);
       expect(respond.status).toBe(400);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/topics/1')
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.status).toBe(401);
     });
   });
 

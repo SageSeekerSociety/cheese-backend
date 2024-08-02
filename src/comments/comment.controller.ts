@@ -16,7 +16,14 @@ import {
 import { AttitudeTypeDto } from '../attitude/DTO/attitude.dto';
 import { UpdateAttitudeResponseDto } from '../attitude/DTO/update-attitude.dto';
 import { AuthService } from '../auth/auth.service';
-import { AuthorizedAction } from '../auth/definitions';
+import {
+  AuthToken,
+  CurrentUserOwnResource,
+  Guard,
+  ResourceId,
+  ResourceOwnerIdGetter,
+} from '../auth/guard.decorator';
+import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
@@ -28,31 +35,29 @@ import { UpdateCommentDto } from './DTO/update-comment.dto';
 import { CommentsService } from './comment.service';
 import { parseCommentable } from './commentable.enum';
 @Controller('/comments')
-@UseFilters(BaseErrorExceptionFilter)
-@UseInterceptors(TokenValidateInterceptor)
 export class CommentsController {
   constructor(
     private readonly commentsService: CommentsService,
     private readonly authService: AuthService,
   ) {}
 
+  @ResourceOwnerIdGetter('comment')
+  async getCommentOwner(commentId: number): Promise<number> {
+    return await this.commentsService.getCommentCreatedById(commentId);
+  }
+
   @Get('/:commentableType/:commentableId')
+  @Guard('enumerate', 'comment')
   async getComments(
     @Param('commentableType') commentableType: string,
     @Param('commentableId', ParseIntPipe) commentableId: number,
     @Query()
     { page_start: pageStart, page_size: pageSize }: PageDto,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId() userId: number | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetCommentsResponseDto> {
-    let userId: number | undefined;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      userId = this.authService.verify(auth).userId;
-    } catch {
-      // The user is not logged in.
-    }
     const [comments, page] = await this.commentsService.getComments(
       parseCommentable(commentableType),
       commentableId,
@@ -76,19 +81,13 @@ export class CommentsController {
   //! before the dynamic route `/:commentableType/:commentableId`
   //! so that it is not overridden.
   @Post('/:commentId/attitudes')
+  @Guard('attitude', 'comment')
   async updateAttitudeToComment(
-    @Param('commentId', ParseIntPipe) commentId: number,
+    @Param('commentId', ParseIntPipe) @ResourceId() commentId: number,
     @Body() { attitude_type: attitudeType }: AttitudeTypeDto,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId(true) userId: number,
   ): Promise<UpdateAttitudeResponseDto> {
-    const userId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.other,
-      await this.commentsService.getCommentCreatedById(commentId),
-      'comment/attitude',
-      commentId,
-    );
     const attitudes = await this.commentsService.setAttitudeToComment(
       commentId,
       userId,
@@ -104,21 +103,16 @@ export class CommentsController {
   }
 
   @Post('/:commentableType/:commentableId')
+  @Guard('create', 'comment')
+  @CurrentUserOwnResource()
   async createComment(
     @Param('commentableType')
     commentableType: string,
     @Param('commentableId', ParseIntPipe) commentableId: number,
     @Body('content') content: string,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId(true) userId: number,
   ): Promise<CreateCommentResponseDto> {
-    const userId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.create,
-      userId,
-      'comment',
-      undefined,
-    );
     const commentId = await this.commentsService.createComment(
       parseCommentable(commentableType),
       commentableId,
@@ -135,35 +129,24 @@ export class CommentsController {
   }
 
   @Delete('/:commentId')
+  @Guard('delete', 'comment')
   async deleteComment(
-    @Param('commentId', ParseIntPipe) commentId: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Param('commentId', ParseIntPipe) @ResourceId() commentId: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId(true) userId: number,
   ): Promise<void> {
-    const userId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.delete,
-      await this.commentsService.getCommentCreatedById(commentId),
-      'comment',
-      commentId,
-    );
     await this.commentsService.deleteComment(commentId, userId);
   }
 
   @Get('/:commentId')
+  @Guard('query', 'comment')
   async getCommentDetail(
-    @Param('commentId', ParseIntPipe) commentId: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Param('commentId', ParseIntPipe) @ResourceId() commentId: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId() userId: number | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
   ): Promise<GetCommentDetailResponseDto> {
-    let userId: number | undefined;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      userId = this.authService.verify(auth).userId;
-    } catch {
-      // The user is not logged in.
-    }
     const comment = await this.commentsService.getCommentDto(
       commentId,
       userId,
@@ -180,18 +163,12 @@ export class CommentsController {
   }
 
   @Patch('/:commentId')
+  @Guard('modify', 'comment')
   async updateComment(
-    @Param('commentId', ParseIntPipe) commentId: number,
+    @Param('commentId', ParseIntPipe) @ResourceId() commentId: number,
     @Body() { content }: UpdateCommentDto,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<BaseResponseDto> {
-    this.authService.audit(
-      auth,
-      AuthorizedAction.modify,
-      await this.commentsService.getCommentCreatedById(commentId),
-      'comment',
-      commentId,
-    );
     await this.commentsService.updateComment(commentId, content);
     return {
       code: 200,

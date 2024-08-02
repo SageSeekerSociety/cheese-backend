@@ -7,21 +7,6 @@
  *
  */
 
-/*
-
-IMPORTANT NOTICE:
-
-If you have modified this file, please run the following linux command:
-
-./node_modules/.bin/ts-json-schema-generator \
-  --path 'src/auth/auth.service.ts'          \
-  --type 'TokenPayload'                      \
-  > src/auth/token-payload.schema.json
-
-to update the schema file, which is used in validating the token payload.
-
-*/
-
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import Ajv from 'ajv';

@@ -26,7 +26,10 @@ import { AuthService } from '../auth/auth.service';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { GroupPageDto } from '../common/DTO/page.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
+import {
+  NoAuth,
+  TokenValidateInterceptor,
+} from '../common/interceptor/token-validate.interceptor';
 import { CreateGroupDto } from './DTO/create-group.dto';
 import { GetGroupsResponseDto } from './DTO/get-groups.dto';
 import { GetGroupMembersResponseDto } from './DTO/get-members.dto';
@@ -47,6 +50,7 @@ export class GroupsController {
   ) {}
 
   @Post('/')
+  @NoAuth()
   async createGroup(
     @Body() { name, intro, avatarId }: CreateGroupDto,
     @Headers('Authorization') auth: string | undefined,
@@ -71,6 +75,7 @@ export class GroupsController {
   }
 
   @Get('/')
+  @NoAuth()
   async getGroups(
     @Query() { q: key, page_start, page_size, type }: GroupPageDto,
     @Headers('Authorization') auth: string | undefined,
@@ -103,6 +108,7 @@ export class GroupsController {
   }
 
   @Get('/:id')
+  @NoAuth()
   async getGroupDetail(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
@@ -129,6 +135,7 @@ export class GroupsController {
   }
 
   @Put('/:id')
+  @NoAuth()
   async updateGroup(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
@@ -149,6 +156,7 @@ export class GroupsController {
   }
 
   @Delete('/:id')
+  @NoAuth()
   async deleteGroup(
     @Param('id', ParseIntPipe) id: number,
     @Headers('Authorization') auth: string | undefined,
@@ -158,6 +166,7 @@ export class GroupsController {
   }
 
   @Get('/:id/members')
+  @NoAuth()
   async getGroupMembers(
     @Param('id', ParseIntPipe) id: number,
     @Query() { page_start, page_size }: GroupPageDto,
@@ -190,6 +199,7 @@ export class GroupsController {
   }
 
   @Post('/:id/members')
+  @NoAuth()
   async joinGroup(
     @Param('id', ParseIntPipe) groupId: number,
     @Body() { intro }: JoinGroupDto,
@@ -209,6 +219,7 @@ export class GroupsController {
   }
 
   @Delete('/:id/members')
+  @NoAuth()
   async quitGroup(
     @Param('id', ParseIntPipe) groupId: number,
     @Headers('Authorization') auth: string | undefined,
@@ -223,6 +234,7 @@ export class GroupsController {
   }
 
   @Get('/:id/questions')
+  @NoAuth()
   async getGroupQuestions(
     @Param('id', ParseIntPipe) id: number,
     @Query() { page_start, page_size }: GroupPageDto,

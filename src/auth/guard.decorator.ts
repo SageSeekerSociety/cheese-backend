@@ -1,3 +1,17 @@
+/*
+ *  Description: This file implements the guard decorator that is used to protect resources.
+ *
+ *               You need to use @ResourceId(), @AuthToken(), @ResourceOwnerIdGetter() and @CurrentUserOwnResource()
+ *               to provide the necessary information for the guard decorator.
+ *
+ *               You can lean how to use these things by reading controller's code.
+ *
+ *  Author(s):
+ *      Nictheboy Li    <nictheboy@outlook.com>
+ *
+ */
+
+import { SetMetadata } from '@nestjs/common';
 import { AuthenticationRequiredError } from './auth.error';
 import { AuthService } from './auth.service';
 import { AuthorizedAction } from './definitions';
@@ -9,6 +23,9 @@ const RESOURCE_OWNER_ID_GETTER_METADATA_KEY = Symbol(
 );
 const CURRENT_USER_OWN_RESOURCE_METADATA_KEY = Symbol(
   'currentUserOwnResourceMetadata',
+);
+export const HAS_GUARD_DECORATOR_METADATA_KEY = Symbol(
+  'hasGuardDecoratorMetadata',
 );
 
 export function ResourceId() {
@@ -142,7 +159,11 @@ export function Guard(action: AuthorizedAction, resourceType: string) {
       );
       return originalMethod.apply(this, args);
     };
-
+    SetMetadata(HAS_GUARD_DECORATOR_METADATA_KEY, true)(
+      target,
+      propertyKey,
+      descriptor,
+    );
     return descriptor;
   };
 }

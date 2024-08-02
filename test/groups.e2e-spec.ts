@@ -85,20 +85,6 @@ describe('Groups Module', () => {
   });
 
   describe('preparation', () => {
-    it('should upload two avatars for creating and updating', async () => {
-      async function uploadAvatar() {
-        const respond = await request(app.getHttpServer())
-          .post('/avatars')
-          //.set('Authorization', `Bearer ${TestToken}`)
-          .attach('avatar', 'src/resources/avatars/default.jpg');
-        expect(respond.status).toBe(201);
-        expect(respond.body.message).toBe('Upload avatar successfully');
-        expect(respond.body.data).toHaveProperty('avatarId');
-        return respond.body.data.avatarId;
-      }
-      PreAvatarId = await uploadAvatar();
-      UpdateAvatarId = await uploadAvatar();
-    });
     it(`should send an email and register a user ${TestUsername}`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
@@ -138,6 +124,21 @@ describe('Groups Module', () => {
       TestToken = respond.body.data.accessToken;
       expect(respond.body.data.user.id).toBeDefined();
       TestUserDto = respond.body.data.user;
+    });
+
+    it('should upload two avatars for creating and updating', async () => {
+      async function uploadAvatar() {
+        const respond = await request(app.getHttpServer())
+          .post('/avatars')
+          .set('Authorization', `Bearer ${TestToken}`)
+          .attach('avatar', 'src/resources/avatars/default.jpg');
+        expect(respond.status).toBe(201);
+        expect(respond.body.message).toBe('Upload avatar successfully');
+        expect(respond.body.data).toHaveProperty('avatarId');
+        return respond.body.data.avatarId;
+      }
+      PreAvatarId = await uploadAvatar();
+      UpdateAvatarId = await uploadAvatar();
     });
 
     it('should create some groups', async () => {

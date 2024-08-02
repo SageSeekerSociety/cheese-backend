@@ -150,6 +150,7 @@ describe('Attachment Module', () => {
     it('should get the uploaded image detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/attachments/${ImageId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.attachment.meta.height).toEqual(200);
@@ -159,6 +160,7 @@ describe('Attachment Module', () => {
     it('should get the uploaded video detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/attachments/${VideoId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.attachment.meta.height).toEqual(1080);
@@ -172,6 +174,7 @@ describe('Attachment Module', () => {
     it('should get the uploaded audio detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/attachments/${AudioId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.attachment.meta.size).toEqual(70699);
@@ -181,6 +184,7 @@ describe('Attachment Module', () => {
     it('should get the uploaded file detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/attachments/${FileId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.attachment.meta.mime).toBe('application/pdf');
@@ -189,6 +193,7 @@ describe('Attachment Module', () => {
     it('should return AttachmentNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/attachments/${FileId + 20}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);

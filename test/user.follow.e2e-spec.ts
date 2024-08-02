@@ -181,9 +181,9 @@ describe('Following Submodule of User Module', () => {
     });
 
     it('should return updated statistic info when getting user', async () => {
-      const respond = await request(app.getHttpServer()).get(
-        `/users/${TestUserId}`,
-      );
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${TestUserId}`)
+        .set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.data.user.follow_count).toBe(tempUserIds.length);
       expect(respond.body.data.user.fans_count).toBe(tempUserIds.length);
       expect(respond.body.data.user.is_follow).toBe(false);
@@ -279,7 +279,7 @@ describe('Following Submodule of User Module', () => {
       const respond3 = await request(app.getHttpServer())
         .get(`/users/${TestUserId}/followers`)
         //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        //.set('authorization', 'Bearer ' + TestToken);
+        .set('authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond3.body.message).toBe('Query followers successfully.');
       expect(respond3.status).toBe(200);
@@ -299,7 +299,7 @@ describe('Following Submodule of User Module', () => {
           `/users/${TestUserId}/followers?page_start=${tempUserIds[3]}&page_size=3`,
         )
         //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        //.set('authorization', 'Bearer ' + TestToken);
+        .set('authorization', 'Bearer ' + TestToken)
         .send();
       expect(respond4.body.message).toBe('Query followers successfully.');
       expect(respond4.status).toBe(200);
@@ -372,14 +372,14 @@ describe('Following Submodule of User Module', () => {
   });
 
   describe('statistics', () => {
-    it('should return updated statistic info when getting user', async () => {
-      const respond = await request(app.getHttpServer()).get(
-        `/users/${TestUserId}`,
-      );
-      expect(respond.body.data.user.follow_count).toBe(tempUserIds.length);
-      expect(respond.body.data.user.fans_count).toBe(tempUserIds.length + 1);
-      expect(respond.body.data.user.is_follow).toBe(false);
-    });
+    // it('should return updated statistic info when getting user', async () => {
+    //   const respond = await request(app.getHttpServer()).get(
+    //     `/users/${TestUserId}`,
+    //   );
+    //   expect(respond.body.data.user.follow_count).toBe(tempUserIds.length);
+    //   expect(respond.body.data.user.fans_count).toBe(tempUserIds.length + 1);
+    //   expect(respond.body.data.user.is_follow).toBe(false);
+    // });
 
     it('should return updated statistic info when getting user', async () => {
       const respond = await request(app.getHttpServer())
@@ -399,14 +399,14 @@ describe('Following Submodule of User Module', () => {
       expect(respond.body.data.user.is_follow).toBe(true);
     });
 
-    it('should return updated statistic info when getting user', async () => {
-      const respond = await request(app.getHttpServer()).get(
-        `/users/${tempUserIds[0]}`,
-      );
-      expect(respond.body.data.user.follow_count).toBe(1);
-      expect(respond.body.data.user.fans_count).toBe(1);
-      expect(respond.body.data.user.is_follow).toBe(false);
-    });
+    // it('should return updated statistic info when getting user', async () => {
+    //   const respond = await request(app.getHttpServer()).get(
+    //     `/users/${tempUserIds[0]}`,
+    //   );
+    //   expect(respond.body.data.user.follow_count).toBe(1);
+    //   expect(respond.body.data.user.fans_count).toBe(1);
+    //   expect(respond.body.data.user.is_follow).toBe(false);
+    // });
 
     it('should return updated statistic info when getting user', async () => {
       const respond = await request(app.getHttpServer())
@@ -415,6 +415,15 @@ describe('Following Submodule of User Module', () => {
       expect(respond.body.data.user.follow_count).toBe(1);
       expect(respond.body.data.user.fans_count).toBe(1);
       expect(respond.body.data.user.is_follow).toBe(true);
+    });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${tempUserIds[0]}/followers`)
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.status).toBe(401);
+      expect(respond.body.code).toBe(401);
     });
   });
 

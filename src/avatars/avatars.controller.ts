@@ -27,20 +27,19 @@ import {
   InvalidAvatarTypeError,
 } from './avatars.error';
 import { AvatarsService } from './avatars.service';
+import { AuthToken, Guard, ResourceId } from '../auth/guard.decorator';
 
 @Controller('/avatars')
-@UsePipes(ValidationPipe)
-@UseFilters(BaseErrorExceptionFilter)
-@UseInterceptors(TokenValidateInterceptor)
 export class AvatarsController {
   constructor(private readonly avatarsService: AvatarsService) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('avatar'))
+  @Guard('create', 'avatar')
   async createAvatar(
     @UploadedFile() file: Express.Multer.File,
+    @Headers('Authorization') @AuthToken() auth: string,
   ): Promise<UploadAvatarResponseDto> {
-    //const userId = this.authService.verify(auth).userId;
     const avatar = await this.avatarsService.save(file.path, file.filename);
     return {
       code: 201,
@@ -52,9 +51,11 @@ export class AvatarsController {
   }
 
   @Get('/default')
+  @Guard('query-default', 'avatar')
   async getDefaultAvatar(
     @Headers('If-None-Match') ifNoneMatch: string,
     @Res({ passthrough: true }) res: Response,
+    @Headers('Authorization') @AuthToken() auth: string,
   ) {
     const defaultAvatarId = await this.avatarsService.getDefaultAvatarId();
     const avatarPath = await this.avatarsService.getAvatarPath(defaultAvatarId);
@@ -83,10 +84,12 @@ export class AvatarsController {
   }
 
   @Get('/:id')
+  @Guard('query', 'avatar')
   async getAvatar(
     @Headers('If-None-Match') ifNoneMatch: string,
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id', ParseIntPipe) @ResourceId() id: number,
     @Res({ passthrough: true }) res: Response,
+    @Headers('Authorization') @AuthToken() auth: string,
   ) {
     const avatarPath = await this.avatarsService.getAvatarPath(id);
     if (!fs.existsSync(avatarPath)) {
@@ -114,8 +117,10 @@ export class AvatarsController {
   }
 
   @Get()
+  @Guard('enumerate', 'avatar')
   async getAvailableAvatarIds(
     @Query('type') type: AvatarType = AvatarType.predefined,
+    @Headers('Authorization') @AuthToken() auth: string,
   ) {
     if (type == AvatarType.predefined) {
       const avatarIds = await this.avatarsService.getPreDefinedAvatarIds();

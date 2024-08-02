@@ -21,7 +21,7 @@ import assert from 'node:assert';
 import { AnswerService } from '../answer/answer.service';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
-import { Authorization, AuthorizedAction } from '../auth/definitions';
+import { Authorization } from '../auth/definitions';
 import { SessionService } from '../auth/session.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
@@ -482,7 +482,7 @@ export class UsersService {
         userId: user.id,
         permissions: [
           {
-            authorizedActions: [AuthorizedAction.modify],
+            authorizedActions: ['modify'],
             authorizedResource: {
               ownedByUser: user.id,
               types: ['users/password:reset'],
@@ -523,7 +523,7 @@ export class UsersService {
     try {
       this.authService.audit(
         token,
-        AuthorizedAction.modify,
+        'modify',
         userId,
         'users/password:reset',
         undefined,

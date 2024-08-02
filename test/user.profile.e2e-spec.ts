@@ -48,19 +48,6 @@ describe('Profile Submodule of User Module', () => {
   });
 
   describe('preparation', () => {
-    it('should upload an avatar for updating', async () => {
-      async function uploadAvatar() {
-        const respond = await request(app.getHttpServer())
-          .post('/avatars')
-          //.set('Authorization', `Bearer ${TestToken}`)
-          .attach('avatar', 'src/resources/avatars/default.jpg');
-        expect(respond.status).toBe(201);
-        expect(respond.body.message).toBe('Upload avatar successfully');
-        expect(respond.body.data).toHaveProperty('avatarId');
-        return respond.body.data.avatarId;
-      }
-      UpdateAvatarId = await uploadAvatar();
-    });
     it(`should send an email and register a user ${TestUsername}`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
@@ -100,6 +87,20 @@ describe('Profile Submodule of User Module', () => {
       TestToken = respond.body.data.accessToken;
       TestUserId = respond.body.data.user.id;
     });
+  });
+
+  it('should upload an avatar for updating', async () => {
+    async function uploadAvatar() {
+      const respond = await request(app.getHttpServer())
+        .post('/avatars')
+        .set('Authorization', `Bearer ${TestToken}`)
+        .attach('avatar', 'src/resources/avatars/default.jpg');
+      expect(respond.status).toBe(201);
+      expect(respond.body.message).toBe('Upload avatar successfully');
+      expect(respond.body.data).toHaveProperty('avatarId');
+      return respond.body.data.avatarId;
+    }
+    UpdateAvatarId = await uploadAvatar();
   });
 
   describe('update user profile', () => {
@@ -165,30 +166,40 @@ describe('Profile Submodule of User Module', () => {
       expect(respond.body.data.user.answer_count).toBe(0);
       expect(respond.body.data.user.is_follow).toBe(false);
     });
-    it('should get modified user profile even without a token', async () => {
-      const respond = await request(app.getHttpServer()).get(
-        `/users/${TestUserId}`,
-      );
-      //.set('User-Agent', 'PostmanRuntime/7.26.8')
-      //.set('authorization', 'Bearer ' + TestToken);
-      expect(respond.body.message).toBe('Query user successfully.');
-      expect(respond.status).toBe(200);
-      expect(respond.body.code).toBe(200);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user_updated');
-      expect(respond.body.data.user.avatarId).toBe(UpdateAvatarId);
-      expect(respond.body.data.user.intro).toBe('test user updated');
-      expect(respond.body.data.user.follow_count).toBe(0);
-      expect(respond.body.data.user.fans_count).toBe(0);
-      expect(respond.body.data.user.question_count).toBe(0);
-      expect(respond.body.data.user.answer_count).toBe(0);
-      expect(respond.body.data.user.is_follow).toBe(false);
-    });
+    // it('should get modified user profile even without a token', async () => {
+    //   const respond = await request(app.getHttpServer()).get(
+    //     `/users/${TestUserId}`,
+    //   );
+    //   //.set('User-Agent', 'PostmanRuntime/7.26.8')
+    //   //.set('authorization', 'Bearer ' + TestToken);
+    //   expect(respond.body.message).toBe('Query user successfully.');
+    //   expect(respond.status).toBe(200);
+    //   expect(respond.body.code).toBe(200);
+    //   expect(respond.body.data.user.username).toBe(TestUsername);
+    //   expect(respond.body.data.user.nickname).toBe('test_user_updated');
+    //   expect(respond.body.data.user.avatarId).toBe(UpdateAvatarId);
+    //   expect(respond.body.data.user.intro).toBe('test user updated');
+    //   expect(respond.body.data.user.follow_count).toBe(0);
+    //   expect(respond.body.data.user.fans_count).toBe(0);
+    //   expect(respond.body.data.user.question_count).toBe(0);
+    //   expect(respond.body.data.user.answer_count).toBe(0);
+    //   expect(respond.body.data.user.is_follow).toBe(false);
+    // });
     it('should return UserIdNotFoundError', async () => {
-      const respond = await request(app.getHttpServer()).get(`/users/-1`);
+      const respond = await request(app.getHttpServer())
+        .get(`/users/-1`)
+        .set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.message).toMatch(/^UserIdNotFoundError: /);
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer()).get(
+        `/users/${TestUserId}`,
+      );
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.status).toBe(401);
+      expect(respond.body.code).toBe(401);
     });
   });
 

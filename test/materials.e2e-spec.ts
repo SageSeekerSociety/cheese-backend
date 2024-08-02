@@ -145,11 +145,21 @@ describe('Material Module', () => {
       expect(respond.body.code).toBe(422);
       expect(respond.body.message).toMatch(/MimeTypeNotMatchError: /);
     });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/materials')
+        .field('type', 'image')
+        .attach('file', 'src/materials/resources/test.jpg');
+      expect(respond.status).toBe(401);
+      expect(respond.body.code).toBe(401);
+      expect(respond.body.message).toMatch(/AuthenticationRequiredError: /);
+    });
   });
   describe('get material', () => {
     it('should get the uploaded image detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/materials/${ImageId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.material.meta.height).toEqual(200);
@@ -162,6 +172,7 @@ describe('Material Module', () => {
     it('should get the uploaded video detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/materials/${VideoId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.material.meta.height).toEqual(1080);
@@ -178,6 +189,7 @@ describe('Material Module', () => {
     it('should get the uploaded audio detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/materials/${AudioId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.material.meta.size).toEqual(70699);
@@ -190,6 +202,7 @@ describe('Material Module', () => {
     it('should get the uploaded file detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/materials/${FileId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.data.material.meta.mime).toBe('application/pdf');
@@ -201,10 +214,19 @@ describe('Material Module', () => {
     it('should return MaterialNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/materials/${FileId + 20}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
       expect(respond.body.message).toMatch(/MaterialNotFoundError: /);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/materials/${FileId}`)
+        .send();
+      expect(respond.status).toBe(401);
+      expect(respond.body.code).toBe(401);
+      expect(respond.body.message).toMatch(/AuthenticationRequiredError: /);
     });
   });
   afterAll(async () => {

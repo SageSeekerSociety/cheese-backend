@@ -347,6 +347,13 @@ describe('comments Module', () => {
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
     });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/comments/${CommentIds[0]}`)
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
   });
 
   describe('AttitudeToComment', () => {
@@ -577,6 +584,14 @@ describe('comments Module', () => {
       expect(respond2.body.data.comment.attitudes.user_attitude).toBe(
         'UNDEFINED',
       );
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const commentId = CommentIds[3];
+      const respond = await request(app.getHttpServer())
+        .patch(`/comments/${commentId}`)
+        .send({ content: `${TestCommentPrefix} 我超，宵宫!` });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
     });
     it('should get comment by id', async () => {
       const respond = await request(app.getHttpServer())
