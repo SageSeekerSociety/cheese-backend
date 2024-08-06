@@ -90,7 +90,7 @@ export class SessionService {
       throw new NotRefreshTokenError();
     }
     const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
-    this.authService.audit(
+    await this.authService.audit(
       oldRefreshToken,
       'other',
       undefined,
@@ -170,7 +170,7 @@ export class SessionService {
       throw new NotRefreshTokenError();
     }
     const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
-    this.authService.audit(
+    await this.authService.audit(
       refreshToken,
       'other',
       undefined,

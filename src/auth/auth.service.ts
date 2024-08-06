@@ -19,10 +19,12 @@ import {
   TokenExpiredError,
 } from './auth.error';
 import { Authorization, AuthorizedAction, TokenPayload } from './definitions';
+import { CustomAuthLogics } from './custom-auth-logic';
 
 @Injectable()
 export class AuthService {
   public static instance: AuthService;
+  public customAuthLogics: CustomAuthLogics = new CustomAuthLogics();
 
   constructor(private readonly jwtService: JwtService) {
     AuthService.instance = this;
@@ -98,13 +100,13 @@ export class AuthService {
   // no owner, type or id. Only the AuthorizedResource object whose ownedByUser, types
   // or resourceIds is undefined or contains a undefined can matches such a resource which has
   // no owner, type or id.
-  audit(
+  async audit(
     token: string | undefined,
     action: AuthorizedAction,
     resourceOwnerId?: number,
     resourceType?: string,
     resourceId?: number,
-  ): void {
+  ): Promise<void> {
     const authorization = this.verify(token);
     // In many situations, the coders may forget to convert the string to number.
     // So we do it here.
@@ -162,6 +164,18 @@ export class AuthService {
       }
       if (idMatches == false) continue;
       // Now, id matches.
+
+      if (permission.customLogic !== undefined) {
+        const result = await this.customAuthLogics.invoke(
+          permission.customLogic,
+          action,
+          resourceOwnerId,
+          resourceType,
+          resourceId,
+        );
+        if (result !== true) continue;
+      }
+      // Now, custom logic matches.
 
       // Action, owner, type and id matches, so the operaton is permitted.
       return;

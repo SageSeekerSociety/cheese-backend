@@ -57,6 +57,7 @@ export class AuthorizedResource {
 export class Permission {
   authorizedActions: AuthorizedAction[];
   authorizedResource: AuthorizedResource;
+  customLogic?: string;
 }
 // The user, whose id is userId, is granted the permissions.
 export class Authorization {

@@ -57,6 +57,9 @@
         },
         "authorizedResource": {
           "$ref": "#/definitions/AuthorizedResource"
+        },
+        "customLogic": {
+          "type": "string"
         }
       },
       "required": [

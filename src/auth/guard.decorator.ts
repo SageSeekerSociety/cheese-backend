@@ -150,7 +150,7 @@ export function Guard(action: AuthorizedAction, resourceType: string) {
             : undefined;
       }
 
-      AuthService.instance.audit(
+      await AuthService.instance.audit(
         authToken,
         action,
         resourceOwnerId,

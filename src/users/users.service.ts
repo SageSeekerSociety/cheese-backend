@@ -521,7 +521,7 @@ export class UsersService {
     // If we check, then, if the token is invalid, it won't be logged.
     const userId = this.authService.decode(token).authorization.userId;
     try {
-      this.authService.audit(
+      await this.authService.audit(
         token,
         'modify',
         userId,
