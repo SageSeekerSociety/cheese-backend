@@ -12,7 +12,7 @@ The backend of the cheese Q&A system.
 ## Run without installation
 
 If you only want to start the application, you can use `docs/scripts/cheese-start.sh` and `docs/scripts/cheese-restart.sh`
-to start and restart the application. You do not need to do anything else if you use these scripts. By default, after application
+to start and restart the application. You do not need to do anything else if you use these scripts. By default, after the application
 is started in this way, it will be available at `http://localhost:3000`.
 
 Notice that these scripts use the latest docker image on GitHub built from the `dev` branch, so it has nothing to do with your local code.
@@ -37,21 +37,21 @@ Also, you need to set up an Elasticsearch instance. It is used to provide full-t
 
 Setting up PostgreSQL and Elasticsearch can be complicated, so we recommend you to use Docker to set up the environment.
 You can use `docs/scripts/dependency-start.sh` and `docs/scripts/dependency-restart.sh` to start and restart the dependencies.
-If you setup dependencies in this way, then simply use `docs/scripts/dependency.env` as your `.env` file.
+If you set up dependencies in this way, then simply use `docs/scripts/dependency.env` as your `.env` file.
 
 ```bash
 docs/scripts/dependency-start.sh
 cp docs/scripts/dependency.env .env
 ```
 
-If you setup dependencies manually, you need to modify the `.env` file according to your condition.
+If you set up dependencies manually, you need to modify the `.env` file according to your condition.
 Copy `sample.env` to `.env` and modify according to your condition.
 
 ```bash
 cp sample.env .env
 ```
 
-Once you believe you have set up the environment correctly, you can run the following command to initialize database schema:
+Once you believe you have set up the environment correctly, you can run the following command to initialize the database schema:
 ```bash
 pnpm build-prisma
 pnpm prisma db push
