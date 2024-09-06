@@ -1,8 +1,52 @@
-import { Injectable } from '@nestjs/common';
-import { Authorization } from '../auth/definitions';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Authorization, AuthorizedAction } from '../auth/definitions';
+import { RolePermissionService } from './role-permission.service';
+import { AuthService } from '../auth/auth.service';
+import { PermissionDeniedError } from '../auth/auth.error';
 
 @Injectable()
-export class UsersPermissionService {
+export class UsersPermissionService implements OnModuleInit {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly rolePermissionService: RolePermissionService,
+  ) {}
+
+  onModuleInit() {
+    this.authService.customAuthLogics.register(
+      'role-based',
+      async (
+        userId: number,
+        action: AuthorizedAction,
+        resourceOwnerId?: number,
+        resourceType?: string,
+        resourceId?: number,
+        customLogicData?: any,
+      ): Promise<boolean> => {
+        const authorization =
+          await this.rolePermissionService.getAuthorizationForUserWithRole(
+            userId,
+            customLogicData.role,
+          );
+        try {
+          await this.authService.auditWithoutToken(
+            authorization,
+            action,
+            resourceOwnerId,
+            resourceType,
+            resourceId,
+          );
+        } catch (e) {
+          if (e instanceof PermissionDeniedError) {
+            return false;
+          }
+          /* istanbul ignore next */
+          throw e;
+        }
+        return true;
+      },
+    );
+  }
+
   // Although this method is not async now,
   // it may become async in the future.
   async getAuthorizationForUser(userId: number): Promise<Authorization> {
@@ -10,144 +54,11 @@ export class UsersPermissionService {
       userId: userId,
       permissions: [
         {
-          authorizedActions: [
-            'query',
-            'follow',
-            'unfollow',
-            'enumerate-followers',
-            'enumerate-answers',
-            'enumerate-questions',
-            'enumerate-followed-users',
-            'enumerate-followed-questions',
-          ],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['user'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['modify-profile'],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['user'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['query', 'enumerate'],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['question', 'answer', 'comment'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['create', 'delete', 'modify'],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['question', 'answer', 'comment'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [
-            'query',
-            'query-invitation-recommendations',
-            'query-invitation',
-            'enumerate',
-            'enumerate-answers',
-            'enumerate-followers',
-            'enumerate-invitations',
-            'follow',
-            'unfollow',
-            'invite',
-            'uninvite',
-          ],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['question'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['accept-answer', 'set-bounty'],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['question'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['query', 'favorite', 'unfavorite'],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['answer'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['attitude'],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['comment', 'question', 'answer'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['create', 'query'],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['attachment', 'material'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['query', 'enumerate'],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['material-bundle'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['create', 'modify', 'delete'],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['material-bundle'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['create', 'query', 'enumerate'],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['topic'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: ['create', 'query', 'query-default', 'enumerate'],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['avatar'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [],
-          authorizedResource: {
-            ownedByUser: undefined,
-            types: ['group'],
-            resourceIds: undefined,
-          },
-        },
-        {
-          authorizedActions: [],
-          authorizedResource: {
-            ownedByUser: userId,
-            types: ['group'],
-            resourceIds: undefined,
+          authorizedActions: undefined, // forward all actions
+          authorizedResource: {}, // forward all resources
+          customLogic: 'role-based',
+          customLogicData: {
+            role: 'standard-user',
           },
         },
       ],
