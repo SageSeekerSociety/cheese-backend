@@ -25,24 +25,6 @@ pnpm install
 
 You need to create a database for this backend. We recommend you to use PostgreSQL because we have tested the app with PostgreSQL, and it works very well.
 
-If you want to use other databases, you need to modify src/app.prisma. Replace
-
-```prisma
-provider = "postgresql"
-```
-
-with what you want to use, such as
-
-```prisma
-provider = "mysql"
-```
-
-and recompile the prisma client with the following command:
-
-```bash
-pnpm build-prisma
-```
-
 Also, you need to set up an Elasticsearch instance. It is used to provide full-text search feature.
 
 Copy `sample.env` to `.env` and modify according to your condition.
@@ -50,6 +32,14 @@ Copy `sample.env` to `.env` and modify according to your condition.
 ```bash
 cp sample.env .env
 ```
+
+Setting up database and Elasticsearch can be complicated, so we recommend you to use Docker to set up the environment.
+You can use `docs/scripts/dependency-start.sh` and `docs/scripts/dependency-restart.sh` to start and restart the dependencies.
+If you setup dependencies in this way, then simply use `docs/scripts/dependency.env` as your `.env` file.
+
+If you only want to start the application, you can use `docs/scripts/cheese-start.sh` and `docs/scripts/cheese-restart.sh`
+to start and restart the application. You do not need to do anything else if you use these scripts. By default, after application
+is started in this way, it will be available at `http://localhost:3000`.
 
 ## Running the app
 
