@@ -5,6 +5,7 @@ export type CustomAuthLogicHandler = (
   resourceOwnerId?: number,
   resourceType?: string,
   resourceId?: number,
+  customLogicData?: any,
 ) => Promise<boolean>;
 
 export class CustomAuthLogics {
@@ -20,11 +21,18 @@ export class CustomAuthLogics {
     resourceOwnerId?: number,
     resourceType?: string,
     resourceId?: number,
+    customLogicData?: any,
   ): Promise<boolean> {
     const handler = this.logics.get(name);
     if (!handler) {
       throw new Error(`Custom auth logic '${name}' not found.`);
     }
-    return handler(action, resourceOwnerId, resourceType, resourceId);
+    return handler(
+      action,
+      resourceOwnerId,
+      resourceType,
+      resourceId,
+      customLogicData,
+    );
   }
 }

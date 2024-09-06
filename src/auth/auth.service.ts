@@ -172,6 +172,7 @@ export class AuthService {
           resourceOwnerId,
           resourceType,
           resourceId,
+          permission.customLogicData,
         );
         if (result !== true) continue;
       }

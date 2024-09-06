@@ -283,4 +283,40 @@ describe('AuthService', () => {
     );
     expect(handler_called).toBe(true);
   });
+  it('should invoke custom logic and get additional data successfully', async () => {
+    let handler_called = false;
+    let data = { some: '' };
+    const handler: CustomAuthLogicHandler = async (
+      action: AuthorizedAction,
+      resourceOwnerId?: number,
+      resourceType?: string,
+      resourceId?: number,
+      customLogicData?: any,
+    ) => {
+      handler_called = true;
+      data = customLogicData;
+      return false;
+    };
+    authService.customAuthLogics.register('another_logic', handler);
+    const token = authService.sign({
+      userId: 0,
+      permissions: [
+        {
+          authorizedActions: ['another_action'],
+          authorizedResource: {
+            types: ['user'],
+          },
+          customLogic: 'another_logic',
+          customLogicData: { some: 'data' },
+        },
+      ],
+    });
+    expect(async () => {
+      await authService.audit(token, 'another_action', 1, 'user', 1);
+    }).rejects.toThrow(
+      new PermissionDeniedError('another_action', 1, 'user', 1),
+    );
+    expect(handler_called).toBe(true);
+    expect(data).toEqual({ some: 'data' });
+  });
 });
