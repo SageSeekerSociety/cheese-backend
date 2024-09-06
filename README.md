@@ -9,6 +9,15 @@
 [Cheese Backend](https://github.com/SageSeekerSociety/cheese-backend)
 The backend of the cheese Q&A system.
 
+## Run without installation
+
+If you only want to start the application, you can use `docs/scripts/cheese-start.sh` and `docs/scripts/cheese-restart.sh`
+to start and restart the application. You do not need to do anything else if you use these scripts. By default, after application
+is started in this way, it will be available at `http://localhost:3000`.
+
+Notice that these scripts use the latest docker image on GitHub built from the `dev` branch, so it has nothing to do with your local code.
+If you want to use your local code, you need to install the dependencies and run the app manually, as described below.
+
 ## Installation
 
 Before installing this backend, ensure that you have installed the pnpm package manager. If you have not yet installed it, you can install it with the following command:
@@ -23,23 +32,40 @@ After this repo is cloned, you should install the dependencies with the followin
 pnpm install
 ```
 
-You need to create a database for this backend. We recommend you to use PostgreSQL because we have tested the app with PostgreSQL, and it works very well.
-
+You need to create a database for this backend. Currently, we only support PostgreSQL.
 Also, you need to set up an Elasticsearch instance. It is used to provide full-text search feature.
 
+Setting up PostgreSQL and Elasticsearch can be complicated, so we recommend you to use Docker to set up the environment.
+You can use `docs/scripts/dependency-start.sh` and `docs/scripts/dependency-restart.sh` to start and restart the dependencies.
+If you setup dependencies in this way, then simply use `docs/scripts/dependency.env` as your `.env` file.
+
+```bash
+docs/scripts/dependency-start.sh
+cp docs/scripts/dependency.env .env
+```
+
+If you setup dependencies manually, you need to modify the `.env` file according to your condition.
 Copy `sample.env` to `.env` and modify according to your condition.
 
 ```bash
 cp sample.env .env
 ```
 
-Setting up database and Elasticsearch can be complicated, so we recommend you to use Docker to set up the environment.
-You can use `docs/scripts/dependency-start.sh` and `docs/scripts/dependency-restart.sh` to start and restart the dependencies.
-If you setup dependencies in this way, then simply use `docs/scripts/dependency.env` as your `.env` file.
+Once you believe you have set up the environment correctly, you can run the following command to initialize database schema:
+```bash
+pnpm build-prisma
+pnpm prisma db push
+```
 
-If you only want to start the application, you can use `docs/scripts/cheese-start.sh` and `docs/scripts/cheese-restart.sh`
-to start and restart the application. You do not need to do anything else if you use these scripts. By default, after application
-is started in this way, it will be available at `http://localhost:3000`.
+You need to start the app once before running tests.
+```bash
+pnpm start
+```
+
+Now, you can run tests with the following command to ensure that the app is working correctly:
+```bash
+pnpm test
+```
 
 ## Running the app
 
