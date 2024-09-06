@@ -108,6 +108,23 @@ export class AuthService {
     resourceId?: number,
   ): Promise<void> {
     const authorization = this.verify(token);
+    await this.auditWithoutToken(
+      authorization,
+      action,
+      resourceOwnerId,
+      resourceType,
+      resourceId,
+    );
+  }
+
+  // Do the same thing as audit(), but without a token.
+  async auditWithoutToken(
+    authorization: Authorization,
+    action: AuthorizedAction,
+    resourceOwnerId?: number,
+    resourceType?: string,
+    resourceId?: number,
+  ): Promise<void> {
     // In many situations, the coders may forget to convert the string to number.
     // So we do it here.
     // Addition: We think this hides problems; so we remove it.
