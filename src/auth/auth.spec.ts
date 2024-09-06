@@ -319,4 +319,50 @@ describe('AuthService', () => {
     expect(handler_called).toBe(true);
     expect(data).toEqual({ some: 'data' });
   });
+  it('should always invoke custom logic successfully', async () => {
+    let handler_called = false;
+    const handler: CustomAuthLogicHandler = async (
+      action: AuthorizedAction,
+      resourceOwnerId?: number,
+      resourceType?: string,
+      resourceId?: number,
+    ) => {
+      handler_called = true;
+      return true;
+    };
+    authService.customAuthLogics.register('yet_yet_another_logic', handler);
+    const token = authService.sign({
+      userId: 0,
+      permissions: [
+        {
+          authorizedActions: undefined, // all actions
+          authorizedResource: {}, // all resources
+          customLogic: 'yet_yet_another_logic',
+        },
+      ],
+    });
+    await authService.audit(token, 'some_action', 1, 'user', 1);
+    expect(handler_called).toBe(true);
+    handler_called = false;
+    await authService.audit(token, 'another_action', undefined, 'user', 1);
+    expect(handler_called).toBe(true);
+    handler_called = false;
+    await authService.audit(
+      token,
+      'some_action',
+      1,
+      'another_resource',
+      undefined,
+    );
+    expect(handler_called).toBe(true);
+    handler_called = false;
+    await authService.audit(
+      token,
+      'another_action',
+      undefined,
+      'another_resource',
+      undefined,
+    );
+    expect(handler_called).toBe(true);
+  });
 });

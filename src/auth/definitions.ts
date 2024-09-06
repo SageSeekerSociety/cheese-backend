@@ -52,14 +52,22 @@ export class AuthorizedResource {
   resourceIds?: number[];
   data?: any; // additional data
 }
+
 // The permission to perform all the actions listed in authorizedActions
 // on all the resources that match the authorizedResource property.
+//
+// If authorizedActions is undefined, the permission is granted to perform
+// all the actions on the resources that match the authorizedResource property.
+//
+// If customLogic is not undefined, the permission is granted only if the
+// custom logic allows the specified action on the specified resource.
 export class Permission {
-  authorizedActions: AuthorizedAction[];
+  authorizedActions?: AuthorizedAction[];
   authorizedResource: AuthorizedResource;
   customLogic?: string;
   customLogicData?: any;
 }
+
 // The user, whose id is userId, is granted the permissions.
 export class Authorization {
   userId: number; // authorization identity

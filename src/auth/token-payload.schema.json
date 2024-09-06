@@ -64,7 +64,6 @@
         "customLogicData": {}
       },
       "required": [
-        "authorizedActions",
         "authorizedResource"
       ],
       "type": "object"

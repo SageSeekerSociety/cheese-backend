@@ -141,10 +141,13 @@ export class AuthService {
       throw new Error('resourceId must be a number.');
     }
     for (const permission of authorization.permissions) {
-      let actionMatches = false;
-      for (const authorizedAction of permission.authorizedActions) {
-        if (authorizedAction === action) {
-          actionMatches = true;
+      let actionMatches =
+        permission.authorizedActions === undefined ? true : false;
+      if (permission.authorizedActions !== undefined) {
+        for (const authorizedAction of permission.authorizedActions) {
+          if (authorizedAction === action) {
+            actionMatches = true;
+          }
         }
       }
       if (actionMatches == false) continue;
