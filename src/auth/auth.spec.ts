@@ -297,7 +297,7 @@ describe('AuthService', () => {
       data = customLogicData;
       return false;
     };
-    authService.customAuthLogics.register('another_logic', handler);
+    authService.customAuthLogics.register('yet_another_logic', handler);
     const token = authService.sign({
       userId: 0,
       permissions: [
@@ -306,7 +306,7 @@ describe('AuthService', () => {
           authorizedResource: {
             types: ['user'],
           },
-          customLogic: 'another_logic',
+          customLogic: 'yet_another_logic',
           customLogicData: { some: 'data' },
         },
       ],

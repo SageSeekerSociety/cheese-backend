@@ -12,6 +12,10 @@ export class CustomAuthLogics {
   private logics: Map<string, CustomAuthLogicHandler> = new Map();
 
   register(name: string, handler: CustomAuthLogicHandler): void {
+    /* istanbul ignore if */
+    if (this.logics.has(name)) {
+      throw new Error(`Custom auth logic '${name}' already exists.`);
+    }
     this.logics.set(name, handler);
   }
 
