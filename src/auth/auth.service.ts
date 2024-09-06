@@ -188,6 +188,7 @@ export class AuthService {
       if (permission.customLogic !== undefined) {
         const result = await this.customAuthLogics.invoke(
           permission.customLogic,
+          authorization.userId,
           action,
           resourceOwnerId,
           resourceType,
@@ -198,7 +199,7 @@ export class AuthService {
       }
       // Now, custom logic matches.
 
-      // Action, owner, type and id matches, so the operaton is permitted.
+      // Action, owner, type and id matches, so the operation is permitted.
       return;
     }
     throw new PermissionDeniedError(

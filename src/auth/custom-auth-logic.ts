@@ -1,6 +1,7 @@
 import { AuthorizedAction } from './definitions';
 
 export type CustomAuthLogicHandler = (
+  userId: number,
   action: AuthorizedAction,
   resourceOwnerId?: number,
   resourceType?: string,
@@ -21,6 +22,7 @@ export class CustomAuthLogics {
 
   invoke(
     name: string,
+    userId: number,
     action: AuthorizedAction,
     resourceOwnerId?: number,
     resourceType?: string,
@@ -32,6 +34,7 @@ export class CustomAuthLogics {
       throw new Error(`Custom auth logic '${name}' not found.`);
     }
     return handler(
+      userId,
       action,
       resourceOwnerId,
       resourceType,

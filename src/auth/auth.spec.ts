@@ -228,6 +228,7 @@ describe('AuthService', () => {
   it('should register and invoke custom logic successfully', async () => {
     let handler_called = false;
     const handler: CustomAuthLogicHandler = async (
+      userId: number,
       action: AuthorizedAction,
       resourceOwnerId?: number,
       resourceType?: string,
@@ -255,6 +256,7 @@ describe('AuthService', () => {
   it('should register and invoke custom logic successfully', async () => {
     let handler_called = false;
     const handler: CustomAuthLogicHandler = async (
+      userId: number,
       action: AuthorizedAction,
       resourceOwnerId?: number,
       resourceType?: string,
@@ -287,6 +289,7 @@ describe('AuthService', () => {
     let handler_called = false;
     let data = { some: '' };
     const handler: CustomAuthLogicHandler = async (
+      userId: number,
       action: AuthorizedAction,
       resourceOwnerId?: number,
       resourceType?: string,
@@ -322,6 +325,7 @@ describe('AuthService', () => {
   it('should always invoke custom logic successfully', async () => {
     let handler_called = false;
     const handler: CustomAuthLogicHandler = async (
+      userId: number,
       action: AuthorizedAction,
       resourceOwnerId?: number,
       resourceType?: string,
