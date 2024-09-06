@@ -276,6 +276,7 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
+        .set('User-Agent', 'PostmanRuntime/7.26.8')
         .send();
       expect(response.body.message).toBe('Answer fetched successfully.');
       expect(response.status).toBe(200);
