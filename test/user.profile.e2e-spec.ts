@@ -151,7 +151,7 @@ describe('Profile Submodule of User Module', () => {
     it('should get modified user profile', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/users/${TestUserId}`)
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .set('User-Agent', 'PostmanRuntime/7.26.8')
         .set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.message).toBe('Query user successfully.');
       expect(respond.status).toBe(200);
