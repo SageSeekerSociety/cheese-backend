@@ -7,113 +7,27 @@
  *
  */
 
-/*
-
-IMPORTANT NOTICE:
-
-If you have modified this file, please run the following linux command:
-
-./node_modules/.bin/ts-json-schema-generator \
-  --path 'src/auth/auth.service.ts'          \
-  --type 'TokenPayload'                      \
-  > src/auth/token-payload.schema.json
-
-to update the schema file, which is used in validating the token payload.
-
-*/
-
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import Ajv from 'ajv';
 import { readFileSync } from 'fs';
+import path from 'node:path';
 import {
   AuthenticationRequiredError,
   InvalidTokenError,
   PermissionDeniedError,
   TokenExpiredError,
 } from './auth.error';
-import path from 'node:path';
-
-export enum AuthorizedAction {
-  create = 1,
-  delete = 2,
-  modify = 3,
-  query = 4,
-
-  other = 5,
-  // When the action is not one of the four actions above,
-  // we use "other", and store the action info in resourceType.
-  // For example, resource type "auth/session:refresh"
-  // means the action is to refresh a session.
-}
-
-export function authorizedActionToString(action: AuthorizedAction): string {
-  switch (action) {
-    case AuthorizedAction.create:
-      return 'create';
-    case AuthorizedAction.delete:
-      return 'delete';
-    case AuthorizedAction.modify:
-      return 'modify';
-    case AuthorizedAction.query:
-      return 'query';
-    case AuthorizedAction.other:
-      return 'other';
-  }
-}
-
-// This class is used as a filter.
-//
-// If all the conditions are undefined, it matches everything.
-// This is DANGEROUS as you can imagine, and you should avoid
-// such a powerful authorization.
-//
-// Once a condition is added, the audited resource should have the same
-// attribute if it is authorized.
-//
-// The data field is reserved for future use.
-//
-// Examples:
-// { ownedByUser: undefined, types: undefined, resourceId: undefined }
-//      matches every resource, including the resources that are not owned by any user.
-// { ownedByUser: 123, types: undefined, resourceId: undefined }
-//      matches all the resources owned by user whose user id is 123.
-// { ownedByUser: 123, types: ["users/profile"], resourceId: undefined }
-//      matches the profile of user whose id is 123.
-// { ownedByUser: undefined, types: ["blog"], resourceId: [42, 95, 928] }
-//      matches blogs whose IDs are 42, 95 and 928.
-// { ownedByUser: undefined, types: [], resourceId: undefined }
-//      matches nothing and is meaningless.
-//
-export class AuthorizedResource {
-  ownedByUser?: number; // owner's user id
-  types?: string[]; // resource type
-  resourceIds?: number[];
-  data?: any; // additional data
-}
-
-// The permission to perform all the actions listed in authorizedActions
-// on all the resources that match the authorizedResource property.
-export class Permission {
-  authorizedActions: AuthorizedAction[];
-  authorizedResource: AuthorizedResource;
-}
-
-// The user, whose id is userId, is granted the permissions.
-export class Authorization {
-  userId: number; // authorization identity
-  permissions: Permission[];
-}
-
-export class TokenPayload {
-  authorization: Authorization;
-  signedAt: number; // timestamp in milliseconds
-  validUntil: number; // timestamp in milliseconds
-}
+import { Authorization, AuthorizedAction, TokenPayload } from './definitions';
+import { CustomAuthLogics } from './custom-auth-logic';
 
 @Injectable()
 export class AuthService {
+  public static instance: AuthService;
+  public customAuthLogics: CustomAuthLogics = new CustomAuthLogics();
+
   constructor(private readonly jwtService: JwtService) {
+    AuthService.instance = this;
     const tokenPayloadSchemaRaw = readFileSync(
       path.resolve(__dirname, '../../src/auth/token-payload.schema.json'),
       'utf8',
@@ -186,14 +100,31 @@ export class AuthService {
   // no owner, type or id. Only the AuthorizedResource object whose ownedByUser, types
   // or resourceIds is undefined or contains a undefined can matches such a resource which has
   // no owner, type or id.
-  audit(
+  async audit(
     token: string | undefined,
     action: AuthorizedAction,
     resourceOwnerId?: number,
     resourceType?: string,
     resourceId?: number,
-  ): void {
+  ): Promise<void> {
     const authorization = this.verify(token);
+    await this.auditWithoutToken(
+      authorization,
+      action,
+      resourceOwnerId,
+      resourceType,
+      resourceId,
+    );
+  }
+
+  // Do the same thing as audit(), but without a token.
+  async auditWithoutToken(
+    authorization: Authorization,
+    action: AuthorizedAction,
+    resourceOwnerId?: number,
+    resourceType?: string,
+    resourceId?: number,
+  ): Promise<void> {
     // In many situations, the coders may forget to convert the string to number.
     // So we do it here.
     // Addition: We think this hides problems; so we remove it.
@@ -210,10 +141,13 @@ export class AuthService {
       throw new Error('resourceId must be a number.');
     }
     for (const permission of authorization.permissions) {
-      let actionMatches = false;
-      for (const authorizedAction of permission.authorizedActions) {
-        if (authorizedAction === action) {
-          actionMatches = true;
+      let actionMatches =
+        permission.authorizedActions === undefined ? true : false;
+      if (permission.authorizedActions !== undefined) {
+        for (const authorizedAction of permission.authorizedActions) {
+          if (authorizedAction === action) {
+            actionMatches = true;
+          }
         }
       }
       if (actionMatches == false) continue;
@@ -251,7 +185,21 @@ export class AuthService {
       if (idMatches == false) continue;
       // Now, id matches.
 
-      // Action, owner, type and id matches, so the operaton is permitted.
+      if (permission.customLogic !== undefined) {
+        const result = await this.customAuthLogics.invoke(
+          permission.customLogic,
+          authorization.userId,
+          action,
+          resourceOwnerId,
+          resourceType,
+          resourceId,
+          permission.customLogicData,
+        );
+        if (result !== true) continue;
+      }
+      // Now, custom logic matches.
+
+      // Action, owner, type and id matches, so the operation is permitted.
       return;
     }
     throw new PermissionDeniedError(

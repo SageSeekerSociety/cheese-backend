@@ -8,7 +8,7 @@
  */
 
 import { BaseError } from '../common/error/base-error';
-import { AuthorizedAction, authorizedActionToString } from './auth.service';
+import { AuthorizedAction } from './definitions';
 
 export class AuthenticationRequiredError extends BaseError {
   constructor() {
@@ -37,9 +37,7 @@ export class PermissionDeniedError extends BaseError {
   ) {
     super(
       'PermissionDeniedError',
-      `The attempt to perform action '${authorizedActionToString(
-        action,
-      )}' on resource (resourceOwnerId: ${resourceOwnerId}, resourceType: ${resourceType}, resourceId: ${resourceId}) is not permitted by the given token.`,
+      `The attempt to perform action '${action}' on resource (resourceOwnerId: ${resourceOwnerId}, resourceType: ${resourceType}, resourceId: ${resourceId}) is not permitted by the given token.`,
       403,
     );
   }

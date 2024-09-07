@@ -22,14 +22,7 @@
       "type": "object"
     },
     "AuthorizedAction": {
-      "enum": [
-        1,
-        2,
-        3,
-        4,
-        5
-      ],
-      "type": "number"
+      "type": "string"
     },
     "AuthorizedResource": {
       "additionalProperties": false,
@@ -64,10 +57,13 @@
         },
         "authorizedResource": {
           "$ref": "#/definitions/AuthorizedResource"
-        }
+        },
+        "customLogic": {
+          "type": "string"
+        },
+        "customLogicData": {}
       },
       "required": [
-        "authorizedActions",
         "authorizedResource"
       ],
       "type": "object"

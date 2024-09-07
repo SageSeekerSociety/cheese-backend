@@ -14,31 +14,10 @@ import {
   NotRefreshTokenError,
   PermissionDeniedError,
 } from './auth.error';
-import {
-  AuthService,
-  Authorization,
-  AuthorizedAction,
-  authorizedActionToString,
-} from './auth.service';
+import { AuthService } from './auth.service';
+import { Authorization, AuthorizedAction } from './definitions';
 import { SessionService } from './session.service';
-
-describe('authorizedActionToString()', () => {
-  it('should return "create" when AuthorizedAction.create is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.create)).toEqual('create');
-  });
-  it('should return "delete" when AuthorizedAction.delete is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.delete)).toEqual('delete');
-  });
-  it('should return "modify" when AuthorizedAction.modify is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.modify)).toEqual('modify');
-  });
-  it('should return "query" when AuthorizedAction.query is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.query)).toEqual('query');
-  });
-  it('should return "other" when AuthorizedAction.other is passed', () => {
-    expect(authorizedActionToString(AuthorizedAction.other)).toEqual('other');
-  });
-});
+import { CustomAuthLogicHandler } from './custom-auth-logic';
 
 describe('AuthService', () => {
   let app: TestingModule;
@@ -95,7 +74,7 @@ describe('AuthService', () => {
         userId: 1,
         permissions: [
           {
-            authorizedActions: [AuthorizedAction.create],
+            authorizedActions: ['create'],
             authorizedResource: {
               resourceType: 'user',
               resourceId: 1,
@@ -117,7 +96,7 @@ describe('AuthService', () => {
         userId: 1,
         permissions: [
           {
-            authorizedActions: [AuthorizedAction.create],
+            authorizedActions: ['create'],
             authorizedResource: {
               resourceType: 'user',
               resourceId: 1,
@@ -139,38 +118,26 @@ describe('AuthService', () => {
       userId: 0,
       permissions: [],
     });
-    expect(() => {
-      authService.audit(
-        token,
-        AuthorizedAction.other,
-        '1' as any as number,
-        'type',
-        1,
-      );
-    }).toThrow('resourceOwnerId must be a number.');
+    expect(async () => {
+      await authService.audit(token, 'other', '1' as any as number, 'type', 1);
+    }).rejects.toThrow('resourceOwnerId must be a number.');
   });
   it('should throw Error("resourceId must be a number.")', () => {
     const token = authService.sign({
       userId: 0,
       permissions: [],
     });
-    expect(() => {
-      authService.audit(
-        token,
-        AuthorizedAction.other,
-        1,
-        'type',
-        '1' as any as number,
-      );
-    }).toThrow('resourceId must be a number.');
+    expect(async () => {
+      await authService.audit(token, 'other', 1, 'type', '1' as any as number);
+    }).rejects.toThrow('resourceId must be a number.');
   });
   it('should throw AuthenticationRequiredError()', () => {
-    expect(() =>
-      authService.audit('', AuthorizedAction.other, 1, 'type', 1),
-    ).toThrow(new AuthenticationRequiredError());
-    expect(() =>
-      authService.audit(undefined, AuthorizedAction.other, 1, 'type', 1),
-    ).toThrow(new AuthenticationRequiredError());
+    expect(
+      async () => await authService.audit('', 'other', 1, 'type', 1),
+    ).rejects.toThrow(new AuthenticationRequiredError());
+    expect(
+      async () => await authService.audit(undefined, 'other', 1, 'type', 1),
+    ).rejects.toThrow(new AuthenticationRequiredError());
     expect(() => authService.decode('')).toThrow(
       new AuthenticationRequiredError(),
     );
@@ -178,12 +145,12 @@ describe('AuthService', () => {
       new AuthenticationRequiredError(),
     );
   });
-  it('should pass audit', () => {
+  it('should pass audit', async () => {
     const token = authService.sign({
       userId: 0,
       permissions: [
         {
-          authorizedActions: [AuthorizedAction.query],
+          authorizedActions: ['query'],
           authorizedResource: {
             ownedByUser: 1,
             types: undefined,
@@ -192,14 +159,14 @@ describe('AuthService', () => {
         },
       ],
     });
-    authService.audit(`bearer ${token}`, AuthorizedAction.query, 1, 'type', 1);
+    await authService.audit(`bearer ${token}`, 'query', 1, 'type', 1);
   });
   it('should throw PermissionDeniedError()', () => {
     const token = authService.sign({
       userId: 0,
       permissions: [
         {
-          authorizedActions: [AuthorizedAction.delete],
+          authorizedActions: ['delete'],
           authorizedResource: {
             ownedByUser: undefined,
             types: undefined,
@@ -208,9 +175,9 @@ describe('AuthService', () => {
         },
       ],
     });
-    expect(() =>
-      authService.audit(token, AuthorizedAction.delete, 1, 'type', 5),
-    ).toThrow(new PermissionDeniedError(AuthorizedAction.delete, 1, 'type', 5));
+    expect(
+      async () => await authService.audit(token, 'delete', 1, 'type', 5),
+    ).rejects.toThrow(new PermissionDeniedError('delete', 1, 'type', 5));
   });
   it('should verify and decode successfully', () => {
     const authorization: Authorization = {
@@ -240,5 +207,166 @@ describe('AuthService', () => {
     await expect(sessionService.revokeSession(token)).rejects.toThrow(
       new NotRefreshTokenError(),
     );
+  });
+  it('should throw Error()', () => {
+    const token = authService.sign({
+      userId: 0,
+      permissions: [
+        {
+          authorizedActions: ['some_action'],
+          authorizedResource: {
+            types: ['user'],
+          },
+          customLogic: 'some_logic',
+        },
+      ],
+    });
+    expect(async () => {
+      await authService.audit(token, 'some_action', 1, 'user', 1);
+    }).rejects.toThrow(new Error("Custom auth logic 'some_logic' not found."));
+  });
+  it('should register and invoke custom logic successfully', async () => {
+    let handler_called = false;
+    const handler: CustomAuthLogicHandler = async (
+      userId: number,
+      action: AuthorizedAction,
+      resourceOwnerId?: number,
+      resourceType?: string,
+      resourceId?: number,
+    ) => {
+      handler_called = true;
+      return true;
+    };
+    authService.customAuthLogics.register('some_logic', handler);
+    const token = authService.sign({
+      userId: 0,
+      permissions: [
+        {
+          authorizedActions: ['some_action'],
+          authorizedResource: {
+            types: ['user'],
+          },
+          customLogic: 'some_logic',
+        },
+      ],
+    });
+    await authService.audit(token, 'some_action', 1, 'user', 1);
+    expect(handler_called).toBe(true);
+  });
+  it('should register and invoke custom logic successfully', async () => {
+    let handler_called = false;
+    const handler: CustomAuthLogicHandler = async (
+      userId: number,
+      action: AuthorizedAction,
+      resourceOwnerId?: number,
+      resourceType?: string,
+      resourceId?: number,
+    ) => {
+      handler_called = true;
+      return false;
+    };
+    authService.customAuthLogics.register('another_logic', handler);
+    const token = authService.sign({
+      userId: 0,
+      permissions: [
+        {
+          authorizedActions: ['another_action'],
+          authorizedResource: {
+            types: ['user'],
+          },
+          customLogic: 'another_logic',
+        },
+      ],
+    });
+    expect(async () => {
+      await authService.audit(token, 'another_action', 1, 'user', 1);
+    }).rejects.toThrow(
+      new PermissionDeniedError('another_action', 1, 'user', 1),
+    );
+    expect(handler_called).toBe(true);
+  });
+  it('should invoke custom logic and get additional data successfully', async () => {
+    let handler_called = false;
+    let data = { some: '' };
+    const handler: CustomAuthLogicHandler = async (
+      userId: number,
+      action: AuthorizedAction,
+      resourceOwnerId?: number,
+      resourceType?: string,
+      resourceId?: number,
+      customLogicData?: any,
+    ) => {
+      handler_called = true;
+      data = customLogicData;
+      return false;
+    };
+    authService.customAuthLogics.register('yet_another_logic', handler);
+    const token = authService.sign({
+      userId: 0,
+      permissions: [
+        {
+          authorizedActions: ['another_action'],
+          authorizedResource: {
+            types: ['user'],
+          },
+          customLogic: 'yet_another_logic',
+          customLogicData: { some: 'data' },
+        },
+      ],
+    });
+    expect(async () => {
+      await authService.audit(token, 'another_action', 1, 'user', 1);
+    }).rejects.toThrow(
+      new PermissionDeniedError('another_action', 1, 'user', 1),
+    );
+    expect(handler_called).toBe(true);
+    expect(data).toEqual({ some: 'data' });
+  });
+  it('should always invoke custom logic successfully', async () => {
+    let handler_called = false;
+    const handler: CustomAuthLogicHandler = async (
+      userId: number,
+      action: AuthorizedAction,
+      resourceOwnerId?: number,
+      resourceType?: string,
+      resourceId?: number,
+    ) => {
+      handler_called = true;
+      return true;
+    };
+    authService.customAuthLogics.register('yet_yet_another_logic', handler);
+    const token = authService.sign({
+      userId: 0,
+      permissions: [
+        {
+          authorizedActions: undefined, // all actions
+          authorizedResource: {}, // all resources
+          customLogic: 'yet_yet_another_logic',
+        },
+      ],
+    });
+    await authService.audit(token, 'some_action', 1, 'user', 1);
+    expect(handler_called).toBe(true);
+    handler_called = false;
+    await authService.audit(token, 'another_action', undefined, 'user', 1);
+    expect(handler_called).toBe(true);
+    handler_called = false;
+    await authService.audit(
+      token,
+      'some_action',
+      1,
+      'another_resource',
+      undefined,
+    );
+    expect(handler_called).toBe(true);
+    handler_called = false;
+    await authService.audit(
+      token,
+      'another_action',
+      undefined,
+      'another_resource',
+      undefined,
+    );
+    expect(handler_called).toBe(true);
   });
 });

@@ -23,12 +23,20 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { AuthorizedAction, AuthService } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
 import {
   createMaterialBundleRequestDto,
   createMaterialBundleResponseDto,
 } from './DTO/create-materialbundle.dto';
 //import { getMaterialBundleListDto } from './DTO/get-materialbundle.dto';
+import {
+  AuthToken,
+  CurrentUserOwnResource,
+  Guard,
+  ResourceId,
+  ResourceOwnerIdGetter,
+} from '../auth/guard.decorator';
+import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import {
@@ -40,33 +48,35 @@ import { updateMaterialBundleDto } from './DTO/update-materialbundle.dto';
 import { MaterialbundlesService } from './materialbundles.service';
 
 @Controller('/material-bundles')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
 export class MaterialbundlesController {
   constructor(
     private readonly materialbundlesService: MaterialbundlesService,
     private readonly authService: AuthService,
   ) {}
 
+  @ResourceOwnerIdGetter('material-bundle')
+  async getMaterialBundleOwner(
+    materialBundleId: number,
+  ): Promise<number | undefined> {
+    return this.materialbundlesService.getMaterialBundleCreatorId(
+      materialBundleId,
+    );
+  }
+
   @Post()
+  @Guard('create', 'material-bundle')
+  @CurrentUserOwnResource()
   async createMaterialBundle(
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
     @Body()
     { title, content, materials }: createMaterialBundleRequestDto,
+    @UserId(true) userId: number,
   ): Promise<createMaterialBundleResponseDto> {
-    const creatorId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.create,
-      creatorId,
-      'materialbundle',
-      undefined,
-    );
     const bundleId = await this.materialbundlesService.createBundle(
       title,
       content,
       materials,
-      creatorId,
+      userId,
     );
     return {
       code: 201,
@@ -76,7 +86,9 @@ export class MaterialbundlesController {
       },
     };
   }
+
   @Get()
+  @Guard('enumerate', 'material-bundle')
   async getMaterialBundleList(
     @Query()
     {
@@ -85,16 +97,11 @@ export class MaterialbundlesController {
       page_size: pageSize,
       sort,
     }: getMaterialBundleListDto,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
+    @UserId() viewerId: number | undefined,
   ): Promise<getMaterialBundlesResponseDto> {
-    let viewerId: number | undefined;
-    try {
-      viewerId = this.authService.verify(auth).userId;
-    } catch {
-      // The user is not logged in.
-    }
     const [bundles, page] = await this.materialbundlesService.getBundles(
       q,
       pageStart,
@@ -114,18 +121,14 @@ export class MaterialbundlesController {
     };
   }
   @Get('/:materialBundleId')
+  @Guard('query', 'material-bundle')
   async getMaterialBundleDetail(
-    @Param('materialBundleId', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Param('materialBundleId', ParseIntPipe) @ResourceId() id: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
+    @UserId() viewerId: number | undefined,
   ): Promise<BundleResponseDto> {
-    let viewerId: number | undefined;
-    try {
-      viewerId = this.authService.verify(auth).userId;
-    } catch {
-      // The user is not logged in.
-    }
     const materialBundle = await this.materialbundlesService.getBundleDetail(
       id,
       viewerId,
@@ -141,13 +144,13 @@ export class MaterialbundlesController {
     };
   }
   @Patch('/:materialBundleId')
+  @Guard('modify', 'material-bundle')
   async updateMaterialBundle(
-    @Param('materialBundleId', ParseIntPipe) id: number,
+    @Param('materialBundleId', ParseIntPipe) @ResourceId() id: number,
     @Body() { title, content, materials }: updateMaterialBundleDto,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId(true) userId: number,
   ): Promise<BaseResponseDto> {
-    //console.log(title, content, materials);
-    const userId = this.authService.verify(auth).userId;
     await this.materialbundlesService.updateMaterialBundle(
       id,
       userId,
@@ -161,11 +164,12 @@ export class MaterialbundlesController {
     };
   }
   @Delete('/:materialBundleId')
+  @Guard('delete', 'material-bundle')
   async deleteMaterialBundle(
-    @Param('materialBundleId', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Param('materialBundleId', ParseIntPipe) @ResourceId() id: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId(true) userId: number,
   ) {
-    const userId = this.authService.verify(auth).userId;
     await this.materialbundlesService.deleteMaterialBundle(id, userId);
   }
 }

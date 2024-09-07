@@ -11,25 +11,25 @@ import {
   Body,
   Controller,
   Get,
-  Param,
-  Post,
   Headers,
-  UsePipes,
-  ValidationPipe,
+  Param,
+  ParseIntPipe,
+  Post,
+  UploadedFile,
   UseFilters,
   UseInterceptors,
-  UploadedFile,
-  ParseIntPipe,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
-import { AttachmentsService } from './attachments.service';
-import { attachmentTypeDto } from './DTO/attachments.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthService } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import { AuthorizedAction, AuthService } from '../auth/auth.service';
+import { attachmentTypeDto } from './DTO/attachments.dto';
 import { getAttachmentResponseDto } from './DTO/get-attachment.dto';
 import { uploadAttachmentDto } from './DTO/upload-attachment.dto';
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
+import { AttachmentsService } from './attachments.service';
+import { AuthToken, Guard } from '../auth/guard.decorator';
+
 @Controller('attachments')
 export class AttachmentsController {
   constructor(
@@ -39,19 +39,12 @@ export class AttachmentsController {
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
+  @Guard('create', 'attachment')
   async uploadAttachment(
     @Body() { type }: attachmentTypeDto,
     @UploadedFile() file: Express.Multer.File,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<uploadAttachmentDto> {
-    const uploaderId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.create,
-      uploaderId,
-      'attachment',
-      undefined,
-    );
     const attachmentId = await this.attachmentsService.uploadAttachment(
       type,
       file,
@@ -66,8 +59,10 @@ export class AttachmentsController {
   }
 
   @Get('/:attachmentId')
+  @Guard('query', 'attachment')
   async getAttachmentDetail(
     @Param('attachmentId', ParseIntPipe) id: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
   ): Promise<getAttachmentResponseDto> {
     const attachment = await this.attachmentsService.getAttachment(id);
     return {

@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { BaseErrorExceptionFilter } from './common/error/error-filter';
 
 export const IS_DEV = process.env.NODE_ENV !== 'production';
 

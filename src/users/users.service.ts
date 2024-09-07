@@ -20,11 +20,8 @@ import { isEmail } from 'class-validator';
 import assert from 'node:assert';
 import { AnswerService } from '../answer/answer.service';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
-import {
-  AuthService,
-  Authorization,
-  AuthorizedAction,
-} from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { Authorization } from '../auth/definitions';
 import { SessionService } from '../auth/session.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
@@ -485,7 +482,7 @@ export class UsersService {
         userId: user.id,
         permissions: [
           {
-            authorizedActions: [AuthorizedAction.modify],
+            authorizedActions: ['modify'],
             authorizedResource: {
               ownedByUser: user.id,
               types: ['users/password:reset'],
@@ -524,9 +521,9 @@ export class UsersService {
     // If we check, then, if the token is invalid, it won't be logged.
     const userId = this.authService.decode(token).authorization.userId;
     try {
-      this.authService.audit(
+      await this.authService.audit(
         token,
-        AuthorizedAction.modify,
+        'modify',
         userId,
         'users/password:reset',
         undefined,

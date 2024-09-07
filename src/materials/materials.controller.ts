@@ -24,16 +24,16 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { AuthorizedAction, AuthService } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
 import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { GetMaterialResponseDto } from './DTO/get-material.dto';
 import { MaterialTypeDto } from './DTO/material.dto';
 import { UploadMaterialResponseDto } from './DTO/upload-material.dto';
 import { MaterialsService } from './materials.service';
+import { AuthToken, Guard, ResourceId } from '../auth/guard.decorator';
+import { UserId } from '../auth/user-id.decorator';
 
 @Controller('/materials')
-@UsePipes(new ValidationPipe())
-@UseFilters(new BaseErrorExceptionFilter())
 export class MaterialsController {
   constructor(
     private readonly materialsService: MaterialsService,
@@ -42,19 +42,13 @@ export class MaterialsController {
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
+  @Guard('create', 'material')
   async uploadMaterial(
     @Body() { type: materialType }: MaterialTypeDto,
     @UploadedFile() file: Express.Multer.File,
-    @Headers('Authorization') auth: string | undefined,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId(true) uploaderId: number,
   ): Promise<UploadMaterialResponseDto> {
-    const uploaderId = this.authService.verify(auth).userId;
-    this.authService.audit(
-      auth,
-      AuthorizedAction.create,
-      uploaderId,
-      'material',
-      undefined,
-    );
     const materialId = await this.materialsService.uploadMaterial(
       materialType,
       file,
@@ -70,18 +64,14 @@ export class MaterialsController {
   }
 
   @Get('/:materialId')
+  @Guard('query', 'material')
   async getMaterialDetail(
-    @Param('materialId', ParseIntPipe) id: number,
-    @Headers('Authorization') auth: string | undefined,
+    @Param('materialId', ParseIntPipe) @ResourceId() id: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string,
+    @UserId() viewerId: number | undefined,
   ): Promise<GetMaterialResponseDto> {
-    let viewerId: number | undefined;
-    try {
-      viewerId = this.authService.verify(auth).userId;
-    } catch {
-      // The user is not logged in.
-    }
     const material = await this.materialsService.getMaterial(
       id,
       viewerId,
@@ -98,7 +88,7 @@ export class MaterialsController {
   }
   @Delete('/:materialId') // to do
   async deleteMaterial() //@Param('materialId') id: number,
-  //@Headers('Authorization') auth: string | undefined,
+  //@Headers('Authorization') @AuthToken() auth: string | undefined,
   : Promise<void> {
     /* istanbul ignore next */
     throw new Error('deleteMaterial method is not implemented yet.');

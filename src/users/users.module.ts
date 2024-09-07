@@ -17,6 +17,7 @@ import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { RolePermissionService } from './role-permission.service';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { UsersService } from './users.service';
     UsersService,
     UsersPermissionService,
     UsersRegisterRequestService,
+    RolePermissionService,
   ],
   exports: [UsersService],
 })

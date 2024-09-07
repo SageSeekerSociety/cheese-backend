@@ -247,9 +247,9 @@ describe('Answers Module', () => {
       expect(respond.body.code).toBe(400);
     });
     it('should return updated statistic info when getting user who not log in', async () => {
-      const respond = await request(app.getHttpServer()).get(
-        `/users/${auxUserId}`,
-      );
+      const respond = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}`)
+        .set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.data.user.answer_count).toBe(6);
     });
     it('should return updated statistic info when getting user', async () => {
@@ -276,6 +276,7 @@ describe('Answers Module', () => {
       const response = await request(app.getHttpServer())
         .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
         .set('Authorization', `Bearer ${auxAccessToken}`)
+        .set('User-Agent', 'PostmanRuntime/7.26.8')
         .send();
       expect(response.body.message).toBe('Answer fetched successfully.');
       expect(response.status).toBe(200);
@@ -305,34 +306,34 @@ describe('Answers Module', () => {
       expect(response.body.data.answer.view_count).toBeDefined();
       expect(response.body.data.answer.is_group).toBe(false);
     });
-    it('should get a answer even without token', async () => {
-      // const TestQuestionId = questionId[0];
-      const TestAnswerId = answerIds[0];
-      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
-      const response = await request(app.getHttpServer())
-        .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
-        .send();
-      expect(response.body.message).toBe('Answer fetched successfully.');
-      expect(response.status).toBe(200);
-      expect(response.body.code).toBe(200);
-      expect(response.body.data.question.id).toBe(TestQuestionId);
-      expect(response.body.data.question.title).toBeDefined();
-      expect(response.body.data.question.content).toBeDefined();
-      expect(response.body.data.question.author.id).toBe(TestUserId);
-      expect(response.body.data.answer.id).toBe(TestAnswerId);
-      expect(response.body.data.answer.question_id).toBe(TestQuestionId);
-      expect(response.body.data.answer.content).toContain(
-        '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
-      );
-      expect(response.body.data.answer.author.id).toBe(auxUserId);
-      expect(response.body.data.answer.created_at).toBeDefined();
-      expect(response.body.data.answer.updated_at).toBeDefined();
-      //expect(response.body.data.answer.agree_type).toBe(0);
-      expect(response.body.data.answer.is_favorite).toBe(false);
-      //expect(response.body.data.answer.agree_count).toBe(0);
-      expect(response.body.data.answer.favorite_count).toBe(0);
-      expect(response.body.data.answer.view_count).toBeDefined();
-    });
+    // it('should get a answer even without token', async () => {
+    //   // const TestQuestionId = questionId[0];
+    //   const TestAnswerId = answerIds[0];
+    //   const TestQuestionId = AnswerQuestionMap[TestAnswerId];
+    //   const response = await request(app.getHttpServer())
+    //     .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
+    //     .send();
+    //   expect(response.body.message).toBe('Answer fetched successfully.');
+    //   expect(response.status).toBe(200);
+    //   expect(response.body.code).toBe(200);
+    //   expect(response.body.data.question.id).toBe(TestQuestionId);
+    //   expect(response.body.data.question.title).toBeDefined();
+    //   expect(response.body.data.question.content).toBeDefined();
+    //   expect(response.body.data.question.author.id).toBe(TestUserId);
+    //   expect(response.body.data.answer.id).toBe(TestAnswerId);
+    //   expect(response.body.data.answer.question_id).toBe(TestQuestionId);
+    //   expect(response.body.data.answer.content).toContain(
+    //     '你说得对，但是原神是一款由米哈游自主研发的开放世界游戏，',
+    //   );
+    //   expect(response.body.data.answer.author.id).toBe(auxUserId);
+    //   expect(response.body.data.answer.created_at).toBeDefined();
+    //   expect(response.body.data.answer.updated_at).toBeDefined();
+    //   //expect(response.body.data.answer.agree_type).toBe(0);
+    //   expect(response.body.data.answer.is_favorite).toBe(false);
+    //   //expect(response.body.data.answer.agree_count).toBe(0);
+    //   expect(response.body.data.answer.favorite_count).toBe(0);
+    //   expect(response.body.data.answer.view_count).toBeDefined();
+    // });
 
     it('should return AnswerNotFoundError', async () => {
       const TestAnswerId = answerIds[0];
@@ -345,6 +346,17 @@ describe('Answers Module', () => {
       expect(response.body.message).toMatch(/AnswerNotFoundError: /);
       expect(response.status).toBe(404);
       expect(response.body.code).toBe(404);
+    });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const TestAnswerId = answerIds[0];
+      const TestQuestionId = AnswerQuestionMap[TestAnswerId];
+      const response = await request(app.getHttpServer())
+        .get(`/questions/${TestQuestionId}/answers/${TestAnswerId}`)
+        // .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
     });
   });
 
@@ -468,41 +480,50 @@ describe('Answers Module', () => {
       expect(response.body.data.answers[1].id).toBe(specialAnswerIds[3]);
     });
 
-    it('should successfully get answers by question ID without token', async () => {
-      const pageSize = 2;
-      const response = await request(app.getHttpServer())
-        .get(`/questions/${specialQuestionId}/answers`)
-        .query({
-          page_start: specialAnswerIds[2],
-          page_size: pageSize,
-        })
-        .send();
+    // it('should successfully get answers by question ID without token', async () => {
+    //   const pageSize = 2;
+    //   const response = await request(app.getHttpServer())
+    //     .get(`/questions/${specialQuestionId}/answers`)
+    //     .query({
+    //       page_start: specialAnswerIds[2],
+    //       page_size: pageSize,
+    //     })
+    //     .send();
 
-      expect(response.body.message).toBe('Answers fetched successfully.');
+    //   expect(response.body.message).toBe('Answers fetched successfully.');
 
-      expect(response.status).toBe(200);
-      expect(response.body.code).toBe(200);
-      expect(response.body.data.page.page_start).toBe(specialAnswerIds[2]);
-      expect(response.body.data.page.page_size).toBe(2);
-      expect(response.body.data.page.has_prev).toBe(true);
-      expect(response.body.data.page.prev_start).toBe(specialAnswerIds[0]);
-      expect(response.body.data.page.has_more).toBe(true);
-      expect(response.body.data.page.next_start).toBe(specialAnswerIds[4]);
-      expect(response.body.data.answers.length).toBe(2);
-      expect(response.body.data.answers[0].question_id).toBe(specialQuestionId);
-      expect(response.body.data.answers[1].question_id).toBe(specialQuestionId);
-      expect(response.body.data.answers[0].id).toBe(specialAnswerIds[2]);
-      expect(response.body.data.answers[1].id).toBe(specialAnswerIds[3]);
-    });
+    //   expect(response.status).toBe(200);
+    //   expect(response.body.code).toBe(200);
+    //   expect(response.body.data.page.page_start).toBe(specialAnswerIds[2]);
+    //   expect(response.body.data.page.page_size).toBe(2);
+    //   expect(response.body.data.page.has_prev).toBe(true);
+    //   expect(response.body.data.page.prev_start).toBe(specialAnswerIds[0]);
+    //   expect(response.body.data.page.has_more).toBe(true);
+    //   expect(response.body.data.page.next_start).toBe(specialAnswerIds[4]);
+    //   expect(response.body.data.answers.length).toBe(2);
+    //   expect(response.body.data.answers[0].question_id).toBe(specialQuestionId);
+    //   expect(response.body.data.answers[1].question_id).toBe(specialQuestionId);
+    //   expect(response.body.data.answers[0].id).toBe(specialAnswerIds[2]);
+    //   expect(response.body.data.answers[1].id).toBe(specialAnswerIds[3]);
+    // });
 
-    it('should return an empty list for a non-existent question ID', async () => {
+    it('should return QuestionNotFoundError for a non-existent question ID', async () => {
       const nonExistentQuestionId = 99999;
       const response = await request(app.getHttpServer())
         .get(`/questions/${nonExistentQuestionId}/answers`)
         .set('Authorization', `Bearer ${TestToken}`);
-      expect(response.body.message).toBe('Answers fetched successfully.');
-      expect(response.status).toBe(200);
-      expect(response.body.code).toBe(200);
+      expect(response.body.message).toMatch(/QuestionNotFoundError: /);
+      expect(response.status).toBe(404);
+      expect(response.body.code).toBe(404);
+    });
+
+    it('should return AuthenticationRequiredError', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/questions/${specialQuestionId}/answers`)
+        // .set('Authorization', `Bearer ${auxAccessToken}`)
+        .send();
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
     });
   });
 
@@ -511,6 +532,7 @@ describe('Answers Module', () => {
       const noneExistUserId = -1;
       const respond = await request(app.getHttpServer())
         .get(`/users/${noneExistUserId}/answers`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toMatch(/UserIdNotFoundError: /);
       expect(respond.status).toBe(404);
@@ -546,6 +568,7 @@ describe('Answers Module', () => {
           page_start: auxUserAskedAnswerIds[0],
           page_size: 2,
         })
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(response.body.message).toBe('Query asked questions successfully.');
       expect(response.status).toBe(200);
@@ -567,6 +590,7 @@ describe('Answers Module', () => {
           page_start: auxUserAskedAnswerIds[2],
           page_size: 2,
         })
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(response.body.message).toBe('Query asked questions successfully.');
       expect(response.status).toBe(200);
@@ -580,6 +604,13 @@ describe('Answers Module', () => {
       expect(response.body.data.answers.length).toBe(2);
       expect(response.body.data.answers[0].id).toBe(auxUserAskedAnswerIds[2]);
       expect(response.body.data.answers[1].id).toBe(auxUserAskedAnswerIds[3]);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const response = await request(app.getHttpServer())
+        .get(`/users/${auxUserId}/answers`)
+        .send();
+      expect(response.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(response.body.code).toBe(401);
     });
   });
 
@@ -820,19 +851,27 @@ describe('Answers Module', () => {
       expect(respond.body.data.attitudes.difference).toBe(0);
       expect(respond.body.data.attitudes.user_attitude).toBe('NEGATIVE');
     });
-    it('should get answer dto with attitude statics', async () => {
+    // it('should get answer dto with attitude statics', async () => {
+    //   const respond = await request(app.getHttpServer())
+    //     .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+    //     .send();
+    //   expect(respond.body.message).toBe('Answer fetched successfully.');
+    //   expect(respond.body.code).toBe(200);
+    //   expect(respond.statusCode).toBe(200);
+    //   expect(respond.body.data.answer.attitudes.positive_count).toBe(1);
+    //   expect(respond.body.data.answer.attitudes.negative_count).toBe(1);
+    //   expect(respond.body.data.answer.attitudes.difference).toBe(0);
+    //   expect(respond.body.data.answer.attitudes.user_attitude).toBe(
+    //     'UNDEFINED',
+    //   );
+    // });
+    it('should return AuthenticationRequiredError', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
         .send();
-      expect(respond.body.message).toBe('Answer fetched successfully.');
-      expect(respond.body.code).toBe(200);
-      expect(respond.statusCode).toBe(200);
-      expect(respond.body.data.answer.attitudes.positive_count).toBe(1);
-      expect(respond.body.data.answer.attitudes.negative_count).toBe(1);
-      expect(respond.body.data.answer.attitudes.difference).toBe(0);
-      expect(respond.body.data.answer.attitudes.user_attitude).toBe(
-        'UNDEFINED',
-      );
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+      expect(respond.statusCode).toBe(401);
     });
     it('should get answer dto with attitude statics', async () => {
       const respond = await request(app.getHttpServer())
@@ -897,6 +936,7 @@ describe('Answers Module', () => {
     it('should get answer dto with attitude statics', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/questions/${specialQuestionId}/answers/${specialAnswerIds[0]}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toBe('Answer fetched successfully.');
       expect(respond.body.code).toBe(200);

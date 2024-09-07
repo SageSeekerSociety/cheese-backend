@@ -189,18 +189,30 @@ describe('MaterialBundle Module', () => {
       expect(respond.body.code).toBe(404);
       expect(respond.body.message).toMatch(/^MaterialNotFoundError: /);
     });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/material-bundles')
+        .send({
+          title: 'a materialbundle',
+          content: 'content about materialbundle',
+          materials: [ImageId, VideoId, FileId],
+        });
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
+    });
   });
   describe('get materialbundles', () => {
     it('should get all of the materialbundles', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .query({
           q: '',
           sort: '',
         });
+      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.body.data.materials.length).toEqual(20);
       expect(respond.body.data.materials[0].id).toEqual(1);
       expect(respond.body.data.page.page_size).toBe(20);
@@ -212,13 +224,14 @@ describe('MaterialBundle Module', () => {
     it('should get the materialbundles with keyword without size and start', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .query({
           q: unique.toString(),
           sort: '',
         });
+      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.body.data.materials.length).toEqual(20);
       respond.body.data.materials
         .slice(0, 20)
@@ -234,14 +247,15 @@ describe('MaterialBundle Module', () => {
     it('should get the materialbundles with keyword and size without start', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .query({
           q: unique.toString(),
           page_size: 10,
           sort: '',
         });
+      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.body.data.materials.length).toEqual(10);
       respond.body.data.materials
         .slice(0, 10)
@@ -257,15 +271,16 @@ describe('MaterialBundle Module', () => {
     it('should get the materialbundles with keyword,size and start', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .query({
           q: unique.toString(),
           page_size: 10,
           page_start: bundleIds[4],
           sort: '',
         });
+      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.body.data.materials.length).toEqual(10);
       respond.body.data.materials
         .slice(0, 10)
@@ -281,14 +296,15 @@ describe('MaterialBundle Module', () => {
     it('should get the materialbundles with keyword,size and search syntax string as start', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .query({
           q: `title:${unique.toString()} id:>=${bundleIds[4]}`,
           page_size: 10,
           sort: '',
         });
+      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.body.data.materials.length).toEqual(10);
       respond.body.data.materials
         .slice(0, 10)
@@ -304,15 +320,16 @@ describe('MaterialBundle Module', () => {
     it('should get the materialbundles with keyword,size,start and sort', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .query({
           q: unique.toString(),
           page_size: 10,
           page_start: bundleIds[14],
           sort: 'newest',
         });
+      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.status).toBe(200);
       expect(respond.body.code).toBe(200);
-      expect(respond.body.message).toBe('get material bundles successfully');
       expect(respond.body.data.materials.length).toEqual(10);
       respond.body.data.materials
         .slice(0, 10)
@@ -328,6 +345,7 @@ describe('MaterialBundle Module', () => {
     it('should return KeywordTooLongError', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .query({
           q: 'yui'.repeat(100),
           page_size: 10,
@@ -341,6 +359,7 @@ describe('MaterialBundle Module', () => {
     it('should get the materialbundle detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles/${bundleId1}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(200);
       expect(respond.body.message).toBe(
@@ -361,10 +380,18 @@ describe('MaterialBundle Module', () => {
     it('should return BundleNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/material-bundles/${bundleId1 + 30}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
       expect(respond.body.message).toMatch(/^BundleNotFoundError: /);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/material-bundles/${bundleId1}`)
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
     });
   });
   describe('update materialbundle', () => {
@@ -381,6 +408,7 @@ describe('MaterialBundle Module', () => {
       expect(respond1.body.message).toBe('Materialbundle updated successfully');
       const respond2 = await request(app.getHttpServer())
         .get(`/material-bundles/${bundleId2}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond2.body.data.materialBundle.title).toBe('new title');
       expect(respond2.body.data.materialBundle.content).toBe('new content');
@@ -407,6 +435,13 @@ describe('MaterialBundle Module', () => {
       expect(respond.status).toBe(403);
       expect(respond.body.code).toBe(403);
       expect(respond.body.message).toMatch(/^UpdateBundleDeniedError: /);
+    });
+    it('should return AuthenticationRequiredError', async () => {
+      const respond = await request(app.getHttpServer())
+        .patch(`/material-bundles/${bundleId1}`)
+        .send();
+      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+      expect(respond.body.code).toBe(401);
     });
   });
   describe('delete materialbundle', () => {
@@ -443,6 +478,7 @@ describe('MaterialBundle Module', () => {
       //expect(respond.status).toBe(200);
       const respond2 = await request(app.getHttpServer())
         .get(`/material-bundles/${bundleId2}`)
+        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond2.body.message).toMatch(/^BundleNotFoundError: /);
       expect(respond2.body.code).toBe(404);

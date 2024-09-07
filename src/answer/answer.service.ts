@@ -566,6 +566,18 @@ export class AnswerService {
     return answer.createdById;
   }
 
+  async getCreatedByIdAcrossQuestions(answerId: number): Promise<number> {
+    const answer = await this.prismaService.answer.findUnique({
+      where: {
+        id: answerId,
+      },
+    });
+    if (!answer) {
+      throw new AnswerNotFoundError(answerId);
+    }
+    return answer.createdById;
+  }
+
   async countQuestionAnswers(questionId: number): Promise<number> {
     if ((await this.questionsService.isQuestionExists(questionId)) == false)
       throw new QuestionNotFoundError(questionId);

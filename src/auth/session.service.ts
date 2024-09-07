@@ -14,7 +14,8 @@ import {
   SessionExpiredError,
   SessionRevokedError,
 } from './auth.error';
-import { AuthService, Authorization, AuthorizedAction } from './auth.service';
+import { AuthService } from './auth.service';
+import { Authorization } from './definitions';
 
 @Injectable()
 export class SessionService {
@@ -40,7 +41,7 @@ export class SessionService {
             types: ['auth/session:refresh', 'auth/session:revoke'],
             resourceIds: [sessionId],
           },
-          authorizedActions: [AuthorizedAction.other],
+          authorizedActions: ['other'],
         },
       ],
     };
@@ -89,9 +90,9 @@ export class SessionService {
       throw new NotRefreshTokenError();
     }
     const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
-    this.authService.audit(
+    await this.authService.audit(
       oldRefreshToken,
-      AuthorizedAction.other,
+      'other',
       undefined,
       'auth/session:refresh',
       sessionId,
@@ -169,9 +170,9 @@ export class SessionService {
       throw new NotRefreshTokenError();
     }
     const sessionId = auth.permissions[0].authorizedResource.resourceIds[0];
-    this.authService.audit(
+    await this.authService.audit(
       refreshToken,
-      AuthorizedAction.other,
+      'other',
       undefined,
       'auth/session:revoke',
       sessionId,
