@@ -92,7 +92,6 @@ describe('Avatar Module', () => {
       const avatarId = AvatarId;
       const respond = await request(app.getHttpServer())
         .get(`/avatars/${avatarId}`)
-        .set('Authorization', `Bearer ${TestToken}`)
         .send()
         .responseType('blob');
       expect(respond.status).toBe(200);
@@ -106,25 +105,16 @@ describe('Avatar Module', () => {
     it('should return AvatarNotFoundError when an avatar is not found', async () => {
       const respond = await request(app.getHttpServer())
         .get('/avatars/1000')
-        .set('Authorization', `Bearer ${TestToken}`)
         .send();
       expect(respond.body.message).toMatch(/^AvatarNotFoundError: /);
       expect(respond.status).toBe(404);
     });
-    // it('should return AuthenticationRequiredError', async () => {
-    //   const respond = await request(app.getHttpServer())
-    //     .get(`/avatars/${AvatarId}`)
-    //     .send();
-    //   expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
-    //   expect(respond.status).toBe(401);
-    // });
-  });
-  describe('get default avatar', () => {
-    it('should get default avatar', async () => {
+    it('should get avatar without authentication', async () => {
+      const avatarId = AvatarId;
       const respond = await request(app.getHttpServer())
-        .get('/avatars/default')
-        .set('Authorization', `Bearer ${TestToken}`)
-        .send();
+        .get(`/avatars/${avatarId}`)
+        .send()
+        .responseType('blob');
       expect(respond.status).toBe(200);
       expect(respond.headers['cache-control']).toContain('max-age');
       expect(respond.headers['content-type']).toMatch(/image\/.*/);
@@ -133,12 +123,19 @@ describe('Avatar Module', () => {
       expect(respond.headers['etag']).toBeDefined();
       expect(respond.headers['last-modified']).toBeDefined();
     });
-    it('should return AuthenticationRequiredError', async () => {
-      const respond = await request(app.getHttpServer()).get(
-        '/avatars/default',
-      );
-      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(respond.status).toBe(401);
+  });
+  describe('get default avatar', () => {
+    it('should get default avatar', async () => {
+      const respond = await request(app.getHttpServer())
+        .get('/avatars/default')
+        .send();
+      expect(respond.status).toBe(200);
+      expect(respond.headers['cache-control']).toContain('max-age');
+      expect(respond.headers['content-type']).toMatch(/image\/.*/);
+      expect(respond.headers['content-disposition']).toContain('inline');
+      expect(respond.headers['content-length']).toBeDefined();
+      expect(respond.headers['etag']).toBeDefined();
+      expect(respond.headers['last-modified']).toBeDefined();
     });
   });
   describe('get pre available avatarIds', () => {
