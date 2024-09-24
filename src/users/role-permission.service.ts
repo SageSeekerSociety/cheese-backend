@@ -140,7 +140,7 @@ export class RolePermissionService {
           },
         },
         {
-          authorizedActions: ['create', 'query-default', 'enumerate'],
+          authorizedActions: ['create', 'enumerate'],
           authorizedResource: {
             ownedByUser: undefined,
             types: ['avatar'],

@@ -47,11 +47,10 @@ export class AvatarsController {
   }
 
   @Get('/default')
-  @Guard('query-default', 'avatar')
+  @NoAuth()
   async getDefaultAvatar(
     @Headers('If-None-Match') ifNoneMatch: string,
     @Res({ passthrough: true }) res: Response,
-    @Headers('Authorization') @AuthToken() auth: string,
   ) {
     const defaultAvatarId = await this.avatarsService.getDefaultAvatarId();
     const avatarPath = await this.avatarsService.getAvatarPath(defaultAvatarId);
@@ -85,7 +84,6 @@ export class AvatarsController {
     @Headers('If-None-Match') ifNoneMatch: string,
     @Param('id', ParseIntPipe) @ResourceId() id: number,
     @Res({ passthrough: true }) res: Response,
-    @Headers('Authorization') @AuthToken() auth: string,
   ) {
     const avatarPath = await this.avatarsService.getAvatarPath(id);
     if (!fs.existsSync(avatarPath)) {
