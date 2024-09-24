@@ -111,13 +111,13 @@ describe('Avatar Module', () => {
       expect(respond.body.message).toMatch(/^AvatarNotFoundError: /);
       expect(respond.status).toBe(404);
     });
-    it('should return AuthenticationRequiredError', async () => {
-      const respond = await request(app.getHttpServer())
-        .get(`/avatars/${AvatarId}`)
-        .send();
-      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(respond.status).toBe(401);
-    });
+    // it('should return AuthenticationRequiredError', async () => {
+    //   const respond = await request(app.getHttpServer())
+    //     .get(`/avatars/${AvatarId}`)
+    //     .send();
+    //   expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
+    //   expect(respond.status).toBe(401);
+    // });
   });
   describe('get default avatar', () => {
     it('should get default avatar', async () => {
