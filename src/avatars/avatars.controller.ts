@@ -9,25 +9,21 @@ import {
   Res,
   StreamableFile,
   UploadedFile,
-  UseFilters,
   UseInterceptors,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AvatarType } from '@prisma/client';
 import { Response } from 'express';
 import * as fs from 'fs';
-import { BaseErrorExceptionFilter } from '../common/error/error-filter';
+import { AuthToken, Guard, ResourceId } from '../auth/guard.decorator';
 import { getFileHash, getFileMimeType } from '../common/helper/file.helper';
-import { TokenValidateInterceptor } from '../common/interceptor/token-validate.interceptor';
 import { UploadAvatarResponseDto } from './DTO/upload-avatar.dto';
 import {
   CorrespondentFileNotExistError,
   InvalidAvatarTypeError,
 } from './avatars.error';
 import { AvatarsService } from './avatars.service';
-import { AuthToken, Guard, ResourceId } from '../auth/guard.decorator';
+import { NoAuth } from '../common/interceptor/token-validate.interceptor';
 
 @Controller('/avatars')
 export class AvatarsController {
@@ -84,7 +80,7 @@ export class AvatarsController {
   }
 
   @Get('/:id')
-  @Guard('query', 'avatar')
+  @NoAuth()
   async getAvatar(
     @Headers('If-None-Match') ifNoneMatch: string,
     @Param('id', ParseIntPipe) @ResourceId() id: number,
