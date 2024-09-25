@@ -64,7 +64,7 @@ function configureMulterModule() {
         image: ['image'],
         video: ['video'],
         audio: ['audio'],
-        file: ['application', 'text'],
+        file: ['application', 'text', 'image', 'video', 'audio'],
       };
       const allowedTypes = typeToMimeTypes[req.body.type];
       if (!allowedTypes) {
