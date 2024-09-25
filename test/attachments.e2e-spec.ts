@@ -15,8 +15,11 @@ describe('Attachment Module', () => {
 
   let TestToken: string;
   let ImageId: number;
+  let ImageAsFileId: number;
   let VideoId: number;
+  let VideoAsFileId: number;
   let AudioId: number;
+  let AudioAsFileId: number;
   let FileId: number;
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -93,6 +96,17 @@ describe('Attachment Module', () => {
       expect(respond.body.data).toHaveProperty('id');
       ImageId = respond.body.data.id;
     });
+    it('should upload an image as file', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/attachments')
+        .field('type', 'file')
+        .set('Authorization', `Bearer ${TestToken}`)
+        .attach('file', 'src/materials/resources/test.jpg');
+      expect(respond.body.message).toBe('Attachment uploaded successfully');
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.data).toHaveProperty('id');
+      ImageAsFileId = respond.body.data.id;
+    });
     it('should upload a video ', async () => {
       const respond = await request(app.getHttpServer())
         .post('/attachments')
@@ -104,6 +118,17 @@ describe('Attachment Module', () => {
       expect(respond.body.data).toHaveProperty('id');
       VideoId = respond.body.data.id;
     });
+    it('should upload a video as file ', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/attachments')
+        .field('type', 'file')
+        .set('Authorization', `Bearer ${TestToken}`)
+        .attach('file', 'src/materials/resources/test.mp4');
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.message).toBe('Attachment uploaded successfully');
+      expect(respond.body.data).toHaveProperty('id');
+      VideoAsFileId = respond.body.data.id;
+    });
     it('should upload an audio ', async () => {
       const respond = await request(app.getHttpServer())
         .post('/attachments')
@@ -114,6 +139,17 @@ describe('Attachment Module', () => {
       expect(respond.body.message).toBe('Attachment uploaded successfully');
       expect(respond.body.data).toHaveProperty('id');
       AudioId = respond.body.data.id;
+    });
+    it('should upload an audio as file', async () => {
+      const respond = await request(app.getHttpServer())
+        .post('/attachments')
+        .field('type', 'file')
+        .set('Authorization', `Bearer ${TestToken}`)
+        .attach('file', 'src/materials/resources/test.mp3');
+      expect(respond.body.code).toBe(201);
+      expect(respond.body.message).toBe('Attachment uploaded successfully');
+      expect(respond.body.data).toHaveProperty('id');
+      AudioAsFileId = respond.body.data.id;
     });
     it('should upload a file ', async () => {
       const respond = await request(app.getHttpServer())
@@ -181,6 +217,27 @@ describe('Attachment Module', () => {
       expect(respond.body.data.attachment.meta.duration).toEqual(3);
     });
 
+    it('should get the uploaded file detail', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/attachments/${ImageAsFileId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.status).toBe(200);
+    });
+    it('should get the uploaded file detail', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/attachments/${VideoAsFileId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.status).toBe(200);
+    });
+    it('should get the uploaded file detail', async () => {
+      const respond = await request(app.getHttpServer())
+        .get(`/attachments/${AudioAsFileId}`)
+        .set('Authorization', `Bearer ${TestToken}`)
+        .send();
+      expect(respond.status).toBe(200);
+    });
     it('should get the uploaded file detail', async () => {
       const respond = await request(app.getHttpServer())
         .get(`/attachments/${FileId}`)
