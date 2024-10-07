@@ -18,10 +18,12 @@ import { UsersRegisterRequestService } from './users-register-request.service';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { RolePermissionService } from './role-permission.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
     PrismaModule,
+    ConfigModule,
     EmailModule,
     AuthModule,
     AvatarsModule,

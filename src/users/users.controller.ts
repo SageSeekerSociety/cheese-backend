@@ -73,6 +73,8 @@ import {
   UpdateUserResponseDto,
 } from './DTO/update-user.dto';
 import { UsersService } from './users.service';
+import path from 'node:path';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('/users')
 export class UsersController {
@@ -84,6 +86,7 @@ export class UsersController {
     private readonly answerService: AnswerService,
     @Inject(forwardRef(() => QuestionsService))
     private readonly questionsService: QuestionsService,
+    private readonly configService: ConfigService,
   ) {}
 
   @ResourceOwnerIdGetter('user')
@@ -146,7 +149,10 @@ export class UsersController {
       .cookie('REFRESH_TOKEN', newRefreshToken, {
         httpOnly: true,
         sameSite: 'strict',
-        path: '/users/auth',
+        path: path.posix.join(
+          this.configService.get('cookieBasePath')!,
+          'users/auth',
+        ),
         expires: new Date(newRefreshTokenExpire),
       })
       .json(data);
@@ -232,7 +238,10 @@ export class UsersController {
       .cookie('REFRESH_TOKEN', newRefreshToken, {
         httpOnly: true,
         sameSite: 'strict',
-        path: '/users/auth',
+        path: path.posix.join(
+          this.configService.get('cookieBasePath')!,
+          'users/auth',
+        ),
         expires: new Date(newRefreshTokenExpire),
       })
       .json(data);
