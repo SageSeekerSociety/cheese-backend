@@ -51,7 +51,7 @@
     "md5": "^2.3.0",
     "mime-types": "^2.1.35",
     "multer": "1.4.5-lts.1",
-    "nodemailer": "^6.9.14",
+    "nodemailer": "^6.9.15",
     "pg": "^8.13.0",
     "prisma-json-types-generator": "^3.0.4",
     "reflect-metadata": "^0.2.2",
