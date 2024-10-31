@@ -9,7 +9,6 @@
 
 import {
   Body,
-  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -22,11 +21,11 @@ import {
   Put,
   Query,
   Res,
-  UseFilters,
-  UseInterceptors,
   forwardRef,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
+import path from 'node:path';
 import { AnswerService } from '../answer/answer.service';
 import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
@@ -40,11 +39,7 @@ import { SessionService } from '../auth/session.service';
 import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
-import { BaseErrorExceptionFilter } from '../common/error/error-filter';
-import {
-  NoAuth,
-  TokenValidateInterceptor,
-} from '../common/interceptor/token-validate.interceptor';
+import { NoAuth } from '../common/interceptor/token-validate.interceptor';
 import { QuestionsService } from '../questions/questions.service';
 import {
   FollowResponseDto,
@@ -73,8 +68,6 @@ import {
   UpdateUserResponseDto,
 } from './DTO/update-user.dto';
 import { UsersService } from './users.service';
-import path from 'node:path';
-import { ConfigService } from '@nestjs/config';
 
 @Controller('/users')
 export class UsersController {
@@ -189,7 +182,10 @@ export class UsersController {
       .cookie('REFRESH_TOKEN', newRefreshToken, {
         httpOnly: true,
         sameSite: 'strict',
-        path: '/users/auth',
+        path: path.posix.join(
+          this.configService.get('cookieBasePath')!,
+          'users/auth',
+        ),
         expires: new Date(newRefreshTokenExpire),
       })
       .json(data);
