@@ -66,7 +66,7 @@
     "@nestjs/testing": "^10.4.4",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^4.17.21",
-    "@types/fluent-ffmpeg": "^2.1.26",
+    "@types/fluent-ffmpeg": "^2.1.27",
     "@types/jest": "^29.5.12",
     "@types/mime-types": "^2.1.4",
     "@types/multer": "^1.4.12",
