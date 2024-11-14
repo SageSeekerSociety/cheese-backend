@@ -10,12 +10,14 @@
 import { MailerService } from '@nestjs-modules/mailer';
 import { Injectable } from '@nestjs/common';
 import { EmailRuleService } from './email-rule.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class EmailService {
   constructor(
     private readonly mailerService: MailerService,
     private readonly emailRuleService: EmailRuleService,
+    private readonly configService: ConfigService,
   ) {}
 
   async sendPasswordResetEmail(
@@ -30,7 +32,10 @@ export class EmailService {
       template: './password-reset.english.hbs',
       context: {
         username,
-        token,
+        resetUrl:
+          this.configService.get('frontendBaseUrl') +
+          this.configService.get('passwordResetPath') +
+          token,
       },
     });
   }
