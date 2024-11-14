@@ -12,6 +12,7 @@ import { Module } from '@nestjs/common';
 import { join } from 'path';
 import { EmailRuleService } from './email-rule.service';
 import { EmailService } from './email.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { EmailService } from './email.service';
         },
       },
     }),
+    ConfigModule,
   ],
   providers: [EmailService, EmailRuleService],
   exports: [EmailService, EmailRuleService],

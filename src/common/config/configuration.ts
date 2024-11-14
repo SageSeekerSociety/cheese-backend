@@ -26,6 +26,10 @@ export default () => {
       // expiresIn: process.env.JWT_EXPIRES_IN,
     },
     cookieBasePath: process.env.COOKIE_BASE_PATH || '/',
+    frontendBaseUrl: process.env.FRONTEND_BASE_URL || '',
+    passwordResetPath:
+      process.env.PASSWORD_RESET_PREFIX ||
+      '/account/recover/password/verify?token=',
   };
 };
 
