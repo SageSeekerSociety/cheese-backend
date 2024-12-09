@@ -63,7 +63,7 @@
     "@commitlint/config-conventional": "^19.6.0",
     "@nestjs/cli": "^10.4.7",
     "@nestjs/schematics": "^10.1.4",
-    "@nestjs/testing": "^10.4.8",
+    "@nestjs/testing": "^10.4.13",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.0",
     "@types/fluent-ffmpeg": "^2.1.27",
