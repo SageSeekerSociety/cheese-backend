@@ -24,8 +24,8 @@ importers:
         specifier: ^10.4.7
         version: 10.4.7(@nestjs/common@10.4.15(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/platform-express@10.4.15)(reflect-metadata@0.2.2)(rxjs@7.8.1)
       '@nestjs/elasticsearch':
-        specifier: ^10.0.1
-        version: 10.0.1(@elastic/elasticsearch@8.15.1)(@nestjs/common@10.4.15(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(rxjs@7.8.1)
+        specifier: ^11.0.0
+        version: 11.0.0(@elastic/elasticsearch@8.15.1)(@nestjs/common@10.4.15(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(rxjs@7.8.1)
       '@nestjs/jwt':
         specifier: ^10.2.0
         version: 10.2.0(@nestjs/common@10.4.15(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))
@@ -911,11 +911,11 @@ packages:
       '@nestjs/websockets':
         optional: true
 
-  '@nestjs/elasticsearch@10.0.1':
-    resolution: {integrity: sha512-rYkcuStF7oDbyt5X3h0BAYS3thZQm8vsHUkGot6dkB8dOTsSIsQJ8UYY9j66LhghzsBiewIwUrKkhY5WM2DVqA==}
+  '@nestjs/elasticsearch@11.0.0':
+    resolution: {integrity: sha512-7wf8+I1Q9M4sNRr+NY1cF8XdEhCelHjozQjgwGjoQDhs+Kp8VsLEaUQnYGR1oSEigSUEEvGOhgNaYQz7zbZpAg==}
     peerDependencies:
       '@elastic/elasticsearch': ^7.4.0 || ^8.0.0
-      '@nestjs/common': ^8.0.0 || ^9.0.0 || ^10.0.0
+      '@nestjs/common': ^10.0.0 || ^11.0.0
       rxjs: ^7.2.0
 
   '@nestjs/jwt@10.2.0':
@@ -5959,7 +5959,7 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  '@nestjs/elasticsearch@10.0.1(@elastic/elasticsearch@8.15.1)(@nestjs/common@10.4.15(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(rxjs@7.8.1)':
+  '@nestjs/elasticsearch@11.0.0(@elastic/elasticsearch@8.15.1)(@nestjs/common@10.4.15(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(rxjs@7.8.1)':
     dependencies:
       '@elastic/elasticsearch': 8.15.1
       '@nestjs/common': 10.4.15(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1)
