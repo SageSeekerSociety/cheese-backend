@@ -738,20 +738,28 @@ components:
       properties:
         username:
           type: string
+          description: 用户名
         nickname:
           type: string
+          description: 昵称
         password:
           type: string
+          description: 密码
         email:
           type: string
-        emailCode:
+          description: 邮箱
+        email_code:
           type: string
+          description: 邮箱验证码
+        invitation_code:
+          type: string
+          description: 邀请码
       required:
         - username
         - nickname
         - password
         - email
-        - emailCode
+        - email_code
     RegisterResponse:
       allOf:
         - $ref: "#/components/schemas/CommonResponse"
@@ -3489,3 +3497,70 @@ paths:
       responses:
         "204":
           description: No Content
+  /invitation-codes:
+    get:
+      summary: 获取邀请码
+      operationId: getInvitationCode
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          codes:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                code:
+                                  type: string
+                                  description: 邀请码
+                                created_at:
+                                  type: integer
+                                  format: int64
+                                  description: 创建时间
+                                used:
+                                  type: boolean
+                                  description: 是否已使用
+                                used_at:
+                                  type: integer
+                                  format: int64
+                                  description: 使用时间
+                              required:
+                                - code
+                                - created_at
+                                - used
+                    required:
+                      - data
+    post:
+      summary: 创建邀请码
+      operationId: createInvitationCode
+      security:
+        - bearerAuth: []
+      responses:
+        "201":
+          description: Invitation code created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          code:
+                            type: string
+                            description: 邀请码
+                    required:
+                      - data
