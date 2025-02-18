@@ -35,10 +35,10 @@ import { UsersModule } from './users/users.module';
     MaterialbundlesModule,
     RedisModule.forRoot({
       config: {
-        host: process.env.REDIS_HOST,
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        username: process.env.REDIS_USERNAME,
-        password: process.env.REDIS_PASSWORD,
+        host: process.env.REDIS_HOST ?? 'localhost',
+        port: parseInt(process.env.REDIS_PORT ?? '6379'),
+        username: process.env.REDIS_USERNAME ?? undefined,
+        password: process.env.REDIS_PASSWORD ?? undefined,
       },
     }),
   ],
