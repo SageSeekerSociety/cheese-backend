@@ -1060,6 +1060,39 @@ describe('User Module', () => {
       validToken = verifyRes.body.data.accessToken;
     });
 
+    it('POST /users/{userId}/passkeys/options should return registration options', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys/options`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send()
+        .expect(201);
+      expect(res.body.data.options).toBeDefined();
+    });
+
+    it('POST /users/{userId}/passkeys should register a new passkey', async () => {
+      // 先获取注册选项
+      const resOptions = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys/options`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send()
+        .expect(201);
+
+      const fakeRegistrationResponse = {
+        id: 'cred-id',
+        rawId: 'raw-cred-id',
+        response: {},
+        type: 'public-key',
+        clientExtensionResults: {},
+      };
+
+      const res = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({ response: fakeRegistrationResponse })
+        .expect(201);
+      expect(res.body.message).toBe('Passkey registered successfully.');
+    });
+
     it('POST /users/auth/passkey/options should return authentication options', async () => {
       const res = await request(app.getHttpServer())
         .post('/users/auth/passkey/options')
@@ -1099,39 +1132,6 @@ describe('User Module', () => {
         .set('Authorization', `Bearer ${validToken}`)
         .expect(200);
       expect(Array.isArray(res.body.data.passkeys)).toBe(true);
-    });
-
-    it('POST /users/{userId}/passkeys/options should return registration options', async () => {
-      const res = await request(app.getHttpServer())
-        .post(`/users/${testUserId}/passkeys/options`)
-        .set('Authorization', `Bearer ${validToken}`)
-        .send()
-        .expect(201);
-      expect(res.body.data.options).toBeDefined();
-    });
-
-    it('POST /users/{userId}/passkeys should register a new passkey', async () => {
-      // 先获取注册选项
-      const resOptions = await request(app.getHttpServer())
-        .post(`/users/${testUserId}/passkeys/options`)
-        .set('Authorization', `Bearer ${validToken}`)
-        .send()
-        .expect(201);
-
-      const fakeRegistrationResponse = {
-        id: 'cred-id',
-        rawId: 'raw-cred-id',
-        response: {},
-        type: 'public-key',
-        clientExtensionResults: {},
-      };
-
-      const res = await request(app.getHttpServer())
-        .post(`/users/${testUserId}/passkeys`)
-        .set('Authorization', `Bearer ${validToken}`)
-        .send({ response: fakeRegistrationResponse })
-        .expect(201);
-      expect(res.body.message).toBe('Passkey registered successfully.');
     });
 
     it('DELETE /users/{userId}/passkeys/{credentialId} should delete passkey', async () => {
