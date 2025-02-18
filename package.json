@@ -81,7 +81,7 @@
     "husky": "^9.1.7",
     "jest": "^29.7.0",
     "lint-staged": "^15.2.11",
-    "prettier": "^3.3.3",
+    "prettier": "^3.5.1",
     "prisma": "^5.22.0",
     "prisma-case-format": "^2.2.1",
     "prisma-import": "^1.0.5",
