@@ -32,7 +32,11 @@ import { isEmail } from 'class-validator';
 import { Request } from 'express';
 import assert from 'node:assert';
 import { AnswerService } from '../answer/answer.service';
-import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
+import {
+  InvalidCredentialsError,
+  PermissionDeniedError,
+  TokenExpiredError,
+} from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
 import { Authorization } from '../auth/definitions';
 import { SessionService } from '../auth/session.service';
@@ -1092,5 +1096,40 @@ export class UsersService {
     });
     assert(result == 0 || result == 1);
     return result > 0;
+  }
+
+  async verifySudo(
+    req: Request,
+    token: string,
+    method: 'password' | 'passkey',
+    credentials: {
+      password?: string;
+      passkeyResponse?: AuthenticationResponseJSON;
+    },
+  ): Promise<string> {
+    const userId = this.authService.decode(token).authorization.userId;
+    let verified = false;
+
+    if (method === 'password') {
+      const user = await this.prismaService.user.findUnique({
+        where: { id: userId },
+      });
+      verified = await bcrypt.compare(
+        credentials.password!,
+        user!.hashedPassword,
+      );
+    } else if (method === 'passkey') {
+      verified = await this.verifyPasskeyAuthentication(
+        req,
+        credentials.passkeyResponse!,
+      );
+    }
+
+    if (!verified) {
+      throw new InvalidCredentialsError();
+    }
+
+    // 签发带有 sudo 权限的新 token
+    return await this.authService.issueSudoToken(token);
   }
 }

@@ -13,6 +13,9 @@
         },
         "userId": {
           "type": "number"
+        },
+        "sudoUntil": {
+          "type": "number"
         }
       },
       "required": [

@@ -160,6 +160,7 @@ export function Guard(
         resourceOwnerId,
         resourceType,
         resourceId,
+        requireSudo,
       );
       return originalMethod.apply(this, args);
     };

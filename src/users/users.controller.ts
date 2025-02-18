@@ -75,6 +75,7 @@ import {
   SendEmailVerifyCodeRequestDto,
   SendEmailVerifyCodeResponseDto,
 } from './DTO/send-email-verify-code.dto';
+import { VerifySudoResponseDto } from './DTO/sudo.dto';
 import {
   UpdateUserRequestDto,
   UpdateUserResponseDto,
@@ -681,6 +682,30 @@ export class UsersController {
     return {
       code: 200,
       message: 'Delete passkey successfully.',
+    };
+  }
+
+  @Post('/auth/sudo')
+  @Guard('verify-sudo', 'user')
+  async verifySudoMode(
+    @Req() req: Request,
+    @Headers('Authorization') @AuthToken() auth: string,
+    @Body() body: { method: 'password' | 'passkey'; credentials: any },
+  ): Promise<VerifySudoResponseDto> {
+    // 验证并获取新 token
+    const newAccessToken = await this.usersService.verifySudo(
+      req,
+      auth,
+      body.method,
+      body.credentials,
+    );
+
+    return {
+      code: 200,
+      message: 'Sudo mode activated successfully',
+      data: {
+        accessToken: newAccessToken,
+      },
     };
   }
 }

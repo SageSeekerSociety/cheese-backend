@@ -40,6 +40,14 @@ export class RolePermissionService {
           },
         },
         {
+          authorizedActions: ['verify-sudo'],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['user'],
+            resourceIds: undefined,
+          },
+        },
+        {
           authorizedActions: [
             'enumerate-passkeys',
             'register-passkey',
