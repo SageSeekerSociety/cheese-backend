@@ -30,6 +30,11 @@ export default () => {
     passwordResetPath:
       process.env.PASSWORD_RESET_PREFIX ||
       '/account/recover/password/verify?token=',
+    webauthn: {
+      rpName: process.env.WEB_AUTHN_RP_NAME || 'Cheese Community',
+      rpID: process.env.WEB_AUTHN_RP_ID || 'localhost',
+      origin: process.env.WEB_AUTHN_ORIGIN || 'http://localhost:7777',
+    },
   };
 };
 

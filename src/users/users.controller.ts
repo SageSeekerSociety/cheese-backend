@@ -20,11 +20,12 @@ import {
   Post,
   Put,
   Query,
+  Req,
   Res,
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import path from 'node:path';
 import { AnswerService } from '../answer/answer.service';
 import { AuthenticationRequiredError } from '../auth/auth.error';
@@ -40,6 +41,7 @@ import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
 import { NoAuth } from '../common/interceptor/token-validate.interceptor';
+import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionsService } from '../questions/questions.service';
 import {
   FollowResponseDto,
@@ -51,6 +53,16 @@ import { GetFollowedQuestionsResponseDto } from './DTO/get-followed-questions.dt
 import { GetFollowersResponseDto } from './DTO/get-followers.dto';
 import { GetUserResponseDto } from './DTO/get-user.dto';
 import { LoginRequestDto, LoginResponseDto } from './DTO/login.dto';
+import {
+  DeletePasskeyResponseDto,
+  GetPasskeysResponseDto,
+  PasskeyAuthenticationOptionsResponseDto,
+  PasskeyAuthenticationVerifyRequestDto,
+  PasskeyAuthenticationVerifyResponseDto,
+  PasskeyRegistrationOptionsResponseDto,
+  PasskeyRegistrationVerifyRequestDto,
+  PasskeyRegistrationVerifyResponseDto,
+} from './DTO/passkey.dto';
 import { RefreshTokenResponseDto } from './DTO/refresh-token.dto';
 import { RegisterRequestDto, RegisterResponseDto } from './DTO/register.dto';
 import {
@@ -67,6 +79,8 @@ import {
   UpdateUserRequestDto,
   UpdateUserResponseDto,
 } from './DTO/update-user.dto';
+import { UserDto } from './DTO/user.dto';
+import { PasskeyNotFoundError } from './users.error';
 import { UsersService } from './users.service';
 
 @Controller('/users')
@@ -75,6 +89,7 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
+    private readonly prismaService: PrismaService,
     @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
     @Inject(forwardRef(() => QuestionsService))
@@ -519,6 +534,153 @@ export class UsersController {
         questions,
         page,
       },
+    };
+  }
+
+  // Passkey Registration
+  @Post('/:id/passkeys/options')
+  @Guard('register-passkey', 'user', true)
+  async getPasskeyRegistrationOptions(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+  ): Promise<PasskeyRegistrationOptionsResponseDto> {
+    const options =
+      await this.usersService.generatePasskeyRegistrationOptions(userId);
+    return {
+      code: 200,
+      message: 'Generated registration options successfully.',
+      data: {
+        options: options as any, // Type assertion to fix compatibility issue
+      },
+    };
+  }
+
+  @Post('/:id/passkeys')
+  @Guard('register-passkey', 'user', true)
+  async verifyPasskeyRegistration(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Body() { response }: PasskeyRegistrationVerifyRequestDto,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+  ): Promise<PasskeyRegistrationVerifyResponseDto> {
+    await this.usersService.verifyPasskeyRegistration(userId, response);
+    return {
+      code: 201,
+      message: 'Passkey registered successfully.',
+    };
+  }
+
+  // Passkey Authentication
+  @Post('/auth/passkey/options')
+  @NoAuth()
+  async getPasskeyAuthenticationOptions(
+    @Req() req: Request,
+  ): Promise<PasskeyAuthenticationOptionsResponseDto> {
+    const options =
+      await this.usersService.generatePasskeyAuthenticationOptions(req);
+    req.session.passkeyChallenge = options.challenge;
+    return {
+      code: 200,
+      message: 'Generated authentication options successfully.',
+      data: {
+        options: options as any, // Type assertion to fix compatibility issue
+      },
+    };
+  }
+
+  @Post('/auth/passkey/verify')
+  @NoAuth()
+  async verifyPasskeyAuthentication(
+    @Req() req: Request,
+    @Body() { response }: PasskeyAuthenticationVerifyRequestDto,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const verified = await this.usersService.verifyPasskeyAuthentication(
+      req,
+      response,
+    );
+    if (!verified) {
+      throw new PasskeyNotFoundError(response.id);
+    }
+
+    const passkey = await this.prismaService.passkey.findFirst({
+      where: {
+        credentialId: response.id,
+      },
+    });
+
+    if (!passkey) {
+      throw new PasskeyNotFoundError(response.id);
+    }
+
+    const [userDto, refreshToken] = (await this.usersService.handlePasskeyLogin(
+      passkey.userId,
+      ip,
+      userAgent,
+    )) as [UserDto, string]; // Type assertion to fix compatibility issue
+
+    const [newRefreshToken, accessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
+    );
+
+    const data: PasskeyAuthenticationVerifyResponseDto = {
+      code: 201,
+      message: 'Authentication successful.',
+      data: {
+        user: userDto,
+        accessToken,
+      },
+    };
+
+    return res
+      .cookie('REFRESH_TOKEN', newRefreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: path.posix.join(
+          this.configService.get('cookieBasePath')!,
+          'users/auth',
+        ),
+        expires: new Date(newRefreshTokenExpire),
+      })
+      .json(data);
+  }
+
+  // Passkey Management
+  @Get('/:id/passkeys')
+  @Guard('enumerate-passkeys', 'user')
+  async getUserPasskeys(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+  ): Promise<GetPasskeysResponseDto> {
+    const passkeys = await this.usersService.getUserPasskeys(userId);
+    return {
+      code: 200,
+      message: 'Query passkeys successfully.',
+      data: {
+        passkeys: passkeys.map((p) => ({
+          id: p.credentialId,
+          createdAt: p.createdAt,
+          deviceType: p.deviceType,
+          backedUp: p.backedUp,
+        })),
+      },
+    };
+  }
+
+  @Delete('/:id/passkeys/:credentialId')
+  @Guard('delete-passkey', 'user', true)
+  async deletePasskey(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Param('credentialId') credentialId: string,
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+  ): Promise<DeletePasskeyResponseDto> {
+    await this.usersService.deletePasskey(userId, credentialId);
+    return {
+      code: 200,
+      message: 'Delete passkey successfully.',
     };
   }
 }

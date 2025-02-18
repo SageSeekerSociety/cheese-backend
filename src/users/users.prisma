@@ -45,6 +45,7 @@ model User {
   questionInvitationRelation                                         QuestionInvitationRelation[]
   Material                                                           Material[]
   MaterialBundle                                                     MaterialBundle[]
+  passkeys                                                           Passkey[]
 
   @@map("user")
 }
@@ -157,4 +158,21 @@ model UserResetPasswordLog {
   createdAt DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("user_reset_password_log")
+}
+
+model Passkey {
+  id           Int      @id(map: "PK_passkey") @default(autoincrement())
+  credentialId String   // 凭证ID
+  publicKey    Bytes    // 存储公钥（二进制数据）
+  counter      Int      // 验证计数器
+  deviceType   String   // 'singleDevice' 或 'multiDevice'
+  backedUp     Boolean  // 是否已备份
+  transports   String?  // 可选，存储传输方式（JSON 数组字符串）
+  userId       Int      // 关联用户ID
+  user         User     @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("passkey")
+  @@index([userId], map: "IDX_passkey_user_id")
 }

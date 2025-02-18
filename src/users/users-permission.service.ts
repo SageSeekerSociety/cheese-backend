@@ -1,8 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { PermissionDeniedError } from '../auth/auth.error';
+import { AuthService } from '../auth/auth.service';
 import { Authorization, AuthorizedAction } from '../auth/definitions';
 import { RolePermissionService } from './role-permission.service';
-import { AuthService } from '../auth/auth.service';
-import { PermissionDeniedError } from '../auth/auth.error';
 
 @Injectable()
 export class UsersPermissionService implements OnModuleInit {

@@ -8,15 +8,28 @@
  */
 
 import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
+  Passkey,
   User,
   UserFollowingRelationship,
   UserProfile,
   UserRegisterLogType,
   UserResetPasswordLogType,
 } from '@prisma/client';
+import {
+  AuthenticationResponseJSON,
+  CredentialDeviceType,
+  RegistrationResponseJSON,
+  WebAuthnCredential,
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
+} from '@simplewebauthn/server';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
+import { Request } from 'express';
 import assert from 'node:assert';
 import { AnswerService } from '../answer/answer.service';
 import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
@@ -32,9 +45,11 @@ import { EmailRuleService } from '../email/email-rule.service';
 import { EmailService } from '../email/email.service';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
+import { UserChallengeRepository } from './user-challenge.repository';
 import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
 import {
+  ChallengeNotFoundError,
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
   EmailNotFoundError,
@@ -45,6 +60,8 @@ import {
   InvalidNicknameError,
   InvalidPasswordError,
   InvalidUsernameError,
+  PasskeyNotFoundError,
+  PasskeyVerificationFailedError,
   PasswordNotMatchError,
   UserAlreadyFollowedError,
   UserIdNotFoundError,
@@ -53,13 +70,21 @@ import {
   UsernameNotFoundError,
 } from './users.error';
 
+declare module 'express-session' {
+  interface SessionData {
+    passkeyChallenge?: string;
+  }
+}
+
 @Injectable()
 export class UsersService {
   constructor(
     private readonly emailService: EmailService,
     private readonly emailRuleService: EmailRuleService,
     private readonly authService: AuthService,
+    private readonly configService: ConfigService,
     private readonly sessionService: SessionService,
+    private readonly userChallengeRepository: UserChallengeRepository,
     private readonly usersPermissionService: UsersPermissionService,
     private readonly usersRegisterRequestService: UsersRegisterRequestService,
     private readonly avatarsService: AvatarsService,
@@ -72,6 +97,18 @@ export class UsersService {
 
   private readonly passwordResetEmailValidSeconds = 10 * 60; // 10 minutes
 
+  private get rpName(): string {
+    return this.configService.get('webauthn.rpName') ?? 'Cheese Community';
+  }
+
+  private get rpID(): string {
+    return this.configService.get('webauthn.rpID') ?? 'localhost';
+  }
+
+  private get origin(): string {
+    return this.configService.get('webauthn.origin') ?? 'http://localhost:7777';
+  }
+
   private generateVerifyCode(): string {
     let code: string = '';
     for (let i = 0; i < 6; i++) {
@@ -82,6 +119,204 @@ export class UsersService {
 
   get emailSuffixRule(): string {
     return this.emailRuleService.emailSuffixRule;
+  }
+
+  async generatePasskeyRegistrationOptions(
+    userId: number,
+  ): Promise<PublicKeyCredentialCreationOptionsJSON> {
+    const [user, _] = await this.findUserRecordAndProfileRecordOrThrow(userId);
+
+    const existingPasskeys = await this.prismaService.passkey.findMany({
+      where: {
+        userId,
+      },
+    });
+
+    const options = await generateRegistrationOptions({
+      rpName: this.rpName,
+      rpID: this.rpID,
+      userName: user.username,
+      userID: Buffer.from(user.id.toString()),
+      attestationType: 'none',
+      authenticatorSelection: {
+        residentKey: 'required',
+        userVerification: 'preferred',
+      },
+      excludeCredentials: existingPasskeys.map((passkey) => ({
+        id: passkey.credentialId,
+        transports: passkey.transports
+          ? JSON.parse(passkey.transports)
+          : undefined,
+      })),
+      timeout: 60000,
+    });
+
+    await this.userChallengeRepository.setChallenge(
+      userId,
+      options.challenge,
+      600,
+    );
+
+    return options;
+  }
+
+  async verifyPasskeyRegistration(
+    userId: number,
+    response: RegistrationResponseJSON,
+  ): Promise<void> {
+    const challenge = await this.userChallengeRepository.getChallenge(userId);
+
+    if (challenge == null) {
+      throw new ChallengeNotFoundError();
+    }
+
+    const { verified, registrationInfo } = await verifyRegistrationResponse({
+      response,
+      expectedChallenge: challenge,
+      expectedOrigin: this.origin,
+      expectedRPID: this.rpID,
+      requireUserVerification: false,
+    });
+
+    if (!verified || registrationInfo == null) {
+      throw new PasskeyVerificationFailedError();
+    }
+
+    const { credential, credentialBackedUp, credentialDeviceType } =
+      registrationInfo;
+
+    await this.savePasskeyCredential(
+      userId,
+      credential,
+      credentialDeviceType,
+      credentialBackedUp,
+    );
+
+    await this.userChallengeRepository.deleteChallenge(userId);
+  }
+
+  async savePasskeyCredential(
+    userId: number,
+    credential: WebAuthnCredential,
+    deviceType: CredentialDeviceType,
+    backedUp: boolean,
+  ): Promise<void> {
+    await this.prismaService.passkey.create({
+      data: {
+        userId,
+        credentialId: credential.id,
+        publicKey: Buffer.from(credential.publicKey),
+        counter: credential.counter,
+        deviceType,
+        backedUp,
+        transports: credential.transports
+          ? JSON.stringify(credential.transports)
+          : null,
+      },
+    });
+  }
+
+  async generatePasskeyAuthenticationOptions(
+    req: Request,
+  ): Promise<PublicKeyCredentialRequestOptionsJSON> {
+    const options = await generateAuthenticationOptions({
+      rpID: this.rpID,
+      allowCredentials: [],
+      userVerification: 'preferred',
+    });
+
+    req.session.passkeyChallenge = options.challenge;
+
+    return options;
+  }
+
+  async verifyPasskeyAuthentication(
+    req: Request,
+    response: AuthenticationResponseJSON,
+  ): Promise<boolean> {
+    const challenge = req.session.passkeyChallenge;
+
+    if (challenge == null) {
+      throw new ChallengeNotFoundError();
+    }
+
+    const authenticator = await this.prismaService.passkey.findFirst({
+      where: {
+        credentialId: response.id,
+      },
+    });
+
+    if (authenticator == null) {
+      throw new PasskeyNotFoundError(response.id);
+    }
+
+    const { verified, authenticationInfo } = await verifyAuthenticationResponse(
+      {
+        response,
+        expectedChallenge: challenge,
+        expectedOrigin: this.origin,
+        expectedRPID: this.rpID,
+        credential: {
+          id: authenticator.credentialId,
+          publicKey: authenticator.publicKey,
+          counter: authenticator.counter,
+          transports: authenticator.transports
+            ? JSON.parse(authenticator.transports)
+            : undefined,
+        },
+        requireUserVerification: false,
+      },
+    );
+
+    if (!verified || authenticationInfo == null) {
+      return false;
+    }
+
+    await this.prismaService.passkey.update({
+      where: {
+        id: authenticator.id,
+      },
+      data: {
+        counter: authenticationInfo.newCounter,
+      },
+    });
+
+    return true;
+  }
+
+  async handlePasskeyLogin(
+    userId: number,
+    ip: string,
+    userAgent: string | undefined,
+  ) {
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: userId,
+        ip,
+        userAgent,
+      },
+    });
+    return [
+      await this.getUserDtoById(userId, userId, ip, userAgent),
+      await this.createSession(userId),
+    ];
+  }
+
+  async getUserPasskeys(userId: number): Promise<Passkey[]> {
+    return await this.prismaService.passkey.findMany({
+      where: {
+        userId,
+      },
+    });
+  }
+
+  async deletePasskey(userId: number, credentialId: string): Promise<void> {
+    await this.prismaService.passkey.deleteMany({
+      where: {
+        userId,
+        credentialId,
+      },
+    });
   }
 
   async isEmailRegistered(email: string): Promise<boolean> {

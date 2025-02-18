@@ -1,3 +1,4 @@
+import { RedisModule } from '@liaoliaots/nestjs-redis';
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
@@ -15,6 +16,7 @@ import { MaterialbundlesModule } from './materialbundles/materialbundles.module'
 import { MaterialsModule } from './materials/materials.module';
 import { QuestionsModule } from './questions/questions.module';
 import { UsersModule } from './users/users.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({ load: [configuration] }),
@@ -31,6 +33,14 @@ import { UsersModule } from './users/users.module';
     }),
     AttachmentsModule,
     MaterialbundlesModule,
+    RedisModule.forRoot({
+      config: {
+        host: process.env.REDIS_HOST,
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        username: process.env.REDIS_USERNAME,
+        password: process.env.REDIS_PASSWORD,
+      },
+    }),
   ],
   controllers: [],
   providers: [

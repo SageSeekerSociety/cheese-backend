@@ -40,6 +40,18 @@ export class RolePermissionService {
           },
         },
         {
+          authorizedActions: [
+            'enumerate-passkeys',
+            'register-passkey',
+            'delete-passkey',
+          ],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['user'],
+            resourceIds: undefined,
+          },
+        },
+        {
           authorizedActions: ['modify-profile'],
           authorizedResource: {
             ownedByUser: userId,

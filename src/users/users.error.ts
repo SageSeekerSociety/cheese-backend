@@ -162,3 +162,25 @@ export class UpdateAvatarError extends BaseError {
     super('UpdateAvatarError', 'Can not use avatar loaded by others.', 403);
   }
 }
+
+export class ChallengeNotFoundError extends BaseError {
+  constructor() {
+    super('ChallengeNotFoundError', 'Challenge not found', 404);
+  }
+}
+
+export class PasskeyVerificationFailedError extends BaseError {
+  constructor() {
+    super('PasskeyVerificationFailedError', 'Passkey verification failed', 400);
+  }
+}
+
+export class PasskeyNotFoundError extends BaseError {
+  constructor(credentialId: string) {
+    super(
+      'PasskeyNotFoundError',
+      `Passkey with credential ID '${credentialId}' not found.`,
+      404,
+    );
+  }
+}

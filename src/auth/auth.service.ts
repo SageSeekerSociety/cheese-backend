@@ -18,8 +18,8 @@ import {
   PermissionDeniedError,
   TokenExpiredError,
 } from './auth.error';
-import { Authorization, AuthorizedAction, TokenPayload } from './definitions';
 import { CustomAuthLogics } from './custom-auth-logic';
+import { Authorization, AuthorizedAction, TokenPayload } from './definitions';
 
 @Injectable()
 export class AuthService {
