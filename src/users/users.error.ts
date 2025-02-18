@@ -179,7 +179,7 @@ export class PasskeyNotFoundError extends BaseError {
   constructor(credentialId: string) {
     super(
       'PasskeyNotFoundError',
-      `Passkey with credential ID '${credentialId}' not found.`,
+      `Passkey not found. ID: ${credentialId.substring(0, 8)}...`,
       404,
     );
   }
