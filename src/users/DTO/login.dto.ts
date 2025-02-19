@@ -12,7 +12,10 @@ export class LoginRequestDto {
 
 export class LoginResponseDto extends BaseResponseDto {
   data: {
-    accessToken: string;
-    user: UserDto;
+    user?: UserDto;
+    accessToken?: string;
+    requires2FA?: boolean;
+    tempToken?: string;
+    usedBackupCode?: boolean;
   };
 }

@@ -74,3 +74,23 @@ export class NotRefreshTokenError extends BaseError {
     );
   }
 }
+
+export class SudoRequiredError extends BaseError {
+  constructor() {
+    super(
+      'SudoRequiredError',
+      'This operation requires sudo mode verification',
+      403,
+    );
+  }
+}
+
+export class InvalidCredentialsError extends BaseError {
+  constructor() {
+    super(
+      'InvalidCredentialsError',
+      'Invalid credentials provided for sudo mode',
+      401,
+    );
+  }
+}

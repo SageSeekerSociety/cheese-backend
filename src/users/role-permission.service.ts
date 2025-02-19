@@ -40,6 +40,34 @@ export class RolePermissionService {
           },
         },
         {
+          authorizedActions: ['verify-sudo'],
+          authorizedResource: {
+            ownedByUser: undefined,
+            types: ['user'],
+            resourceIds: undefined,
+          },
+        },
+        {
+          authorizedActions: ['modify-2fa'],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['user'],
+            resourceIds: [userId],
+          },
+        },
+        {
+          authorizedActions: [
+            'enumerate-passkeys',
+            'register-passkey',
+            'delete-passkey',
+          ],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['user'],
+            resourceIds: undefined,
+          },
+        },
+        {
           authorizedActions: ['modify-profile'],
           authorizedResource: {
             ownedByUser: userId,

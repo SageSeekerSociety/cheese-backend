@@ -89,7 +89,11 @@ export function CurrentUserOwnResource() {
   };
 }
 
-export function Guard(action: AuthorizedAction, resourceType: string) {
+export function Guard(
+  action: AuthorizedAction,
+  resourceType: string,
+  requireSudo: boolean = false,
+) {
   return function (
     target: any,
     propertyKey: string,
@@ -156,6 +160,7 @@ export function Guard(action: AuthorizedAction, resourceType: string) {
         resourceOwnerId,
         resourceType,
         resourceId,
+        requireSudo,
       );
       return originalMethod.apply(this, args);
     };

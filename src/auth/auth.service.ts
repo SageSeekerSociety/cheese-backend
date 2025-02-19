@@ -16,10 +16,11 @@ import {
   AuthenticationRequiredError,
   InvalidTokenError,
   PermissionDeniedError,
+  SudoRequiredError,
   TokenExpiredError,
 } from './auth.error';
-import { Authorization, AuthorizedAction, TokenPayload } from './definitions';
 import { CustomAuthLogics } from './custom-auth-logic';
+import { Authorization, AuthorizedAction, TokenPayload } from './definitions';
 
 @Injectable()
 export class AuthService {
@@ -106,8 +107,17 @@ export class AuthService {
     resourceOwnerId?: number,
     resourceType?: string,
     resourceId?: number,
+    requireSudo: boolean = false,
   ): Promise<void> {
     const authorization = this.verify(token);
+
+    if (requireSudo) {
+      const hasSudo = this.checkSudoMode(authorization);
+      if (!hasSudo) {
+        throw new SudoRequiredError();
+      }
+    }
+
     await this.auditWithoutToken(
       authorization,
       action,
@@ -218,5 +228,35 @@ export class AuthService {
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
     const result = this.jwtService.decode(token);
     return this.decodePayload(result);
+  }
+
+  checkSudoMode(authorization: Authorization): boolean {
+    const now = Date.now();
+    return (
+      authorization.sudoUntil !== undefined && authorization.sudoUntil > now
+    );
+  }
+
+  // 为现有 token 签发一个带有 sudo 权限的新 token
+  async issueSudoToken(token: string): Promise<string> {
+    // 先验证 token 有效性
+    this.verify(token);
+    // 再获取完整 payload
+    const payload = this.decode(token);
+
+    // 添加 0-5 分钟随机偏移
+    const baseValidSeconds = 15 * 60;
+    const randomOffset = Math.floor(Math.random() * 300);
+    const sudoValidSeconds = baseValidSeconds + randomOffset;
+
+    const newAuthorization: Authorization = {
+      ...payload.authorization,
+      sudoUntil: Date.now() + sudoValidSeconds * 1000,
+    };
+
+    return this.sign(
+      newAuthorization,
+      (payload.validUntil - Date.now()) / 1000,
+    );
   }
 }

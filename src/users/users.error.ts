@@ -162,3 +162,54 @@ export class UpdateAvatarError extends BaseError {
     super('UpdateAvatarError', 'Can not use avatar loaded by others.', 403);
   }
 }
+
+export class ChallengeNotFoundError extends BaseError {
+  constructor() {
+    super('ChallengeNotFoundError', 'Challenge not found', 404);
+  }
+}
+
+export class PasskeyVerificationFailedError extends BaseError {
+  constructor() {
+    super('PasskeyVerificationFailedError', 'Passkey verification failed', 400);
+  }
+}
+
+export class PasskeyNotFoundError extends BaseError {
+  constructor(credentialId: string) {
+    super(
+      'PasskeyNotFoundError',
+      `Passkey not found. ID: ${credentialId.substring(0, 8)}...`,
+      404,
+    );
+  }
+}
+
+export class TOTPRequiredError extends BaseError {
+  constructor(
+    username: string,
+    public readonly tempToken: string,
+  ) {
+    super(
+      'TOTPRequiredError',
+      `2FA verification required for user '${username}'`,
+      401,
+    );
+  }
+}
+
+export class TOTPInvalidError extends BaseError {
+  constructor() {
+    super('TOTPInvalidError', 'Invalid 2FA code', 400);
+  }
+}
+
+export class TOTPTempTokenInvalidError extends BaseError {
+  constructor() {
+    super(
+      'TOTPTempTokenInvalidError',
+      'Invalid or expired temporary token for 2FA verification',
+      400,
+    );
+  }
+}

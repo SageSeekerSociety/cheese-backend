@@ -8,18 +8,35 @@
  */
 
 import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
+  Passkey,
   User,
   UserFollowingRelationship,
   UserProfile,
   UserRegisterLogType,
   UserResetPasswordLogType,
 } from '@prisma/client';
+import {
+  AuthenticationResponseJSON,
+  CredentialDeviceType,
+  RegistrationResponseJSON,
+  WebAuthnCredential,
+  generateAuthenticationOptions,
+  generateRegistrationOptions,
+  verifyAuthenticationResponse,
+  verifyRegistrationResponse,
+} from '@simplewebauthn/server';
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
+import { Request } from 'express';
 import assert from 'node:assert';
 import { AnswerService } from '../answer/answer.service';
-import { PermissionDeniedError, TokenExpiredError } from '../auth/auth.error';
+import {
+  InvalidCredentialsError,
+  PermissionDeniedError,
+  TokenExpiredError,
+} from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
 import { Authorization } from '../auth/definitions';
 import { SessionService } from '../auth/session.service';
@@ -32,9 +49,12 @@ import { EmailRuleService } from '../email/email-rule.service';
 import { EmailService } from '../email/email.service';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
+import { TOTPService } from './totp.service';
+import { UserChallengeRepository } from './user-challenge.repository';
 import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
 import {
+  ChallengeNotFoundError,
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
   EmailNotFoundError,
@@ -45,7 +65,12 @@ import {
   InvalidNicknameError,
   InvalidPasswordError,
   InvalidUsernameError,
+  PasskeyNotFoundError,
+  PasskeyVerificationFailedError,
   PasswordNotMatchError,
+  TOTPInvalidError,
+  TOTPRequiredError,
+  TOTPTempTokenInvalidError,
   UserAlreadyFollowedError,
   UserIdNotFoundError,
   UserNotFollowedYetError,
@@ -53,13 +78,21 @@ import {
   UsernameNotFoundError,
 } from './users.error';
 
+declare module 'express-session' {
+  interface SessionData {
+    passkeyChallenge?: string;
+  }
+}
+
 @Injectable()
 export class UsersService {
   constructor(
     private readonly emailService: EmailService,
     private readonly emailRuleService: EmailRuleService,
     private readonly authService: AuthService,
+    private readonly configService: ConfigService,
     private readonly sessionService: SessionService,
+    private readonly userChallengeRepository: UserChallengeRepository,
     private readonly usersPermissionService: UsersPermissionService,
     private readonly usersRegisterRequestService: UsersRegisterRequestService,
     private readonly avatarsService: AvatarsService,
@@ -68,9 +101,22 @@ export class UsersService {
     @Inject(forwardRef(() => QuestionsService))
     private readonly questionsService: QuestionsService,
     private readonly prismaService: PrismaService,
+    private readonly totpService: TOTPService,
   ) {}
 
   private readonly passwordResetEmailValidSeconds = 10 * 60; // 10 minutes
+
+  private get rpName(): string {
+    return this.configService.get('webauthn.rpName') ?? 'Cheese Community';
+  }
+
+  private get rpID(): string {
+    return this.configService.get('webauthn.rpID') ?? 'localhost';
+  }
+
+  private get origin(): string {
+    return this.configService.get('webauthn.origin') ?? 'http://localhost:7777';
+  }
 
   private generateVerifyCode(): string {
     let code: string = '';
@@ -82,6 +128,204 @@ export class UsersService {
 
   get emailSuffixRule(): string {
     return this.emailRuleService.emailSuffixRule;
+  }
+
+  async generatePasskeyRegistrationOptions(
+    userId: number,
+  ): Promise<PublicKeyCredentialCreationOptionsJSON> {
+    const [user, _] = await this.findUserRecordAndProfileRecordOrThrow(userId);
+
+    const existingPasskeys = await this.prismaService.passkey.findMany({
+      where: {
+        userId,
+      },
+    });
+
+    const options = await generateRegistrationOptions({
+      rpName: this.rpName,
+      rpID: this.rpID,
+      userName: user.username,
+      userID: Buffer.from(user.id.toString()),
+      attestationType: 'none',
+      authenticatorSelection: {
+        residentKey: 'required',
+        userVerification: 'preferred',
+      },
+      excludeCredentials: existingPasskeys.map((passkey) => ({
+        id: passkey.credentialId,
+        transports: passkey.transports
+          ? JSON.parse(passkey.transports)
+          : undefined,
+      })),
+      timeout: 60000,
+    });
+
+    await this.userChallengeRepository.setChallenge(
+      userId,
+      options.challenge,
+      600,
+    );
+
+    return options;
+  }
+
+  async verifyPasskeyRegistration(
+    userId: number,
+    response: RegistrationResponseJSON,
+  ): Promise<void> {
+    const challenge = await this.userChallengeRepository.getChallenge(userId);
+
+    if (challenge == null) {
+      throw new ChallengeNotFoundError();
+    }
+
+    const { verified, registrationInfo } = await verifyRegistrationResponse({
+      response,
+      expectedChallenge: challenge,
+      expectedOrigin: this.origin,
+      expectedRPID: this.rpID,
+      requireUserVerification: false,
+    });
+
+    if (!verified || registrationInfo == null) {
+      throw new PasskeyVerificationFailedError();
+    }
+
+    const { credential, credentialBackedUp, credentialDeviceType } =
+      registrationInfo;
+
+    await this.savePasskeyCredential(
+      userId,
+      credential,
+      credentialDeviceType,
+      credentialBackedUp,
+    );
+
+    await this.userChallengeRepository.deleteChallenge(userId);
+  }
+
+  async savePasskeyCredential(
+    userId: number,
+    credential: WebAuthnCredential,
+    deviceType: CredentialDeviceType,
+    backedUp: boolean,
+  ): Promise<void> {
+    await this.prismaService.passkey.create({
+      data: {
+        userId,
+        credentialId: credential.id,
+        publicKey: Buffer.from(credential.publicKey),
+        counter: credential.counter,
+        deviceType,
+        backedUp,
+        transports: credential.transports
+          ? JSON.stringify(credential.transports)
+          : null,
+      },
+    });
+  }
+
+  async generatePasskeyAuthenticationOptions(
+    req: Request,
+  ): Promise<PublicKeyCredentialRequestOptionsJSON> {
+    const options = await generateAuthenticationOptions({
+      rpID: this.rpID,
+      allowCredentials: [],
+      userVerification: 'preferred',
+    });
+
+    req.session.passkeyChallenge = options.challenge;
+
+    return options;
+  }
+
+  async verifyPasskeyAuthentication(
+    req: Request,
+    response: AuthenticationResponseJSON,
+  ): Promise<boolean> {
+    const challenge = req.session.passkeyChallenge;
+
+    if (challenge == null) {
+      throw new ChallengeNotFoundError();
+    }
+
+    const authenticator = await this.prismaService.passkey.findFirst({
+      where: {
+        credentialId: response.id,
+      },
+    });
+
+    if (authenticator == null) {
+      throw new PasskeyNotFoundError(response.id);
+    }
+
+    const { verified, authenticationInfo } = await verifyAuthenticationResponse(
+      {
+        response,
+        expectedChallenge: challenge,
+        expectedOrigin: this.origin,
+        expectedRPID: this.rpID,
+        credential: {
+          id: authenticator.credentialId,
+          publicKey: authenticator.publicKey,
+          counter: authenticator.counter,
+          transports: authenticator.transports
+            ? JSON.parse(authenticator.transports)
+            : undefined,
+        },
+        requireUserVerification: false,
+      },
+    );
+
+    if (!verified || authenticationInfo == null) {
+      return false;
+    }
+
+    await this.prismaService.passkey.update({
+      where: {
+        id: authenticator.id,
+      },
+      data: {
+        counter: authenticationInfo.newCounter,
+      },
+    });
+
+    return true;
+  }
+
+  async handlePasskeyLogin(
+    userId: number,
+    ip: string,
+    userAgent: string | undefined,
+  ) {
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: userId,
+        ip,
+        userAgent,
+      },
+    });
+    return [
+      await this.getUserDtoById(userId, userId, ip, userAgent),
+      await this.createSession(userId),
+    ];
+  }
+
+  async getUserPasskeys(userId: number): Promise<Passkey[]> {
+    return await this.prismaService.passkey.findMany({
+      where: {
+        userId,
+      },
+    });
+  }
+
+  async deletePasskey(userId: number, credentialId: string): Promise<void> {
+    await this.prismaService.passkey.deleteMany({
+      where: {
+        userId,
+        credentialId,
+      },
+    });
   }
 
   async isEmailRegistered(email: string): Promise<boolean> {
@@ -428,9 +672,41 @@ export class UsersService {
     userAgent: string | undefined,
   ): Promise<[UserDto, string]> {
     const user = await this.findUserRecordByUsernameOrThrow(username);
-    if (bcrypt.compareSync(password, user.hashedPassword) == false) {
+
+    // 验证密码
+    if (!bcrypt.compareSync(password, user.hashedPassword)) {
       throw new PasswordNotMatchError(username);
     }
+
+    // 如果用户启用了 2FA，需要进行风险评估
+    if (user.totpEnabled) {
+      const requireTOTP = await this.shouldRequire2FA(user.id, ip, userAgent);
+
+      if (requireTOTP) {
+        const tempToken = this.authService.sign(
+          {
+            userId: user.id,
+            permissions: [
+              {
+                authorizedActions: ['verify'],
+                authorizedResource: {
+                  ownedByUser: user.id,
+                  types: ['users/totp:verify'],
+                  resourceIds: undefined,
+                  data: {
+                    validUntil: Date.now() + 5 * 60 * 1000,
+                  },
+                },
+              },
+            ],
+          },
+          300,
+        );
+
+        throw new TOTPRequiredError(username, tempToken);
+      }
+    }
+
     // Login successfully.
     await this.prismaService.userLoginLog.create({
       data: {
@@ -443,6 +719,114 @@ export class UsersService {
       await this.getUserDtoById(user.id, user.id, ip, userAgent),
       await this.createSession(user.id),
     ];
+  }
+
+  // 新增风险评估方法
+  private async shouldRequire2FA(
+    userId: number,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<boolean> {
+    // 首先检查用户是否开启了"始终要求2FA"
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { totpAlwaysRequired: true },
+    });
+
+    if (user?.totpAlwaysRequired) {
+      return true;
+    }
+
+    // 其他风险评估逻辑保持不变
+    const isKnownIP = await this.prismaService.userLoginLog.findFirst({
+      where: {
+        userId,
+        ip,
+        createdAt: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        },
+      },
+    });
+
+    const isKnownDevice =
+      userAgent &&
+      (await this.prismaService.userLoginLog.findFirst({
+        where: {
+          userId,
+          userAgent,
+          createdAt: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          },
+        },
+      }));
+
+    if (!isKnownIP || !isKnownDevice) {
+      return true;
+    }
+
+    const hasSensitiveOperation =
+      await this.prismaService.userResetPasswordLog.findFirst({
+        where: {
+          userId,
+          createdAt: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        },
+      });
+
+    return !!hasSensitiveOperation;
+  }
+
+  // 新增：验证 TOTP 并完成登录
+  async verifyTOTPAndLogin(
+    tempToken: string,
+    code: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[UserDto, string, boolean]> {
+    try {
+      // 验证临时 token
+      const auth = this.authService.verify(tempToken);
+      const userId = auth.userId;
+
+      // 验证 token 的权限
+      await this.authService.audit(
+        tempToken,
+        'verify',
+        userId,
+        'users/totp:verify',
+      );
+
+      // 验证 TOTP 代码
+      const { isValid, usedBackupCode } = await this.totpService.verify2FA(
+        userId,
+        code,
+      );
+      if (!isValid) {
+        throw new TOTPInvalidError();
+      }
+
+      // 记录登录日志
+      await this.prismaService.userLoginLog.create({
+        data: {
+          userId,
+          ip,
+          userAgent,
+        },
+      });
+
+      // 返回用户信息和新的 session
+      return [
+        await this.getUserDtoById(userId, userId, ip, userAgent),
+        await this.createSession(userId),
+        usedBackupCode,
+      ];
+    } catch (error) {
+      if (error instanceof TOTPInvalidError) {
+        throw error;
+      }
+      throw new TOTPTempTokenInvalidError();
+    }
   }
 
   private async createSession(userId: number): Promise<string> {
@@ -857,5 +1241,47 @@ export class UsersService {
     });
     assert(result == 0 || result == 1);
     return result > 0;
+  }
+
+  async verifySudo(
+    req: Request,
+    token: string,
+    method: 'password' | 'passkey' | 'totp',
+    credentials: {
+      password?: string;
+      passkeyResponse?: AuthenticationResponseJSON;
+      code?: string;
+    },
+  ): Promise<string> {
+    const userId = this.authService.decode(token).authorization.userId;
+    let verified = false;
+
+    if (method === 'password') {
+      const user = await this.prismaService.user.findUnique({
+        where: { id: userId },
+      });
+      verified = await bcrypt.compare(
+        credentials.password!,
+        user!.hashedPassword,
+      );
+    } else if (method === 'passkey') {
+      verified = await this.verifyPasskeyAuthentication(
+        req,
+        credentials.passkeyResponse!,
+      );
+    } else if (method === 'totp') {
+      const { isValid } = await this.totpService.verify2FA(
+        userId,
+        credentials.code!,
+      );
+      verified = isValid;
+    }
+
+    if (!verified) {
+      throw new InvalidCredentialsError();
+    }
+
+    // 签发带有 sudo 权限的新 token
+    return await this.authService.issueSudoToken(token);
   }
 }

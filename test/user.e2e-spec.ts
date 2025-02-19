@@ -8,10 +8,35 @@
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import session from 'express-session';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/email/email.service';
 jest.mock('../src/email/email.service');
+jest.mock('@simplewebauthn/server', () => ({
+  generateRegistrationOptions: jest.fn(() =>
+    Promise.resolve({ challenge: 'fake-challenge' }),
+  ),
+  verifyRegistrationResponse: jest.fn(() =>
+    Promise.resolve({
+      verified: true,
+      registrationInfo: {
+        credential: { id: 'cred-id', publicKey: 'fake-public-key', counter: 1 },
+        credentialBackedUp: false,
+        credentialDeviceType: 'singleDevice',
+      },
+    }),
+  ),
+  generateAuthenticationOptions: jest.fn(() =>
+    Promise.resolve({ challenge: 'fake-auth-challenge', allowCredentials: [] }),
+  ),
+  verifyAuthenticationResponse: jest.fn(() =>
+    Promise.resolve({
+      verified: true,
+      authenticationInfo: { newCounter: 2 },
+    }),
+  ),
+}));
 
 describe('User Module', () => {
   let app: INestApplication;
@@ -30,6 +55,13 @@ describe('User Module', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(
+      session({
+        secret: 'testSecret',
+        resave: false,
+        saveUninitialized: false,
+      }),
+    );
     await app.init();
   }, 20000);
 
@@ -895,6 +927,219 @@ describe('User Module', () => {
       expect(respond2.status).toBe(422);
 
       jest.useRealTimers();
+    });
+  });
+
+  describe('Sudo Mode Authentication', () => {
+    let testUserId: number;
+    let validToken: string;
+
+    beforeAll(async () => {
+      // 使用已注册的测试账号登录
+      const loginRes = await request(app.getHttpServer())
+        .post('/users/auth/login')
+        .send({
+          username: TestUsername,
+          password: 'ABC^^^666',
+        })
+        .expect(201);
+
+      validToken = loginRes.body.data.accessToken;
+      testUserId = loginRes.body.data.user.id;
+    });
+
+    it('should verify sudo mode with password', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'password',
+          credentials: {
+            password: 'ABC^^^666',
+          },
+        })
+        .expect(201);
+
+      expect(res.body.data.accessToken).toBeDefined();
+      // 保存sudo token用于后续测试
+      validToken = res.body.data.accessToken;
+    });
+
+    // it('should verify sudo mode with passkey', async () => {
+    //   const fakeAuthResponse = {
+    //     id: 'cred-id',
+    //     rawId: 'raw-cred-id',
+    //     response: {},
+    //     type: 'public-key',
+    //     clientExtensionResults: {},
+    //   };
+
+    //   const res = await request(app.getHttpServer())
+    //     .post('/users/auth/sudo')
+    //     .set('Authorization', `Bearer ${validToken}`)
+    //     .send({
+    //       method: 'passkey',
+    //       credentials: {
+    //         passkeyResponse: fakeAuthResponse,
+    //       },
+    //     })
+    //     .expect(200);
+
+    //   expect(res.body.data.accessToken).toBeDefined();
+    // });
+
+    it('should reject sudo verification with wrong password', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'password',
+          credentials: {
+            password: 'wrong-password',
+          },
+        })
+        .expect(401);
+
+      expect(res.body.message).toMatch(/InvalidCredentialsError/);
+    });
+
+    // 测试需要 sudo 权限的操作
+    //   it('should require sudo mode for sensitive operations', async () => {
+    //     // 使用非 sudo token
+    //     const loginRes = await request(app.getHttpServer())
+    //       .post('/users/auth/login')
+    //       .send({
+    //         username: TestUsername,
+    //         password: 'ABC^^^666',
+    //       })
+    //       .expect(201);
+
+    //     const normalToken = loginRes.body.data.accessToken;
+
+    //     // 尝试执行需要 sudo 的操作（例如修改密码）
+    //     const res = await request(app.getHttpServer())
+    //       .post(`/users/${testUserId}/password`)
+    //       .set('Authorization', `Bearer ${normalToken}`)
+    //       .send({
+    //         oldPassword: 'ABC^^^666',
+    //         newPassword: 'NewABC^^^666',
+    //       })
+    //       .expect(403);
+
+    //     expect(res.body.message).toMatch(/SudoRequiredError/);
+    //   });
+  });
+
+  describe('Passkey Authentication Endpoints', () => {
+    let testUserId: number;
+    let validToken: string;
+
+    beforeAll(async () => {
+      // 使用已注册的测试账号登录
+      const loginRes = await request(app.getHttpServer())
+        .post('/users/auth/login')
+        .send({
+          username: TestUsername,
+          password: 'ABC^^^666',
+        })
+        .expect(201);
+
+      validToken = loginRes.body.data.accessToken;
+      testUserId = loginRes.body.data.user.id;
+
+      const verifyRes = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'password',
+          credentials: {
+            password: 'ABC^^^666',
+          },
+        })
+        .expect(201);
+      validToken = verifyRes.body.data.accessToken;
+    });
+
+    it('POST /users/{userId}/passkeys/options should return registration options', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys/options`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send()
+        .expect(201);
+      expect(res.body.data.options).toBeDefined();
+    });
+
+    it('POST /users/{userId}/passkeys should register a new passkey', async () => {
+      // 先获取注册选项
+      const resOptions = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys/options`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send()
+        .expect(201);
+
+      const fakeRegistrationResponse = {
+        id: 'cred-id',
+        rawId: 'raw-cred-id',
+        response: {},
+        type: 'public-key',
+        clientExtensionResults: {},
+      };
+
+      const res = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({ response: fakeRegistrationResponse })
+        .expect(201);
+      expect(res.body.message).toBe('Passkey registered successfully.');
+    });
+
+    it('POST /users/auth/passkey/options should return authentication options', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/passkey/options')
+        .send()
+        .expect(201);
+      expect(res.body.data.options).toBeDefined();
+    });
+
+    it('POST /users/auth/passkey/verify should verify passkey login and return tokens', async () => {
+      // 先获取认证选项
+      const resOptions = await request(app.getHttpServer())
+        .post('/users/auth/passkey/options')
+        .send()
+        .expect(201);
+      const cookies = resOptions.headers['set-cookie'];
+
+      const fakeAuthResponse = {
+        id: 'cred-id',
+        rawId: 'raw-cred-id',
+        response: {},
+        type: 'public-key',
+        clientExtensionResults: {},
+      };
+
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/passkey/verify')
+        .set('Cookie', cookies)
+        .send({ response: fakeAuthResponse })
+        .expect(201);
+      expect(res.body.data.user).toBeDefined();
+      expect(res.body.data.accessToken).toBeDefined();
+    });
+
+    it('GET /users/{userId}/passkeys should return user passkeys list', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/users/${testUserId}/passkeys`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(200);
+      expect(Array.isArray(res.body.data.passkeys)).toBe(true);
+    });
+
+    it('DELETE /users/{userId}/passkeys/{credentialId} should delete passkey', async () => {
+      const res = await request(app.getHttpServer())
+        .delete(`/users/${testUserId}/passkeys/cred-id`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(200);
+      expect(res.body.message).toBe('Delete passkey successfully.');
     });
   });
 

@@ -30,6 +30,20 @@ export default () => {
     passwordResetPath:
       process.env.PASSWORD_RESET_PREFIX ||
       '/account/recover/password/verify?token=',
+    webauthn: {
+      rpName: process.env.WEB_AUTHN_RP_NAME || 'Cheese Community',
+      rpID: process.env.WEB_AUTHN_RP_ID || 'localhost',
+      origin: process.env.WEB_AUTHN_ORIGIN || 'http://localhost:7777',
+    },
+    totp: {
+      appName: process.env.APP_NAME || 'Cheese Community',
+      encryptionKey: process.env.TOTP_ENCRYPTION_KEY || process.env.APP_KEY,
+      backupCodesCount: parseInt(
+        process.env.TOTP_BACKUP_CODES_COUNT || '10',
+        10,
+      ),
+      window: parseInt(process.env.TOTP_WINDOW || '1', 10), // 验证窗口，默认前后1个时间窗口
+    },
   };
 };
 

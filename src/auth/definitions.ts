@@ -69,9 +69,10 @@ export class Permission {
 }
 
 // The user, whose id is userId, is granted the permissions.
-export class Authorization {
-  userId: number; // authorization identity
+export interface Authorization {
+  userId: number;
   permissions: Permission[];
+  sudoUntil?: number; // sudo 模式过期时间戳
 }
 
 export class TokenPayload {

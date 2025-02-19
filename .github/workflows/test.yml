@@ -32,6 +32,8 @@ jobs:
       ELASTICSEARCH_SNIFF_ON_START: false
       ELASTICSEARCH_AUTH_USERNAME: elastic
       ELASTICSEARCH_AUTH_PASSWORD: your-elasticsearch-password
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
 
     services:
       # See: https://docs.github.com/en/actions/using-containerized-services/creating-postgresql-service-containers
@@ -67,7 +69,17 @@ jobs:
         ports:
           # Maps tcp port 9200 on service container to the host
           - 9200:9200
-    
+      valkey:
+        image: valkey/valkey:8.0.2
+        ports:
+          - '6379:6379'
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 3
+          --health-start-period 30s
+
     steps:
       # See: https://remarkablemark.org/blog/2022/05/12/github-actions-postgresql-increase-max-connections-and-shared-buffers/
       # See: https://stackoverflow.com/questions/70673766/how-to-increase-max-connection-in-github-action-postgres
