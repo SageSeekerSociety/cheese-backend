@@ -728,9 +728,16 @@ components:
                   type: string
                 user:
                   $ref: "#/components/schemas/User"
+                requires2fa:
+                  type: boolean
+                  description: 是否需要进行 2FA 验证
+                tempToken:
+                  type: string
+                  description: 2FA 验证临时令牌（仅在 requires2fa 为 true 时返回）
               required:
                 - accessToken
                 - user
+                - requires2fa
           required:
             - data
     RegisterRequest:
@@ -935,9 +942,18 @@ components:
                   type: string
                 user:
                   $ref: "#/components/schemas/User"
+                requires2fa:
+                  type: boolean
+                  description: 是否需要进行 2FA 验证
+                tempToken:
+                  type: string
+                  description: 2FA 验证临时令牌（仅在 requires2fa 为 true 时返回）
               required:
                 - accessToken
                 - user
+                - requires2fa
+          required:
+            - data
 
     PasskeyCredential:
       type: object
@@ -981,6 +997,22 @@ components:
       required:
         - credentialId
         - publicKey
+
+    TOTPSetupResponse:
+      type: object
+      description: TOTP 2FA 设置响应
+      properties:
+        secret:
+          type: string
+          description: TOTP 密钥（仅在初始设置时返回）
+        otpauth_url:
+          type: string
+          description: TOTP 二维码 URL（仅在初始设置时返回）
+        backup_codes:
+          type: array
+          description: 备份代码列表（仅在初始设置或重新生成时返回）
+          items:
+            type: string
 
 paths:
   /users:
@@ -3781,3 +3813,277 @@ paths:
                             description: WebAuthn 认证选项
                     required:
                       - data
+
+  /users/{userId}/2fa/enable:
+    post:
+      summary: 启用 2FA
+      description: |
+        两步流程:
+        1. 不带 code 参数请求，获取 TOTP secret 和二维码 URL
+        2. 用户扫描二维码后，提供 code 进行验证
+        注意: 需要 sudo 权限
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: TOTP 验证码，初始化时不需要提供
+      responses:
+        "200":
+          description: 初始化成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "TOTP secret generated successfully"
+                  data:
+                    type: object
+                    properties:
+                      secret:
+                        type: string
+                        description: TOTP 密钥
+                      otpauth_url:
+                        type: string
+                        description: 用于生成二维码的 URL
+                      backup_codes:
+                        type: array
+                        items:
+                          type: string
+                        description: 备份码列表(初始化时为空)
+        "201":
+          description: 启用成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "2FA enabled successfully"
+                  data:
+                    type: object
+                    properties:
+                      secret:
+                        type: string
+                        description: TOTP 密钥
+                      otpauth_url:
+                        type: string
+                        description: 用于生成二维码的 URL
+                      backup_codes:
+                        type: array
+                        items:
+                          type: string
+                        description: 备份码列表
+
+  /users/{userId}/2fa/disable:
+    post:
+      summary: 禁用 2FA
+      description: 需要 sudo 权限和当前有效的 TOTP 验证码
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: TOTP 验证码
+      responses:
+        "200":
+          description: 禁用成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "2FA disabled successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+
+  /users/{userId}/2fa/backup-codes:
+    post:
+      summary: 生成新的备份码
+      description: 需要 sudo 权限和当前有效的 TOTP 验证码
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: TOTP 验证码
+      responses:
+        "201":
+          description: 生成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "New backup codes generated successfully"
+                  data:
+                    type: object
+                    properties:
+                      backup_codes:
+                        type: array
+                        items:
+                          type: string
+                        description: 新的备份码列表
+
+  /users/auth/verify-2fa:
+    post:
+      summary: 验证 2FA 并完成登录
+      description: 用于登录时的 2FA 验证
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                temp_token:
+                  type: string
+                  description: 临时 token
+                code:
+                  type: string
+                  description: TOTP 验证码
+      responses:
+        "201":
+          description: 验证成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "Login successfully"
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      accessToken:
+                        type: string
+                        description: 访问令牌
+                      requires2FA:
+                        type: boolean
+                        example: false
+
+  /users/{userId}/2fa/status:
+    get:
+      summary: 获取 2FA 状态
+      description: 获取用户当前的 2FA 启用状态和 Passkey 状态
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "Get 2FA status successfully"
+                  data:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: 是否已启用 2FA
+                      has_passkey:
+                        type: boolean
+                        description: 是否已注册 Passkey
+
+  /users/{userId}/2fa/settings:
+    put:
+      summary: 更新 2FA 设置
+      description: 更新用户的 2FA 相关设置，如是否始终要求验证
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                always_required:
+                  type: boolean
+                  description: 是否始终要求 2FA 验证
+      responses:
+        "200":
+          description: 设置更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "2FA settings updated successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                      always_required:
+                        type: boolean

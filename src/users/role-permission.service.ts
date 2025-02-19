@@ -48,6 +48,14 @@ export class RolePermissionService {
           },
         },
         {
+          authorizedActions: ['modify-2fa'],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['user'],
+            resourceIds: [userId],
+          },
+        },
+        {
           authorizedActions: [
             'enumerate-passkeys',
             'register-passkey',

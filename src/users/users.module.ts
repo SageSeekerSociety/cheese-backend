@@ -15,6 +15,7 @@ import { PrismaModule } from '../common/prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { RolePermissionService } from './role-permission.service';
+import { TOTPService } from './totp.service';
 import { UserChallengeRepository } from './user-challenge.repository';
 import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
@@ -38,6 +39,7 @@ import { UsersService } from './users.service';
     UsersRegisterRequestService,
     RolePermissionService,
     UserChallengeRepository,
+    TOTPService,
   ],
   exports: [UsersService],
 })

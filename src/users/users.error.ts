@@ -184,3 +184,32 @@ export class PasskeyNotFoundError extends BaseError {
     );
   }
 }
+
+export class TOTPRequiredError extends BaseError {
+  constructor(
+    username: string,
+    public readonly tempToken: string,
+  ) {
+    super(
+      'TOTPRequiredError',
+      `2FA verification required for user '${username}'`,
+      401,
+    );
+  }
+}
+
+export class TOTPInvalidError extends BaseError {
+  constructor() {
+    super('TOTPInvalidError', 'Invalid 2FA code', 400);
+  }
+}
+
+export class TOTPTempTokenInvalidError extends BaseError {
+  constructor() {
+    super(
+      'TOTPTempTokenInvalidError',
+      'Invalid or expired temporary token for 2FA verification',
+      400,
+    );
+  }
+}

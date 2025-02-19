@@ -27,6 +27,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import path from 'node:path';
+import qrcode from 'qrcode';
 import { AnswerService } from '../answer/answer.service';
 import { AuthenticationRequiredError } from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
@@ -77,11 +78,28 @@ import {
 } from './DTO/send-email-verify-code.dto';
 import { VerifySudoResponseDto } from './DTO/sudo.dto';
 import {
+  Disable2FARequestDto,
+  Disable2FAResponseDto,
+  Enable2FARequestDto,
+  Enable2FAResponseDto,
+  GenerateBackupCodesRequestDto,
+  GenerateBackupCodesResponseDto,
+  Get2FAStatusResponseDto,
+  Update2FASettingsRequestDto,
+  Update2FASettingsResponseDto,
+  Verify2FARequestDto,
+} from './DTO/totp.dto';
+import {
   UpdateUserRequestDto,
   UpdateUserResponseDto,
 } from './DTO/update-user.dto';
 import { UserDto } from './DTO/user.dto';
-import { PasskeyNotFoundError } from './users.error';
+import { TOTPService } from './totp.service';
+import {
+  PasskeyNotFoundError,
+  TOTPRequiredError,
+  UserIdNotFoundError,
+} from './users.error';
 import { UsersService } from './users.service';
 
 @Controller('/users')
@@ -91,6 +109,7 @@ export class UsersController {
     private readonly authService: AuthService,
     private readonly sessionService: SessionService,
     private readonly prismaService: PrismaService,
+    private readonly totpService: TOTPService,
     @Inject(forwardRef(() => AnswerService))
     private readonly answerService: AnswerService,
     @Inject(forwardRef(() => QuestionsService))
@@ -175,36 +194,52 @@ export class UsersController {
     @Headers('User-Agent') userAgent: string | undefined,
     @Res() res: Response,
   ): Promise<Response> {
-    const [userDto, refreshToken] = await this.usersService.login(
-      username,
-      password,
-      ip,
-      userAgent,
-    );
-    const [newRefreshToken, accessToken] =
-      await this.sessionService.refreshSession(refreshToken);
-    const newRefreshTokenExpire = new Date(
-      this.authService.decode(newRefreshToken).validUntil,
-    );
-    const data: LoginResponseDto = {
-      code: 201,
-      message: 'Login successfully.',
-      data: {
-        user: userDto,
-        accessToken,
-      },
-    };
-    return res
-      .cookie('REFRESH_TOKEN', newRefreshToken, {
-        httpOnly: true,
-        sameSite: 'strict',
-        path: path.posix.join(
-          this.configService.get('cookieBasePath')!,
-          'users/auth',
-        ),
-        expires: new Date(newRefreshTokenExpire),
-      })
-      .json(data);
+    try {
+      const [userDto, refreshToken] = await this.usersService.login(
+        username,
+        password,
+        ip,
+        userAgent,
+      );
+      const [newRefreshToken, accessToken] =
+        await this.sessionService.refreshSession(refreshToken);
+      const newRefreshTokenExpire = new Date(
+        this.authService.decode(newRefreshToken).validUntil,
+      );
+      const data: LoginResponseDto = {
+        code: 201,
+        message: 'Login successfully.',
+        data: {
+          user: userDto,
+          accessToken,
+          requires2FA: false,
+        },
+      };
+      return res
+        .cookie('REFRESH_TOKEN', newRefreshToken, {
+          httpOnly: true,
+          sameSite: 'strict',
+          path: path.posix.join(
+            this.configService.get('cookieBasePath')!,
+            'users/auth',
+          ),
+          expires: new Date(newRefreshTokenExpire),
+        })
+        .json(data);
+    } catch (e) {
+      if (e instanceof TOTPRequiredError) {
+        const data: LoginResponseDto = {
+          code: 401,
+          message: e.message,
+          data: {
+            requires2FA: true,
+            tempToken: e.tempToken,
+          },
+        };
+        return res.json(data);
+      }
+      throw e;
+    }
   }
 
   @Post('/auth/refresh-token')
@@ -705,6 +740,208 @@ export class UsersController {
       message: 'Sudo mode activated successfully',
       data: {
         accessToken: newAccessToken,
+      },
+    };
+  }
+
+  @Post('auth/verify-2fa')
+  @NoAuth()
+  async verify2FA(
+    @Body() dto: Verify2FARequestDto,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const [userDto, refreshToken, usedBackupCode] =
+      await this.usersService.verifyTOTPAndLogin(
+        dto.temp_token,
+        dto.code,
+        ip,
+        userAgent,
+      );
+    const [newRefreshToken, accessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
+    );
+    const data: LoginResponseDto = {
+      code: 201,
+      message: usedBackupCode
+        ? 'Login successfully. Note: This backup code has expired. Please generate a new backup code for future use.'
+        : 'Login successfully.',
+      data: {
+        user: userDto,
+        accessToken,
+        requires2FA: false,
+        usedBackupCode: usedBackupCode,
+      },
+    };
+    return res
+      .cookie('REFRESH_TOKEN', newRefreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: path.posix.join(
+          this.configService.get('cookieBasePath')!,
+          'users/auth',
+        ),
+        expires: new Date(newRefreshTokenExpire),
+      })
+      .json(data);
+  }
+
+  // 2FA 管理接口
+  @Post(':id/2fa/enable')
+  @Guard('modify-2fa', 'user', true)
+  async enable2FA(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Body() dto: Enable2FARequestDto,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<Enable2FAResponseDto> {
+    // 如果是初始化阶段
+    if (!dto.code) {
+      const secret = await this.totpService.generateTOTPSecret();
+      const user = await this.usersService.findUserRecordOrThrow(userId);
+      const otpauthUrl = this.totpService.generateTOTPUri(
+        secret,
+        user.username,
+      );
+
+      // 生成二维码
+      const qrcodeData = await qrcode.toDataURL(otpauthUrl);
+
+      return {
+        code: 200,
+        message: 'TOTP secret generated successfully',
+        data: {
+          secret,
+          otpauth_url: otpauthUrl,
+          qrcode: qrcodeData,
+          backup_codes: [], // 初始化阶段不生成备份码
+        },
+      };
+    }
+
+    // 如果是确认阶段，需要前端传入之前生成的 secret
+    if (!dto.secret) {
+      throw new Error('Secret is required for confirmation');
+    }
+
+    // 验证并启用 2FA
+    const backupCodes = await this.totpService.enable2FA(
+      userId,
+      dto.secret,
+      dto.code,
+    );
+
+    // 生成二维码（虽然这个阶段前端可能不需要了，但为了保持 API 一致性还是返回）
+    const user = await this.usersService.findUserRecordOrThrow(userId);
+    const otpauthUrl = this.totpService.generateTOTPUri(
+      dto.secret,
+      user.username,
+    );
+    const qrcodeData = await qrcode.toDataURL(otpauthUrl);
+
+    return {
+      code: 201,
+      message: '2FA enabled successfully',
+      data: {
+        secret: dto.secret,
+        otpauth_url: otpauthUrl,
+        qrcode: qrcodeData,
+        backup_codes: backupCodes,
+      },
+    };
+  }
+
+  @Post(':id/2fa/disable')
+  @Guard('modify-2fa', 'user', true)
+  async disable2FA(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Body() dto: Disable2FARequestDto,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<Disable2FAResponseDto> {
+    await this.totpService.disable2FA(userId);
+    return {
+      code: 200,
+      message: '2FA disabled successfully',
+      data: {
+        success: true,
+      },
+    };
+  }
+
+  @Post(':id/2fa/backup-codes')
+  @Guard('modify-2fa', 'user', true)
+  async generateBackupCodes(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Body() dto: GenerateBackupCodesRequestDto,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<GenerateBackupCodesResponseDto> {
+    // 生成新的备份码并保存
+    const backupCodes =
+      await this.totpService.generateAndSaveBackupCodes(userId);
+
+    return {
+      code: 201,
+      message: 'New backup codes generated successfully',
+      data: {
+        backup_codes: backupCodes,
+      },
+    };
+  }
+
+  @Get(':id/2fa/status')
+  @Guard('query', 'user')
+  async get2FAStatus(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<Get2FAStatusResponseDto> {
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: {
+        totpEnabled: true,
+        totpAlwaysRequired: true,
+        passkeys: {
+          select: { id: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new UserIdNotFoundError(userId);
+    }
+
+    return {
+      code: 200,
+      message: 'Get 2FA status successfully',
+      data: {
+        enabled: user.totpEnabled,
+        has_passkey: user.passkeys.length > 0,
+        always_required: user.totpAlwaysRequired,
+      },
+    };
+  }
+
+  @Put(':id/2fa/settings')
+  @Guard('modify-2fa', 'user', true)
+  async update2FASettings(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Body() dto: Update2FASettingsRequestDto,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<Update2FASettingsResponseDto> {
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: {
+        totpAlwaysRequired: dto.always_required,
+      },
+    });
+
+    return {
+      code: 200,
+      message: '2FA settings updated successfully',
+      data: {
+        success: true,
+        always_required: dto.always_required,
       },
     };
   }

@@ -46,6 +46,10 @@ model User {
   Material                                                           Material[]
   MaterialBundle                                                     MaterialBundle[]
   passkeys                                                           Passkey[]
+  totpSecret                                                         String?         @db.VarChar(64)  @map("totp_secret")  
+  totpEnabled                                                        Boolean         @default(false)   @map("totp_enabled") 
+  totpAlwaysRequired                                                Boolean         @default(false)   @map("totp_always_required")
+  backupCodes                                                        UserBackupCode[]
 
   @@map("user")
 }
@@ -158,6 +162,18 @@ model UserResetPasswordLog {
   createdAt DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("user_reset_password_log")
+}
+
+model UserBackupCode {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  codeHash   String    @map("code_hash") @db.VarChar(128)  // 加盐哈希存储
+  used       Boolean   @default(false)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "IDX_user_backup_code_user_id")
+  @@map("user_backup_code")
 }
 
 model Passkey {

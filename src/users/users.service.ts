@@ -49,6 +49,7 @@ import { EmailRuleService } from '../email/email-rule.service';
 import { EmailService } from '../email/email.service';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
+import { TOTPService } from './totp.service';
 import { UserChallengeRepository } from './user-challenge.repository';
 import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
@@ -67,6 +68,9 @@ import {
   PasskeyNotFoundError,
   PasskeyVerificationFailedError,
   PasswordNotMatchError,
+  TOTPInvalidError,
+  TOTPRequiredError,
+  TOTPTempTokenInvalidError,
   UserAlreadyFollowedError,
   UserIdNotFoundError,
   UserNotFollowedYetError,
@@ -97,6 +101,7 @@ export class UsersService {
     @Inject(forwardRef(() => QuestionsService))
     private readonly questionsService: QuestionsService,
     private readonly prismaService: PrismaService,
+    private readonly totpService: TOTPService,
   ) {}
 
   private readonly passwordResetEmailValidSeconds = 10 * 60; // 10 minutes
@@ -667,9 +672,41 @@ export class UsersService {
     userAgent: string | undefined,
   ): Promise<[UserDto, string]> {
     const user = await this.findUserRecordByUsernameOrThrow(username);
-    if (bcrypt.compareSync(password, user.hashedPassword) == false) {
+
+    // 验证密码
+    if (!bcrypt.compareSync(password, user.hashedPassword)) {
       throw new PasswordNotMatchError(username);
     }
+
+    // 如果用户启用了 2FA，需要进行风险评估
+    if (user.totpEnabled) {
+      const requireTOTP = await this.shouldRequire2FA(user.id, ip, userAgent);
+
+      if (requireTOTP) {
+        const tempToken = this.authService.sign(
+          {
+            userId: user.id,
+            permissions: [
+              {
+                authorizedActions: ['verify'],
+                authorizedResource: {
+                  ownedByUser: user.id,
+                  types: ['users/totp:verify'],
+                  resourceIds: undefined,
+                  data: {
+                    validUntil: Date.now() + 5 * 60 * 1000,
+                  },
+                },
+              },
+            ],
+          },
+          300,
+        );
+
+        throw new TOTPRequiredError(username, tempToken);
+      }
+    }
+
     // Login successfully.
     await this.prismaService.userLoginLog.create({
       data: {
@@ -682,6 +719,114 @@ export class UsersService {
       await this.getUserDtoById(user.id, user.id, ip, userAgent),
       await this.createSession(user.id),
     ];
+  }
+
+  // 新增风险评估方法
+  private async shouldRequire2FA(
+    userId: number,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<boolean> {
+    // 首先检查用户是否开启了"始终要求2FA"
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { totpAlwaysRequired: true },
+    });
+
+    if (user?.totpAlwaysRequired) {
+      return true;
+    }
+
+    // 其他风险评估逻辑保持不变
+    const isKnownIP = await this.prismaService.userLoginLog.findFirst({
+      where: {
+        userId,
+        ip,
+        createdAt: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        },
+      },
+    });
+
+    const isKnownDevice =
+      userAgent &&
+      (await this.prismaService.userLoginLog.findFirst({
+        where: {
+          userId,
+          userAgent,
+          createdAt: {
+            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          },
+        },
+      }));
+
+    if (!isKnownIP || !isKnownDevice) {
+      return true;
+    }
+
+    const hasSensitiveOperation =
+      await this.prismaService.userResetPasswordLog.findFirst({
+        where: {
+          userId,
+          createdAt: {
+            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          },
+        },
+      });
+
+    return !!hasSensitiveOperation;
+  }
+
+  // 新增：验证 TOTP 并完成登录
+  async verifyTOTPAndLogin(
+    tempToken: string,
+    code: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[UserDto, string, boolean]> {
+    try {
+      // 验证临时 token
+      const auth = this.authService.verify(tempToken);
+      const userId = auth.userId;
+
+      // 验证 token 的权限
+      await this.authService.audit(
+        tempToken,
+        'verify',
+        userId,
+        'users/totp:verify',
+      );
+
+      // 验证 TOTP 代码
+      const { isValid, usedBackupCode } = await this.totpService.verify2FA(
+        userId,
+        code,
+      );
+      if (!isValid) {
+        throw new TOTPInvalidError();
+      }
+
+      // 记录登录日志
+      await this.prismaService.userLoginLog.create({
+        data: {
+          userId,
+          ip,
+          userAgent,
+        },
+      });
+
+      // 返回用户信息和新的 session
+      return [
+        await this.getUserDtoById(userId, userId, ip, userAgent),
+        await this.createSession(userId),
+        usedBackupCode,
+      ];
+    } catch (error) {
+      if (error instanceof TOTPInvalidError) {
+        throw error;
+      }
+      throw new TOTPTempTokenInvalidError();
+    }
   }
 
   private async createSession(userId: number): Promise<string> {
@@ -1101,10 +1246,11 @@ export class UsersService {
   async verifySudo(
     req: Request,
     token: string,
-    method: 'password' | 'passkey',
+    method: 'password' | 'passkey' | 'totp',
     credentials: {
       password?: string;
       passkeyResponse?: AuthenticationResponseJSON;
+      code?: string;
     },
   ): Promise<string> {
     const userId = this.authService.decode(token).authorization.userId;
@@ -1123,6 +1269,12 @@ export class UsersService {
         req,
         credentials.passkeyResponse!,
       );
+    } else if (method === 'totp') {
+      const { isValid } = await this.totpService.verify2FA(
+        userId,
+        credentials.code!,
+      );
+      verified = isValid;
     }
 
     if (!verified) {
