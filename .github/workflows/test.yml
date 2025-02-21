@@ -15,7 +15,6 @@ jobs:
         postgresql-version: [latest, 12]
         elasticsearch-version: [8.12.2, 8.0.0]
         node-version: [18.x, 20.x]
-        pnpm-version: [8]
         repeat: [1, 2]
 
     env:
@@ -102,7 +101,6 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: ${{ matrix.pnpm-version }}
           run_install: false
 
       - name: Install Dependencies

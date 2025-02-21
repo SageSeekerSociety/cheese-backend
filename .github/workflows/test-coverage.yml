@@ -15,7 +15,6 @@ jobs:
         postgresql-version: [latest]
         elasticsearch-version: [8.12.2]
         node-version: [18.x]
-        pnpm-version: [8]
 
     env:
       TEST_REPEAT: 1 # Tests will be repeated
@@ -101,7 +100,6 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: ${{ matrix.pnpm-version }}
           run_install: false
 
       - name: Install Dependencies
