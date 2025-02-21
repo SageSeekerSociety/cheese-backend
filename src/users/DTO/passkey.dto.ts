@@ -21,6 +21,10 @@ export class PasskeyRegistrationVerifyRequestDto {
 export class PasskeyRegistrationVerifyResponseDto extends BaseResponseDto {}
 
 // Authentication DTOs
+export class PasskeyAuthenticationOptionsRequestDto {
+  userId?: number;
+}
+
 export class PasskeyAuthenticationOptionsResponseDto extends BaseResponseDto {
   data: {
     options: PublicKeyCredentialRequestOptionsJSON;

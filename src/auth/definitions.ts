@@ -73,6 +73,7 @@ export interface Authorization {
   userId: number;
   permissions: Permission[];
   sudoUntil?: number; // sudo 模式过期时间戳
+  username?: string; // 用户名，用于密码重置等场景
 }
 
 export class TokenPayload {

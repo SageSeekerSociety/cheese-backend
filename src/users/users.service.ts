@@ -49,6 +49,7 @@ import { EmailRuleService } from '../email/email-rule.service';
 import { EmailService } from '../email/email.service';
 import { QuestionsService } from '../questions/questions.service';
 import { UserDto } from './DTO/user.dto';
+import { SrpService } from './srp.service';
 import { TOTPService } from './totp.service';
 import { UserChallengeRepository } from './user-challenge.repository';
 import { UsersPermissionService } from './users-permission.service';
@@ -68,6 +69,8 @@ import {
   PasskeyNotFoundError,
   PasskeyVerificationFailedError,
   PasswordNotMatchError,
+  SrpNotUpgradedError,
+  SrpVerificationError,
   TOTPInvalidError,
   TOTPRequiredError,
   TOTPTempTokenInvalidError,
@@ -81,6 +84,10 @@ import {
 declare module 'express-session' {
   interface SessionData {
     passkeyChallenge?: string;
+    srpSession?: {
+      serverSecretEphemeral: string;
+      clientPublicEphemeral: string;
+    };
   }
 }
 
@@ -102,6 +109,7 @@ export class UsersService {
     private readonly questionsService: QuestionsService,
     private readonly prismaService: PrismaService,
     private readonly totpService: TOTPService,
+    private readonly srpService: SrpService,
   ) {}
 
   private readonly passwordResetEmailValidSeconds = 10 * 60; // 10 minutes
@@ -227,10 +235,34 @@ export class UsersService {
 
   async generatePasskeyAuthenticationOptions(
     req: Request,
+    userId?: number,
   ): Promise<PublicKeyCredentialRequestOptionsJSON> {
+    if (!userId) {
+      const options = await generateAuthenticationOptions({
+        rpID: this.rpID,
+        allowCredentials: [],
+        userVerification: 'preferred',
+      });
+
+      req.session.passkeyChallenge = options.challenge;
+
+      return options;
+    }
+    const passkeys = await this.prismaService.passkey.findMany({
+      where: {
+        userId,
+      },
+    });
+    const allowCredentials = passkeys.map((passkey) => ({
+      id: passkey.credentialId,
+      transports: passkey.transports
+        ? JSON.parse(passkey.transports)
+        : undefined,
+    }));
+
     const options = await generateAuthenticationOptions({
       rpID: this.rpID,
-      allowCredentials: [],
+      allowCredentials,
       userVerification: 'preferred',
     });
 
@@ -522,21 +554,21 @@ export class UsersService {
   async register(
     username: string,
     nickname: string,
-    password: string,
+    srpSalt: string | undefined,
+    srpVerifier: string | undefined,
     email: string,
     emailCode: string,
     ip: string,
     userAgent: string | undefined,
+    password?: string,
+    isLegacyAuth?: boolean,
   ): Promise<UserDto> {
-    // todo: validate username, nickname, password, email, emailCode
+    // 验证基本参数
     if (this.isValidUsername(username) == false) {
       throw new InvalidUsernameError(username, this.usernameRule);
     }
     if (this.isValidNickname(nickname) == false) {
       throw new InvalidNicknameError(nickname, this.nicknameRule);
-    }
-    if (this.isValidPassword(password) == false) {
-      throw new InvalidPasswordError(this.passwordRule);
     }
     if (isEmail(email) == false) {
       throw new InvalidEmailAddressError(email);
@@ -545,11 +577,31 @@ export class UsersService {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
     }
 
+    // 验证是否允许使用传统认证方式
+    if (isLegacyAuth) {
+      if (
+        process.env.NODE_ENV !== 'test' &&
+        process.env.NODE_ENV !== 'development'
+      ) {
+        throw new Error(
+          'Legacy authentication is only allowed in test/development environment',
+        );
+      }
+      if (!password) {
+        throw new Error('Password is required for legacy authentication');
+      }
+      if (!this.isValidPassword(password)) {
+        throw new InvalidPasswordError(this.passwordRule);
+      }
+    } else {
+      if (!srpSalt || !srpVerifier) {
+        throw new Error('SRP credentials are required for registration');
+      }
+    }
+
     if (
       await this.usersRegisterRequestService.verifyRequest(email, emailCode)
     ) {
-      // Verify whether the email is registered.
-      /* istanbul ignore if */
       if (await this.isEmailRegistered(email)) {
         throw new Error(
           `In a register attempt, the email is verified, but the email is already registered!` +
@@ -560,7 +612,6 @@ export class UsersService {
             `4. We are under attack!`,
         );
       }
-      // Verify whether the username is registered.
       if (await this.isUsernameRegistered(username)) {
         await this.createUserRegisterLog(
           UserRegisterLogType.FailDueToUserExistence,
@@ -571,31 +622,48 @@ export class UsersService {
         throw new UsernameAlreadyRegisteredError(username);
       }
 
-      // Now, the request is valid, email is not registered, username is not registered.
-      // We can register the user.
       const avatarId = await this.avatarsService.getDefaultAvatarId();
       const profile = {
         nickname,
         intro: this.defaultIntro,
         avatarId,
       };
-      const salt = bcrypt.genSaltSync(10);
+
+      let hashedPassword = '';
+      let finalSrpSalt = srpSalt;
+      let finalSrpVerifier = srpVerifier;
+      let isSrpUpgraded = true;
+
+      // 如果是传统认证方式，生成密码哈希
+      if (isLegacyAuth && password) {
+        const salt = bcrypt.genSaltSync(10);
+        hashedPassword = bcrypt.hashSync(password, salt);
+        finalSrpSalt = '';
+        finalSrpVerifier = '';
+        isSrpUpgraded = false;
+      }
+
       const result = await this.prismaService.user.create({
         data: {
           username,
-          hashedPassword: bcrypt.hashSync(password, salt),
           email,
+          hashedPassword,
+          srpSalt: finalSrpSalt,
+          srpVerifier: finalSrpVerifier,
+          srpUpgraded: isSrpUpgraded,
           userProfile: {
             create: profile,
           },
         },
       });
+
       await this.createUserRegisterLog(
         UserRegisterLogType.Success,
         email,
         ip,
         userAgent,
       );
+
       return {
         id: result.id,
         username: result.username,
@@ -670,12 +738,18 @@ export class UsersService {
     password: string,
     ip: string,
     userAgent: string | undefined,
+    isLegacyAuth: boolean = false,
   ): Promise<[UserDto, string]> {
     const user = await this.findUserRecordByUsernameOrThrow(username);
 
     // 验证密码
-    if (!bcrypt.compareSync(password, user.hashedPassword)) {
+    if (!bcrypt.compareSync(password, user.hashedPassword!)) {
       throw new PasswordNotMatchError(username);
+    }
+
+    // 如果用户还没升级到 SRP,则自动升级
+    if (!user.srpUpgraded && !isLegacyAuth) {
+      await this.srpService.upgradeUserToSrp(user.id, username, password);
     }
 
     // 如果用户启用了 2FA，需要进行风险评估
@@ -683,26 +757,7 @@ export class UsersService {
       const requireTOTP = await this.shouldRequire2FA(user.id, ip, userAgent);
 
       if (requireTOTP) {
-        const tempToken = this.authService.sign(
-          {
-            userId: user.id,
-            permissions: [
-              {
-                authorizedActions: ['verify'],
-                authorizedResource: {
-                  ownedByUser: user.id,
-                  types: ['users/totp:verify'],
-                  resourceIds: undefined,
-                  data: {
-                    validUntil: Date.now() + 5 * 60 * 1000,
-                  },
-                },
-              },
-            ],
-          },
-          300,
-        );
-
+        const tempToken = this.totpService.generateTempToken(user.id);
         throw new TOTPRequiredError(username, tempToken);
       }
     }
@@ -864,6 +919,7 @@ export class UsersService {
     const token = this.authService.sign(
       {
         userId: user.id,
+        username: user.username,
         permissions: [
           {
             authorizedActions: ['modify'],
@@ -897,7 +953,8 @@ export class UsersService {
 
   async verifyAndResetPassword(
     token: string,
-    newPassword: string,
+    srpSalt: string,
+    srpVerifier: string,
     ip: string,
     userAgent: string | undefined,
   ): Promise<void> {
@@ -936,12 +993,6 @@ export class UsersService {
     }
 
     // Operation permitted.
-
-    // Check password.
-    if (this.isValidPassword(newPassword) == false) {
-      throw new InvalidPasswordError(this.passwordRule);
-    }
-
     const user = await this.prismaService.user.findUnique({
       where: {
         id: userId,
@@ -964,15 +1015,21 @@ export class UsersService {
           `4. We are under attack!`,
       );
     }
-    const salt = bcrypt.genSaltSync(10);
+
+    // 更新用户的 SRP 凭证和最后修改密码时间
     await this.prismaService.user.update({
       where: {
         id: userId,
       },
       data: {
-        hashedPassword: bcrypt.hashSync(newPassword, salt),
+        hashedPassword: '', // 清除旧的密码哈希
+        srpSalt,
+        srpVerifier,
+        srpUpgraded: true,
+        lastPasswordChangedAt: new Date(),
       },
     });
+
     await this.createPasswordResetLog(
       UserResetPasswordLogType.Success,
       userId,
@@ -1246,24 +1303,115 @@ export class UsersService {
   async verifySudo(
     req: Request,
     token: string,
-    method: 'password' | 'passkey' | 'totp',
+    method: 'password' | 'srp' | 'passkey' | 'totp',
     credentials: {
       password?: string;
+      clientPublicEphemeral?: string;
+      clientProof?: string;
       passkeyResponse?: AuthenticationResponseJSON;
       code?: string;
     },
-  ): Promise<string> {
+  ): Promise<{
+    accessToken: string;
+    salt?: string;
+    serverPublicEphemeral?: string;
+    serverProof?: string;
+    srpUpgraded?: boolean;
+  }> {
     const userId = this.authService.decode(token).authorization.userId;
     let verified = false;
 
     if (method === 'password') {
-      const user = await this.prismaService.user.findUnique({
-        where: { id: userId },
-      });
+      const user = await this.findUserRecordOrThrow(userId);
+
+      // 验证密码
+      if (!credentials.password) {
+        throw new Error('Password is required for password verification');
+      }
       verified = await bcrypt.compare(
-        credentials.password!,
-        user!.hashedPassword,
+        credentials.password,
+        user.hashedPassword!,
       );
+
+      if (verified) {
+        // 如果用户还没升级到 SRP，自动升级
+        let wasUpgraded = false;
+        if (!user.srpUpgraded) {
+          await this.srpService.upgradeUserToSrp(
+            user.id,
+            user.username,
+            credentials.password,
+          );
+          wasUpgraded = true;
+        }
+
+        const sudoToken = await this.authService.issueSudoToken(token);
+        return {
+          accessToken: sudoToken,
+          srpUpgraded: wasUpgraded,
+        };
+      }
+    } else if (method === 'srp') {
+      const user = await this.findUserRecordOrThrow(userId);
+
+      if (!user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
+        throw new SrpNotUpgradedError(user.username);
+      }
+
+      // 如果是第一步（初始化），返回 salt 和服务器公钥
+      if (credentials.clientPublicEphemeral && !credentials.clientProof) {
+        const { serverEphemeral } = await this.srpService.createServerSession(
+          user.username,
+          user.srpSalt,
+          user.srpVerifier,
+          credentials.clientPublicEphemeral,
+        );
+
+        // 将服务器的私密临时值存储在 session 中
+        req.session.srpSession = {
+          serverSecretEphemeral: serverEphemeral.secret,
+          clientPublicEphemeral: credentials.clientPublicEphemeral,
+        };
+
+        return {
+          accessToken: token, // 返回原 token，因为验证还未完成
+          salt: user.srpSalt,
+          serverPublicEphemeral: serverEphemeral.public,
+        };
+      }
+
+      // 如果是第二步（验证），验证客户端证明
+      if (credentials.clientProof) {
+        const sessionState = req.session.srpSession;
+        if (!sessionState) {
+          throw new Error('SRP session not found. Please initialize first.');
+        }
+
+        const { success, serverProof } = await this.srpService.verifyClient(
+          sessionState.serverSecretEphemeral,
+          sessionState.clientPublicEphemeral,
+          user.srpSalt,
+          user.username,
+          user.srpVerifier,
+          credentials.clientProof,
+        );
+
+        // 清除 session 中的 SRP 状态
+        delete req.session.srpSession;
+
+        if (!success) {
+          throw new SrpVerificationError();
+        }
+
+        verified = true;
+        const sudoToken = await this.authService.issueSudoToken(token);
+        return {
+          accessToken: sudoToken,
+          serverProof,
+        };
+      }
+
+      throw new Error('Invalid SRP credentials');
     } else if (method === 'passkey') {
       verified = await this.verifyPasskeyAuthentication(
         req,
@@ -1282,6 +1430,144 @@ export class UsersService {
     }
 
     // 签发带有 sudo 权限的新 token
-    return await this.authService.issueSudoToken(token);
+    const sudoToken = await this.authService.issueSudoToken(token);
+    return { accessToken: sudoToken };
+  }
+
+  /**
+   * 处理 SRP 登录的第一步：初始化
+   * 客户端发送用户名和公钥 A，服务器返回该用户的 salt 和服务器生成的公钥 B
+   */
+  async handleSrpInit(
+    username: string,
+    clientPublicEphemeral: string,
+  ): Promise<{
+    salt: string;
+    serverPublicEphemeral: string;
+    serverSecretEphemeral: string;
+  }> {
+    const user = await this.findUserRecordByUsernameOrThrow(username);
+
+    if (!user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
+      throw new SrpNotUpgradedError(username);
+    }
+
+    // 创建 SRP 服务器会话
+    const { serverEphemeral } = await this.srpService.createServerSession(
+      username,
+      user.srpSalt,
+      user.srpVerifier,
+      clientPublicEphemeral,
+    );
+
+    return {
+      salt: user.srpSalt,
+      serverPublicEphemeral: serverEphemeral.public,
+      serverSecretEphemeral: serverEphemeral.secret,
+    };
+  }
+
+  /**
+   * 处理 SRP 登录的第二步：验证
+   * 客户端发送其证明 M1，服务器验证并返回其证明 M2
+   */
+  async handleSrpVerify(
+    username: string,
+    clientPublicEphemeral: string,
+    clientProof: string,
+    serverSecretEphemeral: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<{
+    serverProof: string;
+    accessToken: string;
+    requires2FA: boolean;
+    tempToken?: string;
+    user?: UserDto;
+  }> {
+    const user = await this.findUserRecordByUsernameOrThrow(username);
+
+    if (!user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
+      throw new SrpNotUpgradedError(username);
+    }
+
+    const { success, serverProof } = await this.srpService.verifyClient(
+      serverSecretEphemeral,
+      clientPublicEphemeral,
+      user.srpSalt,
+      username,
+      user.srpVerifier,
+      clientProof,
+    );
+
+    if (!success) {
+      throw new SrpVerificationError();
+    }
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: user.id,
+        ip,
+        userAgent,
+      },
+    });
+
+    // 获取用户信息
+    const userDto = await this.getUserDtoById(user.id, user.id, ip, userAgent);
+
+    // 检查是否需要 2FA
+    if (user.totpEnabled) {
+      const requireTOTP = await this.shouldRequire2FA(user.id, ip, userAgent);
+      if (requireTOTP) {
+        const tempToken = this.totpService.generateTempToken(user.id);
+        return {
+          serverProof,
+          accessToken: '', // 2FA 时不返回 access token
+          requires2FA: true,
+          tempToken,
+          user: userDto,
+        };
+      }
+    }
+
+    // 生成访问令牌
+    const accessToken = await this.createSession(user.id);
+
+    return {
+      serverProof,
+      accessToken,
+      requires2FA: false,
+      user: userDto,
+    };
+  }
+
+  /**
+   * 为新注册用户创建会话
+   */
+  async createSessionForNewUser(userId: number): Promise<string> {
+    const authorization =
+      await this.usersPermissionService.getAuthorizationForUser(userId);
+    return this.sessionService.createSession(userId, authorization);
+  }
+
+  async changePassword(
+    userId: number,
+    srpSalt: string,
+    srpVerifier: string,
+  ): Promise<void> {
+    const user = await this.findUserRecordOrThrow(userId);
+
+    // 更新 SRP 凭证和最后修改密码时间
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: {
+        hashedPassword: '', // 清除旧的密码哈希
+        srpSalt,
+        srpVerifier,
+        srpUpgraded: true,
+        lastPasswordChangedAt: new Date(),
+      },
+    });
   }
 }

@@ -11,18 +11,20 @@ import {
   Body,
   Controller,
   Delete,
+  forwardRef,
   Get,
   Headers,
+  HttpCode,
   Inject,
   Ip,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Put,
   Query,
   Req,
   Res,
-  forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
@@ -45,6 +47,10 @@ import { NoAuth } from '../common/interceptor/token-validate.interceptor';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionsService } from '../questions/questions.service';
 import {
+  ChangePasswordRequestDto,
+  ChangePasswordResponseDto,
+} from './DTO/change-password.dto';
+import {
   FollowResponseDto,
   UnfollowResponseDto,
 } from './DTO/follow-unfollow.dto';
@@ -57,6 +63,7 @@ import { LoginRequestDto, LoginResponseDto } from './DTO/login.dto';
 import {
   DeletePasskeyResponseDto,
   GetPasskeysResponseDto,
+  PasskeyAuthenticationOptionsRequestDto,
   PasskeyAuthenticationOptionsResponseDto,
   PasskeyAuthenticationVerifyRequestDto,
   PasskeyAuthenticationVerifyResponseDto,
@@ -76,7 +83,13 @@ import {
   SendEmailVerifyCodeRequestDto,
   SendEmailVerifyCodeResponseDto,
 } from './DTO/send-email-verify-code.dto';
-import { VerifySudoResponseDto } from './DTO/sudo.dto';
+import {
+  SrpInitRequestDto,
+  SrpInitResponseDto,
+  SrpVerifyRequestDto,
+  SrpVerifyResponseDto,
+} from './DTO/srp.dto';
+import { VerifySudoRequestDto, VerifySudoResponseDto } from './DTO/sudo.dto';
 import {
   Disable2FARequestDto,
   Disable2FAResponseDto,
@@ -99,8 +112,19 @@ import {
   PasskeyNotFoundError,
   TOTPRequiredError,
   UserIdNotFoundError,
+  UsernameNotFoundError,
 } from './users.error';
 import { UsersService } from './users.service';
+
+declare module 'express-session' {
+  interface SessionData {
+    passkeyChallenge?: string;
+    srpSession?: {
+      serverSecretEphemeral: string;
+      clientPublicEphemeral: string;
+    };
+  }
+}
 
 @Controller('/users')
 export class UsersController {
@@ -140,50 +164,114 @@ export class UsersController {
   @NoAuth()
   async register(
     @Body()
-    { username, nickname, password, email, emailCode }: RegisterRequestDto,
+    {
+      username,
+      nickname,
+      srpSalt,
+      srpVerifier,
+      email,
+      emailCode,
+      password,
+      isLegacyAuth,
+    }: RegisterRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<Response> {
     const userDto = await this.usersService.register(
       username,
       nickname,
-      password,
+      srpSalt,
+      srpVerifier,
       email,
       emailCode,
       ip,
       userAgent,
-    );
-    const [, refreshToken] = await this.usersService.login(
-      username,
       password,
-      ip,
-      userAgent,
+      isLegacyAuth,
     );
-    const [newRefreshToken, accessToken] =
-      await this.sessionService.refreshSession(refreshToken);
-    const newRefreshTokenExpire = new Date(
-      this.authService.decode(newRefreshToken).validUntil,
+
+    // 如果是传统认证方式，并且在测试环境下，自动登录
+    if (
+      isLegacyAuth &&
+      password &&
+      (process.env.NODE_ENV === 'test' ||
+        process.env.NODE_ENV === 'development')
+    ) {
+      const [, refreshToken] = await this.usersService.login(
+        username,
+        password,
+        ip,
+        userAgent,
+        isLegacyAuth,
+      );
+      const [newRefreshToken, accessToken] =
+        await this.sessionService.refreshSession(refreshToken);
+      const newRefreshTokenExpire = new Date(
+        this.authService.decode(newRefreshToken).validUntil,
+      );
+
+      const data: RegisterResponseDto = {
+        code: 201,
+        message: 'Register successfully.',
+        data: {
+          user: userDto,
+          accessToken,
+        },
+      };
+
+      return res
+        .cookie('REFRESH_TOKEN', newRefreshToken, {
+          httpOnly: true,
+          sameSite: 'strict',
+          path: path.posix.join(
+            this.configService.get('cookieBasePath')!,
+            'users/auth',
+          ),
+          expires: new Date(newRefreshTokenExpire),
+        })
+        .json(data);
+    }
+
+    // 如果是 SRP 方式，自动创建会话
+    if (srpSalt && srpVerifier) {
+      // 直接创建会话，因为我们信任注册时提供的 verifier
+      const accessToken = await this.usersService.createSessionForNewUser(
+        userDto.id,
+      );
+      const [refreshToken, newAccessToken] =
+        await this.sessionService.refreshSession(accessToken);
+      const refreshTokenExpire = new Date(
+        this.authService.decode(refreshToken).validUntil,
+      );
+
+      const data: RegisterResponseDto = {
+        code: 201,
+        message: 'Register successfully.',
+        data: {
+          user: userDto,
+          accessToken: newAccessToken,
+        },
+      };
+
+      return res
+        .cookie('REFRESH_TOKEN', refreshToken, {
+          httpOnly: true,
+          sameSite: 'strict',
+          path: path.posix.join(
+            this.configService.get('cookieBasePath')!,
+            'users/auth',
+          ),
+          expires: refreshTokenExpire,
+        })
+        .json(data);
+    }
+
+    // 如果执行到这里，说明请求参数不完整
+    throw new Error(
+      'Invalid registration parameters: either legacy auth or SRP credentials must be provided',
     );
-    const data: RegisterResponseDto = {
-      code: 201,
-      message: 'Register successfully.',
-      data: {
-        user: userDto,
-        accessToken,
-      },
-    };
-    return res
-      .cookie('REFRESH_TOKEN', newRefreshToken, {
-        httpOnly: true,
-        sameSite: 'strict',
-        path: path.posix.join(
-          this.configService.get('cookieBasePath')!,
-          'users/auth',
-        ),
-        expires: new Date(newRefreshTokenExpire),
-      })
-      .json(data);
   }
 
   @Post('/auth/login')
@@ -334,13 +422,14 @@ export class UsersController {
   @Post('/recover/password/verify')
   @NoAuth()
   async verifyAndResetPassword(
-    @Body() { token, new_password }: ResetPasswordVerifyRequestDto,
+    @Body() { token, srpSalt, srpVerifier }: ResetPasswordVerifyRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
   ): Promise<ResetPasswordVerifyResponseDto> {
     await this.usersService.verifyAndResetPassword(
       token,
-      new_password,
+      srpSalt,
+      srpVerifier,
       ip,
       userAgent,
     );
@@ -609,10 +698,11 @@ export class UsersController {
   @Post('/auth/passkey/options')
   @NoAuth()
   async getPasskeyAuthenticationOptions(
+    @Body() { userId }: PasskeyAuthenticationOptionsRequestDto,
     @Req() req: Request,
   ): Promise<PasskeyAuthenticationOptionsResponseDto> {
     const options =
-      await this.usersService.generatePasskeyAuthenticationOptions(req);
+      await this.usersService.generatePasskeyAuthenticationOptions(req, userId);
     req.session.passkeyChallenge = options.challenge;
     return {
       code: 200,
@@ -722,25 +812,30 @@ export class UsersController {
 
   @Post('/auth/sudo')
   @Guard('verify-sudo', 'user')
-  async verifySudoMode(
+  async verifySudo(
     @Req() req: Request,
     @Headers('Authorization') @AuthToken() auth: string,
-    @Body() body: { method: 'password' | 'passkey'; credentials: any },
+    @Body() body: VerifySudoRequestDto,
   ): Promise<VerifySudoResponseDto> {
     // 验证并获取新 token
-    const newAccessToken = await this.usersService.verifySudo(
+    const result = await this.usersService.verifySudo(
       req,
       auth,
       body.method,
       body.credentials,
     );
 
+    let message = 'Sudo mode activated successfully';
+    if (result.serverProof) {
+      message = 'SRP verification successful';
+    } else if (result.srpUpgraded) {
+      message = 'Password verification successful and account upgraded to SRP';
+    }
+
     return {
       code: 200,
-      message: 'Sudo mode activated successfully',
-      data: {
-        accessToken: newAccessToken,
-      },
+      message,
+      data: result,
     };
   }
 
@@ -854,6 +949,7 @@ export class UsersController {
   }
 
   @Post(':id/2fa/disable')
+  @HttpCode(200)
   @Guard('modify-2fa', 'user', true)
   async disable2FA(
     @Param('id', ParseIntPipe) @ResourceId() userId: number,
@@ -943,6 +1039,172 @@ export class UsersController {
         success: true,
         always_required: dto.always_required,
       },
+    };
+  }
+
+  @Post('/auth/srp/init')
+  @NoAuth()
+  async srpInit(
+    @Body() { username, clientPublicEphemeral }: SrpInitRequestDto,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Req() req: Request,
+  ): Promise<SrpInitResponseDto> {
+    const result = await this.usersService.handleSrpInit(
+      username,
+      clientPublicEphemeral,
+    );
+
+    // 将服务器的私密临时值存储在 session 中
+    req.session.srpSession = {
+      serverSecretEphemeral: result.serverSecretEphemeral,
+      clientPublicEphemeral,
+    };
+
+    return {
+      code: 200,
+      message: 'SRP initialization successful.',
+      data: {
+        salt: result.salt,
+        serverPublicEphemeral: result.serverPublicEphemeral,
+      },
+    };
+  }
+
+  @Post('/auth/srp/verify')
+  @NoAuth()
+  async srpVerify(
+    @Body() { username, clientProof }: SrpVerifyRequestDto,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<Response> {
+    const sessionState = req.session.srpSession;
+    if (!sessionState) {
+      throw new Error('SRP session not found. Please initialize first.');
+    }
+
+    const result = await this.usersService.handleSrpVerify(
+      username,
+      sessionState.clientPublicEphemeral,
+      clientProof,
+      sessionState.serverSecretEphemeral,
+      ip,
+      userAgent,
+    );
+
+    // 清除 session 中的 SRP 状态
+    delete req.session.srpSession;
+
+    if (result.requires2FA) {
+      const data: SrpVerifyResponseDto = {
+        code: 200,
+        message: 'SRP verification successful, 2FA required.',
+        data: {
+          serverProof: result.serverProof,
+          accessToken: '',
+          requires2FA: true,
+          tempToken: result.tempToken,
+          user: result.user,
+        },
+      };
+      return res.json(data);
+    }
+
+    // 如果不需要 2FA，设置 refresh token cookie
+    const [refreshToken, accessToken] =
+      await this.sessionService.refreshSession(result.accessToken);
+
+    const refreshTokenExpire = new Date(
+      this.authService.decode(refreshToken).validUntil,
+    );
+
+    const data: SrpVerifyResponseDto = {
+      code: 200,
+      message: 'SRP verification successful.',
+      data: {
+        serverProof: result.serverProof,
+        accessToken,
+        requires2FA: false,
+        user: result.user,
+      },
+    };
+
+    return res
+      .cookie('REFRESH_TOKEN', refreshToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: path.posix.join(
+          this.configService.get('cookieBasePath')!,
+          'users/auth',
+        ),
+        expires: refreshTokenExpire,
+      })
+      .json(data);
+  }
+
+  @Get('/auth/methods/:username')
+  @NoAuth()
+  async getAuthMethods(@Param('username') username: string): Promise<{
+    code: number;
+    message: string;
+    data: {
+      supports_srp: boolean;
+      supports_passkey: boolean;
+      supports_2fa: boolean;
+      requires_2fa: boolean;
+    };
+  }> {
+    try {
+      const user =
+        await this.usersService.findUserRecordByUsernameOrThrow(username);
+
+      const hasPasskeys =
+        (await this.prismaService.passkey.count({
+          where: { userId: user.id },
+        })) > 0;
+
+      return {
+        code: 200,
+        message: 'Authentication methods retrieved successfully.',
+        data: {
+          supports_srp: user.srpUpgraded,
+          supports_passkey: hasPasskeys,
+          supports_2fa: user.totpEnabled,
+          requires_2fa: user.totpAlwaysRequired,
+        },
+      };
+    } catch (error) {
+      if (error instanceof UsernameNotFoundError) {
+        // 如果用户不存在，返回所有方法都不支持
+        return {
+          code: 200,
+          message: 'User not found, no authentication methods available.',
+          data: {
+            supports_srp: false,
+            supports_passkey: false,
+            supports_2fa: false,
+            requires_2fa: false,
+          },
+        };
+      }
+      throw error;
+    }
+  }
+
+  @Patch('/:id/password')
+  @Guard('modify-profile', 'user', true) // 需要 sudo 模式
+  async changePassword(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Body() { srpSalt, srpVerifier }: ChangePasswordRequestDto,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<ChangePasswordResponseDto> {
+    await this.usersService.changePassword(userId, srpSalt, srpVerifier);
+
+    return {
+      code: 200,
+      message: 'Password changed successfully',
     };
   }
 }

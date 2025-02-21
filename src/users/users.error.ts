@@ -213,3 +213,25 @@ export class TOTPTempTokenInvalidError extends BaseError {
     );
   }
 }
+
+export class SrpNotUpgradedError extends BaseError {
+  constructor(username: string) {
+    super(
+      'SrpNotUpgradedError',
+      `User ${username} has not been upgraded to SRP authentication.`,
+      401,
+    );
+  }
+}
+
+export class SrpVerificationError extends BaseError {
+  constructor() {
+    super('SrpVerificationError', 'SRP verification failed.', 401);
+  }
+}
+
+export class InvalidPublicKeyError extends BaseError {
+  constructor() {
+    super('InvalidPublicKeyError', 'Invalid public key provided.', 422);
+  }
+}

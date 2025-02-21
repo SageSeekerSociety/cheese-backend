@@ -13,7 +13,10 @@ export class ResetPasswordVerifyRequestDto {
   token: string;
 
   @IsString()
-  new_password: string;
+  srpSalt: string;
+
+  @IsString()
+  srpVerifier: string;
 }
 
 export class ResetPasswordVerifyResponseDto extends BaseResponseDto {}
