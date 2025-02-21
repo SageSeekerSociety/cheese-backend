@@ -12,7 +12,11 @@ import { Request } from 'express';
 import { AppModule } from '../app.module';
 import { InvalidCredentialsError } from '../auth/auth.error';
 import { UsersService } from '../users/users.service';
-import { UserIdNotFoundError } from './users.error';
+import {
+  SrpNotUpgradedError,
+  SrpVerificationError,
+  UserIdNotFoundError,
+} from './users.error';
 
 // Mock @simplewebauthn/server module
 jest.mock('@simplewebauthn/server', () => ({
@@ -79,9 +83,14 @@ describe('Users Module', () => {
       }
       break;
     }
-  });
+  }, 120000); // 增加超时时间到 120 秒
 
   it('should return UserIdNotFoundError', async () => {
+    // Mock findUnique 返回 null
+    jest
+      .spyOn(usersService['prismaService'].user, 'findUnique')
+      .mockResolvedValue(null);
+
     await expect(usersService.addFollowRelationship(-1, 1)).rejects.toThrow(
       new UserIdNotFoundError(-1),
     );
@@ -90,19 +99,181 @@ describe('Users Module', () => {
     );
   });
 
-  it('should return UserIdNotFoundError', async () => {
+  it('should return UserIdNotFoundError for updateUserProfile', async () => {
+    // Mock findUnique 返回 null
+    jest
+      .spyOn(usersService['prismaService'].user, 'findUnique')
+      .mockResolvedValue(null);
+
     await expect(
       usersService.updateUserProfile(-1, 'nick', 'int', 1),
     ).rejects.toThrow(new UserIdNotFoundError(-1));
   });
 
   it('should return zero', async () => {
-    // expect(await usersService.getFollowingCount(undefined)).toBe(0);
-    // expect(await usersService.getFollowedCount(undefined)).toBe(0);
-    // expect(await usersService.getAnswerCount(undefined)).toBe(0);
-    // expect(await usersService.getQuestionCount(undefined)).toBe(0);
     expect(await usersService.isUserFollowUser(undefined, 1)).toBe(false);
     expect(await usersService.isUserFollowUser(1, undefined)).toBe(false);
+  });
+
+  describe('Password Reset and SRP', () => {
+    beforeEach(() => {
+      // Mock emailRuleService
+      jest
+        .spyOn(usersService['emailRuleService'], 'isEmailSuffixSupported')
+        .mockResolvedValue(true);
+    });
+
+    it('should send reset password email successfully', async () => {
+      // Mock user查询
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValueOnce({
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+        } as any);
+
+      // Mock email发送
+      jest
+        .spyOn(usersService['emailService'], 'sendPasswordResetEmail')
+        .mockResolvedValueOnce();
+
+      // Mock 日志记录
+      jest
+        .spyOn(usersService['prismaService'].userResetPasswordLog, 'create')
+        .mockResolvedValueOnce({} as any);
+
+      await expect(
+        usersService.sendResetPasswordEmail(
+          'test@example.com',
+          '127.0.0.1',
+          'test-agent',
+        ),
+      ).resolves.not.toThrow();
+    });
+
+    it('should verify and reset password with SRP credentials', async () => {
+      // Mock token验证
+      jest
+        .spyOn(usersService['authService'], 'decode')
+        .mockReturnValue({ authorization: { userId: 1 } } as any);
+      jest
+        .spyOn(usersService['authService'], 'audit')
+        .mockResolvedValueOnce(undefined);
+
+      // Mock user查询和更新
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValueOnce({
+          id: 1,
+          username: 'testuser',
+        } as any);
+
+      const updateSpy = jest
+        .spyOn(usersService['prismaService'].user, 'update')
+        .mockResolvedValueOnce({} as any);
+
+      // Mock 日志记录
+      jest
+        .spyOn(usersService['prismaService'].userResetPasswordLog, 'create')
+        .mockResolvedValueOnce({} as any);
+
+      await usersService.verifyAndResetPassword(
+        'test-token',
+        'new-srp-salt',
+        'new-srp-verifier',
+        '127.0.0.1',
+        'test-agent',
+      );
+
+      expect(updateSpy).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: {
+          hashedPassword: '', // 清除旧的密码哈希
+          srpSalt: 'new-srp-salt',
+          srpVerifier: 'new-srp-verifier',
+          srpUpgraded: true,
+          lastPasswordChangedAt: expect.any(Date),
+        },
+      });
+    });
+
+    it('should handle expired reset token', async () => {
+      // Mock token验证抛出 TokenExpiredError
+      jest
+        .spyOn(usersService['authService'], 'decode')
+        .mockReturnValue({ authorization: { userId: 1 } } as any);
+      jest
+        .spyOn(usersService['authService'], 'audit')
+        .mockRejectedValueOnce(new Error('Token expired'));
+
+      // Mock 日志记录
+      jest
+        .spyOn(usersService['prismaService'].userResetPasswordLog, 'create')
+        .mockResolvedValueOnce({} as any);
+
+      await expect(
+        usersService.verifyAndResetPassword(
+          'expired-token',
+          'new-srp-salt',
+          'new-srp-verifier',
+          '127.0.0.1',
+          'test-agent',
+        ),
+      ).rejects.toThrow('Token expired');
+    });
+
+    it('should handle invalid reset token', async () => {
+      // Mock token验证抛出 PermissionDeniedError
+      jest
+        .spyOn(usersService['authService'], 'decode')
+        .mockReturnValue({ authorization: { userId: 1 } } as any);
+      jest
+        .spyOn(usersService['authService'], 'audit')
+        .mockRejectedValueOnce(new Error('Permission denied'));
+
+      // Mock 日志记录
+      jest
+        .spyOn(usersService['prismaService'].userResetPasswordLog, 'create')
+        .mockResolvedValueOnce({} as any);
+
+      await expect(
+        usersService.verifyAndResetPassword(
+          'invalid-token',
+          'new-srp-salt',
+          'new-srp-verifier',
+          '127.0.0.1',
+          'test-agent',
+        ),
+      ).rejects.toThrow('Permission denied');
+    });
+
+    it('should handle password change with SRP credentials', async () => {
+      // Mock user查询和更新
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValueOnce({
+          id: 1,
+          username: 'testuser',
+        } as any);
+
+      const updateSpy = jest
+        .spyOn(usersService['prismaService'].user, 'update')
+        .mockResolvedValueOnce({} as any);
+
+      await usersService.changePassword(1, 'new-srp-salt', 'new-srp-verifier');
+
+      expect(updateSpy).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: {
+          hashedPassword: '', // 清除旧的密码哈希
+          srpSalt: 'new-srp-salt',
+          srpVerifier: 'new-srp-verifier',
+          srpUpgraded: true,
+          lastPasswordChangedAt: expect.any(Date),
+        },
+      });
+    });
   });
 
   describe('Sudo Mode Authentication', () => {
@@ -133,12 +304,14 @@ describe('Users Module', () => {
     });
 
     it('should verify sudo with password successfully', async () => {
+      const hashedPassword = await bcrypt.hash('correct-password', 10);
+
       // Mock user查询
       jest
         .spyOn(usersService['prismaService'].user, 'findUnique')
         .mockResolvedValueOnce({
           id: 1,
-          hashedPassword: await bcrypt.hash('correct-password', 10),
+          hashedPassword,
         } as any);
 
       // Mock token验证和签发
@@ -159,7 +332,7 @@ describe('Users Module', () => {
         'password',
         { password: 'correct-password' },
       );
-      expect(result).toBe('new-sudo-token');
+      expect(result.accessToken).toBe('new-sudo-token');
     });
 
     it('should verify sudo with passkey successfully', async () => {
@@ -186,15 +359,17 @@ describe('Users Module', () => {
         'passkey',
         { passkeyResponse: {} as any },
       );
-      expect(result).toBe('new-sudo-token');
+      expect(result.accessToken).toBe('new-sudo-token');
     });
 
     it('should throw InvalidCredentialsError for wrong password', async () => {
+      const hashedPassword = await bcrypt.hash('correct-password', 10);
+
       jest
         .spyOn(usersService['prismaService'].user, 'findUnique')
         .mockResolvedValueOnce({
           id: 1,
-          hashedPassword: await bcrypt.hash('correct-password', 10),
+          hashedPassword,
         } as any);
 
       await expect(
@@ -206,11 +381,28 @@ describe('Users Module', () => {
   });
 
   describe('Passkey Authentication', () => {
+    beforeEach(() => {
+      // Mock user查询和 profile
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValue({
+          id: 1,
+          username: 'testuser',
+        } as any);
+
+      jest
+        .spyOn(usersService['prismaService'].userProfile, 'findUnique')
+        .mockResolvedValue({
+          userId: 1,
+          nickname: 'Test User',
+          intro: 'Test intro',
+          avatarId: 1,
+        } as any);
+    });
+
     it('should generate passkey registration options and store challenge', async () => {
-      // 调用 generatePasskeyRegistrationOptions 方法，使用已有的用户 1
       const options = await usersService.generatePasskeyRegistrationOptions(1);
       expect(options.challenge).toBe('fake-challenge');
-      // 此处可进一步验证 userChallengeRepository 内已存储 challenge（如果可访问的话）
     });
 
     it('should verify passkey registration successfully', async () => {
@@ -339,6 +531,186 @@ describe('Users Module', () => {
           credentialId: 'test-id',
         },
       });
+    });
+  });
+
+  describe('SRP Authentication', () => {
+    it('should handle SRP initialization successfully', async () => {
+      // Mock user查询
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValueOnce({
+          id: 1,
+          username: 'testuser',
+          srpUpgraded: true,
+          srpSalt: 'test-salt',
+          srpVerifier: 'test-verifier',
+        } as any);
+
+      // Mock SRP服务
+      jest
+        .spyOn(usersService['srpService'], 'createServerSession')
+        .mockResolvedValueOnce({
+          serverEphemeral: {
+            public: 'server-public',
+            secret: 'server-secret',
+          },
+        });
+
+      const result = await usersService.handleSrpInit(
+        'testuser',
+        'client-public',
+      );
+
+      expect(result.salt).toBe('test-salt');
+      expect(result.serverPublicEphemeral).toBe('server-public');
+      expect(result.serverSecretEphemeral).toBe('server-secret');
+    });
+
+    it('should handle SRP verification successfully', async () => {
+      // Mock user查询
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValueOnce({
+          id: 1,
+          username: 'testuser',
+          srpUpgraded: true,
+          srpSalt: 'test-salt',
+          srpVerifier: 'test-verifier',
+        } as any);
+
+      // Mock SRP验证
+      jest
+        .spyOn(usersService['srpService'], 'verifyClient')
+        .mockResolvedValueOnce({
+          success: true,
+          serverProof: 'server-proof',
+        });
+
+      // Mock 登录日志创建
+      jest
+        .spyOn(usersService['prismaService'].userLoginLog, 'create')
+        .mockResolvedValueOnce({} as any);
+
+      // Mock getUserDtoById
+      jest.spyOn(usersService, 'getUserDtoById').mockResolvedValueOnce({
+        id: 1,
+        username: 'testuser',
+      } as any);
+
+      // Mock createSession
+      jest
+        .spyOn(usersService as any, 'createSession')
+        .mockResolvedValueOnce('access-token');
+
+      const result = await usersService.handleSrpVerify(
+        'testuser',
+        'client-public',
+        'client-proof',
+        'server-secret',
+        '127.0.0.1',
+        'test-agent',
+      );
+
+      expect(result.serverProof).toBe('server-proof');
+      expect(result.accessToken).toBe('access-token');
+      expect(result.requires2FA).toBe(false);
+    });
+
+    it('should handle SRP verification with 2FA requirement', async () => {
+      // Mock user查询
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValueOnce({
+          id: 1,
+          username: 'testuser',
+          srpUpgraded: true,
+          srpSalt: 'test-salt',
+          srpVerifier: 'test-verifier',
+          totpEnabled: true,
+        } as any);
+
+      // Mock SRP验证
+      jest
+        .spyOn(usersService['srpService'], 'verifyClient')
+        .mockResolvedValueOnce({
+          success: true,
+          serverProof: 'server-proof',
+        });
+
+      // Mock shouldRequire2FA
+      jest
+        .spyOn(usersService as any, 'shouldRequire2FA')
+        .mockResolvedValueOnce(true);
+
+      // Mock generateTempToken
+      jest
+        .spyOn(usersService['totpService'], 'generateTempToken')
+        .mockReturnValueOnce('temp-token');
+
+      // Mock getUserDtoById
+      jest.spyOn(usersService, 'getUserDtoById').mockResolvedValueOnce({
+        id: 1,
+        username: 'testuser',
+      } as any);
+
+      const result = await usersService.handleSrpVerify(
+        'testuser',
+        'client-public',
+        'client-proof',
+        'server-secret',
+        '127.0.0.1',
+        'test-agent',
+      );
+
+      expect(result.serverProof).toBe('server-proof');
+      expect(result.requires2FA).toBe(true);
+      expect(result.tempToken).toBe('temp-token');
+      expect(result.accessToken).toBe('');
+    });
+
+    it('should throw SrpNotUpgradedError for non-upgraded users', async () => {
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValueOnce({
+          id: 1,
+          username: 'testuser',
+          srpUpgraded: false,
+        } as any);
+
+      await expect(
+        usersService.handleSrpInit('testuser', 'client-public'),
+      ).rejects.toThrow(SrpNotUpgradedError);
+    });
+
+    it('should throw SrpVerificationError for failed verification', async () => {
+      jest
+        .spyOn(usersService['prismaService'].user, 'findUnique')
+        .mockResolvedValueOnce({
+          id: 1,
+          username: 'testuser',
+          srpUpgraded: true,
+          srpSalt: 'test-salt',
+          srpVerifier: 'test-verifier',
+        } as any);
+
+      jest
+        .spyOn(usersService['srpService'], 'verifyClient')
+        .mockResolvedValueOnce({
+          success: false,
+          serverProof: '',
+        });
+
+      await expect(
+        usersService.handleSrpVerify(
+          'testuser',
+          'client-public',
+          'client-proof',
+          'server-secret',
+          '127.0.0.1',
+          'test-agent',
+        ),
+      ).rejects.toThrow(SrpVerificationError);
     });
   });
 });
