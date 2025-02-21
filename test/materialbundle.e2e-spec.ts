@@ -43,6 +43,7 @@ describe('MaterialBundle Module', () => {
         password: 'abc123456!!!',
         email,
         emailCode: verificationCode,
+        isLegacyAuth: true,
       });
     expect(respond2.status).toBe(201);
     return respond2.body.data.accessToken;
@@ -100,6 +101,7 @@ describe('MaterialBundle Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
+          isLegacyAuth: true,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual('Register successfully.');
