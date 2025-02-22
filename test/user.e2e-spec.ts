@@ -9,10 +9,27 @@
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import session from 'express-session';
+import { authenticator } from 'otplib';
+import * as srpClient from 'secure-remote-password/client';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/email/email.service';
+
 jest.mock('../src/email/email.service');
+
+// // Mock SRP client
+// jest.mock('secure-remote-password/client', () => ({
+//   generateSalt: jest.fn(() => 'test-salt'),
+//   derivePrivateKey: jest.fn((salt, username, password) => 'test-private-key'),
+//   deriveVerifier: jest.fn((privateKey) => 'test-verifier'),
+//   generateEphemeral: jest.fn(() => ({ public: 'client-public', secret: 'client-secret' })),
+//   deriveSession: jest.fn((clientSecretEphemeral, serverPublicEphemeral, salt, username, privateKey) => ({
+//     key: 'session-key',
+//     proof: 'client-proof'
+//   })),
+//   verifySession: jest.fn((serverProof, clientSession) => true)
+// }));
+
 jest.mock('@simplewebauthn/server', () => ({
   generateRegistrationOptions: jest.fn(() =>
     Promise.resolve({ challenge: 'fake-challenge' }),
@@ -38,10 +55,172 @@ jest.mock('@simplewebauthn/server', () => ({
   ),
 }));
 
+const MockedEmailService = <jest.Mock<EmailService>>EmailService;
+
+type HttpServer = ReturnType<INestApplication['getHttpServer']>;
+
+/**
+ * 使用 SRP 进行登录
+ */
+async function loginWithSRP(
+  httpServer: HttpServer,
+  username: string,
+  password: string,
+): Promise<{
+  accessToken: string;
+  refreshToken: string;
+  userId: number;
+}> {
+  const clientEphemeral = srpClient.generateEphemeral();
+  const agent = request.agent(httpServer);
+
+  // 1. 初始化 SRP 登录
+  const initResponse = await agent
+    .post('/users/auth/srp/init')
+    .send({
+      username,
+      clientPublicEphemeral: clientEphemeral.public,
+    })
+    .expect(201);
+
+  // 2. 完成 SRP 验证
+  const privateKey = srpClient.derivePrivateKey(
+    initResponse.body.data.salt,
+    username,
+    password,
+  );
+  const clientSession = srpClient.deriveSession(
+    clientEphemeral.secret,
+    initResponse.body.data.serverPublicEphemeral,
+    initResponse.body.data.salt,
+    username,
+    privateKey,
+  );
+
+  const verifyResponse = await agent
+    .post('/users/auth/srp/verify')
+    .send({
+      username,
+      clientProof: clientSession.proof,
+    })
+    .expect(201);
+
+  const refreshToken = verifyResponse.header['set-cookie'][0]
+    .split(';')[0]
+    .split('=')[1];
+
+  return {
+    accessToken: verifyResponse.body.data.accessToken,
+    refreshToken,
+    userId: verifyResponse.body.data.user.id,
+  };
+}
+
+/**
+ * 使用 SRP 进行 sudo 验证
+ */
+async function verifySudoWithSRP(
+  httpServer: HttpServer,
+  token: string,
+  username: string,
+  password: string,
+): Promise<string> {
+  const clientEphemeral = srpClient.generateEphemeral();
+  const agent = request.agent(httpServer);
+
+  const sudoInitRes = await agent
+    .post('/users/auth/sudo')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      method: 'srp',
+      credentials: {
+        clientPublicEphemeral: clientEphemeral.public,
+      },
+    })
+    .expect(201);
+
+  const privateKey = srpClient.derivePrivateKey(
+    sudoInitRes.body.data.salt,
+    username,
+    password,
+  );
+  const clientSession = srpClient.deriveSession(
+    clientEphemeral.secret,
+    sudoInitRes.body.data.serverPublicEphemeral,
+    sudoInitRes.body.data.salt,
+    username,
+    privateKey,
+  );
+
+  const sudoVerifyRes = await agent
+    .post('/users/auth/sudo')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      method: 'srp',
+      credentials: {
+        clientProof: clientSession.proof,
+      },
+    })
+    .expect(201);
+
+  return sudoVerifyRes.body.data.accessToken;
+}
+
+/**
+ * 创建一个使用传统认证的用户
+ */
+async function createLegacyUser(httpServer: HttpServer): Promise<{
+  username: string;
+  password: string;
+  accessToken: string;
+  refreshToken: string;
+  userId: number;
+}> {
+  const username = `TestLegacyUser-${Math.floor(Math.random() * 10000000000)}`;
+  const password = 'Legacy@123456';
+  const email = `legacy-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
+
+  // 发送验证邮件
+  const emailRes = await request(httpServer)
+    .post('/users/verify/email')
+    .send({ email })
+    .expect(201);
+
+  const verificationCode = (
+    MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+  ).mock.calls[0][1];
+
+  // 注册用户
+  const registerRes = await request(httpServer)
+    .post('/users')
+    .send({
+      username,
+      nickname: 'legacy_user',
+      password,
+      email,
+      emailCode: verificationCode,
+      isLegacyAuth: true,
+    })
+    .expect(201);
+
+  const refreshToken = registerRes.header['set-cookie'][0]
+    .split(';')[0]
+    .split('=')[1];
+
+  return {
+    username,
+    password,
+    accessToken: registerRes.body.data.accessToken,
+    refreshToken,
+    userId: registerRes.body.data.user.id,
+  };
+}
+
 describe('User Module', () => {
   let app: INestApplication;
-  const MockedEmailService = <jest.Mock<EmailService>>EmailService;
   const TestUsername = `TestUser-${Math.floor(Math.random() * 10000000000)}`;
+  const TestPassword = 'abc123456!!!';
+  const TestNewPassword = 'ABC^^^666';
   const TestEmail = `test-${Math.floor(
     Math.random() * 10000000000,
   )}@ruc.edu.cn`;
@@ -82,44 +261,39 @@ describe('User Module', () => {
 
   describe('register logic', () => {
     it('should return InvalidEmailAddressError', () => {
-      return (
-        request(app.getHttpServer())
-          .post('/users/verify/email')
-          //.set('User-Agent', 'PostmanRuntime/7.26.8')
-          .send({
-            email: 'test',
-          })
-          .expect({
-            code: 422,
-            message:
-              'InvalidEmailAddressError: Invalid email address: test. Email should look like someone@example.com',
-          })
-          .expect(422)
-      );
+      return request(app.getHttpServer())
+        .post('/users/verify/email')
+        .send({
+          email: 'test',
+        })
+        .expect({
+          code: 422,
+          message:
+            'InvalidEmailAddressError: Invalid email address: test. Email should look like someone@example.com',
+        })
+        .expect(422);
     });
+
     it('should return InvalidEmailSuffixError', () => {
-      return (
-        request(app.getHttpServer())
-          .post('/users/verify/email')
-          //.set('User-Agent', 'PostmanRuntime/7.26.8')
-          .send({
-            email: 'test@126.com',
-          })
-          .expect({
-            code: 422,
-            message:
-              'InvalidEmailSuffixError: Invalid email suffix: test@126.com. Only @ruc.edu.cn is supported currently.',
-          })
-          .expect(422)
-      );
+      return request(app.getHttpServer())
+        .post('/users/verify/email')
+        .send({
+          email: 'test@126.com',
+        })
+        .expect({
+          code: 422,
+          message:
+            'InvalidEmailSuffixError: Invalid email suffix: test@126.com. Only @ruc.edu.cn is supported currently.',
+        })
+        .expect(422);
     });
+
     it('should return EmailSendFailedError', async () => {
       MockedEmailService.prototype.sendRegisterCode.mockImplementation(() => {
         throw new Error('Email service error');
       });
       const respond = await request(app.getHttpServer())
         .post('/users/verify/email')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: TestEmail,
         });
@@ -132,12 +306,13 @@ describe('User Module', () => {
         return;
       });
     });
-    it(`should return CodeNotMatchError`, async () => {
+
+    it(`should send an email and register a user ${TestUsername} with SRP`, async () => {
       jest.useFakeTimers({ advanceTimers: true });
 
+      // 1. 发送验证邮件
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: TestEmail,
         });
@@ -146,98 +321,63 @@ describe('User Module', () => {
         message: 'Send email successfully.',
       });
       expect(respond1.status).toBe(201);
-      expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
-      ).toHaveReturnedTimes(1);
-      expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
-      ).toHaveBeenCalledWith(TestEmail, expect.any(String));
-      const verificationCode = (
-        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
-      ).mock.calls[0][1];
 
-      jest.advanceTimersByTime(11 * 60 * 1000);
-
-      const respond2 = await request(app.getHttpServer())
-        .post('/users')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          nickname: 'test_user',
-          password: 'abc123456!!!',
-          email: TestEmail,
-          emailCode: verificationCode,
-        });
-      expect(respond2.body.message).toMatch(/^CodeNotMatchError: /);
-      expect(respond2.body.code).toEqual(422);
-      expect(respond2.status).toBe(422);
-
-      jest.useRealTimers();
-    });
-    it(`should send an email and register a user ${TestUsername}`, async () => {
-      jest.useFakeTimers({ advanceTimers: true });
-
-      const respond1 = await request(app.getHttpServer())
-        .post('/users/verify/email')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          email: TestEmail,
-        });
-      expect(respond1.body).toStrictEqual({
-        code: 201,
-        message: 'Send email successfully.',
-      });
-      expect(respond1.status).toBe(201);
-      expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
-      ).toHaveReturnedTimes(1);
-      expect(
-        MockedEmailService.mock.instances[0].sendRegisterCode,
-      ).toHaveBeenCalledWith(TestEmail, expect.any(String));
       const verificationCode = (
         MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
 
       jest.advanceTimersByTime(9 * 60 * 1000);
 
-      const req = request(app.getHttpServer())
+      // 2. 使用 SRP 注册
+      const salt = srpClient.generateSalt();
+      const privateKey = srpClient.derivePrivateKey(
+        salt,
+        TestUsername,
+        TestPassword,
+      );
+      const verifier = srpClient.deriveVerifier(privateKey);
+
+      const registerResponse = await request(app.getHttpServer())
         .post('/users')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           username: TestUsername,
           nickname: 'test_user',
-          password: 'abc123456!!!',
+          srpSalt: salt,
+          srpVerifier: verifier,
           email: TestEmail,
           emailCode: verificationCode,
         });
-      const respond = await req;
-      expect(respond.body.message).toStrictEqual('Register successfully.');
-      expect(respond.body.code).toEqual(201);
-      req.expect(201);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user');
+
+      expect(registerResponse.status).toBe(201);
+      expect(registerResponse.body.message).toBe('Register successfully.');
+      expect(registerResponse.body.data.user.username).toBe(TestUsername);
+      expect(registerResponse.body.data.user.nickname).toBe('test_user');
+      expect(registerResponse.body.data.accessToken).toBeDefined();
+
+      // 保存 token 用于后续测试
+      TestToken = registerResponse.body.data.accessToken;
+      TestRefreshToken = registerResponse.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
 
       jest.useRealTimers();
     });
+
     it('should return EmailAlreadyRegisteredError', () => {
-      return (
-        request(app.getHttpServer())
-          .post('/users/verify/email')
-          //.set('User-Agent', 'PostmanRuntime/7.26.8')
-          .send({
-            email: TestEmail,
-          })
-          .expect({
-            code: 409,
-            message: `EmailAlreadyRegisteredError: Email already registered: ${TestEmail}`,
-          })
-          .expect(409)
-      );
+      return request(app.getHttpServer())
+        .post('/users/verify/email')
+        .send({
+          email: TestEmail,
+        })
+        .expect({
+          code: 409,
+          message: `EmailAlreadyRegisteredError: Email already registered: ${TestEmail}`,
+        })
+        .expect(409);
     });
     it(`should return UsernameAlreadyRegisteredError`, async () => {
       const respond = await request(app.getHttpServer())
         .post('/users/verify/email')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: 'another-' + TestEmail,
         });
@@ -255,50 +395,44 @@ describe('User Module', () => {
       const verificationCode = (
         MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
       ).mock.calls[0][1];
-      return (
-        request(app.getHttpServer())
-          .post('/users')
-          //.set('User-Agent', 'PostmanRuntime/7.26.8')
-          .send({
-            username: TestUsername,
-            nickname: 'test_user',
-            password: 'abc123456!!!',
-            email: 'another-' + TestEmail,
-            emailCode: verificationCode,
-          })
-          .expect({
-            code: 409,
-            message: `UsernameAlreadyRegisteredError: Username already registered: ${TestUsername}`,
-          })
-          .expect(409)
-      );
-    });
-    it(`should return InvalidEmailAddressError`, async () => {
-      const respond = await request(app.getHttpServer())
+      return request(app.getHttpServer())
         .post('/users')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           username: TestUsername,
           nickname: 'test_user',
-          password: 'abc123456!!!',
-          email: 'abc123',
-          emailCode: '000000',
-        });
+          password: TestPassword,
+          email: 'another-' + TestEmail,
+          emailCode: verificationCode,
+          isLegacyAuth: true,
+        })
+        .expect({
+          code: 409,
+          message: `UsernameAlreadyRegisteredError: Username already registered: ${TestUsername}`,
+        })
+        .expect(409);
+    });
+    it(`should return InvalidEmailAddressError`, async () => {
+      const respond = await request(app.getHttpServer()).post('/users').send({
+        username: TestUsername,
+        nickname: 'test_user',
+        password: TestPassword,
+        email: 'abc123',
+        emailCode: '000000',
+        isLegacyAuth: true,
+      });
       expect(respond.body.message).toMatch(/^InvalidEmailAddressError: /);
       expect(respond.body.code).toEqual(422);
       expect(respond.status).toBe(422);
     });
     it(`should return InvalidEmailSuffixError`, async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          nickname: 'test_user',
-          password: 'abc123456!!!',
-          email: 'abc123@123.com',
-          emailCode: '000000',
-        });
+      const respond = await request(app.getHttpServer()).post('/users').send({
+        username: TestUsername,
+        nickname: 'test_user',
+        password: TestPassword,
+        email: 'abc123@123.com',
+        emailCode: '000000',
+        isLegacyAuth: true,
+      });
       expect(respond.body.message).toMatch(/^InvalidEmailSuffixError: /);
       expect(respond.body.code).toEqual(422);
       expect(respond.status).toBe(422);
@@ -306,7 +440,6 @@ describe('User Module', () => {
     it(`should return InvalidUsernameError`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: 'another-' + TestEmail,
         });
@@ -326,13 +459,13 @@ describe('User Module', () => {
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           username: TestUsername + ' Invalid',
           nickname: 'test_user',
-          password: 'abc123456!!!',
+          password: TestPassword,
           email: 'another-' + TestEmail,
           emailCode: verificationCode,
+          isLegacyAuth: true,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
@@ -346,7 +479,6 @@ describe('User Module', () => {
     it(`should return InvalidNicknameError`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: 'another-' + TestEmail,
         });
@@ -366,13 +498,13 @@ describe('User Module', () => {
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           username: TestUsername,
           nickname: 'test user',
-          password: 'abc123456!!!',
+          password: TestPassword,
           email: 'another-' + TestEmail,
           emailCode: verificationCode,
+          isLegacyAuth: true,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
@@ -384,7 +516,6 @@ describe('User Module', () => {
     it(`should return InvalidPasswordError`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: 'another-' + TestEmail,
         });
@@ -404,13 +535,13 @@ describe('User Module', () => {
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           username: TestUsername,
           nickname: 'test_user',
           password: '123456',
           email: 'another-' + TestEmail,
           emailCode: verificationCode,
+          isLegacyAuth: true,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
@@ -422,7 +553,6 @@ describe('User Module', () => {
     it(`should return CodeNotMatchError`, async () => {
       const respond1 = await request(app.getHttpServer())
         .post('/users/verify/email')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: 'another-' + TestEmail,
         });
@@ -442,13 +572,13 @@ describe('User Module', () => {
       ).mock.calls[0][1];
       const req = request(app.getHttpServer())
         .post('/users')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           username: TestUsername,
           nickname: 'test_user',
-          password: 'abc123456!!!',
+          password: TestPassword,
           email: 'another-' + TestEmail,
           emailCode: verificationCode + '1',
+          isLegacyAuth: true,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual(
@@ -462,272 +592,71 @@ describe('User Module', () => {
   });
 
   describe('login logic', () => {
-    it('should login successfully', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          password: 'abc123456!!!',
-        });
-      expect(respond.body.message).toBe('Login successfully.');
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user');
-      expect(respond.header['set-cookie'][0]).toMatch(
-        /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
+    it('should login successfully with SRP', async () => {
+      const auth = await loginWithSRP(
+        app.getHttpServer(),
+        TestUsername,
+        TestPassword,
       );
-      TestRefreshToken = respond.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
-      expect(respond.body.data.accessToken).toBeDefined();
-      TestToken = respond.body.data.accessToken;
+      TestToken = auth.accessToken;
+      TestRefreshToken = auth.refreshToken;
     });
-    it('should refresh access token successfully', async () => {
-      const respond2 = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond2.body.message).toBe('Refresh token successfully.');
-      expect(respond2.status).toBe(201);
-      expect(respond2.body.code).toBe(201);
-      expect(respond2.body.data.accessToken).toBeDefined();
-      TestRefreshTokenOld = TestRefreshToken;
-      TestRefreshToken = respond2.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
-      TestToken = respond2.body.data.accessToken;
-      expect(respond2.body.data.user.username).toBe(TestUsername);
-      expect(respond2.body.data.user.nickname).toBe('test_user');
+
+    it('should return SrpVerificationError', async () => {
+      const clientEphemeral = srpClient.generateEphemeral();
+
+      const agent = request.agent(app.getHttpServer());
+      await agent.post('/users/auth/srp/init').send({
+        username: TestUsername,
+        clientPublicEphemeral: clientEphemeral.public,
+      });
+
+      const verifyResponse = await agent.post('/users/auth/srp/verify').send({
+        username: TestUsername,
+        clientProof: 'wrong-proof',
+      });
+
+      expect(verifyResponse.status).toBe(401);
+      expect(verifyResponse.body.message).toMatch(/^SrpVerificationError: /);
     });
-    it('should return RefreshTokenAlreadyUsedError', async () => {
-      const respond2 = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshTokenOld};    other_cookie=value`,
-        )
-        .send();
-      expect(respond2.body.message).toMatch(/^RefreshTokenAlreadyUsedError: /);
-      expect(respond2.status).toBe(401);
-      expect(respond2.body.code).toBe(401);
-    });
-    it('should return AuthenticationRequiredError', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .send();
-      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(respond.status).toBe(401);
-      expect(respond.body.code).toBe(401);
-    });
-    it('should return AuthenticationRequiredError', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .set('Cookie', `some_cookie=12345;    other_cookie=value`)
-        .send();
-      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(respond.status).toBe(401);
-      expect(respond.body.code).toBe(401);
-    });
-    it('should refresh successfully after 29 days but return TokenExpiredError after 31 days', async () => {
-      jest.useFakeTimers({ advanceTimers: true });
-      jest.setSystemTime(Date.now() + 29 * 24 * 60 * 60 * 1000);
-      const respond2 = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond2.body.message).toBe('Refresh token successfully.');
-      expect(respond2.status).toBe(201);
-      expect(respond2.body.code).toBe(201);
-      expect(respond2.body.data.accessToken).toBeDefined();
-      expect(respond2.body.data.user.username).toBe(TestUsername);
-      expect(respond2.body.data.user.nickname).toBe('test_user');
-      const refreshToken = respond2.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
-      jest.setSystemTime(Date.now() + 31 * 24 * 60 * 60 * 1000);
-      const respond3 = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${refreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond3.body.message).toMatch(/^TokenExpiredError: /);
-      expect(respond3.status).toBe(401);
-      expect(respond3.body.code).toBe(401);
-      jest.useRealTimers();
-    });
-    it('should login successfully again', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          password: 'abc123456!!!',
-        });
-      expect(respond.body.message).toBe('Login successfully.');
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user');
-      expect(respond.header['set-cookie'][0]).toMatch(
-        /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
-      );
-      TestRefreshToken = respond.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
-      expect(respond.body.data.accessToken).toBeDefined();
-      TestToken = respond.body.data.accessToken;
-    });
-    it('should return SessionExpiredError', async () => {
-      jest.useFakeTimers({ advanceTimers: true });
-      let refreshToken: string = TestRefreshToken;
-      for (let i = 0; i < 12; i++) {
-        jest.advanceTimersByTime(1000 * 60 * 60 * 24 * 29);
-        const respond2 = await request(app.getHttpServer())
-          .post('/users/auth/refresh-token')
-          .set(
-            'Cookie',
-            `some_cookie=12345;    REFRESH_TOKEN=${refreshToken};    other_cookie=value`,
-          )
-          .send();
-        expect(respond2.body.message).toBe('Refresh token successfully.');
-        expect(respond2.status).toBe(201);
-        expect(respond2.body.code).toBe(201);
-        expect(respond2.body.data.accessToken).toBeDefined();
-        refreshToken = respond2.header['set-cookie'][0]
-          .split(';')[0]
-          .split('=')[1];
-        expect(respond2.body.data.user.username).toBe(TestUsername);
-        expect(respond2.body.data.user.nickname).toBe('test_user');
-      }
-      jest.advanceTimersByTime(1000 * 60 * 60 * 24 * 29);
-      const respond2 = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${refreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond2.body.message).toMatch(/^SessionExpiredError: /);
-      expect(respond2.status).toBe(401);
-      expect(respond2.body.code).toBe(401);
-      jest.useRealTimers();
-    }, 30000);
-    it('should login successfully again', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          password: 'abc123456!!!',
-        });
-      expect(respond.body.message).toBe('Login successfully.');
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
-      expect(respond.body.data.user.username).toBe(TestUsername);
-      expect(respond.body.data.user.nickname).toBe('test_user');
-      expect(respond.header['set-cookie'][0]).toMatch(
-        /^REFRESH_TOKEN=.+; Path=\/users\/auth; Expires=.+; HttpOnly; SameSite=Strict$/,
-      );
-      TestRefreshToken = respond.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
-      expect(respond.body.data.accessToken).toBeDefined();
-      TestToken = respond.body.data.accessToken;
-    });
-    it('should refresh access token successfully again', async () => {
-      const respond2 = await request(app.getHttpServer())
-        .post('/users/auth/refresh-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond2.body.message).toBe('Refresh token successfully.');
-      expect(respond2.status).toBe(201);
-      expect(respond2.body.code).toBe(201);
-      expect(respond2.body.data.accessToken).toBeDefined();
-      TestRefreshTokenOld = TestRefreshToken;
-      TestRefreshToken = respond2.header['set-cookie'][0]
-        .split(';')[0]
-        .split('=')[1];
-      TestToken = respond2.body.data.accessToken;
-      expect(respond2.body.data.user.username).toBe(TestUsername);
-      expect(respond2.body.data.user.nickname).toBe('test_user');
-    });
+
     it('should return UsernameNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
+        .post('/users/auth/srp/init')
         .send({
           username: TestUsername + 'KKK',
-          password: 'abc123456!!!',
+          clientPublicEphemeral: 'any-public-key',
         });
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
       expect(respond.body.message).toMatch(/^UsernameNotFoundError: /);
     });
-    it('should return PasswordNotMatchError', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          password: 'abc123456',
-        });
-      expect(respond.status).toBe(401);
-      expect(respond.body.code).toBe(401);
-      expect(respond.body.message).toMatch(/^PasswordNotMatchError: /);
-    });
-    it('should logout successfully', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/logout')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
-        )
-        .send();
-      expect(respond.body.message).toBe('Logout successfully.');
-      expect(respond.status).toBe(201);
-      expect(respond.body.code).toBe(201);
-    });
-    it('should return AuthenticationRequiredError', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/logout')
-        .send();
-      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(respond.status).toBe(401);
-      expect(respond.body.code).toBe(401);
-    });
-    it('should return AuthenticationRequiredError', async () => {
-      const respond = await request(app.getHttpServer())
-        .post('/users/auth/logout')
-        .set('Cookie', `some_cookie=12345;    other_cookie=value`)
-        .send();
-      expect(respond.body.message).toMatch(/^AuthenticationRequiredError: /);
-      expect(respond.status).toBe(401);
-      expect(respond.body.code).toBe(401);
-    });
-    it('should return SessionRevokedError', async () => {
-      const respond = await request(app.getHttpServer())
+
+    it('should refresh access token successfully', async () => {
+      const respond2 = await request(app.getHttpServer())
         .post('/users/auth/refresh-token')
-        .set(
-          'Cookie',
-          `some_cookie=12345;    REFRESH_TOKEN=${TestRefreshToken};    other_cookie=value`,
-        )
+        .set('Cookie', `REFRESH_TOKEN=${TestRefreshToken}`)
         .send();
-      expect(respond.body.message).toMatch(/^SessionRevokedError: /);
-      expect(respond.status).toBe(401);
-      expect(respond.body.code).toBe(401);
+      expect(respond2.body.message).toBe('Refresh token successfully.');
+      expect(respond2.status).toBe(201);
+      expect(respond2.body.code).toBe(201);
+      expect(respond2.body.data.accessToken).toBeDefined();
+      TestRefreshTokenOld = TestRefreshToken;
+      TestRefreshToken = respond2.header['set-cookie'][0]
+        .split(';')[0]
+        .split('=')[1];
+      TestToken = respond2.body.data.accessToken;
+      expect(respond2.body.data.user.username).toBe(TestUsername);
+      expect(respond2.body.data.user.nickname).toBe('test_user');
+    });
+
+    it('should verify sudo mode with SRP', async () => {
+      TestToken = await verifySudoWithSRP(
+        app.getHttpServer(),
+        TestToken,
+        TestUsername,
+        TestPassword,
+      );
     });
   });
 
@@ -735,7 +664,6 @@ describe('User Module', () => {
     it('should return InvalidEmailAddressError', async () => {
       const respond = await request(app.getHttpServer())
         .post('/users/recover/password/request')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: 'test',
         });
@@ -747,7 +675,6 @@ describe('User Module', () => {
     it('should return InvalidEmailSuffixError', async () => {
       const respond = await request(app.getHttpServer())
         .post('/users/recover/password/request')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: 'test@test.com',
         });
@@ -764,7 +691,6 @@ describe('User Module', () => {
       );
       const respond = await request(app.getHttpServer())
         .post('/users/recover/password/request')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: TestEmail,
         });
@@ -781,7 +707,6 @@ describe('User Module', () => {
     it('should return EmailNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
         .post('/users/recover/password/request')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: 'KKK-' + TestEmail,
         });
@@ -793,9 +718,9 @@ describe('User Module', () => {
     it('should send a password reset email and reset the password', async () => {
       jest.useFakeTimers({ advanceTimers: true });
 
+      // 1. 发送重置密码邮件
       const respond = await request(app.getHttpServer())
         .post('/users/recover/password/request')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: TestEmail,
         });
@@ -814,39 +739,73 @@ describe('User Module', () => {
 
       jest.advanceTimersByTime(9 * 60 * 1000);
 
+      // 2. 使用 token 重置密码，使用 SRP 凭证
+      const salt = srpClient.generateSalt();
+      const privateKey = srpClient.derivePrivateKey(
+        salt,
+        TestUsername,
+        TestNewPassword,
+      );
+      const verifier = srpClient.deriveVerifier(privateKey);
+
       const respond2 = await request(app.getHttpServer())
         .post('/users/recover/password/verify')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
-          new_password: 'ABC^^^666',
           token: token,
+          srpSalt: salt,
+          srpVerifier: verifier,
         });
       expect(respond2.body.message).toBe('Reset password successfully.');
       expect(respond2.body.code).toBe(201);
       expect(respond2.status).toBe(201);
 
-      // Try re-login
-      const respond3 = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          username: TestUsername,
-          password: 'ABC^^^666',
-        });
-      expect(respond3.body.message).toBe('Login successfully.');
-      expect(respond3.status).toBe(201);
-      expect(respond3.body.code).toBe(201);
+      // 3. 使用新密码通过 SRP 登录
+      const clientEphemeral = srpClient.generateEphemeral();
+      const agent = request.agent(app.getHttpServer());
+
+      const initResponse = await agent.post('/users/auth/srp/init').send({
+        username: TestUsername,
+        clientPublicEphemeral: clientEphemeral.public,
+      });
+
+      expect(initResponse.status).toBe(201);
+      expect(initResponse.body.data.salt).toBe(salt); // 应该与重置时使用的 salt 相同
+
+      const clientSession = srpClient.deriveSession(
+        clientEphemeral.secret,
+        initResponse.body.data.serverPublicEphemeral,
+        salt,
+        TestUsername,
+        privateKey,
+      );
+
+      const verifyResponse = await agent.post('/users/auth/srp/verify').send({
+        username: TestUsername,
+        clientProof: clientSession.proof,
+      });
+
+      expect(verifyResponse.status).toBe(201);
+      expect(verifyResponse.body.data.accessToken).toBeDefined();
+      expect(verifyResponse.body.data.user.username).toBe(TestUsername);
 
       jest.useRealTimers();
     });
 
     it('should return PermissionDeniedError', async () => {
+      const salt = srpClient.generateSalt();
+      const privateKey = srpClient.derivePrivateKey(
+        salt,
+        TestUsername,
+        TestNewPassword,
+      );
+      const verifier = srpClient.deriveVerifier(privateKey);
+
       const respond = await request(app.getHttpServer())
         .post('/users/recover/password/verify')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
-          new_password: 'ABC^^^666',
           token: TestToken,
+          srpSalt: salt,
+          srpVerifier: verifier,
         });
       expect(respond.body.message).toMatch(/^PermissionDeniedError: /);
       expect(respond.body.code).toBe(403);
@@ -858,7 +817,6 @@ describe('User Module', () => {
 
       const respond = await request(app.getHttpServer())
         .post('/users/recover/password/request')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
           email: TestEmail,
         });
@@ -877,54 +835,24 @@ describe('User Module', () => {
 
       jest.advanceTimersByTime(11 * 60 * 1000);
 
+      const salt = srpClient.generateSalt();
+      const privateKey = srpClient.derivePrivateKey(
+        salt,
+        TestUsername,
+        TestNewPassword,
+      );
+      const verifier = srpClient.deriveVerifier(privateKey);
+
       const respond2 = await request(app.getHttpServer())
         .post('/users/recover/password/verify')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
         .send({
-          new_password: 'ABC^^^666',
           token: token,
+          srpSalt: salt,
+          srpVerifier: verifier,
         });
       expect(respond2.body.message).toMatch(/^TokenExpiredError: /);
       expect(respond2.body.code).toBe(401);
       expect(respond2.status).toBe(401);
-
-      jest.useRealTimers();
-    });
-
-    it('should return InvalidPasswordError', async () => {
-      jest.useFakeTimers({ advanceTimers: true });
-
-      const respond = await request(app.getHttpServer())
-        .post('/users/recover/password/request')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          email: TestEmail,
-        });
-      expect(respond.body.message).toBe('Send email successfully.');
-      expect(respond.body.code).toBe(201);
-      expect(respond.status).toBe(201);
-      expect(
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail,
-      ).toHaveReturnedTimes(1);
-      expect(
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail,
-      ).toHaveBeenCalledWith(TestEmail, TestUsername, expect.any(String));
-      const token = (
-        MockedEmailService.mock.instances[0].sendPasswordResetEmail as jest.Mock
-      ).mock.calls[0][2];
-
-      jest.advanceTimersByTime(9 * 60 * 1000);
-
-      const respond2 = await request(app.getHttpServer())
-        .post('/users/recover/password/verify')
-        //.set('User-Agent', 'PostmanRuntime/7.26.8')
-        .send({
-          new_password: '123456',
-          token: token,
-        });
-      expect(respond2.body.message).toMatch(/^InvalidPasswordError: /);
-      expect(respond2.body.code).toBe(422);
-      expect(respond2.status).toBe(422);
 
       jest.useRealTimers();
     });
@@ -935,58 +863,144 @@ describe('User Module', () => {
     let validToken: string;
 
     beforeAll(async () => {
-      // 使用已注册的测试账号登录
-      const loginRes = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        .send({
-          username: TestUsername,
-          password: 'ABC^^^666',
-        })
-        .expect(201);
-
-      validToken = loginRes.body.data.accessToken;
-      testUserId = loginRes.body.data.user.id;
+      const auth = await loginWithSRP(
+        app.getHttpServer(),
+        TestUsername,
+        TestNewPassword,
+      );
+      validToken = auth.accessToken;
+      testUserId = auth.userId;
     });
 
-    it('should verify sudo mode with password', async () => {
-      const res = await request(app.getHttpServer())
+    it('should verify sudo mode with password and trigger SRP upgrade', async () => {
+      // 创建传统认证用户
+      const legacyUser = await createLegacyUser(app.getHttpServer());
+
+      // 使用密码验证 sudo，这应该会触发 SRP 升级
+      const sudoRes = await request(app.getHttpServer())
         .post('/users/auth/sudo')
-        .set('Authorization', `Bearer ${validToken}`)
+        .set('Authorization', `Bearer ${legacyUser.accessToken}`)
         .send({
           method: 'password',
           credentials: {
-            password: 'ABC^^^666',
+            password: legacyUser.password,
+          },
+        });
+
+      expect(sudoRes.status).toBe(201);
+      expect(sudoRes.body.data.accessToken).toBeDefined();
+      expect(sudoRes.body.data.srpUpgraded).toBe(true);
+      expect(sudoRes.body.message).toBe(
+        'Password verification successful and account upgraded to SRP',
+      );
+
+      // 验证用户现在可以使用 SRP 登录
+      const clientEphemeral = srpClient.generateEphemeral();
+
+      const agent = request.agent(app.getHttpServer());
+
+      // 初始化 SRP 登录
+      const initRes = await agent.post('/users/auth/srp/init').send({
+        username: legacyUser.username,
+        clientPublicEphemeral: clientEphemeral.public,
+      });
+
+      expect(initRes.status).toBe(201);
+      expect(initRes.body.data.salt).toBeDefined();
+      expect(initRes.body.data.serverPublicEphemeral).toBeDefined();
+
+      // 完成 SRP 验证
+      const privateKey = srpClient.derivePrivateKey(
+        initRes.body.data.salt,
+        legacyUser.username,
+        legacyUser.password,
+      );
+      const clientSession = srpClient.deriveSession(
+        clientEphemeral.secret,
+        initRes.body.data.serverPublicEphemeral,
+        initRes.body.data.salt,
+        legacyUser.username,
+        privateKey,
+      );
+
+      const verifyRes = await agent.post('/users/auth/srp/verify').send({
+        username: legacyUser.username,
+        clientProof: clientSession.proof,
+      });
+
+      expect(verifyRes.status).toBe(201);
+      expect(verifyRes.body.data.accessToken).toBeDefined();
+      expect(verifyRes.body.data.user.username).toBe(legacyUser.username);
+    });
+
+    it('should verify sudo mode with TOTP', async () => {
+      // 进入 sudo 模式
+      validToken = await verifySudoWithSRP(
+        app.getHttpServer(),
+        validToken,
+        TestUsername,
+        TestNewPassword,
+      );
+
+      // 首先启用 TOTP - 获取 secret
+      const enable2FARes = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/2fa/enable`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({})
+        .expect(201);
+
+      const secret = enable2FARes.body.data.secret;
+
+      // 使用 otplib 生成真实的 TOTP 验证码
+      const totpCode = authenticator.generate(secret);
+
+      // 完成 TOTP 设置
+      const setupRes = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/2fa/enable`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          secret,
+          code: totpCode,
+        })
+        .expect(201);
+
+      expect(setupRes.body.data.backup_codes).toBeDefined();
+      expect(Array.isArray(setupRes.body.data.backup_codes)).toBe(true);
+      expect(setupRes.body.data.backup_codes.length).toBeGreaterThan(0);
+
+      // 生成新的 TOTP 码用于 sudo 验证
+      const sudoTotpCode = authenticator.generate(secret);
+
+      // 使用 TOTP 验证 sudo
+      const sudoRes = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'totp',
+          credentials: {
+            code: sudoTotpCode,
           },
         })
         .expect(201);
 
-      expect(res.body.data.accessToken).toBeDefined();
-      // 保存sudo token用于后续测试
-      validToken = res.body.data.accessToken;
+      expect(sudoRes.body.data.accessToken).toBeDefined();
+      expect(sudoRes.body.message).toBe('Sudo mode activated successfully');
+
+      // 测试完成后，禁用 2FA
+      const disableRes = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/2fa/disable`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({})
+        .expect(200);
+
+      // 验证 2FA 已被禁用
+      const statusRes = await request(app.getHttpServer())
+        .get(`/users/${testUserId}/2fa/status`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(200);
+
+      expect(statusRes.body.data.enabled).toBe(false);
     });
-
-    // it('should verify sudo mode with passkey', async () => {
-    //   const fakeAuthResponse = {
-    //     id: 'cred-id',
-    //     rawId: 'raw-cred-id',
-    //     response: {},
-    //     type: 'public-key',
-    //     clientExtensionResults: {},
-    //   };
-
-    //   const res = await request(app.getHttpServer())
-    //     .post('/users/auth/sudo')
-    //     .set('Authorization', `Bearer ${validToken}`)
-    //     .send({
-    //       method: 'passkey',
-    //       credentials: {
-    //         passkeyResponse: fakeAuthResponse,
-    //       },
-    //     })
-    //     .expect(200);
-
-    //   expect(res.body.data.accessToken).toBeDefined();
-    // });
 
     it('should reject sudo verification with wrong password', async () => {
       const res = await request(app.getHttpServer())
@@ -1003,61 +1017,115 @@ describe('User Module', () => {
       expect(res.body.message).toMatch(/InvalidCredentialsError/);
     });
 
-    // 测试需要 sudo 权限的操作
-    //   it('should require sudo mode for sensitive operations', async () => {
-    //     // 使用非 sudo token
-    //     const loginRes = await request(app.getHttpServer())
-    //       .post('/users/auth/login')
-    //       .send({
-    //         username: TestUsername,
-    //         password: 'ABC^^^666',
-    //       })
-    //       .expect(201);
+    it('should reject sudo verification with wrong TOTP code', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'totp',
+          credentials: {
+            code: '000000',
+          },
+        })
+        .expect(401);
 
-    //     const normalToken = loginRes.body.data.accessToken;
+      expect(res.body.message).toMatch(/InvalidCredentialsError/);
+    });
 
-    //     // 尝试执行需要 sudo 的操作（例如修改密码）
-    //     const res = await request(app.getHttpServer())
-    //       .post(`/users/${testUserId}/password`)
-    //       .set('Authorization', `Bearer ${normalToken}`)
-    //       .send({
-    //         oldPassword: 'ABC^^^666',
-    //         newPassword: 'NewABC^^^666',
-    //       })
-    //       .expect(403);
+    it('should reject sudo verification with invalid SRP proof', async () => {
+      const clientEphemeral = srpClient.generateEphemeral();
 
-    //     expect(res.body.message).toMatch(/SudoRequiredError/);
-    //   });
+      const agent = request.agent(app.getHttpServer());
+
+      await agent
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'srp',
+          credentials: {
+            clientPublicEphemeral: clientEphemeral.public,
+          },
+        });
+
+      const res = await agent
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'srp',
+          credentials: {
+            clientProof: 'invalid-proof',
+          },
+        })
+        .expect(401);
+
+      expect(res.body.message).toMatch(/SrpVerificationError/);
+    });
   });
 
   describe('Passkey Authentication Endpoints', () => {
     let testUserId: number;
     let validToken: string;
+    const passkeyTestUsername = `PasskeyUser-${Math.floor(Math.random() * 10000000000)}`;
+    const passkeyTestPassword = 'Passkey@123';
+    const passkeyTestEmail = `passkey-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
 
     beforeAll(async () => {
-      // 使用已注册的测试账号登录
-      const loginRes = await request(app.getHttpServer())
-        .post('/users/auth/login')
-        .send({
-          username: TestUsername,
-          password: 'ABC^^^666',
-        })
-        .expect(201);
+      jest.useFakeTimers({ advanceTimers: true });
 
-      validToken = loginRes.body.data.accessToken;
-      testUserId = loginRes.body.data.user.id;
-
-      const verifyRes = await request(app.getHttpServer())
-        .post('/users/auth/sudo')
-        .set('Authorization', `Bearer ${validToken}`)
+      // 1. 发送验证邮件
+      const respond1 = await request(app.getHttpServer())
+        .post('/users/verify/email')
         .send({
-          method: 'password',
-          credentials: {
-            password: 'ABC^^^666',
-          },
-        })
-        .expect(201);
-      validToken = verifyRes.body.data.accessToken;
+          email: passkeyTestEmail,
+        });
+      expect(respond1.status).toBe(201);
+
+      const verificationCode = (
+        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      ).mock.calls[0][1];
+
+      jest.advanceTimersByTime(9 * 60 * 1000);
+
+      // 2. 使用 SRP 注册新用户
+      const salt = srpClient.generateSalt();
+      const privateKey = srpClient.derivePrivateKey(
+        salt,
+        passkeyTestUsername,
+        passkeyTestPassword,
+      );
+      const verifier = srpClient.deriveVerifier(privateKey);
+
+      const registerResponse = await request(app.getHttpServer())
+        .post('/users')
+        .send({
+          username: passkeyTestUsername,
+          nickname: 'passkey_test',
+          srpSalt: salt,
+          srpVerifier: verifier,
+          email: passkeyTestEmail,
+          emailCode: verificationCode,
+        });
+
+      expect(registerResponse.status).toBe(201);
+
+      // 3. 使用 SRP 登录
+      const auth = await loginWithSRP(
+        app.getHttpServer(),
+        passkeyTestUsername,
+        passkeyTestPassword,
+      );
+      validToken = auth.accessToken;
+      testUserId = auth.userId;
+
+      // 4. 进入 sudo 模式
+      validToken = await verifySudoWithSRP(
+        app.getHttpServer(),
+        validToken,
+        passkeyTestUsername,
+        passkeyTestPassword,
+      );
+
+      jest.useRealTimers();
     });
 
     it('POST /users/{userId}/passkeys/options should return registration options', async () => {

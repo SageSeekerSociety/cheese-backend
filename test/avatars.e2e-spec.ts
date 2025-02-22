@@ -56,6 +56,7 @@ describe('Avatar Module', () => {
           password: 'abc123456!!!',
           email: TestEmail,
           emailCode: verificationCode,
+          isLegacyAuth: true,
         });
       const respond = await req;
       expect(respond.body.message).toStrictEqual('Register successfully.');

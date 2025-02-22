@@ -11,11 +11,14 @@
           },
           "type": "array"
         },
+        "sudoUntil": {
+          "type": "number"
+        },
         "userId": {
           "type": "number"
         },
-        "sudoUntil": {
-          "type": "number"
+        "username": {
+          "type": "string"
         }
       },
       "required": [

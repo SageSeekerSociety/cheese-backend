@@ -13,11 +13,15 @@ import { MaterialBundle } from "../materialbundles/materialbundles"
 model User {
   id                                                                 Int                          @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
   username                                                           String                       @unique(map: "IDX_78a916df40e02a9deb1c4b75ed") @db.VarChar
-  hashedPassword                                                     String                       @map("hashed_password") @db.VarChar
+  hashedPassword                                                     String?                       @map("hashed_password") @db.VarChar
+  srpSalt                                                            String?                      @map("srp_salt") @db.VarChar(500)
+  srpVerifier                                                        String?                      @map("srp_verifier") @db.VarChar(1000)
+  srpUpgraded                                                        Boolean                      @default(false) @map("srp_upgraded")
   email                                                              String                       @unique(map: "IDX_e12875dfb3b1d92d7d7c5377e2") @db.VarChar
   createdAt                                                          DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                                                          DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt                                                          DateTime?                    @map("deleted_at") @db.Timestamptz(6)
+  lastPasswordChangedAt                                              DateTime                     @default(now()) @map("last_password_changed_at") @db.Timestamptz(6)
   answer                                                             Answer[]
   answerDeleteLog                                                    AnswerDeleteLog[]
   answerFavoritedByUser                                              AnswerFavoritedByUser[]

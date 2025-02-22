@@ -287,4 +287,29 @@ export class TOTPService {
       sudoUntil: Date.now() + 15 * 60 * 1000, // 15 minutes
     });
   }
+
+  /**
+   * 生成临时令牌，用于 2FA 验证
+   */
+  generateTempToken(userId: number): string {
+    return this.authService.sign(
+      {
+        userId: userId,
+        permissions: [
+          {
+            authorizedActions: ['verify'],
+            authorizedResource: {
+              ownedByUser: userId,
+              types: ['users/totp:verify'],
+              resourceIds: undefined,
+              data: {
+                validUntil: Date.now() + 5 * 60 * 1000,
+              },
+            },
+          },
+        ],
+      },
+      300,
+    );
+  }
 }
