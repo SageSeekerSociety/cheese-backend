@@ -856,318 +856,318 @@ describe('User Module', () => {
 
       jest.useRealTimers();
     });
+  });
 
-    describe('Sudo Mode Authentication', () => {
-      let testUserId: number;
-      let validToken: string;
+  describe('Sudo Mode Authentication', () => {
+    let testUserId: number;
+    let validToken: string;
 
-      beforeAll(async () => {
-        const auth = await loginWithSRP(
-          app.getHttpServer(),
-          TestUsername,
-          TestNewPassword,
-        );
-        validToken = auth.accessToken;
-        testUserId = auth.userId;
-      });
+    beforeAll(async () => {
+      const auth = await loginWithSRP(
+        app.getHttpServer(),
+        TestUsername,
+        TestNewPassword,
+      );
+      validToken = auth.accessToken;
+      testUserId = auth.userId;
+    });
 
-      it('should verify sudo mode with password and trigger SRP upgrade', async () => {
-        // 创建传统认证用户
-        const legacyUser = await createLegacyUser(app.getHttpServer());
+    it('should verify sudo mode with password and trigger SRP upgrade', async () => {
+      // 创建传统认证用户
+      const legacyUser = await createLegacyUser(app.getHttpServer());
 
-        // 使用密码验证 sudo，这应该会触发 SRP 升级
-        const sudoRes = await request(app.getHttpServer())
-          .post('/users/auth/sudo')
-          .set('Authorization', `Bearer ${legacyUser.accessToken}`)
-          .send({
-            method: 'password',
-            credentials: {
-              password: legacyUser.password,
-            },
-          });
-
-        expect(sudoRes.status).toBe(201);
-        expect(sudoRes.body.data.accessToken).toBeDefined();
-        expect(sudoRes.body.data.srpUpgraded).toBe(true);
-        expect(sudoRes.body.message).toBe(
-          'Password verification successful and account upgraded to SRP',
-        );
-
-        // 验证用户现在可以使用 SRP 登录
-        const clientEphemeral = srpClient.generateEphemeral();
-
-        const agent = request.agent(app.getHttpServer());
-
-        // 初始化 SRP 登录
-        const initRes = await agent.post('/users/auth/srp/init').send({
-          username: legacyUser.username,
-          clientPublicEphemeral: clientEphemeral.public,
+      // 使用密码验证 sudo，这应该会触发 SRP 升级
+      const sudoRes = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${legacyUser.accessToken}`)
+        .send({
+          method: 'password',
+          credentials: {
+            password: legacyUser.password,
+          },
         });
 
-        expect(initRes.status).toBe(201);
-        expect(initRes.body.data.salt).toBeDefined();
-        expect(initRes.body.data.serverPublicEphemeral).toBeDefined();
+      expect(sudoRes.status).toBe(201);
+      expect(sudoRes.body.data.accessToken).toBeDefined();
+      expect(sudoRes.body.data.srpUpgraded).toBe(true);
+      expect(sudoRes.body.message).toBe(
+        'Password verification successful and account upgraded to SRP',
+      );
 
-        // 完成 SRP 验证
-        const privateKey = srpClient.derivePrivateKey(
-          initRes.body.data.salt,
-          legacyUser.username,
-          legacyUser.password,
-        );
-        const clientSession = srpClient.deriveSession(
-          clientEphemeral.secret,
-          initRes.body.data.serverPublicEphemeral,
-          initRes.body.data.salt,
-          legacyUser.username,
-          privateKey,
-        );
+      // 验证用户现在可以使用 SRP 登录
+      const clientEphemeral = srpClient.generateEphemeral();
 
-        const verifyRes = await agent.post('/users/auth/srp/verify').send({
-          username: legacyUser.username,
-          clientProof: clientSession.proof,
+      const agent = request.agent(app.getHttpServer());
+
+      // 初始化 SRP 登录
+      const initRes = await agent.post('/users/auth/srp/init').send({
+        username: legacyUser.username,
+        clientPublicEphemeral: clientEphemeral.public,
+      });
+
+      expect(initRes.status).toBe(201);
+      expect(initRes.body.data.salt).toBeDefined();
+      expect(initRes.body.data.serverPublicEphemeral).toBeDefined();
+
+      // 完成 SRP 验证
+      const privateKey = srpClient.derivePrivateKey(
+        initRes.body.data.salt,
+        legacyUser.username,
+        legacyUser.password,
+      );
+      const clientSession = srpClient.deriveSession(
+        clientEphemeral.secret,
+        initRes.body.data.serverPublicEphemeral,
+        initRes.body.data.salt,
+        legacyUser.username,
+        privateKey,
+      );
+
+      const verifyRes = await agent.post('/users/auth/srp/verify').send({
+        username: legacyUser.username,
+        clientProof: clientSession.proof,
+      });
+
+      expect(verifyRes.status).toBe(201);
+      expect(verifyRes.body.data.accessToken).toBeDefined();
+      expect(verifyRes.body.data.user.username).toBe(legacyUser.username);
+    });
+
+    it('should verify sudo mode with TOTP', async () => {
+      // 进入 sudo 模式
+      validToken = await verifySudoWithSRP(
+        app.getHttpServer(),
+        validToken,
+        TestUsername,
+        TestNewPassword,
+      );
+
+      // 首先启用 TOTP - 获取 secret
+      const enable2FARes = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/2fa/enable`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({})
+        .expect(201);
+
+      const secret = enable2FARes.body.data.secret;
+
+      // 使用 otplib 生成真实的 TOTP 验证码
+      const totpCode = authenticator.generate(secret);
+
+      // 完成 TOTP 设置
+      const setupRes = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/2fa/enable`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          secret,
+          code: totpCode,
+        })
+        .expect(201);
+
+      expect(setupRes.body.data.backup_codes).toBeDefined();
+      expect(Array.isArray(setupRes.body.data.backup_codes)).toBe(true);
+      expect(setupRes.body.data.backup_codes.length).toBeGreaterThan(0);
+
+      // 生成新的 TOTP 码用于 sudo 验证
+      const sudoTotpCode = authenticator.generate(secret);
+
+      // 使用 TOTP 验证 sudo
+      const sudoRes = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'totp',
+          credentials: {
+            code: sudoTotpCode,
+          },
+        })
+        .expect(201);
+
+      expect(sudoRes.body.data.accessToken).toBeDefined();
+      expect(sudoRes.body.message).toBe('Sudo mode activated successfully');
+
+      // 测试完成后，禁用 2FA
+      const disableRes = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/2fa/disable`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({})
+        .expect(200);
+
+      // 验证 2FA 已被禁用
+      const statusRes = await request(app.getHttpServer())
+        .get(`/users/${testUserId}/2fa/status`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(200);
+
+      expect(statusRes.body.data.enabled).toBe(false);
+    });
+
+    it('should reject sudo verification with wrong password', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'password',
+          credentials: {
+            password: 'wrong-password',
+          },
+        })
+        .expect(401);
+
+      expect(res.body.message).toMatch(/InvalidCredentialsError/);
+    });
+
+    it('should reject sudo verification with wrong TOTP code', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'totp',
+          credentials: {
+            code: '000000',
+          },
+        })
+        .expect(401);
+
+      expect(res.body.message).toMatch(/InvalidCredentialsError/);
+    });
+
+    it('should reject sudo verification with invalid SRP proof', async () => {
+      const clientEphemeral = srpClient.generateEphemeral();
+
+      const agent = request.agent(app.getHttpServer());
+
+      await agent
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'srp',
+          credentials: {
+            clientPublicEphemeral: clientEphemeral.public,
+          },
         });
 
-        expect(verifyRes.status).toBe(201);
-        expect(verifyRes.body.data.accessToken).toBeDefined();
-        expect(verifyRes.body.data.user.username).toBe(legacyUser.username);
-      });
+      const res = await agent
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          method: 'srp',
+          credentials: {
+            clientProof: 'invalid-proof',
+          },
+        })
+        .expect(401);
 
-      it('should verify sudo mode with TOTP', async () => {
-        // 进入 sudo 模式
-        validToken = await verifySudoWithSRP(
-          app.getHttpServer(),
-          validToken,
-          TestUsername,
-          TestNewPassword,
-        );
+      expect(res.body.message).toMatch(/SrpVerificationError/);
+    });
+  });
 
-        // 首先启用 TOTP - 获取 secret
-        const enable2FARes = await request(app.getHttpServer())
-          .post(`/users/${testUserId}/2fa/enable`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({})
-          .expect(201);
+  describe('Passkey Authentication Endpoints', () => {
+    let testUserId: number;
+    let validToken: string;
 
-        const secret = enable2FARes.body.data.secret;
+    beforeAll(async () => {
+      const auth = await loginWithSRP(
+        app.getHttpServer(),
+        TestUsername,
+        TestNewPassword,
+      );
+      validToken = auth.accessToken;
+      testUserId = auth.userId;
 
-        // 使用 otplib 生成真实的 TOTP 验证码
-        const totpCode = authenticator.generate(secret);
-
-        // 完成 TOTP 设置
-        const setupRes = await request(app.getHttpServer())
-          .post(`/users/${testUserId}/2fa/enable`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({
-            secret,
-            code: totpCode,
-          })
-          .expect(201);
-
-        expect(setupRes.body.data.backup_codes).toBeDefined();
-        expect(Array.isArray(setupRes.body.data.backup_codes)).toBe(true);
-        expect(setupRes.body.data.backup_codes.length).toBeGreaterThan(0);
-
-        // 生成新的 TOTP 码用于 sudo 验证
-        const sudoTotpCode = authenticator.generate(secret);
-
-        // 使用 TOTP 验证 sudo
-        const sudoRes = await request(app.getHttpServer())
-          .post('/users/auth/sudo')
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({
-            method: 'totp',
-            credentials: {
-              code: sudoTotpCode,
-            },
-          })
-          .expect(201);
-
-        expect(sudoRes.body.data.accessToken).toBeDefined();
-        expect(sudoRes.body.message).toBe('Sudo mode activated successfully');
-
-        // 测试完成后，禁用 2FA
-        const disableRes = await request(app.getHttpServer())
-          .post(`/users/${testUserId}/2fa/disable`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({})
-          .expect(200);
-
-        // 验证 2FA 已被禁用
-        const statusRes = await request(app.getHttpServer())
-          .get(`/users/${testUserId}/2fa/status`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .expect(200);
-
-        expect(statusRes.body.data.enabled).toBe(false);
-      });
-
-      it('should reject sudo verification with wrong password', async () => {
-        const res = await request(app.getHttpServer())
-          .post('/users/auth/sudo')
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({
-            method: 'password',
-            credentials: {
-              password: 'wrong-password',
-            },
-          })
-          .expect(401);
-
-        expect(res.body.message).toMatch(/InvalidCredentialsError/);
-      });
-
-      it('should reject sudo verification with wrong TOTP code', async () => {
-        const res = await request(app.getHttpServer())
-          .post('/users/auth/sudo')
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({
-            method: 'totp',
-            credentials: {
-              code: '000000',
-            },
-          })
-          .expect(401);
-
-        expect(res.body.message).toMatch(/InvalidCredentialsError/);
-      });
-
-      it('should reject sudo verification with invalid SRP proof', async () => {
-        const clientEphemeral = srpClient.generateEphemeral();
-
-        const agent = request.agent(app.getHttpServer());
-
-        await agent
-          .post('/users/auth/sudo')
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({
-            method: 'srp',
-            credentials: {
-              clientPublicEphemeral: clientEphemeral.public,
-            },
-          });
-
-        const res = await agent
-          .post('/users/auth/sudo')
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({
-            method: 'srp',
-            credentials: {
-              clientProof: 'invalid-proof',
-            },
-          })
-          .expect(401);
-
-        expect(res.body.message).toMatch(/SrpVerificationError/);
-      });
+      // 进入 sudo 模式
+      validToken = await verifySudoWithSRP(
+        app.getHttpServer(),
+        validToken,
+        TestUsername,
+        TestNewPassword,
+      );
     });
 
-    describe('Passkey Authentication Endpoints', () => {
-      let testUserId: number;
-      let validToken: string;
-
-      beforeAll(async () => {
-        const auth = await loginWithSRP(
-          app.getHttpServer(),
-          TestUsername,
-          TestNewPassword,
-        );
-        validToken = auth.accessToken;
-        testUserId = auth.userId;
-
-        // 进入 sudo 模式
-        validToken = await verifySudoWithSRP(
-          app.getHttpServer(),
-          validToken,
-          TestUsername,
-          TestNewPassword,
-        );
-      });
-
-      it('POST /users/{userId}/passkeys/options should return registration options', async () => {
-        const res = await request(app.getHttpServer())
-          .post(`/users/${testUserId}/passkeys/options`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .send()
-          .expect(201);
-        expect(res.body.data.options).toBeDefined();
-      });
-
-      it('POST /users/{userId}/passkeys should register a new passkey', async () => {
-        // 先获取注册选项
-        const resOptions = await request(app.getHttpServer())
-          .post(`/users/${testUserId}/passkeys/options`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .send()
-          .expect(201);
-
-        const fakeRegistrationResponse = {
-          id: 'cred-id',
-          rawId: 'raw-cred-id',
-          response: {},
-          type: 'public-key',
-          clientExtensionResults: {},
-        };
-
-        const res = await request(app.getHttpServer())
-          .post(`/users/${testUserId}/passkeys`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .send({ response: fakeRegistrationResponse })
-          .expect(201);
-        expect(res.body.message).toBe('Passkey registered successfully.');
-      });
-
-      it('POST /users/auth/passkey/options should return authentication options', async () => {
-        const res = await request(app.getHttpServer())
-          .post('/users/auth/passkey/options')
-          .send()
-          .expect(201);
-        expect(res.body.data.options).toBeDefined();
-      });
-
-      it('POST /users/auth/passkey/verify should verify passkey login and return tokens', async () => {
-        // 先获取认证选项
-        const resOptions = await request(app.getHttpServer())
-          .post('/users/auth/passkey/options')
-          .send()
-          .expect(201);
-        const cookies = resOptions.headers['set-cookie'];
-
-        const fakeAuthResponse = {
-          id: 'cred-id',
-          rawId: 'raw-cred-id',
-          response: {},
-          type: 'public-key',
-          clientExtensionResults: {},
-        };
-
-        const res = await request(app.getHttpServer())
-          .post('/users/auth/passkey/verify')
-          .set('Cookie', cookies)
-          .send({ response: fakeAuthResponse })
-          .expect(201);
-        expect(res.body.data.user).toBeDefined();
-        expect(res.body.data.accessToken).toBeDefined();
-      });
-
-      it('GET /users/{userId}/passkeys should return user passkeys list', async () => {
-        const res = await request(app.getHttpServer())
-          .get(`/users/${testUserId}/passkeys`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .expect(200);
-        expect(Array.isArray(res.body.data.passkeys)).toBe(true);
-      });
-
-      it('DELETE /users/{userId}/passkeys/{credentialId} should delete passkey', async () => {
-        const res = await request(app.getHttpServer())
-          .delete(`/users/${testUserId}/passkeys/cred-id`)
-          .set('Authorization', `Bearer ${validToken}`)
-          .expect(200);
-        expect(res.body.message).toBe('Delete passkey successfully.');
-      });
+    it('POST /users/{userId}/passkeys/options should return registration options', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys/options`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send()
+        .expect(201);
+      expect(res.body.data.options).toBeDefined();
     });
 
-    afterAll(async () => {
-      await app.close();
+    it('POST /users/{userId}/passkeys should register a new passkey', async () => {
+      // 先获取注册选项
+      const resOptions = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys/options`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send()
+        .expect(201);
+
+      const fakeRegistrationResponse = {
+        id: 'cred-id',
+        rawId: 'raw-cred-id',
+        response: {},
+        type: 'public-key',
+        clientExtensionResults: {},
+      };
+
+      const res = await request(app.getHttpServer())
+        .post(`/users/${testUserId}/passkeys`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({ response: fakeRegistrationResponse })
+        .expect(201);
+      expect(res.body.message).toBe('Passkey registered successfully.');
     });
+
+    it('POST /users/auth/passkey/options should return authentication options', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/passkey/options')
+        .send()
+        .expect(201);
+      expect(res.body.data.options).toBeDefined();
+    });
+
+    it('POST /users/auth/passkey/verify should verify passkey login and return tokens', async () => {
+      // 先获取认证选项
+      const resOptions = await request(app.getHttpServer())
+        .post('/users/auth/passkey/options')
+        .send()
+        .expect(201);
+      const cookies = resOptions.headers['set-cookie'];
+
+      const fakeAuthResponse = {
+        id: 'cred-id',
+        rawId: 'raw-cred-id',
+        response: {},
+        type: 'public-key',
+        clientExtensionResults: {},
+      };
+
+      const res = await request(app.getHttpServer())
+        .post('/users/auth/passkey/verify')
+        .set('Cookie', cookies)
+        .send({ response: fakeAuthResponse })
+        .expect(201);
+      expect(res.body.data.user).toBeDefined();
+      expect(res.body.data.accessToken).toBeDefined();
+    });
+
+    it('GET /users/{userId}/passkeys should return user passkeys list', async () => {
+      const res = await request(app.getHttpServer())
+        .get(`/users/${testUserId}/passkeys`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(200);
+      expect(Array.isArray(res.body.data.passkeys)).toBe(true);
+    });
+
+    it('DELETE /users/{userId}/passkeys/{credentialId} should delete passkey', async () => {
+      const res = await request(app.getHttpServer())
+        .delete(`/users/${testUserId}/passkeys/cred-id`)
+        .set('Authorization', `Bearer ${validToken}`)
+        .expect(200);
+      expect(res.body.message).toBe('Delete passkey successfully.');
+    });
+  });
+
+  afterAll(async () => {
+    await app.close();
   });
 });
