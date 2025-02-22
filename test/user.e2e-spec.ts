@@ -1065,23 +1065,67 @@ describe('User Module', () => {
   describe('Passkey Authentication Endpoints', () => {
     let testUserId: number;
     let validToken: string;
+    const passkeyTestUsername = `PasskeyUser-${Math.floor(Math.random() * 10000000000)}`;
+    const passkeyTestPassword = 'Passkey@123';
+    const passkeyTestEmail = `passkey-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
 
     beforeAll(async () => {
+      jest.useFakeTimers({ advanceTimers: true });
+
+      // 1. 发送验证邮件
+      const respond1 = await request(app.getHttpServer())
+        .post('/users/verify/email')
+        .send({
+          email: passkeyTestEmail,
+        });
+      expect(respond1.status).toBe(201);
+
+      const verificationCode = (
+        MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+      ).mock.calls[0][1];
+
+      jest.advanceTimersByTime(9 * 60 * 1000);
+
+      // 2. 使用 SRP 注册新用户
+      const salt = srpClient.generateSalt();
+      const privateKey = srpClient.derivePrivateKey(
+        salt,
+        passkeyTestUsername,
+        passkeyTestPassword,
+      );
+      const verifier = srpClient.deriveVerifier(privateKey);
+
+      const registerResponse = await request(app.getHttpServer())
+        .post('/users')
+        .send({
+          username: passkeyTestUsername,
+          nickname: 'passkey_test',
+          srpSalt: salt,
+          srpVerifier: verifier,
+          email: passkeyTestEmail,
+          emailCode: verificationCode,
+        });
+
+      expect(registerResponse.status).toBe(201);
+
+      // 3. 使用 SRP 登录
       const auth = await loginWithSRP(
         app.getHttpServer(),
-        TestUsername,
-        TestNewPassword,
+        passkeyTestUsername,
+        passkeyTestPassword,
       );
       validToken = auth.accessToken;
       testUserId = auth.userId;
 
-      // 进入 sudo 模式
+      // 4. 进入 sudo 模式
       validToken = await verifySudoWithSRP(
         app.getHttpServer(),
         validToken,
-        TestUsername,
-        TestNewPassword,
+        passkeyTestUsername,
+        passkeyTestPassword,
       );
+
+      jest.useRealTimers();
     });
 
     it('POST /users/{userId}/passkeys/options should return registration options', async () => {
