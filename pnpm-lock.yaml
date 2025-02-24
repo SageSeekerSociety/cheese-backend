@@ -42,8 +42,8 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2(@nestjs/common@10.4.15(class-transformer@0.5.1)(class-validator@0.14.1)(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@10.4.7)(express@4.21.2)
       '@prisma/client':
-        specifier: 5.20.0
-        version: 5.20.0(prisma@5.22.0)
+        specifier: 6.4.1
+        version: 6.4.1(prisma@5.22.0)(typescript@5.7.2)
       '@simplewebauthn/server':
         specifier: ^13.1.1
         version: 13.1.1
@@ -1094,13 +1094,16 @@ packages:
     resolution: {integrity: sha512-cq8o4cWH0ibXh9VGi5P20Tu9XF/0fFXl9EUinr9QfTM7a7p0oTA4iJRCQWppXR1Pg8dSM0UCItCkPwsk9qWWYA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
-  '@prisma/client@5.20.0':
-    resolution: {integrity: sha512-CLv55ZuMuUawMsxoqxGtLT3bEZoa2W8L3Qnp6rDIFWy+ZBrUcOFKdoeGPSnbBqxc3SkdxJrF+D1veN/WNynZYA==}
-    engines: {node: '>=16.13'}
+  '@prisma/client@6.4.1':
+    resolution: {integrity: sha512-A7Mwx44+GVZVexT5e2GF/WcKkEkNNKbgr059xpr5mn+oUm2ZW1svhe+0TRNBwCdzhfIZ+q23jEgsNPvKD9u+6g==}
+    engines: {node: '>=18.18'}
     peerDependencies:
       prisma: '*'
+      typescript: '>=5.1.0'
     peerDependenciesMeta:
       prisma:
+        optional: true
+      typescript:
         optional: true
 
   '@prisma/debug@4.16.2':
@@ -6353,9 +6356,10 @@ snapshots:
 
   '@pkgr/core@0.1.1': {}
 
-  '@prisma/client@5.20.0(prisma@5.22.0)':
+  '@prisma/client@6.4.1(prisma@5.22.0)(typescript@5.7.2)':
     optionalDependencies:
       prisma: 5.22.0
+      typescript: 5.7.2
 
   '@prisma/debug@4.16.2':
     dependencies:
