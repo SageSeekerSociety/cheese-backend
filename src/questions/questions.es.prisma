@@ -1,0 +1,11 @@
+import { Question } from "questions"
+
+model QuestionElasticsearchRelation {
+  id              Int      @id @default(autoincrement())
+  question        Question @relation(fields: [questionId], references: [id], map: "fk_question_elasticsearch_relation_question_id")
+  questionId      Int      @unique
+  elasticsearchId String
+
+  @@index([questionId])
+  @@index([elasticsearchId])
+}

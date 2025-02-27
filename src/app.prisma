@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]
+}
+
+// JSON Types Generator: This generator uses `prisma-json-types-generator` to automatically
+// generate TypeScript types for JSON fields in the schema. This enhances type safety and
+// developer experience by providing strong typing for JSON fields, which are otherwise
+// treated as a generic object in TypeScript.
+generator json {
+  provider = "prisma-json-types-generator"
+  namespace = "PrismaJson"
+  // clientOutput = "<finds it automatically>"
+  // (./ -> relative to schema, or an importable path to require() it)
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("PRISMA_DATABASE_URL")
+}

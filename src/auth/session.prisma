@@ -1,0 +1,21 @@
+model session {
+  id              Int      @id(map: "PK_f55da76ac1c3ac420f444d2ff11") @default(autoincrement())
+  validUntil      DateTime @db.Timestamptz(6)
+  revoked         Boolean
+  userId          Int
+  authorization   String
+  lastRefreshedAt BigInt
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([userId], map: "IDX_3d2f174ef04fb312fdebd0ddc5")
+  @@index([validUntil], map: "IDX_bb46e87d5b3f1e55c625755c00")
+}
+
+model session_refresh_log {
+  id              Int      @id(map: "PK_f8f46c039b0955a7df6ad6631d7") @default(autoincrement())
+  sessionId       Int
+  oldRefreshToken String
+  newRefreshToken String
+  accessToken     String
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+}

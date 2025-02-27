@@ -1,0 +1,56 @@
+Author：    Nictheboy
+Topic:      用户模块的各个表结构
+Notice:     本文件只是设计阶段的想法，实际表结构以 .entity.ts 文件中的各个实体为准。
+
+用户表：
+	id
+	username
+	hashed_password
+	email
+
+	created_at
+	updated_at
+    deleted_at	# 可空
+
+登录日志表：
+	id
+	user_id
+	ip
+	user_agent
+	logined_at
+
+用户公开信息表：
+    user_id
+	nickname
+    avatar
+    intro
+
+    updated_at
+    queried_at
+
+用户公开信息浏览日志表：
+	id
+	viewer_id
+	viewee_id
+
+	created_at
+
+注册验证码表：
+	email
+	code
+
+	created_at
+
+重置密码请求表：
+	id
+	user_id
+	ip
+	user_agent
+
+    created_at	# 用于判断是否已经过期
+
+关注关系表：
+	follower_id
+	followee_id
+    
+    created_at

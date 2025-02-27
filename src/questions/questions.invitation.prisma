@@ -1,0 +1,15 @@
+import { User } from "../users/users"
+import { Question } from "../questions/questions"
+
+model QuestionInvitationRelation {
+  id         Int      @id @default(autoincrement())
+  questionId Int
+  question   Question @relation(fields: [questionId], references: [id])
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([questionId])
+  @@index([userId])
+}

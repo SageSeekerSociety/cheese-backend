@@ -1,0 +1,57 @@
+Author：    Nictheboy
+Topic:      问题模块中与问题相关的的各个表结构
+Notice:     本文件只是设计阶段的想法，实际表结构以 .entity.ts 文件中的各个实体为准。
+
+提问表：
+    id
+    asker_id
+    title
+    content
+    type: int
+    group_id    # 可空
+
+    created_at
+    updated_at
+    queried_at
+    is_deleted
+    deleted_at
+
+主题表：
+    id
+    name
+
+    created_at
+
+主题关系表：
+    topic_id
+    question_id
+
+关注问题关系表：
+    user_id
+    question_id
+
+    created_at
+
+// 赞同问题关系表：
+//     user_id
+//     question_id
+// 
+//     created_at
+// 
+// 问题评论表：
+//     id
+//     question_id
+//     user_id
+//     content
+// 
+//     created_at
+//     updated_at
+//     queried_at
+//     is_deleted
+//     deleted_at
+// 
+// 问题浏览关系表：
+//     question_id
+//     user_id
+//     upsert_at   # 最后一次创建时间或更新时间，代表最后一次浏览的时间
+//     upsert_cnt  # 创建或更新的次数，代表浏览次数

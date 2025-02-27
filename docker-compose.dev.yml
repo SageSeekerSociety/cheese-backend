@@ -1,0 +1,25 @@
+services:
+  backend:
+    image: ghcr.io/sageseekersociety/cheese-backend-dev:${BACKEND_DEV_VERSION:-dev}
+    build:
+      context: .
+      target: dev
+    env_file: .env
+    depends_on:
+      database:
+        condition: service_healthy
+      es:
+        condition: service_healthy
+    # this will show warning in vscode but it's working
+    # !reset means delete the ports defined in docker-compose.yml
+    # instead of merging
+    ports: !override
+      - "7777:3000"
+
+  frontend:
+    image: ghcr.io/sageseekersociety/cheese-frontend-dev:dev
+    env_file: .env
+    depends_on:
+      - backend
+    ports: !override
+      - "3000:3000"

@@ -1,0 +1,111 @@
+name: Build and Test Dev Docker
+
+on: 
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: SageSeekerSociety/cheese-backend-dev
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: dev
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
+      - name: Create env file
+        run: cp sample.env .env
+
+      - name: set backend image tag
+        run: echo "BACKEND_DEV_VERSION=${{ steps.meta.outputs.version }}" >> "$GITHUB_ENV"
+
+      - name: Start compose
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --no-build -d
+
+      # See: https://remarkablemark.org/blog/2022/05/12/github-actions-postgresql-increase-max-connections-and-shared-buffers/
+      # See: https://stackoverflow.com/questions/70673766/how-to-increase-max-connection-in-github-action-postgres
+      - name: Increase PostgreSQL max_connections
+        run: |
+          docker exec -i cheese-backend-database-1 bash << EOF
+            sed -i -e 's/max_connections = 100/max_connections = 1000/' /var/lib/postgresql/data/postgresql.conf
+            sed -i -e 's/shared_buffers = 128MB/shared_buffers = 2GB/' /var/lib/postgresql/data/postgresql.conf
+          EOF
+          docker restart --time 0 cheese-backend-database-1
+
+      - name: Check Schema up to Date
+        run: |
+          docker compose exec backend cp prisma/schema.prisma prisma/schema.prisma.origin
+          docker compose exec backend pnpm build-prisma
+          docker compose exec backend diff prisma/schema.prisma prisma/schema.prisma.origin
+
+      - name: Deploy migrations to Database
+        run: docker compose exec backend pnpm prisma migrate deploy
+
+      - name: Check Prisma Structures Sync With Database
+        run: |
+          docker compose exec backend pnpm prisma migrate diff \
+          --from-schema-datasource prisma/schema.prisma \
+          --to-schema-datamodel prisma/schema.prisma \
+          --exit-code
+
+      - name: Try to Start Application
+        run: |
+          docker compose exec backend bash -c "
+          pnpm start | tee output &
+          while true; do
+              sleep 1
+              if grep -q \"Nest application successfully started\" output; then
+                  echo \"Detected 'Nest application successfully started'. Stopping pnpm...\"
+                  pid=$(netstat -nlp | grep 3000 | awk '{print $7}' | awk -F'/' '{print $1}')
+                  kill $pid
+                  break
+              fi
+              if grep -q \"Command failed\" output; then
+                  echo \"Nest application failed to start.\"
+                  exit -1
+              fi
+          done
+          "
+
+      - name: Run Test
+        run: docker compose exec backend pnpm run test:cov

@@ -1,0 +1,21 @@
+import { GroupProfile } from "../groups/groups"
+import { UserProfile } from "../users/users"
+
+enum AvatarType {
+  default
+  predefined
+  upload
+}
+
+model Avatar {
+  id           Int            @id @default(autoincrement())
+  url          String         @db.VarChar
+  name         String         @db.VarChar
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  avatarType   AvatarType     @map("avatar_type")
+  usageCount   Int            @default(0) @map("usage_count")
+  GroupProfile GroupProfile[]
+  UserProfile  UserProfile[]
+
+  @@map("avatar")
+}

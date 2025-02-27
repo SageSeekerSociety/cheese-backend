@@ -1,0 +1,18 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testMatch": ["**/*.e2e-spec.ts", "**/*.spec.ts"],
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "collectCoverageFrom": [
+    "src/*/**/*.ts",
+    "!src/*/**/*.dto.ts",
+    "!src/*/**/*.es-doc.ts",
+    "!src/*/**/*.enum.ts",
+    "!src/common/config/configuration.ts",
+    "!src/auth/definitions.ts"
+  ],
+  "testTimeout": 60000
+}

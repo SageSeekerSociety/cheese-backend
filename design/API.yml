@@ -1,0 +1,4089 @@
+openapi: "3.0.2"
+info:
+  title: Cheese Community API
+  version: "1.0"
+servers:
+  - url: http://localhost:7777/api/{version}
+    description: Local server
+    variables:
+      version:
+        default: v1
+components:
+  parameters:
+    questionId:
+      name: questionId
+      in: path
+      description: 问题 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    userId:
+      name: userId
+      in: path
+      description: 用户 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    groupId:
+      name: groupId
+      in: path
+      description: 圈子 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    answerId:
+      name: answerId
+      in: path
+      description: 回答 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    insightId:
+      name: insightId
+      in: path
+      description: 灵感 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    targetId:
+      name: targetId
+      in: path
+      description: 圈子目标 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    materialId:
+      name: materialId
+      in: path
+      description: 资料 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    materialBundleId:
+      name: materialBundleId
+      in: path
+      description: 资料包 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    commentId:
+      name: commentId
+      in: path
+      description: 评论 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    commentableId:
+      name: commentableId
+      in: path
+      description: 评论对象 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
+    commentableType:
+      name: commentableType
+      in: path
+      description: 评论对象类型
+      required: true
+      schema:
+        type: string
+        enum:
+          - ANSWER
+          - COMMENT
+          - INSIGHT
+          - QUESTION
+          - MATERIAL_BUNDLE
+    page_start:
+      name: page_start
+      in: query
+      description: 该页第一个 item 的 ID，留空即为从头开始
+      schema:
+        type: integer
+        format: int64
+    page_size:
+      name: page_size
+      in: query
+      description: 每页 item 数量
+      schema:
+        type: integer
+        format: int64
+        default: 20
+
+  securitySchemes:
+    bearerAuth:
+      description: The access token is used in this way.
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    bearerAuth2:
+      type: apiKey
+      description: The refresh token is used in this way.
+      name: REFRESH_TOKEN
+      in: cookie
+  schemas:
+    AttitudeType:
+      type: string
+      description: 态度类型，UNDEFINED表示未操作
+      enum:
+        - POSITIVE
+        - NEGATIVE
+        - UNDEFINED
+
+    AttitudeStats:
+      type: object
+      properties:
+        positive_count:
+          type: integer
+          description: 正面表态数量
+          format: int64
+        negative_count:
+          type: integer
+          description: 负面表态数量
+          format: int64
+        difference:
+          type: integer
+          description: 正面表态数量减去负面表态数量
+          format: int64
+        user_attitude:
+          allOf:
+            - $ref: "#/components/schemas/AttitudeType"
+            - description: 当前登录用户的态度
+
+    CommonResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+          default: 0
+          description: 错误码，0表示成功，其他表示失败
+        message:
+          type: string
+          default: ""
+          description: 错误信息，成功时为空字符串
+      required:
+        - code
+        - message
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 用户 ID
+          minimum: 1
+        username:
+          type: string
+          description: 用户名
+          example: "cheese"
+        nickname:
+          type: string
+          description: 昵称
+          example: "芝士"
+        avatarId:
+          type: integer
+          description: 头像 id
+        intro:
+          type: string
+          description: 个人简介
+          default: "This user has not set an introduction yet."
+        follow_count:
+          type: integer
+          format: int64
+          description: 关注用户的数量
+          minimum: 0
+          example: 114
+        fans_count:
+          type: integer
+          format: int64
+          description: 粉丝数量
+          minimum: 0
+          example: 514
+        question_count:
+          type: integer
+          format: int64
+          description: 提问数量
+          minimum: 0
+          example: 1919
+        answer_count:
+          type: integer
+          format: int64
+          description: 回答数量
+          minimum: 0
+          example: 810
+        is_follow:
+          type: boolean
+          description: 当前登录用户是否关注该用户
+      required:
+        - id
+        - username
+        - nickname
+        - avatarId
+        - intro
+        - follow_count
+        - fans_count
+        - question_count
+        - answer_count
+    Page:
+      type: object
+      description: 分页信息
+      properties:
+        page_start:
+          type: integer
+          format: int64
+          description: 该页第一个 item 的 ID
+        page_size:
+          type: integer
+          format: int64
+          description: 每页 item 数量
+        has_prev:
+          type: boolean
+          description: 是否有上一页
+        prev_start:
+          type: integer
+          format: int64
+          description: 上一页第一个 item 的 ID
+        has_more:
+          type: boolean
+          description: 是否有下一页
+        next_start:
+          type: integer
+          format: int64
+          description: 下一页第一个 item 的 ID
+    Topic:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+      required:
+        - id
+        - name
+    Question:
+      type: object
+      description: 问题详情
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 问题 ID
+        title:
+          type: string
+          description: 问题标题
+        content:
+          type: string
+          description: 问题详情
+        attachments:
+          type: array
+          description: 详情中出现的所有附件
+          items:
+            $ref: "#/components/schemas/Attachment"
+        author:
+          $ref: "#/components/schemas/User"
+        type:
+          type: integer
+          description: 问题类型
+        topics:
+          type: array
+          items:
+            $ref: "#/components/schemas/Topic"
+        created_at:
+          type: integer
+          format: int64
+          description: 创建时间（时间戳）
+        updated_at:
+          type: integer
+          format: int64
+          description: 最后修改时间（时间戳）
+        attitudes:
+          $ref: "#/components/schemas/AttitudeStats"
+        is_follow:
+          type: boolean
+          description: 是否关注问题
+        my_answer_id:
+          type: integer
+          format: int64
+          nullable: true
+          description: 当前登录用户的回答 ID
+        answer_count:
+          type: integer
+          description: 回答数量
+        comment_count:
+          type: integer
+          description: 评论数量
+        follow_count:
+          type: integer
+          description: 关注数量
+        view_count:
+          type: integer
+          description: 浏览数量
+        bounty:
+          type: integer
+          format: int64
+          minimum: 0
+          maximum: 20
+          description: 悬赏数量
+        bounty_start_at:
+          type: integer
+          format: int64
+          description: 悬赏开始时间
+        accepted_answer:
+          $ref: "#/components/schemas/Answer"
+          nullable: true
+        group:
+          $ref: "#/components/schemas/Group"
+          nullable: true
+    QuestionInvitation:
+      type: object
+      description: 问题邀请
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 邀请 ID
+        question_id:
+          type: integer
+          format: int64
+          description: 问题 ID
+        user:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          format: int64
+          description: 创建时间（时间戳）
+        updated_at:
+          type: integer
+          format: int64
+          description: 最后修改时间（时间戳）
+        is_answered:
+          type: boolean
+          description: 是否已回答
+      required:
+        - id
+        - title
+        - content
+        - author
+        - type
+        - topics
+        - created_at
+        - updated_at
+        - attitudes
+        - is_follow
+        - is_like
+        - answer_count
+        - comment_count
+        - follow_count
+        - like_count
+        - view_count
+        - group
+    Answer:
+      type: object
+      description: 回答详情
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 回答 ID
+        question_id:
+          type: integer
+          format: int64
+          description: 回答所属的问题 ID
+        content:
+          type: string
+          description: 回答内容
+        attachments:
+          type: array
+          description: 内容中出现的所有附件
+          items:
+            $ref: "#/components/schemas/Attachment"
+        author:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          format: int64
+          description: 创建时间（时间戳）
+        updated_at:
+          type: integer
+          format: int64
+          description: 最后修改时间（时间戳）
+        attitudes:
+          $ref: "#/components/schemas/AttitudeStats"
+        is_favorite:
+          type: boolean
+          description: 是否收藏回答
+        comment_count:
+          type: integer
+          description: 评论数量
+        favorite_count:
+          type: integer
+          description: 收藏数量
+        view_count:
+          type: integer
+          description: 浏览数量
+        group:
+          $ref: "#/components/schemas/Group"
+    Comment:
+      type: object
+      description: 评论详情
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 评论 ID
+        commentable_id:
+          type: integer
+          format: int64
+          description: 评论对象 ID
+        commentable_type:
+          type: string
+          description: 评论对象，大写
+          example: ANSWER
+        content:
+          type: string
+          minLength: 1
+          description: 评论内容
+        user:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          format: int64
+          description: 创建时间（时间戳）
+        attitudes:
+          $ref: "#/components/schemas/AttitudeStats"
+      required:
+        - id
+        - commentable_id
+        - commentable_type
+        - content
+        - user
+        - created_at
+        - agree_type
+        - agree_count
+    Group:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        intro:
+          type: string
+          default: ""
+        avatarId:
+          type: integer
+          format: int64
+        owner:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          format: int64
+        updated_at:
+          type: integer
+          format: int64
+        member_count:
+          type: integer
+          format: int64
+        question_count:
+          type: integer
+          format: int64
+        answer_count:
+          type: integer
+          format: int64
+        is_member:
+          type: boolean
+        is_owner:
+          type: boolean
+      required:
+        - id
+        - name
+        - intro
+        - avatarId
+    GroupTarget:
+      type: object
+      description: 小组目标
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        intro:
+          type: string
+          default: ""
+        created_at:
+          type: integer
+          format: int64
+        start_date:
+          type: integer
+          format: int64
+        end_date:
+          type: integer
+          format: int64
+        attendance:
+          type: object
+          description: 小组目标的打卡信息
+          properties:
+            frequency:
+              type: string
+              description: 打卡频率
+              enum:
+                - daily
+                - weekly
+                - monthly
+      required:
+        - id
+        - name
+        - intro
+    Insight:
+      type: object
+      description: 灵感
+      properties:
+        id:
+          type: integer
+          description: ID
+          format: int64
+        content:
+          type: string
+          description: 内容
+        author:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          description: 创建时间
+          format: int64
+        updated_at:
+          type: integer
+          description: 最后更新时间
+          format: int64
+        attitudes:
+          $ref: "#/components/schemas/AttitudeStats"
+        comment_count:
+          type: integer
+          description: 评论数量
+        view_count:
+          type: integer
+          description: 浏览数量
+        medias:
+          type: array
+          description: 媒体文件，如果没有则为空数组（只支持图片和视频）
+          items:
+            $ref: "#/components/schemas/Attachment"
+        share_link:
+          type: object
+          description: 分享的链接，若无则为 undefined
+          properties:
+            title:
+              type: string
+              description: 页面标题
+            abstract:
+              type: string
+              description: 页面摘要
+            image:
+              type: string
+              description: 图片 URL
+            url:
+              type: string
+              description: 页面 URL
+      required:
+        - id
+        - content
+        - author
+        - created_at
+        - updated_at
+        - is_like
+        - like_count
+        - comment_count
+        - view_count
+        - medias
+    Attachment:
+      type: object
+      description: 附件
+      properties:
+        id:
+          type: integer
+          description: 附件 ID
+          format: int64
+        type:
+          type: string
+          description: 类型
+          enum:
+            - image
+            - video
+            - audio
+            - file
+        url:
+          type: string
+          description: 访问 URL
+        meta:
+          oneOf:
+            - $ref: "#/components/schemas/ImageMeta"
+            - $ref: "#/components/schemas/VideoMeta"
+            - $ref: "#/components/schemas/AudioMeta"
+            - $ref: "#/components/schemas/FileMeta"
+    ImageMeta:
+      allOf:
+        - $ref: "#/components/schemas/FileMeta"
+        - type: object
+          description: 图片元数据
+          properties:
+            height:
+              type: integer
+              description: 高度
+            width:
+              type: integer
+              description: 宽度
+            thumbnail:
+              type: string
+              description: 缩略图 URL
+    VideoMeta:
+      allOf:
+        - $ref: "#/components/schemas/FileMeta"
+        - type: object
+          description: 视频元数据
+          properties:
+            duration:
+              type: integer
+              description: 时长
+            height:
+              type: integer
+              description: 高度
+            width:
+              type: integer
+              description: 宽度
+            thumbnail:
+              type: string
+              description: 缩略图 URL
+    AudioMeta:
+      allOf:
+        - $ref: "#/components/schemas/FileMeta"
+        - type: object
+          description: 音频元数据
+          properties:
+            duration:
+              type: integer
+              description: 时长
+              format: int64
+    FileMeta:
+      type: object
+      description: 文件元数据
+      properties:
+        size:
+          type: integer
+          description: 文件大小
+          format: int64
+        name:
+          type: string
+          description: 文件名称
+        mime:
+          type: string
+          description: MIME 类型
+        hash:
+          type: string
+          description: 文件哈希
+    LinkMeta:
+      type: object
+      description: 链接元数据
+      properties:
+        title:
+          type: string
+          description: 页面标题
+        abstract:
+          type: string
+          description: 页面摘要
+        image:
+          type: string
+          description: 图片 URL
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+    LoginResponse:
+      allOf:
+        - $ref: "#/components/schemas/CommonResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                accessToken:
+                  type: string
+                user:
+                  $ref: "#/components/schemas/User"
+                requires2fa:
+                  type: boolean
+                  description: 是否需要进行 2FA 验证
+                tempToken:
+                  type: string
+                  description: 2FA 验证临时令牌（仅在 requires2fa 为 true 时返回）
+              required:
+                - accessToken
+                - user
+                - requires2fa
+          required:
+            - data
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        nickname:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+        emailCode:
+          type: string
+      required:
+        - username
+        - nickname
+        - password
+        - email
+        - emailCode
+    RegisterResponse:
+      allOf:
+        - $ref: "#/components/schemas/CommonResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                accessToken:
+                  type: string
+                user:
+                  $ref: "#/components/schemas/User"
+              required:
+                - accessToken
+                - user
+          required:
+            - data
+    Material:
+      type: object
+      description: 用户上传的资料（图片、视频、音频、文件等）
+      properties:
+        id:
+          type: integer
+          description: 资料 ID
+          format: int64
+        type:
+          type: string
+          description: 资料类型
+          enum:
+            - image
+            - video
+            - audio
+            - file
+        uploader:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          description: 创建时间
+          format: int64
+        expires:
+          type: integer
+          description: 过期时间，永不过期则为 undefined
+          format: int64
+          nullable: true
+        download_count:
+          type: integer
+          description: 下载数
+          format: int64
+        url:
+          type: string
+          description: 资料下载 URL
+        meta:
+          oneOf:
+            - $ref: "#/components/schemas/ImageMeta"
+            - $ref: "#/components/schemas/VideoMeta"
+            - $ref: "#/components/schemas/AudioMeta"
+            - $ref: "#/components/schemas/FileMeta"
+      required:
+        - id
+        - type
+        - uploader
+        - created_at
+        - download_count
+        - url
+        - meta
+    MaterialBundle:
+      type: object
+      description: 用户分享的资料包
+      properties:
+        id:
+          type: integer
+          description: 资料包 ID
+          format: int64
+        title:
+          type: string
+          description: 资料包标题
+        content:
+          type: string
+          description: 资料包描述
+        creator:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          description: 创建时间
+          format: int64
+        updated_at:
+          type: integer
+          description: 最后更新时间
+          format: int64
+        rating:
+          type: number
+          description: 评分
+          format: float
+          example: 4.5
+          minimum: 1
+          maximum: 5
+        rating_count:
+          type: integer
+          description: 评分人数
+          format: int64
+        my_rating:
+          type: number
+          description: 当前登录用户的评分，未评分则为 undefined
+          format: float
+          example: 4.5
+          minimum: 1
+          maximum: 5
+          nullable: true
+        comments_count:
+          type: integer
+          description: 评论数
+          format: int64
+        materials:
+          type: array
+          description: 资料列表
+          items:
+            $ref: "#/components/schemas/Material"
+      required:
+        - id
+        - type
+        - title
+        - content
+        - uploader
+        - created_at
+        - updated_at
+        - rating
+        - rating_count
+        - download_count
+        - comments_count
+        - url
+        - meta
+
+    PasskeyChallengeResponse:
+      type: object
+      description: Passkey 登录挑战响应
+      properties:
+        challenge:
+          type: string
+          description: 随机挑战字符串
+        timeout:
+          type: integer
+          description: 挑战超时时间，单位毫秒
+        rpId:
+          type: string
+          description: 依赖方标识符
+        allowCredentials:
+          type: array
+          description: 允许使用的凭证ID列表
+          items:
+            type: string
+
+    PasskeyVerificationRequest:
+      type: object
+      description: Passkey 登录验证请求
+      properties:
+        credentialId:
+          type: string
+          description: 凭证ID
+        clientDataJSON:
+          type: string
+          description: 客户端数据（Base64编码）
+        authenticatorData:
+          type: string
+          description: 认证器数据（Base64编码）
+        signature:
+          type: string
+          description: 签名（Base64编码）
+        userHandle:
+          type: string
+          description: 用户标识（可选）
+
+    PasskeyVerificationResponse:
+      allOf:
+        - $ref: "#/components/schemas/CommonResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                accessToken:
+                  type: string
+                user:
+                  $ref: "#/components/schemas/User"
+                requires2fa:
+                  type: boolean
+                  description: 是否需要进行 2FA 验证
+                tempToken:
+                  type: string
+                  description: 2FA 验证临时令牌（仅在 requires2fa 为 true 时返回）
+              required:
+                - accessToken
+                - user
+                - requires2fa
+          required:
+            - data
+
+    PasskeyCredential:
+      type: object
+      description: 用户Passkey凭证信息
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 凭证记录ID
+        credentialId:
+          type: string
+          description: Passkey凭证ID
+        publicKey:
+          type: string
+          description: 公钥
+        transports:
+          type: array
+          description: 支持的传输方式
+          items:
+            type: string
+        created_at:
+          type: integer
+          format: int64
+          description: 注册时间（时间戳）
+
+    PasskeyCredentialRegistrationRequest:
+      type: object
+      description: 注册Passkey凭证请求
+      properties:
+        credentialId:
+          type: string
+          description: 凭证ID
+        publicKey:
+          type: string
+          description: 公钥
+        transports:
+          type: array
+          description: 支持的传输方式
+          items:
+            type: string
+      required:
+        - credentialId
+        - publicKey
+
+    TOTPSetupResponse:
+      type: object
+      description: TOTP 2FA 设置响应
+      properties:
+        secret:
+          type: string
+          description: TOTP 密钥（仅在初始设置时返回）
+        otpauth_url:
+          type: string
+          description: TOTP 二维码 URL（仅在初始设置时返回）
+        backup_codes:
+          type: array
+          description: 备份代码列表（仅在初始设置或重新生成时返回）
+          items:
+            type: string
+
+paths:
+  /users:
+    post:
+      summary: 用户注册
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered successfully
+          headers:
+            Set-Cookie:
+              description: "refresh token"
+              schema:
+                type: string
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth/; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+  /users/auth/login:
+    post:
+      summary: 用户登录
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: "refresh token"
+              schema:
+                type: string
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+  /users/auth/refresh-token:
+    post:
+      summary: 用户刷新 token
+      operationId: refresh-access-token
+      security:
+        - REFRESH_TOKEN: []
+      responses:
+        "200":
+          description: OK
+          headers:
+            Set-Cookie:
+              description: "refresh token"
+              schema:
+                type: string
+                example: "RefreshToken=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          accessToken:
+                            type: string
+                        required:
+                          - accessToken
+                    required:
+                      - data
+  /users/auth/logout:
+    post:
+      summary: 用户退出登录
+      operationId: logout
+      security:
+        - REFRESH_TOKEN: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+
+  /users/verify/email:
+    post:
+      summary: 发送邮箱验证码
+      operationId: verifyEmail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+              required:
+                - email
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+  /users/recover/password/request:
+    post:
+      summary: 重置密码请求
+      operationId: recoverPasswordRequest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+              required:
+                - email
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+  /users/recover/password/verify:
+    post:
+      summary: 验证 Token 并重置密码
+      operationId: recoverPasswordVerify
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                new_password:
+                  type: string
+              required:
+                - token
+                - new_password
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+  /users/{userId}:
+    get:
+      summary: 获取用户信息
+      operationId: getUserInfo
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
+                    required:
+                      - data
+    put:
+      summary: 更新用户信息
+      operationId: updateUserInfo
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+                intro:
+                  type: string
+                avatarId:
+                  type: integer
+                  format: int64
+              required:
+                - nickname
+                - intro
+                - avatarId
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+  /users/{userId}/questions:
+    get:
+      summary: 获取用户提问列表
+      operationId: getUserQuestions
+      parameters:
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+  /users/{userId}/answers:
+    get:
+      summary: 获取用户回答列表
+      operationId: getUserAnswers
+      parameters:
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          answers:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Answer"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+  /users/{userId}/followers:
+    get:
+      summary: 获取用户粉丝列表
+      operationId: getUserFollowers
+      parameters:
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 关注用户
+      operationId: followUser
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          follow_count:
+                            type: integer
+                            description: 新的关注者数量
+                        required:
+                          - follow_count
+                    required:
+                      - data
+    delete:
+      summary: 取消关注用户
+      operationId: unfollowUser
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          follow_count:
+                            type: integer
+                            description: 新的关注者数量
+                        required:
+                          - follow_count
+                    required:
+                      - data
+  /users/{userId}/follow/questions:
+    get:
+      summary: 获取用户关注的问题列表
+      operationId: getUserFollowQuestions
+      parameters:
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+  /users/{userId}/follow/users:
+    get:
+      summary: 获取用户关注的用户列表
+      operationId: getUserFollowUsers
+      parameters:
+        - $ref: "#/components/parameters/userId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+  /questions:
+    get:
+      summary: 获取问题列表
+      operationId: getQuestions
+      parameters:
+        - name: q
+          in: query
+          description: 搜索关键词
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 提问
+      operationId: askQuestion
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                type:
+                  type: integer
+                  description: 问题类型
+                topics:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+                group_id:
+                  type: integer
+                  format: int64
+                  description: 所属小组 ID，留空表示不属于任何小组
+                bounty:
+                  type: integer
+                  format: int64
+                  description: 悬赏金额，0 表示不设置悬赏
+                  default: 0
+                  maximum: 20
+              required:
+                - title
+                - content
+                - type
+                - topics
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /questions/{questionId}:
+    get:
+      summary: 获取问题详情
+      operationId: getQuestionDetail
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          question:
+                            $ref: "#/components/schemas/Question"
+                    required:
+                      - data
+    put:
+      summary: 更新问题
+      operationId: updateQuestion
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                type:
+                  type: integer
+                  description: 问题类型
+                topics:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+              required:
+                - title
+                - content
+                - type
+                - topics
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除问题
+      operationId: deleteQuestion
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /questions/{questionId}/followers:
+    get:
+      summary: 获取问题关注者列表
+      operationId: getQuestionFollowers
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    put:
+      summary: 关注问题
+      operationId: followQuestion
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          follow_count:
+                            type: integer
+                            description: 新的关注者数量
+                        required:
+                          - follow_count
+                    required:
+                      - data
+    delete:
+      summary: 取消关注问题
+      operationId: unfollowQuestion
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          follow_count:
+                            type: integer
+                            description: 新的关注者数量
+                        required:
+                          - follow_count
+                    required:
+                      - data
+  /questions/{questionId}/attitudes:
+    post:
+      summary: 对问题表态
+      operationId: attitudeQuestion
+      parameters:
+        - name: questionId
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attitude_type:
+                  $ref: "#/components/schemas/AttitudeType"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          attitudes:
+                            $ref: "#/components/schemas/AttitudeStats"
+                        required:
+                          - attitudes
+                    required:
+                      - data
+  /questions/{id}/bounty:
+    put:
+      summary: 设置悬赏
+      operationId: setBounty
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 20
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /questions/{id}/invitations:
+    get:
+      summary: 获取该问题下被邀请回答的用户
+      operationId: getQuestionInvitations
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_start
+          in: query
+          description: 该页第一个用户的 ID，留空即为从头开始
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页用户数量
+          schema:
+            type: integer
+            format: int64
+            default: 20
+        - name: sort
+          in: query
+          description: 排序方式字符串，例如 "+created_at" 表示按创建时间升序，"-created_at" 表示按创建时间降序，使用逗号来分隔先后多个排序字段
+          schema:
+            type: string
+            example: "+created_at"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitations:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/QuestionInvitation"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 邀请用户回答问题
+      operationId: inviteUserAnswerQuestion
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                  format: int64
+              required:
+                - user_id
+      responses:
+        "201":
+          description: Successfully invited
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitation_id:
+                            type: integer
+                            description: 邀请 ID（如果邀请成功）
+                            format: int64
+                        required:
+                          - invitation_id
+                    required:
+                      - data
+  /questions/{id}/invitations/recommendations:
+    get:
+      summary: 获取推荐邀请用户列表
+      operationId: getQuestionInvitationRecommendations
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page_size
+          in: query
+          description: 每页用户数量
+          schema:
+            type: integer
+            format: int64
+            default: 5
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                        required:
+                          - users
+                    required:
+                      - data
+  /questions/{id}/invitations/{invitation_id}:
+    get:
+      summary: 获取邀请详情
+      operationId: getInvitationDetail
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: invitation_id
+          in: path
+          description: 邀请 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitation:
+                            $ref: "#/components/schemas/QuestionInvitation"
+                    required:
+                      - data
+    delete:
+      summary: 撤销邀请
+      operationId: cancelInvitation
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: invitation_id
+          in: path
+          description: 邀请 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /questions/{id}/answers:
+    get:
+      summary: 获取问题回答列表
+      operationId: getQuestionAnswers
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          answers:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Answer"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 回答问题
+      operationId: answerQuestion
+      parameters:
+        - name: id
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+                - content
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                        required:
+                          - id
+                    required:
+                      - data
+  /questions/{questionId}/answers/{answerId}:
+    get:
+      summary: 获取回答详情
+      operationId: getAnswerDetail
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          question:
+                            $ref: "#/components/schemas/Question"
+                          answer:
+                            $ref: "#/components/schemas/Answer"
+                    required:
+                      - data
+    put:
+      summary: 更新回答
+      operationId: updateAnswer
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+                - content
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除回答
+      operationId: deleteAnswer
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+  /questions/{questionId}/answers/{answerId}/attitudes:
+    post:
+      summary: 对回答表态
+      operationId: attitudeAnswer
+      parameters:
+        - name: questionId
+          in: path
+          description: 问题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: answerId
+          in: path
+          description: 回答 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attitude_type:
+                  $ref: "#/components/schemas/AttitudeType"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          attitudes:
+                            $ref: "#/components/schemas/AttitudeStats"
+                        required:
+                          - attitudes
+                    required:
+                      - data
+  /questions/{questionId}/answers/{answerId}/favorite:
+    put:
+      summary: 收藏回答
+      operationId: favoriteAnswer
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 取消收藏回答
+      operationId: unfavoriteAnswer
+      parameters:
+        - $ref: "#/components/parameters/questionId"
+        - $ref: "#/components/parameters/answerId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /comments/{commentableType}/{commentableId}:
+    get:
+      summary: 获取对象评论列表
+      operationId: getComments
+      parameters:
+        - $ref: "#/components/parameters/commentableId"
+        - $ref: "#/components/parameters/commentableType"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          comments:
+                            type: array
+                            items:
+                              type: object
+                              allOf:
+                                - $ref: "#/components/schemas/Comment"
+                          page:
+                            $ref: "#/components/schemas/Page"
+    post:
+      summary: 创建评论
+      operationId: createComment
+      parameters:
+        - $ref: "#/components/parameters/commentableId"
+        - $ref: "#/components/parameters/commentableType"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+                - content
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                        required:
+                          - id
+                required:
+                  - data
+  /comments/{commentId}:
+    get:
+      summary: 获取评论详情
+      operationId: getCommentDetail
+      parameters:
+        - $ref: "#/components/parameters/commentId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          comment:
+                            $ref: "#/components/schemas/Comment"
+                    required:
+                      - data
+    patch:
+      summary: 更新评论
+      operationId: updateComment
+      parameters:
+        - $ref: "#/components/parameters/commentId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  $ref: "#/components/schemas/Comment/properties/content"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除评论
+      operationId: deleteComment
+      parameters:
+        - $ref: "#/components/parameters/commentId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /comments/{comment_id}/attitudes:
+    post:
+      summary: 对评论表态
+      operationId: attitudeComment
+      parameters:
+        - $ref: "#/components/parameters/commentId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attitude_type:
+                  $ref: "#/components/schemas/AttitudeType"
+              required:
+                - attitude_type
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          attitudes:
+                            $ref: "#/components/schemas/AttitudeStats"
+                        required:
+                          - attitudes
+                    required:
+                      - data
+  /topics:
+    get:
+      summary: 获取话题列表
+      operationId: getTopics
+      parameters:
+        - name: q
+          in: query
+          description: 搜索关键词
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          topics:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Topic"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 创建话题
+      operationId: createTopic
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+              required:
+                - name
+      responses:
+        "201":
+          description: Topic created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /topics/{id}:
+    get:
+      summary: 获取话题详情
+      operationId: getTopicDetail
+      parameters:
+        - name: id
+          in: path
+          description: 话题 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          topic:
+                            $ref: "#/components/schemas/Topic"
+                    required:
+                      - data
+  /groups:
+    get:
+      summary: 获取圈子列表
+      operationId: getGroups
+      parameters:
+        - name: q
+          in: query
+          description: 搜索关键词，留空即为获取全部圈子
+          schema:
+            type: string
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum:
+              - recommend
+              - hot
+              - new
+            default: recommend
+        - name: joined
+          in: query
+          description: 是否为我参与的小组
+          schema:
+            type: boolean
+        - name: managed
+          in: query
+          description: 是否为我管理的小组
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          groups:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Group"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 创建圈子
+      operationId: createGroup
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                intro:
+                  type: string
+                avatarId:
+                  type: integer
+              required:
+                - name
+                - intro
+                - avatarId
+      responses:
+        "201":
+          description: Group created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /groups/{groupId}:
+    get:
+      summary: 获取圈子详情
+      operationId: getGroupDetail
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          group:
+                            $ref: "#/components/schemas/Group"
+                    required:
+                      - data
+    put:
+      summary: 更新圈子
+      operationId: updateGroup
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                intro:
+                  type: string
+                avatarId:
+                  type: integer
+                  format: int64
+                cover:
+                  type: string
+              required:
+                - name
+                - intro
+                - avatarId
+                - cover
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除圈子
+      operationId: deleteGroup
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /groups/{groupId}/members:
+    get:
+      summary: 获取圈子成员列表
+      operationId: getGroupMembers
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          members:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 加入圈子
+      operationId: joinGroup
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                intro:
+                  type: string
+              required:
+                - intro
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          member_count:
+                            type: integer
+                            description: 新的成员数量
+                          is_member:
+                            type: boolean
+                            description: 是否已加入圈子
+                          is_waiting:
+                            type: boolean
+                            description: 是否正在等待审核
+                    required:
+                      - data
+    delete:
+      summary: 退出圈子
+      operationId: quitGroup
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          member_count:
+                            type: integer
+                            description: 新的成员数量
+                    required:
+                      - data
+  /groups/{groupId}/questions:
+    get:
+      summary: 获取圈子问题列表
+      operationId: getGroupQuestions
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+  /groups/{groupId}/targets:
+    get:
+      summary: 获取圈子目标列表
+      operationId: getGroupTargets
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum:
+              - recommend
+              - hot
+              - new
+            default: recommend
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          targets:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/GroupTarget"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 创建圈子目标
+      operationId: createGroupTarget
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                intro:
+                  type: string
+                start_time:
+                  type: integer
+                  format: int64
+                end_time:
+                  type: integer
+                  format: int64
+                attendance:
+                  type: object
+                  description: 目标打卡设置
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - daily
+                        - weekly
+                        - monthly
+              required:
+                - name
+                - intro
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /groups/{groupId}/targets/{targetId}:
+    get:
+      summary: 获取圈子目标详情
+      operationId: getGroupTargetDetail
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    put:
+      summary: 更新圈子目标
+      operationId: updateGroupTarget
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                intro:
+                  type: string
+                start_time:
+                  type: integer
+                  format: int64
+                end_time:
+                  type: integer
+                  format: int64
+                attendance:
+                  type: object
+                  description: 目标打卡设置
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - daily
+                        - weekly
+                        - monthly
+              required:
+                - name
+                - intro
+                - start_time
+                - end_time
+                - attendance
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除圈子目标
+      operationId: deleteGroupTarget
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /groups/{groupId}/targets/{targetId}/attend:
+    post:
+      summary: 打卡
+      operationId: attendGroupTarget
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+  /feeds:
+    get:
+      summary: 获取动态列表
+      operationId: getFeedList
+      parameters:
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          feeds:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  description: 动态 ID
+                                from:
+                                  type: string
+                                  description: 动态来源
+                                  enum:
+                                    - follow_question
+                                    - follow_user
+                                    - follow_topic
+                                    - hot
+                                    - personalized
+                                type:
+                                  type: string
+                                  description: 动态类型
+                                  enum:
+                                    - question
+                                    - answer
+                                data:
+                                  type: object
+                                  description: 动态数据
+                                  oneOf:
+                                    - $ref: "#/components/schemas/Question"
+                                    - $ref: "#/components/schemas/Answer"
+                              required:
+                                - from
+                                - type
+                                - data
+                          page:
+                            type: object
+                            properties:
+                              page_size:
+                                type: integer
+                                format: int64
+                                description: 每页动态数量
+                              next_start:
+                                type: string
+                                description: 下一页第一条动态的 ID
+                              has_more:
+                                type: boolean
+                                description: 是否还有更多动态
+                    required:
+                      - data
+  /hot:
+    get:
+      summary: 获取热门问题列表
+      operationId: getHotQuestionList
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          questions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Question"
+                    required:
+                      - data
+  /search:
+    get:
+      summary: 搜索
+      operationId: search
+      parameters:
+        - name: q
+          in: query
+          description: 搜索关键词
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          description: 搜索类型
+          schema:
+            type: string
+            enum:
+              - question
+              - answer
+              - user
+              - topic
+            default: question
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          results:
+                            type: array
+                            items:
+                              oneOf:
+                                - $ref: "#/components/schemas/Question"
+                                - $ref: "#/components/schemas/Answer"
+                                - $ref: "#/components/schemas/User"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+  /images:
+    post:
+      summary: 上传图片
+      operationId: uploadImage
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    description: 图片 ID
+  /insights:
+    post:
+      summary: 创建灵感
+      operationId: createInsight
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+                  description: 纯文本内容
+                medias:
+                  type: array
+                  description: 媒体文件（图片或视频）列表
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        enum:
+                          - image
+                          - video
+                      id:
+                        type: number
+                        format: int64
+                attachment:
+                  oneOf:
+                    - type: object
+                      description: 附件文件
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - file
+                        id:
+                          type: number
+                          format: int64
+                    - type: object
+                      description: 附件链接
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - link
+                        url:
+                          type: string
+                          example: https://example.com
+              required:
+                - content
+      responses:
+        "201":
+          description: Insight created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                        required:
+                          - id
+                    required:
+                      - data
+  /insights/{insightId}:
+    get:
+      summary: 获取灵感详情
+      operationId: getInsightDetail
+      parameters:
+        - $ref: "#/components/parameters/insightId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          insight:
+                            $ref: "#/components/schemas/Insight"
+                    required:
+                      - data
+    put:
+      summary: 更新灵感
+      operationId: updateInsight
+      parameters:
+        - $ref: "#/components/parameters/insightId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+                - content
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除灵感
+      operationId: deleteInsight
+      parameters:
+        - $ref: "#/components/parameters/insightId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /insights/{insightId}/attitudes:
+    post:
+      summary: 对灵感表态
+      operationId: attitudeInsight
+      parameters:
+        - $ref: "#/components/parameters/insightId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                attitude_type:
+                  $ref: "#/components/schemas/AttitudeType"
+              required:
+                - attitude_type
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          attitudes:
+                            $ref: "#/components/schemas/AttitudeStats"
+                        required:
+                          - attitudes
+                    required:
+                      - data
+  /avatars:
+    get:
+      summary: Get available avatarIds
+      operationId: getAvailableAvatarIds
+      parameters:
+        - name: type
+          in: query
+          description: Avatar type
+          schema:
+            type: string
+            enum:
+              - predefined
+            default: predefined
+      responses:
+        "200":
+          description: Get available avatarIds successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarIds:
+                        type: array
+                        items:
+                          type: number
+                          format: int64
+                        description: Available avatarIds
+    post:
+      summary: Upload an avatar
+      operationId: uploadAvatar
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                avatar:
+                  type: string
+                  format: binary
+                  description: The avatar image to upload
+      responses:
+        "201":
+          description: Upload avatar successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: number
+                    description: Unique identifier for the uploaded avatar
+  /avatars/default:
+    get:
+      summary: Get default avatar
+      operationId: getDefaultAvata
+      responses:
+        "200":
+          description: Get default avatar successfully
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+  /avatars/{id}:
+    get:
+      summary: Get an avatar by id
+      operationId: getAvatar
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique identifier for the uploaded avatar
+          schema:
+            type: number
+            format: int64
+            minimum: 1
+      responses:
+        "200":
+          description: get avatar successfully
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+  /avatars/default/id:
+    get:
+      summary: Get default avatar id
+      operationId: getDefaultAvatarId
+      responses:
+        "200":
+          description: Get default avatarId successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarId:
+                        type: number
+                        description: Default avatarId
+  /avatars/predefined/id:
+    get:
+      summary: Get predefined avatarIds
+      operationId: getPreDefinedIds
+      responses:
+        "200":
+          description: Get  Pre Defined AvatarIds successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      avatarIds:
+                        type: array
+                        items:
+                          type: integer
+                          format: int64
+                          description: Predefined avatarIds
+  /attachments:
+    post:
+      summary: 上传附件
+      operationId: uploadAttachment
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - image
+                    - video
+                    - audio
+                    - file
+                  description: 附件类型
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Attachment uploaded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /attachments/{attachmentId}:
+    get:
+      summary: 获取附件详情
+      operationId: getAttachmentDetail
+      parameters:
+        - name: attachmentId
+          in: path
+          description: 附件 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          attachment:
+                            $ref: "#/components/schemas/Attachment"
+                    required:
+                      - data
+  /materials:
+    post:
+      summary: 上传资料
+      operationId: uploadMaterial
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Material uploaded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                            description: 资料 ID
+                    required:
+                      - data
+  /materials/{materialId}:
+    get:
+      summary: 获取资料详情
+      operationId: getMaterialDetail
+      parameters:
+        - $ref: "#/components/parameters/materialId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          material:
+                            $ref: "#/components/schemas/Material"
+                    required:
+                      - data
+    delete:
+      summary: 删除资料
+      operationId: deleteMaterial
+      parameters:
+        - $ref: "#/components/parameters/materialId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /material-bundles:
+    get:
+      summary: 获取资料包列表
+      operationId: getMaterialBundleList
+      parameters:
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+        - name: q
+          in: query
+          description: 搜索查询，支持 Search Syntax（如 "rating:>=4"），留空则为返回全部
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: 排序方式，留空则为默认（推荐）
+          schema:
+            type: string
+            enum:
+              - rating
+              - download
+              - newest
+            nullable: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          materials:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/MaterialBundle"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 创建资料包
+      operationId: createMaterialBundle
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: 资料包标题
+                content:
+                  type: string
+                  description: 资料包简介
+                materials:
+                  type: array
+                  description: 资料包包含的资料 ID 列表
+                  items:
+                    type: number
+                    format: int64
+              required:
+                - title
+                - content
+                - materials
+      responses:
+        "201":
+          description: MaterialBundle created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /material-bundles/{materialBundleId}:
+    get:
+      summary: 获取资料包详情
+      operationId: getMaterialBundleDetail
+      parameters:
+        - $ref: "#/components/parameters/materialBundleId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          materialBundle:
+                            $ref: "#/components/schemas/MaterialBundle"
+                    required:
+                      - data
+    patch:
+      summary: 更新资料包
+      operationId: updateMaterialBundle
+      parameters:
+        - $ref: "#/components/parameters/materialBundleId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: 资料包标题
+                content:
+                  type: string
+                  description: 资料包简介
+                materials:
+                  type: array
+                  description: 资料包包含的资料 ID 列表
+                  items:
+                    type: number
+                    format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 删除资料包
+      operationId: deleteMaterialBundle
+      parameters:
+        - $ref: "#/components/parameters/materialBundleId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+
+  /users/auth/passkey/challenge:
+    post:
+      summary: 获取Passkey登录挑战
+      operationId: getPasskeyChallenge
+      description: 用于发起Passkey登录挑战，无需用户名
+      responses:
+        "200":
+          description: Passkey登录挑战获取成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasskeyChallengeResponse"
+
+  /users/auth/passkey/verify:
+    post:
+      summary: 验证 Passkey 并登录
+      operationId: verifyPasskeyAuthentication
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                response:
+                  type: object
+                  description: WebAuthn 认证响应
+      responses:
+        "201":
+          description: 认证成功
+          headers:
+            Set-Cookie:
+              description: "refresh token"
+              schema:
+                type: string
+                example: "REFRESH_TOKEN=...; Secure; HttpOnly; SameSite=Strict; Path=/users/auth; Expires=Sat, 01 Jan 2025 00:00:00 GMT"
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
+                          accessToken:
+                            type: string
+                        required:
+                          - user
+                          - accessToken
+                    required:
+                      - data
+
+  /users/{userId}/passkeys:
+    get:
+      summary: 获取用户的 Passkey 列表
+      operationId: getUserPasskeys
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          passkeys:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                id:
+                                  type: string
+                                  description: Passkey 凭证 ID
+                                createdAt:
+                                  type: string
+                                  format: date-time
+                                  description: 创建时间
+                                deviceType:
+                                  type: string
+                                  description: 设备类型
+                                backedUp:
+                                  type: boolean
+                                  description: 是否已备份
+                        required:
+                          - passkeys
+                    required:
+                      - data
+    post:
+      summary: 验证并注册 Passkey
+      operationId: verifyPasskeyRegistration
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                response:
+                  type: object
+                  description: WebAuthn 注册响应
+      responses:
+        "201":
+          description: Passkey 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+
+  /users/{userId}/passkeys/options:
+    post:
+      summary: 获取 Passkey 注册选项
+      operationId: getPasskeyRegistrationOptions
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 生成注册选项成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          options:
+                            type: object
+                            description: WebAuthn 注册选项
+                    required:
+                      - data
+
+  /users/{userId}/passkeys/{credentialId}:
+    delete:
+      summary: 删除 Passkey
+      operationId: deletePasskey
+      parameters:
+        - $ref: "#/components/parameters/userId"
+        - name: credentialId
+          in: path
+          description: Passkey 凭证 ID
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+
+  /users/auth/passkey/options:
+    post:
+      summary: 获取 Passkey 认证选项
+      operationId: getPasskeyAuthenticationOptions
+      responses:
+        "200":
+          description: 生成认证选项成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          options:
+                            type: object
+                            description: WebAuthn 认证选项
+                    required:
+                      - data
+
+  /users/{userId}/2fa/enable:
+    post:
+      summary: 启用 2FA
+      description: |
+        两步流程:
+        1. 不带 code 参数请求，获取 TOTP secret 和二维码 URL
+        2. 用户扫描二维码后，提供 code 进行验证
+        注意: 需要 sudo 权限
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: TOTP 验证码，初始化时不需要提供
+      responses:
+        "200":
+          description: 初始化成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "TOTP secret generated successfully"
+                  data:
+                    type: object
+                    properties:
+                      secret:
+                        type: string
+                        description: TOTP 密钥
+                      otpauth_url:
+                        type: string
+                        description: 用于生成二维码的 URL
+                      backup_codes:
+                        type: array
+                        items:
+                          type: string
+                        description: 备份码列表(初始化时为空)
+        "201":
+          description: 启用成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "2FA enabled successfully"
+                  data:
+                    type: object
+                    properties:
+                      secret:
+                        type: string
+                        description: TOTP 密钥
+                      otpauth_url:
+                        type: string
+                        description: 用于生成二维码的 URL
+                      backup_codes:
+                        type: array
+                        items:
+                          type: string
+                        description: 备份码列表
+
+  /users/{userId}/2fa/disable:
+    post:
+      summary: 禁用 2FA
+      description: 需要 sudo 权限和当前有效的 TOTP 验证码
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: TOTP 验证码
+      responses:
+        "200":
+          description: 禁用成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "2FA disabled successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                        example: true
+
+  /users/{userId}/2fa/backup-codes:
+    post:
+      summary: 生成新的备份码
+      description: 需要 sudo 权限和当前有效的 TOTP 验证码
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: TOTP 验证码
+      responses:
+        "201":
+          description: 生成成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "New backup codes generated successfully"
+                  data:
+                    type: object
+                    properties:
+                      backup_codes:
+                        type: array
+                        items:
+                          type: string
+                        description: 新的备份码列表
+
+  /users/auth/verify-2fa:
+    post:
+      summary: 验证 2FA 并完成登录
+      description: 用于登录时的 2FA 验证
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                temp_token:
+                  type: string
+                  description: 临时 token
+                code:
+                  type: string
+                  description: TOTP 验证码
+      responses:
+        "201":
+          description: 验证成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 201
+                  message:
+                    type: string
+                    example: "Login successfully"
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      accessToken:
+                        type: string
+                        description: 访问令牌
+                      requires2FA:
+                        type: boolean
+                        example: false
+
+  /users/{userId}/2fa/status:
+    get:
+      summary: 获取 2FA 状态
+      description: 获取用户当前的 2FA 启用状态和 Passkey 状态
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "Get 2FA status successfully"
+                  data:
+                    type: object
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: 是否已启用 2FA
+                      has_passkey:
+                        type: boolean
+                        description: 是否已注册 Passkey
+
+  /users/{userId}/2fa/settings:
+    put:
+      summary: 更新 2FA 设置
+      description: 更新用户的 2FA 相关设置，如是否始终要求验证
+      parameters:
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                always_required:
+                  type: boolean
+                  description: 是否始终要求 2FA 验证
+      responses:
+        "200":
+          description: 设置更新成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  message:
+                    type: string
+                    example: "2FA settings updated successfully"
+                  data:
+                    type: object
+                    properties:
+                      success:
+                        type: boolean
+                      always_required:
+                        type: boolean

@@ -1,0 +1,98 @@
+{
+  "$ref": "#/definitions/TokenPayload",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Authorization": {
+      "additionalProperties": false,
+      "properties": {
+        "permissions": {
+          "items": {
+            "$ref": "#/definitions/Permission"
+          },
+          "type": "array"
+        },
+        "sudoUntil": {
+          "type": "number"
+        },
+        "userId": {
+          "type": "number"
+        },
+        "username": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "userId",
+        "permissions"
+      ],
+      "type": "object"
+    },
+    "AuthorizedAction": {
+      "type": "string"
+    },
+    "AuthorizedResource": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {},
+        "ownedByUser": {
+          "type": "number"
+        },
+        "resourceIds": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "types": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "Permission": {
+      "additionalProperties": false,
+      "properties": {
+        "authorizedActions": {
+          "items": {
+            "$ref": "#/definitions/AuthorizedAction"
+          },
+          "type": "array"
+        },
+        "authorizedResource": {
+          "$ref": "#/definitions/AuthorizedResource"
+        },
+        "customLogic": {
+          "type": "string"
+        },
+        "customLogicData": {}
+      },
+      "required": [
+        "authorizedResource"
+      ],
+      "type": "object"
+    },
+    "TokenPayload": {
+      "additionalProperties": false,
+      "properties": {
+        "authorization": {
+          "$ref": "#/definitions/Authorization"
+        },
+        "signedAt": {
+          "type": "number"
+        },
+        "validUntil": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "authorization",
+        "signedAt",
+        "validUntil"
+      ],
+      "type": "object"
+    }
+  }
+}
