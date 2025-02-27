@@ -39,7 +39,7 @@
     "@nestjs/mapped-types": "^2.0.6",
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/serve-static": "^4.0.2",
-    "@prisma/client": "5.20.0",
+    "@prisma/client": "6.4.1",
     "@simplewebauthn/server": "^13.1.1",
     "@types/md5": "^2.3.5",
     "ajv": "^8.17.1",
