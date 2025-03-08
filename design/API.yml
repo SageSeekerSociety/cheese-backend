@@ -34,6 +34,14 @@ components:
       schema:
         type: integer
         format: int64
+    invitationId:
+      name: invitationId
+      in: path
+      description: 邀请 ID
+      required: true
+      schema:
+        type: integer
+        format: int64
     answerId:
       name: answerId
       in: path
@@ -477,76 +485,332 @@ components:
         id:
           type: integer
           format: int64
+          description: 小组 ID
         name:
           type: string
+          description: 小组名称
         intro:
           type: string
-          default: ""
+          description: 小组简介
+        topics:
+          type: array
+          description: 小组话题
+          items:
+            $ref: "#/components/schemas/Topic"
         avatarId:
           type: integer
           format: int64
         owner:
-          $ref: "#/components/schemas/User"
+          $ref: "#/components/schemas/GroupMember"
         created_at:
           type: integer
           format: int64
+          description: 创建时间
         updated_at:
           type: integer
           format: int64
+          description: 最后更新时间
         member_count:
           type: integer
           format: int64
+          description: 成员数量
         question_count:
           type: integer
           format: int64
+          description: 问题数量
         answer_count:
           type: integer
           format: int64
+          description: 回答数量
         is_member:
           type: boolean
+          description: 当前用户是否为小组成员
         is_owner:
           type: boolean
+        role:
+          allOf:
+            - $ref: "#/components/schemas/GroupRoleType"
+            - description: 用户在小组中的角色
       required:
         - id
         - name
         - intro
         - avatarId
+        - owner
+        - created_at
+        - updated_at
+        - member_count
+        - question_count
+        - answer_count
+        - is_member
     GroupTarget:
       type: object
       description: 小组目标
       properties:
         id:
           type: integer
+          description: 目标 ID
           format: int64
         name:
           type: string
+          description: 目标名称
         intro:
           type: string
+          description: 目标简介
           default: ""
         created_at:
           type: integer
+          description: 创建时间
           format: int64
-        start_date:
+        start_time:
           type: integer
+          description: 开始时间
           format: int64
-        end_date:
+        is_timed:
+          type: boolean
+          description: 是否为限时目标
+          default: false
+        end_time:
           type: integer
+          description: 结束时间
           format: int64
-        attendance:
-          type: object
-          description: 小组目标的打卡信息
-          properties:
-            frequency:
-              type: string
-              description: 打卡频率
-              enum:
-                - daily
-                - weekly
-                - monthly
+        frequency:
+          type: string
+          description: 打卡频率
+          enum:
+            - once
+            - daily
+            - weekly
+            - monthly
+        is_material_required:
+          type: boolean
+          description: 是否需要提交材料
+          default: false
+        materials:
+          type: array
+          description: 打卡材料
+          items:
+            $ref: "#/components/schemas/GroupTargetMaterial"
       required:
         - id
         - name
         - intro
+        - created_at
+        - start_date
+        - is_timed
+        - frequency
+        - is_material_required
+    GroupTargetMaterial:
+      type: object
+      description: 小组目标打卡材料
+      properties:
+        type:
+          type: string
+          description: 类型
+          enum:
+            - text
+            - image
+            - video
+            - file
+        allow_multiple:
+          type: boolean
+          description: 是否允许多个材料
+          default: false
+        allow_file_type:
+          type: array
+          description: 若材料类型为 file，允许上传的文件类型（MIME）
+          items:
+            type: string
+        title:
+          type: string
+          description: 标题
+        description:
+          type: string
+          description: 描述
+        required:
+          type: boolean
+          description: 是否为必填项
+          default: false
+    GroupTargetMaterialSubmission:
+      type: object
+      description: 小组目标打卡材料提交
+      properties:
+        type:
+          type: string
+          description: 类型
+          enum:
+            - text
+            - image
+            - video
+            - file
+        content:
+          type: string
+          description: 内容
+        material_ids:
+          type: array
+          description: 如果材料类型为不为 text，所上传的材料 ID
+          items:
+            type: integer
+            format: int64
+    GroupTargetCheckIn:
+      type: object
+      description: 小组目标打卡
+      properties:
+        id:
+          type: integer
+          description: 打卡 ID
+          format: int64
+        member:
+          $ref: "#/components/schemas/GroupMember"
+        target:
+          $ref: "#/components/schemas/GroupTarget"
+        created_at:
+          type: integer
+          description: 打卡时间
+          format: int64
+        updated_at:
+          type: integer
+          description: 最后更新时间
+          format: int64
+        materials:
+          type: array
+          description: 打卡时提交的材料
+          items:
+            $ref: "#/components/schemas/GroupTargetMaterialSubmission"
+        approved:
+          type: boolean
+          description: 是否已通过审核
+          default: true
+    GroupRoleType:
+      type: string
+      description: 小组角色
+      enum:
+        - owner
+        - admin
+        - member
+    GroupMembership:
+      type: object
+      description: 小组成员关系
+      properties:
+        created_at:
+          type: integer
+          format: int64
+          description: 申请加入时间
+        from:
+          type: string
+          description: 来源
+          enum:
+            - application
+            - invitation
+        joined_at:
+          type: integer
+          format: int64
+          description: 正式加入时间
+        is_pending:
+          type: boolean
+          description: 是否为待审核状态
+      required:
+        - created_at
+        - from
+        - pending
+    GroupMember:
+      type: object
+      description: 小组成员信息
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        membership:
+          $ref: "#/components/schemas/GroupMembership"
+        role:
+          $ref: "#/components/schemas/GroupRoleType"
+        contributions:
+          type: object
+          description: 用户在小组的贡献
+          properties:
+            score:
+              type: integer
+              format: int64
+              description: 贡献值
+              minimum: 0
+            question_count:
+              type: integer
+              format: int64
+              description: 小组内提问数量
+              minimum: 0
+            answer_count:
+              type: integer
+              format: int64
+              description: 小组内回答数量
+              minimum: 0
+            check_in_count:
+              type: integer
+              format: int64
+              description: 小组内打卡次数
+              minimum: 0
+    GroupMemberInvitationStatus:
+      type: string
+      description: 小组成员邀请状态
+      enum:
+        - pending
+        - accepted
+        - rejected
+    GroupMemberInvitation:
+      type: object
+      description: 小组成员邀请
+      properties:
+        id:
+          type: integer
+          format: int64
+        group:
+          $ref: "#/components/schemas/Group"
+        inviter:
+          $ref: "#/components/schemas/User"
+        invitee:
+          $ref: "#/components/schemas/User"
+        created_at:
+          type: integer
+          format: int64
+          description: 邀请时间
+        status:
+          $ref: "#/components/schemas/GroupMemberInvitationStatus"
+    GroupSettings:
+      type: object
+      description: 小组设置
+      properties:
+        join_type:
+          type: string
+          description: 加入小组方式
+          enum:
+            - OPEN
+            - APPLICATION
+            - INVITATION_ONLY
+        join_questions:
+          type: array
+          description: 若加入方式为 application，需要回答的问题
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              content:
+                type: string
+              answers:
+                type: array
+                description: 问题的所有正确答案（符合任意一个即可直接通过该问题）
+                items:
+                  type: string
+              ignore_case:
+                type: boolean
+                description: 答案是否忽略大小写
+                default: true
+              is_open:
+                type: boolean
+                description: 是否为开放式问题（如果是，则无需answers字段，回答后需等待管理员审核）
+                default: false
+            required:
+              - title
+              - content
+              - is_open
     Insight:
       type: object
       description: 灵感
@@ -2448,7 +2712,14 @@ paths:
                           groups:
                             type: array
                             items:
-                              $ref: "#/components/schemas/Group"
+                              allOf:
+                                - $ref: "#/components/schemas/Group"
+                                - type: object
+                                  properties:
+                                    recent_hot_questions:
+                                      type: array
+                                      items:
+                                        $ref: "#/components/schemas/Question"
                           page:
                             $ref: "#/components/schemas/Page"
                     required:
@@ -2490,6 +2761,44 @@ paths:
                           id:
                             type: integer
                             format: int64
+                    required:
+                      - data
+  /groups/availablities:
+    get:
+      summary: 获取圈子名字是否可用
+      operationId: checkGroupNameAvailable
+      parameters:
+        - name: name
+          in: query
+          description: 要检查的圈子名字
+          required: true
+          schema:
+            type: string
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          available:
+                            type: boolean
+                            description: 圈子名字是否可用
+                          recommend_names:
+                            type: array
+                            description: 如果不可用，推荐的名字
+                            items:
+                              type: string
+                        required:
+                          - available
                     required:
                       - data
   /groups/{groupId}:
@@ -2550,7 +2859,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/CommonResponse"
     delete:
-      summary: 删除圈子
+      summary: 解散圈子
       operationId: deleteGroup
       parameters:
         - $ref: "#/components/parameters/groupId"
@@ -2567,6 +2876,19 @@ paths:
         - $ref: "#/components/parameters/groupId"
         - $ref: "#/components/parameters/page_start"
         - $ref: "#/components/parameters/page_size"
+        - name: filter
+          in: query
+          description: 过滤条件
+          schema:
+            type: string
+            enum:
+              - all
+              - admin
+              - member
+              - pending
+            default: all
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -2583,12 +2905,17 @@ paths:
                         properties:
                           members:
                             type: array
+                            description: 成员列表
                             items:
-                              $ref: "#/components/schemas/User"
+                              $ref: "#/components/schemas/GroupMember"
                           page:
                             $ref: "#/components/schemas/Page"
+                        required:
+                          - members
+                          - page
                     required:
                       - data
+  /groups/{groupId}/memberships:
     post:
       summary: 加入圈子
       operationId: joinGroup
@@ -2602,41 +2929,10 @@ paths:
             schema:
               type: object
               properties:
-                intro:
-                  type: string
-              required:
-                - intro
-      responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: "#/components/schemas/CommonResponse"
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          member_count:
-                            type: integer
-                            description: 新的成员数量
-                          is_member:
-                            type: boolean
-                            description: 是否已加入圈子
-                          is_waiting:
-                            type: boolean
-                            description: 是否正在等待审核
-                    required:
-                      - data
-    delete:
-      summary: 退出圈子
-      operationId: quitGroup
-      parameters:
-        - $ref: "#/components/parameters/groupId"
-      security:
-        - bearerAuth: []
+                answers:
+                  type: array
+                  items:
+                    type: string
       responses:
         "200":
           description: OK
@@ -2656,6 +2952,214 @@ paths:
                             description: 新的成员数量
                     required:
                       - data
+        "202":
+          description: 已提交申请，等待审核
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
+    delete:
+      summary: 退出圈子
+      operationId: quitGroup
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /groups/{groupId}/memberships/{userId}:
+    delete:
+      summary: 踢出圈子
+      operationId: kickoutGroup
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/userId"
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: No Content
+  /groups/{groupId}/invitations:
+    get:
+      summary: 获取圈子成员邀请列表
+      operationId: getGroupMemberInvitations
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitations:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/GroupMemberInvitation"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 邀请加入圈子
+      operationId: inviteJoinGroup
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                  format: int64
+                intro:
+                  type: string
+              required:
+                - user_id
+                - intro
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitation_id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /groups/{groupId}/invitations/{invitationId}:
+    put:
+      summary: 圈子管理员或被邀请者处理加入邀请
+      operationId: handleGroupMemberInvitation
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/invitationId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  description: 处理动作
+                  enum:
+                    - accept
+                    - reject
+              required:
+                - action
+      responses:
+        "200":
+          description: 处理成功，被邀请者成功加入或被拒绝加入
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          member_count:
+                            type: integer
+                            description: 处理完成后新的成员数量
+                            minimum: 0
+                        required:
+                          - member_count
+        "202":
+          description: 某一方已处理邀请（只有同意邀请才可能出现这个状态码），但仍需等待对方处理
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          invitee_status:
+                            $ref: "#/components/schemas/GroupMemberInvitationStatus"
+                          admin_status:
+                            $ref: "#/components/schemas/GroupMemberInvitationStatus"
+                    required:
+                      - data
+  /groups/{groupId}/settings:
+    get:
+      summary: 获取圈子设置
+      operationId: getGroupSettings
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          settings:
+                            $ref: "#/components/schemas/GroupSettings"
+                    required:
+                      - data
+    patch:
+      summary: 更新圈子设置
+      operationId: updateGroupSettings
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settings:
+                  $ref: "#/components/schemas/GroupSettings"
+              required:
+                - settings
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommonResponse"
   /groups/{groupId}/questions:
     get:
       summary: 获取圈子问题列表
@@ -2664,6 +3168,23 @@ paths:
         - $ref: "#/components/parameters/groupId"
         - $ref: "#/components/parameters/page_start"
         - $ref: "#/components/parameters/page_size"
+        - name: handpicked
+          in: query
+          description: 是否为精选问题
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum:
+              - recommend
+              - hot
+              - new
+            default: recommend
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -2704,6 +3225,8 @@ paths:
               - hot
               - new
             default: recommend
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
@@ -2740,28 +3263,29 @@ paths:
               type: object
               properties:
                 name:
-                  type: string
+                  $ref: "#/components/schemas/GroupTarget/properties/name"
                 intro:
-                  type: string
+                  $ref: "#/components/schemas/GroupTarget/properties/intro"
                 start_time:
-                  type: integer
-                  format: int64
+                  $ref: "#/components/schemas/GroupTarget/properties/start_time"
+                is_timed:
+                  $ref: "#/components/schemas/GroupTarget/properties/is_timed"
                 end_time:
-                  type: integer
-                  format: int64
-                attendance:
-                  type: object
-                  description: 目标打卡设置
-                  properties:
-                    type:
-                      type: string
-                      enum:
-                        - daily
-                        - weekly
-                        - monthly
+                  $ref: "#/components/schemas/GroupTarget/properties/end_time"
+                frequency:
+                  $ref: "#/components/schemas/GroupTarget/properties/frequency"
+                is_material_required:
+                  $ref: "#/components/schemas/GroupTarget/properties/is_material_required"
+                materials:
+                  $ref: "#/components/schemas/GroupTarget/properties/materials"
               required:
                 - name
                 - intro
+                - start_time
+                - is_timed
+                - end_time
+                - frequency
+                - is_material_required
       responses:
         "200":
           description: OK
@@ -2787,13 +3311,57 @@ paths:
       parameters:
         - $ref: "#/components/parameters/groupId"
         - $ref: "#/components/parameters/targetId"
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CommonResponse"
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          target:
+                            $ref: "#/components/schemas/GroupTarget"
+                          check_in_stats:
+                            type: object
+                            description: 当前用户的打卡情况统计
+                            properties:
+                              is_checked_in:
+                                type: boolean
+                                description: 当前登录用户在该目标下本周期内是否已打卡
+                                default: false
+                              continuous_count:
+                                type: integer
+                                description: 当前连续打卡天数
+                                format: int64
+                              continuous_rank:
+                                type: integer
+                                description: 当前连续打卡天数排名
+                                format: int64
+                              max_continuous_count:
+                                type: integer
+                                description: 最大连续打卡天数
+                                format: int64
+                              max_continuous_rank:
+                                type: integer
+                                description: 最大连续打卡天数排名
+                                format: int64
+                              total_count:
+                                type: integer
+                                description: 总打卡天数
+                                format: int64
+                              total_rank:
+                                type: integer
+                                description: 总打卡天数排名
+                                format: int64
+                    required:
+                      - data
     put:
       summary: 更新圈子目标
       operationId: updateGroupTarget
@@ -2852,13 +3420,32 @@ paths:
       responses:
         "204":
           description: No Content
-  /groups/{groupId}/targets/{targetId}/attend:
-    post:
-      summary: 打卡
-      operationId: attendGroupTarget
+  /groups/{groupId}/targets/{targetId}/leaderboards:
+    get:
+      summary: 获取圈子目标排行榜
+      operationId: getGroupTargetLeaderboard
       parameters:
         - $ref: "#/components/parameters/groupId"
         - $ref: "#/components/parameters/targetId"
+        - name: period
+          in: query
+          description: 排行榜类型
+          schema:
+            type: string
+            enum:
+              - weekly
+              - monthly
+              - all
+            default: weekly
+        - name: metric
+          in: query
+          description: 排行榜指标
+          schema:
+            type: string
+            enum:
+              - continuous_count
+              - max_continuous_count
+              - total_count
       security:
         - bearerAuth: []
       responses:
@@ -2867,7 +3454,195 @@ paths:
           content:
             application/json:
               schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          leaderboard:
+                            type: array
+                            items:
+                              allOf:
+                                - $ref: "#/components/schemas/GroupMember"
+                                - type: object
+                                  properties:
+                                    rank:
+                                      type: integer
+                                      description: 排名
+                                      format: int64
+                                      minimum: 1
+                                    metric:
+                                      type: integer
+                                      description: 指标值
+                                      format: int64
+                    required:
+                      - data
+  /groups/{groupId}/targets/{targetId}/check-ins:
+    get:
+      summary: 获取圈子目标打卡列表
+      operationId: getGroupTargetCheckIns
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
+        - $ref: "#/components/parameters/page_start"
+        - $ref: "#/components/parameters/page_size"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          check_ins:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/GroupTargetCheckIn"
+                          page:
+                            $ref: "#/components/schemas/Page"
+                    required:
+                      - data
+    post:
+      summary: 打卡
+      operationId: checkInGroupTarget
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                materials:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/GroupTargetMaterialSubmission"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          check_in_id:
+                            type: integer
+                            format: int64
+                    required:
+                      - data
+  /groups/{groupId}/targets/{targetId}/check-ins/{checkInId}/approval:
+    put:
+      summary: 审批打卡
+      operationId: approveGroupTargetCheckIn
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - $ref: "#/components/parameters/targetId"
+        - name: checkInId
+          in: path
+          description: 打卡 ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  description: 审批动作
+                  enum:
+                    - approve
+                    - reject
+              required:
+                - action
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
                 $ref: "#/components/schemas/CommonResponse"
+  /groups/{groupId}/leaderboards:
+    get:
+      summary: 获取圈子排行榜
+      operationId: getGroupLeaderboard
+      parameters:
+        - $ref: "#/components/parameters/groupId"
+        - name: period
+          in: query
+          description: 排行榜类型
+          schema:
+            type: string
+            enum:
+              - weekly
+              - monthly
+              - all
+            default: weekly
+        - name: metric
+          in: query
+          description: 排行榜指标
+          schema:
+            type: string
+            enum:
+              - contributions
+              - questions
+              - answers
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                allOf:
+                  - $ref: "#/components/schemas/CommonResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          leaderboard:
+                            type: array
+                            items:
+                              allOf:
+                                - $ref: "#/components/schemas/GroupMember"
+                                - type: object
+                                  properties:
+                                    rank:
+                                      type: integer
+                                      description: 排名
+                                      format: int64
+                                      minimum: 1
+                                    metric:
+                                      type: integer
+                                      description: 指标值
+                                      format: int64
+                    required:
+                      - data
   /feeds:
     get:
       summary: 获取动态列表
