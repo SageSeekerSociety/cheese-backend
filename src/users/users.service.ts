@@ -599,8 +599,13 @@ export class UsersService {
       }
     }
 
+    const disableEmailVerification = this.configService.get<boolean>(
+      'disableEmailVerification',
+    );
+
     if (
-      await this.usersRegisterRequestService.verifyRequest(email, emailCode)
+      disableEmailVerification ||
+      (await this.usersRegisterRequestService.verifyRequest(email, emailCode))
     ) {
       if (await this.isEmailRegistered(email)) {
         throw new Error(

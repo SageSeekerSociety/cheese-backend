@@ -44,6 +44,7 @@ export default () => {
       ),
       window: parseInt(process.env.TOTP_WINDOW || '1', 10), // 验证窗口，默认前后1个时间窗口
     },
+    disableEmailVerification: process.env.DISABLE_EMAIL_VERIFICATION === 'true',
   };
 };
 
