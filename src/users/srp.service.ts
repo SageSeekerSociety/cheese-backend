@@ -35,12 +35,7 @@ export class SrpService {
   /**
    * 创建 SRP 服务器会话
    */
-  async createServerSession(
-    username: string,
-    salt: string,
-    verifier: string,
-    clientPublicEphemeral: string,
-  ): Promise<{
+  async createServerSession(verifier: string): Promise<{
     serverEphemeral: { public: string; secret: string };
   }> {
     const serverEphemeral = srp.generateEphemeral(verifier);

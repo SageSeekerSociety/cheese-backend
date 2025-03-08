@@ -557,10 +557,7 @@ describe('Users Module', () => {
           },
         });
 
-      const result = await usersService.handleSrpInit(
-        'testuser',
-        'client-public',
-      );
+      const result = await usersService.handleSrpInit('testuser');
 
       expect(result.salt).toBe('test-salt');
       expect(result.serverPublicEphemeral).toBe('server-public');
@@ -678,9 +675,9 @@ describe('Users Module', () => {
           srpUpgraded: false,
         } as any);
 
-      await expect(
-        usersService.handleSrpInit('testuser', 'client-public'),
-      ).rejects.toThrow(SrpNotUpgradedError);
+      await expect(usersService.handleSrpInit('testuser')).rejects.toThrow(
+        SrpNotUpgradedError,
+      );
     });
 
     it('should throw SrpVerificationError for failed verification', async () => {

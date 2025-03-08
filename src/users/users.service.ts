@@ -81,16 +81,6 @@ import {
   UsernameNotFoundError,
 } from './users.error';
 
-declare module 'express-session' {
-  interface SessionData {
-    passkeyChallenge?: string;
-    srpSession?: {
-      serverSecretEphemeral: string;
-      clientPublicEphemeral: string;
-    };
-  }
-}
-
 @Injectable()
 export class UsersService {
   constructor(
@@ -1364,18 +1354,14 @@ export class UsersService {
       }
 
       // 如果是第一步（初始化），返回 salt 和服务器公钥
-      if (credentials.clientPublicEphemeral && !credentials.clientProof) {
+      if (!credentials.clientProof && !credentials.clientPublicEphemeral) {
         const { serverEphemeral } = await this.srpService.createServerSession(
-          user.username,
-          user.srpSalt,
           user.srpVerifier,
-          credentials.clientPublicEphemeral,
         );
 
         // 将服务器的私密临时值存储在 session 中
         req.session.srpSession = {
           serverSecretEphemeral: serverEphemeral.secret,
-          clientPublicEphemeral: credentials.clientPublicEphemeral,
         };
 
         return {
@@ -1386,7 +1372,7 @@ export class UsersService {
       }
 
       // 如果是第二步（验证），验证客户端证明
-      if (credentials.clientProof) {
+      if (credentials.clientProof && credentials.clientPublicEphemeral) {
         const sessionState = req.session.srpSession;
         if (!sessionState) {
           throw new Error('SRP session not found. Please initialize first.');
@@ -1394,7 +1380,7 @@ export class UsersService {
 
         const { success, serverProof } = await this.srpService.verifyClient(
           sessionState.serverSecretEphemeral,
-          sessionState.clientPublicEphemeral,
+          credentials.clientPublicEphemeral,
           user.srpSalt,
           user.username,
           user.srpVerifier,
@@ -1443,10 +1429,7 @@ export class UsersService {
    * 处理 SRP 登录的第一步：初始化
    * 客户端发送用户名和公钥 A，服务器返回该用户的 salt 和服务器生成的公钥 B
    */
-  async handleSrpInit(
-    username: string,
-    clientPublicEphemeral: string,
-  ): Promise<{
+  async handleSrpInit(username: string): Promise<{
     salt: string;
     serverPublicEphemeral: string;
     serverSecretEphemeral: string;
@@ -1459,10 +1442,7 @@ export class UsersService {
 
     // 创建 SRP 服务器会话
     const { serverEphemeral } = await this.srpService.createServerSession(
-      username,
-      user.srpSalt,
       user.srpVerifier,
-      clientPublicEphemeral,
     );
 
     return {
