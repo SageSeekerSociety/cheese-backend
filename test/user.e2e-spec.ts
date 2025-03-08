@@ -79,7 +79,6 @@ async function loginWithSRP(
     .post('/users/auth/srp/init')
     .send({
       username,
-      clientPublicEphemeral: clientEphemeral.public,
     })
     .expect(201);
 
@@ -101,6 +100,7 @@ async function loginWithSRP(
     .post('/users/auth/srp/verify')
     .send({
       username,
+      clientPublicEphemeral: clientEphemeral.public,
       clientProof: clientSession.proof,
     })
     .expect(201);
@@ -133,9 +133,7 @@ async function verifySudoWithSRP(
     .set('Authorization', `Bearer ${token}`)
     .send({
       method: 'srp',
-      credentials: {
-        clientPublicEphemeral: clientEphemeral.public,
-      },
+      credentials: {},
     })
     .expect(201);
 
@@ -158,6 +156,7 @@ async function verifySudoWithSRP(
     .send({
       method: 'srp',
       credentials: {
+        clientPublicEphemeral: clientEphemeral.public,
         clientProof: clientSession.proof,
       },
     })
@@ -608,11 +607,11 @@ describe('User Module', () => {
       const agent = request.agent(app.getHttpServer());
       await agent.post('/users/auth/srp/init').send({
         username: TestUsername,
-        clientPublicEphemeral: clientEphemeral.public,
       });
 
       const verifyResponse = await agent.post('/users/auth/srp/verify').send({
         username: TestUsername,
+        clientPublicEphemeral: clientEphemeral.public,
         clientProof: 'wrong-proof',
       });
 
@@ -625,7 +624,6 @@ describe('User Module', () => {
         .post('/users/auth/srp/init')
         .send({
           username: TestUsername + 'KKK',
-          clientPublicEphemeral: 'any-public-key',
         });
       expect(respond.status).toBe(404);
       expect(respond.body.code).toBe(404);
@@ -765,7 +763,6 @@ describe('User Module', () => {
 
       const initResponse = await agent.post('/users/auth/srp/init').send({
         username: TestUsername,
-        clientPublicEphemeral: clientEphemeral.public,
       });
 
       expect(initResponse.status).toBe(201);
@@ -781,6 +778,7 @@ describe('User Module', () => {
 
       const verifyResponse = await agent.post('/users/auth/srp/verify').send({
         username: TestUsername,
+        clientPublicEphemeral: clientEphemeral.public,
         clientProof: clientSession.proof,
       });
 
@@ -902,7 +900,6 @@ describe('User Module', () => {
       // 初始化 SRP 登录
       const initRes = await agent.post('/users/auth/srp/init').send({
         username: legacyUser.username,
-        clientPublicEphemeral: clientEphemeral.public,
       });
 
       expect(initRes.status).toBe(201);
@@ -925,6 +922,7 @@ describe('User Module', () => {
 
       const verifyRes = await agent.post('/users/auth/srp/verify').send({
         username: legacyUser.username,
+        clientPublicEphemeral: clientEphemeral.public,
         clientProof: clientSession.proof,
       });
 
@@ -1042,9 +1040,7 @@ describe('User Module', () => {
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           method: 'srp',
-          credentials: {
-            clientPublicEphemeral: clientEphemeral.public,
-          },
+          credentials: {},
         });
 
       const res = await agent
@@ -1053,6 +1049,7 @@ describe('User Module', () => {
         .send({
           method: 'srp',
           credentials: {
+            clientPublicEphemeral: clientEphemeral.public,
             clientProof: 'invalid-proof',
           },
         })
