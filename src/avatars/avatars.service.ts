@@ -49,7 +49,7 @@ export class AvatarsService implements OnModuleInit {
       });
 
       if (!defaultAvatar) {
-        await this.prismaService.avatar.create({
+        const avatar = await this.prismaService.avatar.create({
           data: {
             url: defaultAvatarPath,
             name: defaultAvatarName,
@@ -58,6 +58,7 @@ export class AvatarsService implements OnModuleInit {
             createdAt: new Date(),
           },
         });
+        console.log(`Default avatar created: ${avatar.id}`);
       }
       const predefinedAvatar = await this.prismaService.avatar.findFirst({
         where: {
@@ -74,7 +75,7 @@ export class AvatarsService implements OnModuleInit {
         await Promise.all(
           predefinedAvatars.map(async (name) => {
             const avatarPath = join(sourcePath, name);
-            await this.prismaService.avatar.create({
+            const avatar = await this.prismaService.avatar.create({
               data: {
                 url: avatarPath,
                 name,
@@ -83,6 +84,7 @@ export class AvatarsService implements OnModuleInit {
                 createdAt: new Date(),
               },
             });
+            console.log(`Predefined avatar created: ${avatar.id}`);
           }),
         );
       }
