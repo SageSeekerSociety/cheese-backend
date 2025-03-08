@@ -755,7 +755,6 @@ components:
           type: string
       required:
         - username
-        - nickname
         - password
         - email
         - emailCode
@@ -1193,7 +1192,7 @@ paths:
                             $ref: "#/components/schemas/User"
                     required:
                       - data
-    put:
+    patch:
       summary: 更新用户信息
       operationId: updateUserInfo
       parameters:
@@ -1213,10 +1212,6 @@ paths:
                 avatarId:
                   type: integer
                   format: int64
-              required:
-                - nickname
-                - intro
-                - avatarId
       responses:
         "200":
           description: OK
