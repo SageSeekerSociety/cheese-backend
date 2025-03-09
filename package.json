@@ -40,6 +40,7 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/serve-static": "^4.0.2",
     "@prisma/client": "6.4.1",
+    "@ruc-cheese/node-srp-rs": "^0.2.0",
     "@simplewebauthn/server": "^13.1.1",
     "@types/md5": "^2.3.5",
     "ajv": "^8.17.1",
@@ -63,7 +64,6 @@
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "secure-remote-password": "^0.3.1",
     "uuid": "^10.0.0"
   },
   "devDependencies": {

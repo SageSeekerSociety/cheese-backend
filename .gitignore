@@ -47,3 +47,5 @@ src/avatars/images
 
 # Runtime data
 uploads/
+
+*.0x/

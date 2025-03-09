@@ -4,13 +4,15 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import * as srpClient from 'secure-remote-password/client';
-import * as srp from 'secure-remote-password/server';
+import { Client, Server } from '@ruc-cheese/node-srp-rs';
 import { PrismaService } from '../common/prisma/prisma.service';
 
 @Injectable()
 export class SrpService {
   constructor(private readonly prismaService: PrismaService) {}
+
+  private readonly srpClient = new Client();
+  private readonly srpServer = new Server();
 
   /**
    * 为新用户生成 SRP salt 和 verifier
@@ -22,9 +24,13 @@ export class SrpService {
     salt: string;
     verifier: string;
   }> {
-    const salt = srpClient.generateSalt();
-    const privateKey = srpClient.derivePrivateKey(salt, username, password);
-    const verifier = srpClient.deriveVerifier(privateKey);
+    const salt = this.srpClient.generateSalt();
+    const privateKey = this.srpClient.derivePrivateKey(
+      salt,
+      username,
+      password,
+    );
+    const verifier = this.srpClient.deriveVerifier(privateKey);
 
     return {
       salt,
@@ -38,7 +44,7 @@ export class SrpService {
   async createServerSession(verifier: string): Promise<{
     serverEphemeral: { public: string; secret: string };
   }> {
-    const serverEphemeral = srp.generateEphemeral(verifier);
+    const serverEphemeral = this.srpServer.generateEphemeral(verifier);
 
     return {
       serverEphemeral,
@@ -60,7 +66,7 @@ export class SrpService {
     serverProof: string;
   }> {
     try {
-      const serverSession = srp.deriveSession(
+      const serverSession = this.srpServer.deriveSession(
         serverSecretEphemeral,
         clientPublicEphemeral,
         salt,

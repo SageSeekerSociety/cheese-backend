@@ -44,6 +44,9 @@ importers:
       '@prisma/client':
         specifier: 6.4.1
         version: 6.4.1(prisma@5.22.0)(typescript@5.7.2)
+      '@ruc-cheese/node-srp-rs':
+        specifier: ^0.2.0
+        version: 0.2.0
       '@simplewebauthn/server':
         specifier: ^13.1.1
         version: 13.1.1
@@ -113,9 +116,6 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
-      secure-remote-password:
-        specifier: ^0.3.1
-        version: 0.3.1
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
@@ -1164,6 +1164,34 @@ packages:
   '@prisma/prisma-fmt-wasm@4.8.0-9.5be62d4c40defb9d2faf09dc30edaa449580d417':
     resolution: {integrity: sha512-eZExLfHW45uJjvaSVttFoY1LvrbyOHpzxuJ9Dt7E18AHvHJhtkUFapSe7SwIHgYS+HgK2ZDhCpnprU2XIg9GGw==}
 
+  '@ruc-cheese/node-srp-rs-darwin-x64@0.2.0':
+    resolution: {integrity: sha512-aqdeQ97oTEjCMD2rWFPHNJiYpTJ7W5+1uCRy2YASIBCsskIX3QXNmjuOm4sPk/QRMjgQR6FcD3Vi4lZpPoPJKQ==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@ruc-cheese/node-srp-rs-linux-x64-gnu@0.2.0':
+    resolution: {integrity: sha512-Od79cFJgmEI1PyceUXL4smj700QakClebgdYhF8sNntoBV0YvCWR8tt6aqAsgCUYKJu+t+paoWP6D+KV/2DSDw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+
+  '@ruc-cheese/node-srp-rs-linux-x64-musl@0.2.0':
+    resolution: {integrity: sha512-nVsP35RUohcn7st48GCA7sSEDjfY7teBuIe2WBoUuy3nLNEuLuRSfcFd5wN1PXc/HTrunh9ydVmIgKNDPMUi4w==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+
+  '@ruc-cheese/node-srp-rs-win32-x64-msvc@0.2.0':
+    resolution: {integrity: sha512-piFDv3U7xx988h8L8KtINu5jh5310hZQbMRSwNr9CCaNwwePpgGuBOKvlvQYf50nxlriYNOGzs7Kh7TwPspKNw==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  '@ruc-cheese/node-srp-rs@0.2.0':
+    resolution: {integrity: sha512-tRPhe8rmUjJb/uZuo3pswFsLMPEuWkbXp2/GGCCc7SSkgrGga11zCcRrEHXaaSxhWErhBE6NJ+0+Vo5ZHni/Zg==}
+    engines: {node: '>= 10'}
+
   '@selderee/plugin-htmlparser2@0.11.0':
     resolution: {integrity: sha512-P33hHGdldxGabLFjPPpaTxVolMrzrcegejx+0GxjrIb9Zv48D8yAIA/QTDR2dFl7Uz7urX8aX6+5bCZslr+gWQ==}
 
@@ -1625,9 +1653,6 @@ packages:
 
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
-
-  array-buffer-to-hex@1.0.0:
-    resolution: {integrity: sha512-arycdkxgK1cj6s03GDb96tlCxOl1n3kg9M2OHseUc6Pqyqp+lgfceFPmG507eI5V+oxOSEnlOw/dFc7LXBXF4Q==}
 
   array-flatten@1.1.1:
     resolution: {integrity: sha512-PCVAQswWemu6UdxsDFFX/+gVeYqKAod3D3UVm91jHwynguOwAvYPhx8nNlM++NqRcK6CxxpUafjmhIdKiHibqg==}
@@ -2119,12 +2144,6 @@ packages:
   crypt@0.0.2:
     resolution: {integrity: sha512-mCxBlsHFYh9C+HVpiEacem8FEBnMXgU9gy4zmNC+SXAZNB/1idgp/aulFJ4FgCi7GPEVbfyng092GqL2k2rmow==}
 
-  crypto-digest-sync@1.0.0:
-    resolution: {integrity: sha512-UQBOB5z+HF4iA8shKQ3PPwhCmdFAihwcytD1Qh4uiz78x04cZZmKtZ1F1VyAjkrA8uEZqXt2tMXfj3dJHtcbng==}
-
-  crypto-random-hex@1.0.0:
-    resolution: {integrity: sha512-1DuZQ03El13TRgfrqbbjW40Gvi4OKInny/Wxqj23/JMXe214C/3Tlz92bKXWDW3NZT5RjXUGdYW4qiIOUPf+cA==}
-
   crypto-random-string@2.0.0:
     resolution: {integrity: sha512-v1plID3y9r/lPhviJ1wrXpLeyUIGAZ2SHNYTEapm7/8A9nLPoyvVp3RK/EPFqn5kEznyWgYZNsRtYYIWbuG8KA==}
     engines: {node: '>=8'}
@@ -2341,9 +2360,6 @@ packages:
 
   emoji-regex@9.2.2:
     resolution: {integrity: sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==}
-
-  encode-utf8@1.0.3:
-    resolution: {integrity: sha512-ucAnuBEhUK4boH2HjVYG5Q2mQyPorvv0u/ocS+zhdw0S8AlHYY+GOFhP1Gio5z4icpP2ivFSvhtFjQi8+T9ppw==}
 
   encodeurl@1.0.2:
     resolution: {integrity: sha512-TPJXq8JqFaVYm2CWmPvnP2Iyo4ZSM7/QKcSmuMLDObfpH5fi7RUGmd/rTDf+rut/saiDiQEeVTNgAmJEdAOx0w==}
@@ -2860,9 +2876,6 @@ packages:
   header-case@2.0.4:
     resolution: {integrity: sha512-H/vuk5TEEVZwrR0lp2zed9OCo1uAILMlx0JEMgC26rzyJJ3N1v6XkwHHXJQdR2doSjcGPM6OKPYoJgf0plJ11Q==}
 
-  hex-to-array-buffer@1.1.0:
-    resolution: {integrity: sha512-vvl3IM8FfT1uOnHtEqyjkDK9Luqz6MQrH82qIvVnjyXxRhkeaEZyRRPiBgf2yym3nweRVEfayxt/1SoTXZYd4Q==}
-
   hexoid@1.0.0:
     resolution: {integrity: sha512-QFLV0taWQOZtvIRIAdBChesmogZrtuXvVWsFHZTk2SU+anspqZ2vMnoLg7IE1+Uk16N19APic1BuF8bC8c2m5g==}
     engines: {node: '>=8'}
@@ -3299,9 +3312,6 @@ packages:
   js-yaml@4.1.0:
     resolution: {integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==}
     hasBin: true
-
-  jsbn@1.1.0:
-    resolution: {integrity: sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==}
 
   jsesc@2.5.2:
     resolution: {integrity: sha512-OYu7XEzjkCQ3C5Ps3QIZsQfNpqoJyZZA99wd9aWd05NCtC5pWOkShK2mkL6HXQR6/Cy2lbNdPlZBpuQHXE63gA==}
@@ -4012,9 +4022,6 @@ packages:
   package-json-from-dist@1.0.1:
     resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
 
-  pad-start@1.0.2:
-    resolution: {integrity: sha512-EBN8Ez1SVRcZT1XsIE4WkdnZ5coLoaChkIgAET6gIlaLhXqCz9upVk0DQWFtOYkrpTVvbEppRUnqhTiJrBdkfw==}
-
   param-case@2.1.1:
     resolution: {integrity: sha512-eQE845L6ot89sk2N8liD8HAuH4ca6Vvr7VWAWwt7+kvvG5aBcPmmphQ68JsEG2qa9n1TykS2DLeMt363AAH8/w==}
 
@@ -4494,9 +4501,6 @@ packages:
 
   secure-json-parse@2.7.0:
     resolution: {integrity: sha512-6aU+Rwsezw7VR8/nyvKTx8QpWH9FrcYiXXlqC4z5d5XQBDRqtbfsRjnwGyqbi3gddNtWHuEk9OANUotL26qKUw==}
-
-  secure-remote-password@0.3.1:
-    resolution: {integrity: sha512-iEp/qLRfb9XYhfKFrPFfdeD7KVreCjhDKSTRP1G1nRIO0Sw1hjnVHD58ymOhiy9Zf5quHbDIbG9cTupji7qwnA==}
 
   selderee@0.11.0:
     resolution: {integrity: sha512-5TF+l7p4+OsnP8BCCvSyZiSPc4x4//p5uPwK8TCnVPJYRmU2aYKMpOXvw8zM5a5JvuuCGN1jmsMwuU2W02ukfA==}
@@ -6510,6 +6514,25 @@ snapshots:
 
   '@prisma/prisma-fmt-wasm@4.8.0-9.5be62d4c40defb9d2faf09dc30edaa449580d417': {}
 
+  '@ruc-cheese/node-srp-rs-darwin-x64@0.2.0':
+    optional: true
+
+  '@ruc-cheese/node-srp-rs-linux-x64-gnu@0.2.0':
+    optional: true
+
+  '@ruc-cheese/node-srp-rs-linux-x64-musl@0.2.0':
+    optional: true
+
+  '@ruc-cheese/node-srp-rs-win32-x64-msvc@0.2.0':
+    optional: true
+
+  '@ruc-cheese/node-srp-rs@0.2.0':
+    optionalDependencies:
+      '@ruc-cheese/node-srp-rs-darwin-x64': 0.2.0
+      '@ruc-cheese/node-srp-rs-linux-x64-gnu': 0.2.0
+      '@ruc-cheese/node-srp-rs-linux-x64-musl': 0.2.0
+      '@ruc-cheese/node-srp-rs-win32-x64-msvc': 0.2.0
+
   '@selderee/plugin-htmlparser2@0.11.0':
     dependencies:
       domhandler: 5.0.3
@@ -7096,8 +7119,6 @@ snapshots:
 
   argparse@2.0.1: {}
 
-  array-buffer-to-hex@1.0.0: {}
-
   array-flatten@1.1.1: {}
 
   array-ify@1.0.0: {}
@@ -7674,12 +7695,6 @@ snapshots:
 
   crypt@0.0.2: {}
 
-  crypto-digest-sync@1.0.0: {}
-
-  crypto-random-hex@1.0.0:
-    dependencies:
-      array-buffer-to-hex: 1.0.0
-
   crypto-random-string@2.0.0: {}
 
   css-select@5.1.0:
@@ -7874,8 +7889,6 @@ snapshots:
   emoji-regex@8.0.0: {}
 
   emoji-regex@9.2.2: {}
-
-  encode-utf8@1.0.3: {}
 
   encodeurl@1.0.2: {}
 
@@ -8494,8 +8507,6 @@ snapshots:
     dependencies:
       capital-case: 1.0.4
       tslib: 2.8.1
-
-  hex-to-array-buffer@1.1.0: {}
 
   hexoid@1.0.0: {}
 
@@ -9130,8 +9141,6 @@ snapshots:
   js-yaml@4.1.0:
     dependencies:
       argparse: 2.0.1
-
-  jsbn@1.1.0: {}
 
   jsesc@2.5.2: {}
 
@@ -10081,8 +10090,6 @@ snapshots:
 
   package-json-from-dist@1.0.1: {}
 
-  pad-start@1.0.2: {}
-
   param-case@2.1.1:
     dependencies:
       no-case: 2.3.2
@@ -10610,16 +10617,6 @@ snapshots:
       ajv-keywords: 5.1.0(ajv@8.17.1)
 
   secure-json-parse@2.7.0: {}
-
-  secure-remote-password@0.3.1:
-    dependencies:
-      array-buffer-to-hex: 1.0.0
-      crypto-digest-sync: 1.0.0
-      crypto-random-hex: 1.0.0
-      encode-utf8: 1.0.3
-      hex-to-array-buffer: 1.1.0
-      jsbn: 1.1.0
-      pad-start: 1.0.2
 
   selderee@0.11.0:
     dependencies:
