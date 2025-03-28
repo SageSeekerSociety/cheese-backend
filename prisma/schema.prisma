@@ -608,12 +608,6 @@ model TopicSearchLog {
 // users.prisma
 //
 
-enum UserRole {
-  USER
-  ADMIN
-  MODERATOR
-}
-
 model User {
   id                                                                 Int                          @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
   username                                                           String                       @unique(map: "IDX_78a916df40e02a9deb1c4b75ed") @db.VarChar
@@ -622,7 +616,6 @@ model User {
   srpVerifier                                                        String?                      @map("srp_verifier") @db.VarChar(1000)
   srpUpgraded                                                        Boolean                      @default(false) @map("srp_upgraded")
   email                                                              String                       @unique(map: "IDX_e12875dfb3b1d92d7d7c5377e2") @db.VarChar
-  role                                                               UserRole                     @default(USER)
   createdAt                                                          DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                                                          DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt                                                          DateTime?                    @map("deleted_at") @db.Timestamptz(6)
