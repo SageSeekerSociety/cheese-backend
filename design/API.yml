@@ -3,11 +3,8 @@ info:
   title: Cheese Community API
   version: "1.0"
 servers:
-  - url: http://localhost:7777/api/{version}
+  - url: http://localhost:7777
     description: Local server
-    variables:
-      version:
-        default: v1
 components:
   parameters:
     questionId:
@@ -753,6 +750,9 @@ components:
           type: string
         emailCode:
           type: string
+        isLegacyAuth:
+          type: boolean
+          description: 是否使用旧的认证方式
       required:
         - username
         - nickname
