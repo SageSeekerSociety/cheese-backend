@@ -71,17 +71,9 @@ describe('SRP Service', () => {
 
   describe('createServerSession', () => {
     it('should create server session with ephemeral keys', async () => {
-      const username = 'testuser';
-      const salt = 'test-salt';
       const verifier = 'test-verifier';
-      const clientPublicEphemeral = 'client-public';
 
-      const result = await srpService.createServerSession(
-        username,
-        salt,
-        verifier,
-        clientPublicEphemeral,
-      );
+      const result = await srpService.createServerSession(verifier);
 
       expect(srp.generateEphemeral).toHaveBeenCalledWith(verifier);
       expect(result).toEqual({

@@ -19,6 +19,7 @@ export class SrpInitResponseDto extends BaseResponseDto {
 
 export class SrpVerifyRequestDto {
   username: string;
+  clientPublicEphemeral: string;
   clientProof: string;
 }
 

@@ -121,7 +121,6 @@ declare module 'express-session' {
     passkeyChallenge?: string;
     srpSession?: {
       serverSecretEphemeral: string;
-      clientPublicEphemeral: string;
     };
   }
 }
@@ -1045,20 +1044,16 @@ export class UsersController {
   @Post('/auth/srp/init')
   @NoAuth()
   async srpInit(
-    @Body() { username, clientPublicEphemeral }: SrpInitRequestDto,
+    @Body() { username }: SrpInitRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
     @Req() req: Request,
   ): Promise<SrpInitResponseDto> {
-    const result = await this.usersService.handleSrpInit(
-      username,
-      clientPublicEphemeral,
-    );
+    const result = await this.usersService.handleSrpInit(username);
 
     // 将服务器的私密临时值存储在 session 中
     req.session.srpSession = {
       serverSecretEphemeral: result.serverSecretEphemeral,
-      clientPublicEphemeral,
     };
 
     return {
@@ -1074,7 +1069,8 @@ export class UsersController {
   @Post('/auth/srp/verify')
   @NoAuth()
   async srpVerify(
-    @Body() { username, clientProof }: SrpVerifyRequestDto,
+    @Body()
+    { username, clientPublicEphemeral, clientProof }: SrpVerifyRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
     @Req() req: Request,
@@ -1087,7 +1083,7 @@ export class UsersController {
 
     const result = await this.usersService.handleSrpVerify(
       username,
-      sessionState.clientPublicEphemeral,
+      clientPublicEphemeral,
       clientProof,
       sessionState.serverSecretEphemeral,
       ip,
