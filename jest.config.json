@@ -1,8 +1,15 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
   "rootDir": ".",
   "testEnvironment": "node",
-  "testMatch": ["**/*.e2e-spec.ts", "**/*.spec.ts"],
+  "testMatch": [
+    "**/*.e2e-spec.ts",
+    "**/*.spec.ts"
+  ],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
@@ -14,5 +21,13 @@
     "!src/common/config/configuration.ts",
     "!src/auth/definitions.ts"
   ],
-  "testTimeout": 60000
+  "testTimeout": 60000,
+  "extensionsToTreatAsEsm": [
+    ".ts"
+  ],
+  "globals": {
+    "ts-jest": {
+      "useESM": true
+    }
+  }
 }
