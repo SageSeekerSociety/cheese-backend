@@ -2,7 +2,7 @@ FROM node:23 AS base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:$PATH"
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg postgresql-client
 RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
