@@ -14,7 +14,7 @@ jobs:
       matrix:
         postgresql-version: [latest]
         elasticsearch-version: [8.12.2]
-        node-version: [18.x]
+        node-version: [22.x]
 
     env:
       TEST_REPEAT: 1 # Tests will be repeated
