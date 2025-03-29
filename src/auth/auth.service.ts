@@ -11,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import Ajv from 'ajv';
 import { readFileSync } from 'fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
   AuthenticationRequiredError,
@@ -29,10 +30,11 @@ export class AuthService {
 
   constructor(private readonly jwtService: JwtService) {
     AuthService.instance = this;
-    const tokenPayloadSchemaRaw = readFileSync(
-      path.resolve(__dirname, '../../src/auth/token-payload.schema.json'),
-      'utf8',
-    );
+    const schemaPath = path.join(__dirname, 'token-payload.schema.json');
+    if (!existsSync(schemaPath)) {
+      throw new Error(`Token payload schema file not found at ${schemaPath}`);
+    }
+    const tokenPayloadSchemaRaw = readFileSync(schemaPath, 'utf-8');
     const tokenPayloadSchema = JSON.parse(tokenPayloadSchemaRaw);
     this.isTokenPayloadValidate = new Ajv().compile(tokenPayloadSchema);
   }

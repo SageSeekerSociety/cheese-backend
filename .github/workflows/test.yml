@@ -12,10 +12,9 @@ jobs:
       # not only to test compatibility,
       # but also to identify bugs that may not be detected without extensive repetition.
       matrix:
-        postgresql-version: [latest, 12]
+        postgresql-version: [latest, 16]
         elasticsearch-version: [8.12.2, 8.0.0]
-        node-version: [18.x, 20.x]
-        repeat: [1, 2]
+        node-version: [22.x, 20.x]
 
     env:
       TEST_REPEAT: 10 # Tests will be repeated

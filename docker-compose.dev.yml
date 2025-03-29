@@ -1,9 +1,9 @@
 services:
   backend:
-    image: ghcr.io/sageseekersociety/cheese-backend-dev:${BACKEND_DEV_VERSION:-dev}
+    image: ghcr.io/sageseekersociety/cheese-backend-dev:${BACKEND_DEV_VERSION:-development}
     build:
       context: .
-      target: dev
+      target: development
     env_file: .env
     depends_on:
       database:
@@ -14,7 +14,7 @@ services:
     # !reset means delete the ports defined in docker-compose.yml
     # instead of merging
     ports: !override
-      - "7777:3000"
+      - '7777:3000'
 
   frontend:
     image: ghcr.io/sageseekersociety/cheese-frontend-dev:dev
@@ -22,4 +22,4 @@ services:
     depends_on:
       - backend
     ports: !override
-      - "3000:3000"
+      - '3000:3000'
