@@ -4,9 +4,14 @@
  */
 
 import { Injectable } from '@nestjs/common';
-import * as srpClient from 'secure-remote-password/client';
-import * as srp from 'secure-remote-password/server';
+import {
+  Client as SrpClient,
+  Server as SrpServer,
+} from '@ruc-cheese/node-srp-rs';
 import { PrismaService } from '../common/prisma/prisma.service';
+
+const srpClient = new SrpClient();
+const srpServer = new SrpServer();
 
 @Injectable()
 export class SrpService {
@@ -38,7 +43,7 @@ export class SrpService {
   async createServerSession(verifier: string): Promise<{
     serverEphemeral: { public: string; secret: string };
   }> {
-    const serverEphemeral = srp.generateEphemeral(verifier);
+    const serverEphemeral = srpServer.generateEphemeral(verifier);
 
     return {
       serverEphemeral,
@@ -60,7 +65,7 @@ export class SrpService {
     serverProof: string;
   }> {
     try {
-      const serverSession = srp.deriveSession(
+      const serverSession = srpServer.deriveSession(
         serverSecretEphemeral,
         clientPublicEphemeral,
         salt,
