@@ -63,6 +63,11 @@ COPY --from=build /app/dist ./dist
 # Optionally copy prisma if needed for migrations at runtime
 # COPY --from=build /app/prisma ./prisma # Make sure this is copied if db push needs it
 
+# Copy the wait script from the build context into a standard location
+COPY docs/scripts/wait-for-flyway.sh /usr/local/bin/wait-for-flyway.sh
+# Ensure it's executable
+RUN chmod +x /usr/local/bin/wait-for-flyway.sh
+
 EXPOSE 8000
 
 # Create non-root user and group first
@@ -72,9 +77,13 @@ RUN adduser --system --uid 1001 nestjs
 # Change ownership of the app directory to the non-root user BEFORE switching user
 # This allows the user to write files if needed (like the FLAG_INIT)
 RUN chown nestjs:nodejs .
+RUN mkdir -p /app/uploads && chown -R nestjs:nodejs /app/uploads
 
 # Switch to non-root user
 USER nestjs
+
+# Use the wait script as the entrypoint. It will run first.
+ENTRYPOINT ["/usr/local/bin/wait-for-flyway.sh"]
 
 # Default command (will be overridden by docker-compose)
 CMD ["node", "dist/main"]
