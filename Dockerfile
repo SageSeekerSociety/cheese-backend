@@ -3,6 +3,11 @@
 FROM node:23-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:$PATH"
+
+# Install essential runtime OS dependencies.
+RUN apt-get update && apt-get install -y openssl ffmpeg postgresql-client --no-install-recommends \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Enable corepack to use pnpm
 RUN corepack enable
 WORKDIR /app
@@ -44,11 +49,11 @@ RUN pnpm prune --prod --ignore-scripts
 # Final, size-optimized production image.
 FROM node:23-slim AS production
 ENV NODE_ENV="production"
-WORKDIR /app
 # Sets the workdir, usually created as root
+WORKDIR /app
 
-# Install only essential runtime OS dependencies.
-RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client ffmpeg openssl \
+# Install essential runtime OS dependencies.
+RUN apt-get update && apt-get install -y openssl ffmpeg postgresql-client --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy necessary artifacts from previous stages
