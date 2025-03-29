@@ -10,8 +10,17 @@
     "**/*.e2e-spec.ts",
     "**/*.spec.ts"
   ],
+  "transformIgnorePatterns": [
+    "node_modules/(?!.pnpm|@ruc-cheese/node-srp-rs)"
+  ],
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.ts$": [
+      "ts-jest",
+      {
+        "tsconfig": "tsconfig.json"
+      }
+    ],
+    "^.+\\.js$": "babel-jest"
   },
   "collectCoverageFrom": [
     "src/*/**/*.ts",
@@ -21,13 +30,5 @@
     "!src/common/config/configuration.ts",
     "!src/auth/definitions.ts"
   ],
-  "testTimeout": 60000,
-  "extensionsToTreatAsEsm": [
-    ".ts"
-  ],
-  "globals": {
-    "ts-jest": {
-      "useESM": true
-    }
-  }
+  "testTimeout": 60000
 }
