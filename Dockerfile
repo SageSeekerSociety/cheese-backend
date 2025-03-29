@@ -19,17 +19,25 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 # Generate Prisma client (requires dev dependencies)
 RUN pnpm prisma generate
 
-# ---- Build ----
-# Build the production application.
-FROM deps AS build
+# ---- Development ----
+# Stage with full source code and all dependencies (dev + prod) for testing/dev tasks
+FROM deps AS development
 WORKDIR /app
-# Copy the rest of the source code needed for the build.
-# Ensure you have a .dockerignore file to prevent copying unnecessary files (like local node_modules).
-COPY . ./
-# Run the build script (uses dev dependencies installed in 'deps' stage)
+# Copy the rest of the source code
+COPY . .
+# Expose port if needed for dev server started by compose (e.g., if pnpm start:dev runs)
+EXPOSE 8000
+# Default command to keep container running for exec commands
+CMD ["tail", "-f", "/dev/null"]
+
+# ---- Build ----
+# Build stage now starts from 'development' as it has the code and all deps needed for build
+# No need to copy source code again here.
+FROM development AS build
+WORKDIR /app
+# Run the build script (uses dev dependencies from 'development' stage)
 RUN pnpm run build
-# After building, prune dev dependencies to leave only production ones for the final stage.
-# --ignore-scripts prevents postinstall/prepare scripts from running during prune.
+# Prune dev dependencies for the final production image
 RUN pnpm prune --prod --ignore-scripts
 
 # ---- Production ----
