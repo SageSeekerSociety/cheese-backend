@@ -30,6 +30,11 @@ import { UsersModule } from './users/users.module';
     ServeStaticModule.forRoot({
       rootPath: process.env.FILE_UPLOAD_PATH,
       serveRoot: '/static',
+      serveStaticOptions: {
+        etag: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+        lastModified: true,
+      },
     }),
     AttachmentsModule,
     MaterialbundlesModule,

@@ -8,27 +8,16 @@
 
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Client as SrpClient } from '@ruc-cheese/node-srp-rs';
 import session from 'express-session';
 import { authenticator } from 'otplib';
-import * as srpClient from 'secure-remote-password/client';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { EmailService } from '../src/email/email.service';
 
-jest.mock('../src/email/email.service');
+const srpClient = new SrpClient();
 
-// // Mock SRP client
-// jest.mock('secure-remote-password/client', () => ({
-//   generateSalt: jest.fn(() => 'test-salt'),
-//   derivePrivateKey: jest.fn((salt, username, password) => 'test-private-key'),
-//   deriveVerifier: jest.fn((privateKey) => 'test-verifier'),
-//   generateEphemeral: jest.fn(() => ({ public: 'client-public', secret: 'client-secret' })),
-//   deriveSession: jest.fn((clientSecretEphemeral, serverPublicEphemeral, salt, username, privateKey) => ({
-//     key: 'session-key',
-//     proof: 'client-proof'
-//   })),
-//   verifySession: jest.fn((serverProof, clientSession) => true)
-// }));
+jest.mock('../src/email/email.service');
 
 jest.mock('@simplewebauthn/server', () => ({
   generateRegistrationOptions: jest.fn(() =>

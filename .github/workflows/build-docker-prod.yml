@@ -1,6 +1,6 @@
 name: Build and Push Product Docker Image
 
-on: 
+on:
   push:
     branches:
       - main
@@ -43,7 +43,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          target: prod
+          target: production
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

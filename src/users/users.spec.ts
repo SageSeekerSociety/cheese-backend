@@ -77,7 +77,6 @@ describe('Users Module', () => {
       try {
         await usersService.getUserDtoById(1, 1, '127.0.0.1', 'some user agent');
       } catch (e) {
-        // wait one second
         await new Promise((resolve) => setTimeout(resolve, 1000));
         continue;
       }
@@ -311,6 +310,7 @@ describe('Users Module', () => {
         .spyOn(usersService['prismaService'].user, 'findUnique')
         .mockResolvedValueOnce({
           id: 1,
+          username: 'testuser',
           hashedPassword,
         } as any);
 

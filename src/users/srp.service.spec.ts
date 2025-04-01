@@ -3,38 +3,53 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import * as srpClient from 'secure-remote-password/client';
-import * as srp from 'secure-remote-password/server';
+import {
+  Client as SrpClient,
+  Server as SrpServer,
+} from '@ruc-cheese/node-srp-rs';
 import { AppModule } from '../app.module';
 import { SrpService } from './srp.service';
 
-// Mock secure-remote-password modules
-jest.mock('secure-remote-password/client', () => ({
-  generateSalt: jest.fn(() => 'test-salt'),
-  derivePrivateKey: jest.fn(() => 'test-private-key'),
-  deriveVerifier: jest.fn(() => 'test-verifier'),
-}));
+// Mock SRP client and server classes
+jest.mock('@ruc-cheese/node-srp-rs', () => {
+  const mockClient = {
+    generateSalt: jest.fn(() => 'test-salt'),
+    derivePrivateKey: jest.fn(() => 'test-private-key'),
+    deriveVerifier: jest.fn(() => 'test-verifier'),
+  };
 
-jest.mock('secure-remote-password/server', () => ({
-  generateEphemeral: jest.fn(() => ({
-    secret: 'server-secret',
-    public: 'server-public',
-  })),
-  deriveSession: jest.fn(() => ({
-    key: 'shared-key',
-    proof: 'server-proof',
-  })),
-}));
+  const mockServer = {
+    generateEphemeral: jest.fn(() => ({
+      secret: 'server-secret',
+      public: 'server-public',
+    })),
+    deriveSession: jest.fn(() => ({
+      key: 'shared-key',
+      proof: 'server-proof',
+    })),
+  };
+
+  return {
+    Client: jest.fn(() => mockClient),
+    Server: jest.fn(() => mockServer),
+  };
+});
 
 describe('SRP Service', () => {
   let app: TestingModule;
   let srpService: SrpService;
+  let mockClient: jest.Mocked<SrpClient>;
+  let mockServer: jest.Mocked<SrpServer>;
 
   beforeAll(async () => {
     app = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
     srpService = app.get<SrpService>(SrpService);
+
+    // Get the mocked instances
+    mockClient = new SrpClient() as jest.Mocked<SrpClient>;
+    mockServer = new SrpServer() as jest.Mocked<SrpServer>;
   });
 
   afterAll(async () => {
@@ -55,13 +70,15 @@ describe('SRP Service', () => {
         password,
       );
 
-      expect(srpClient.generateSalt).toHaveBeenCalled();
-      expect(srpClient.derivePrivateKey).toHaveBeenCalledWith(
+      expect(mockClient.generateSalt).toHaveBeenCalled();
+      expect(mockClient.derivePrivateKey).toHaveBeenCalledWith(
         'test-salt',
         username,
         password,
       );
-      expect(srpClient.deriveVerifier).toHaveBeenCalledWith('test-private-key');
+      expect(mockClient.deriveVerifier).toHaveBeenCalledWith(
+        'test-private-key',
+      );
       expect(result).toEqual({
         salt: 'test-salt',
         verifier: 'test-verifier',
@@ -75,7 +92,7 @@ describe('SRP Service', () => {
 
       const result = await srpService.createServerSession(verifier);
 
-      expect(srp.generateEphemeral).toHaveBeenCalledWith(verifier);
+      expect(mockServer.generateEphemeral).toHaveBeenCalledWith(verifier);
       expect(result).toEqual({
         serverEphemeral: {
           secret: 'server-secret',
@@ -103,7 +120,7 @@ describe('SRP Service', () => {
         clientProof,
       );
 
-      expect(srp.deriveSession).toHaveBeenCalledWith(
+      expect(mockServer.deriveSession).toHaveBeenCalledWith(
         serverSecretEphemeral,
         clientPublicEphemeral,
         salt,
@@ -118,7 +135,7 @@ describe('SRP Service', () => {
     });
 
     it('should return failure when verification fails', async () => {
-      jest.spyOn(srp, 'deriveSession').mockImplementationOnce(() => {
+      mockServer.deriveSession.mockImplementationOnce(() => {
         throw new Error('Verification failed');
       });
 

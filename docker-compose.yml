@@ -5,10 +5,10 @@ services:
     depends_on:
       - backend
     ports:
-      - "4173:80"
+      - '4173:80'
 
   backend:
-    image: ghcr.io/sageseekersociety/cheese-backend:dev
+    image: ghcr.io/sageseekersociety/cheese-backend:development
     env_file: .env
     volumes:
       - type: volume
@@ -20,7 +20,7 @@ services:
       es:
         condition: service_healthy
     ports:
-      - "4174:3000"
+      - '4174:3000'
 
   database:
     image: postgres:16.2

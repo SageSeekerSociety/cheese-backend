@@ -5,7 +5,12 @@
   "compilerOptions": {
     "deleteOutDir": true,
     "assets": [
-      "resources/**/*"
+      "resources/**/*",
+      {
+        "include": "**/*.json",
+        "watchAssets": false,
+        "outDir": "./dist"
+      }
     ],
     "watchAssets": true
   }
