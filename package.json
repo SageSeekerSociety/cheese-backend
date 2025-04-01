@@ -75,7 +75,7 @@
     "@nestjs/cli": "^11.0.5",
     "@nestjs/schematics": "^10.1.4",
     "@nestjs/testing": "^10.4.15",
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "^3.0.0",
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.1",
     "@types/fluent-ffmpeg": "^2.1.27",
