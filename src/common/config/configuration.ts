@@ -1,9 +1,24 @@
 import { ConfigService } from '@nestjs/config';
 import { ElasticsearchModuleOptions } from '@nestjs/elasticsearch';
 
+export interface RedisConfig {
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+  db?: number;
+}
+
 export default () => {
   return {
     port: parseInt(process.env.PORT || '3000', 10),
+    redis: {
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      username: process.env.REDIS_USERNAME || undefined,
+      password: process.env.REDIS_PASSWORD || undefined,
+      db: process.env.REDIS_DB ? parseInt(process.env.REDIS_DB, 10) : undefined,
+    },
     elasticsearch: {
       node: process.env.ELASTICSEARCH_NODE,
       maxRetries: parseInt(process.env.ELASTICSEARCH_MAX_RETRIES || '3', 10),
@@ -42,7 +57,7 @@ export default () => {
         process.env.TOTP_BACKUP_CODES_COUNT || '10',
         10,
       ),
-      window: parseInt(process.env.TOTP_WINDOW || '1', 10), // 验证窗口，默认前后1个时间窗口
+      window: parseInt(process.env.TOTP_WINDOW || '1', 10),
     },
     disableEmailVerification: process.env.DISABLE_EMAIL_VERIFICATION === 'true',
   };
@@ -54,5 +69,11 @@ export function elasticsearchConfigFactory(
   const config = configService.get<ElasticsearchModuleOptions>('elasticsearch');
   if (config == undefined)
     throw new Error('Elasticsearch configuration not found');
+  return config;
+}
+
+export function redisConfigFactory(configService: ConfigService): RedisConfig {
+  const config = configService.get<RedisConfig>('redis');
+  if (config == undefined) throw new Error('Redis configuration not found');
   return config;
 }
