@@ -7,6 +7,7 @@
  *
  */
 
+import { RedisService } from '@liaoliaots/nestjs-redis';
 import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -30,6 +31,7 @@ import {
 import bcrypt from 'bcryptjs';
 import { isEmail } from 'class-validator';
 import { Request } from 'express';
+import Redis from 'ioredis';
 import assert from 'node:assert';
 import { AnswerService } from '../answer/answer.service';
 import {
@@ -81,9 +83,15 @@ import {
   UsernameNotFoundError,
 } from './users.error';
 
+const USER_PROFILE_UPDATE_CHANNEL = 'cache:user:updated';
+
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+  private readonly redis: Redis;
+
   constructor(
+    private readonly redisService: RedisService,
     private readonly emailService: EmailService,
     private readonly emailRuleService: EmailRuleService,
     private readonly authService: AuthService,
@@ -100,7 +108,9 @@ export class UsersService {
     private readonly prismaService: PrismaService,
     private readonly totpService: TOTPService,
     private readonly srpService: SrpService,
-  ) {}
+  ) {
+    this.redis = this.redisService.getOrThrow();
+  }
 
   private readonly passwordResetEmailValidSeconds = 10 * 60; // 10 minutes
 
@@ -1039,23 +1049,70 @@ export class UsersService {
     intro: string,
     avatarId: number,
   ): Promise<void> {
+    this.logger.log(`Attempting to update profile for user ID: ${userId}`);
     const [, profile] =
       await this.findUserRecordAndProfileRecordOrThrow(userId);
-    if ((await this.avatarsService.isAvatarExists(avatarId)) == false) {
+
+    if ((await this.avatarsService.isAvatarExists(avatarId)) === false) {
+      this.logger.warn(`Avatar not found: ${avatarId} for user: ${userId}`);
       throw new AvatarNotFoundError(avatarId);
     }
-    await this.avatarsService.plusUsageCount(avatarId);
-    await this.avatarsService.minusUsageCount(profile.avatarId);
-    await this.prismaService.userProfile.update({
-      where: {
-        userId,
-      },
-      data: {
-        nickname,
-        intro,
-        avatarId,
-      },
-    });
+
+    const oldAvatarId = profile.avatarId;
+
+    if (
+      profile.nickname !== nickname ||
+      profile.intro !== intro ||
+      profile.avatarId !== avatarId
+    ) {
+      await this.prismaService.userProfile.update({
+        where: {
+          userId,
+        },
+        data: {
+          nickname,
+          intro,
+          avatarId,
+        },
+      });
+      this.logger.log(`Profile successfully updated for user ID: ${userId}`);
+
+      try {
+        const publishedCount = await this.redis.publish(
+          USER_PROFILE_UPDATE_CHANNEL,
+          userId.toString(),
+        );
+        this.logger.log(
+          `Published cache invalidation message for user ID: ${userId} to channel '${USER_PROFILE_UPDATE_CHANNEL}'. Received by ${publishedCount} clients.`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to publish cache invalidation message for user ID: ${userId} to Redis channel '${USER_PROFILE_UPDATE_CHANNEL}'`,
+          error instanceof Error ? error.stack : error,
+        );
+      }
+
+      if (oldAvatarId !== avatarId) {
+        try {
+          await Promise.all([
+            this.avatarsService.plusUsageCount(avatarId),
+            this.avatarsService.minusUsageCount(oldAvatarId),
+          ]);
+          this.logger.log(
+            `Updated avatar usage counts for user ID: ${userId}. New: ${avatarId}, Old: ${oldAvatarId}`,
+          );
+        } catch (avatarError) {
+          this.logger.error(
+            `Error updating avatar usage counts for user ID ${userId}`,
+            avatarError instanceof Error ? avatarError.stack : avatarError,
+          );
+        }
+      }
+    } else {
+      this.logger.log(
+        `Profile data unchanged for user ID: ${userId}. Skipping update and cache invalidation.`,
+      );
+    }
   }
 
   async getUniqueFollowRelationship(
