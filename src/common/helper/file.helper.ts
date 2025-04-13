@@ -2,9 +2,12 @@ import crypto from 'crypto';
 import * as fs from 'fs';
 import mime from 'mime-types';
 
-export function getFileHash(filePath: string): Promise<string> {
+export function getFileHash(
+  filePath: string,
+  algorithm: 'sha256' | 'md5' = 'sha256',
+): Promise<string> {
   return new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
+    const hash = crypto.createHash(algorithm);
     const stream = fs.createReadStream(filePath);
     stream
       .on('data', (data) => {
