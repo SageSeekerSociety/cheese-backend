@@ -11,13 +11,12 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { MaterialType } from '@prisma/client';
 import ffmpeg from 'fluent-ffmpeg';
 import path, { join } from 'node:path';
-import { readFileSync } from 'node:fs';
 import { promisify } from 'node:util';
+import { getFileHash } from '../common/helper/file.helper';
 import { PrismaService } from '../common/prisma/prisma.service';
-import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
-import { materialDto } from './DTO/material.dto';
 import { UsersService } from '../users/users.service';
-import md5 from 'md5';
+import { materialDto } from './DTO/material.dto';
+import { MaterialNotFoundError, MetaDataParseError } from './materials.error';
 @Injectable()
 export class MaterialsService implements OnModuleInit {
   private ffprobeAsync: (file: string) => Promise<ffmpeg.FfprobeData>;
@@ -101,8 +100,7 @@ export class MaterialsService implements OnModuleInit {
   ): Promise<PrismaJson.metaType> {
     let meta: PrismaJson.metaType;
 
-    const buf = readFileSync(file.path);
-    const hash = md5(buf);
+    const hash = await getFileHash(file.path, 'md5');
 
     if (type === MaterialType.image) {
       const metadata = await this.getImageMetadata(file.path);
