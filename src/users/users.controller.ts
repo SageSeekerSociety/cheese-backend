@@ -17,6 +17,7 @@ import {
   HttpCode,
   Inject,
   Ip,
+  Logger,
   Param,
   ParseIntPipe,
   Patch,
@@ -28,7 +29,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { Logger } from '@nestjs/common';
 import path from 'node:path';
 import qrcode from 'qrcode';
 import { AnswerService } from '../answer/answer.service';
@@ -40,9 +40,9 @@ import {
   ResourceId,
   ResourceOwnerIdGetter,
 } from '../auth/guard.decorator';
-import { SessionService } from '../auth/session.service';
 import { OAuthService } from '../auth/oauth/oauth.service';
 import { OAuthError } from '../auth/oauth/oauth.types';
+import { SessionService } from '../auth/session.service';
 import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
@@ -54,10 +54,6 @@ import {
   ChangePasswordResponseDto,
 } from './DTO/change-password.dto';
 import {
-  GetOAuthProvidersResponseDto,
-  OAuthCallbackQueryDto,
-} from './DTO/oauth.dto';
-import {
   FollowResponseDto,
   UnfollowResponseDto,
 } from './DTO/follow-unfollow.dto';
@@ -67,6 +63,10 @@ import { GetFollowedQuestionsResponseDto } from './DTO/get-followed-questions.dt
 import { GetFollowersResponseDto } from './DTO/get-followers.dto';
 import { GetUserResponseDto } from './DTO/get-user.dto';
 import { LoginRequestDto, LoginResponseDto } from './DTO/login.dto';
+import {
+  GetOAuthProvidersResponseDto,
+  OAuthCallbackQueryDto,
+} from './DTO/oauth.dto';
 import {
   DeletePasskeyResponseDto,
   GetPasskeysResponseDto,
@@ -1315,7 +1315,7 @@ export class UsersController {
       const successPath =
         this.configService.get('FRONTEND_OAUTH_SUCCESS_PATH') ||
         '/oauth-success';
-      const frontendUrl = `${frontendBaseUrl}${successPath}?token=${encodeURIComponent(jwtAccessToken)}&email=${encodeURIComponent(userDto.username)}&provider=${providerId}`;
+      const frontendUrl = `${frontendBaseUrl}${successPath}?token=${encodeURIComponent(jwtAccessToken)}&email=${encodeURIComponent(userDto.email || userDto.username)}&provider=${providerId}`;
 
       // 6. 设置 Refresh Token Cookie
       const cookieBasePath = this.configService.get('cookieBasePath') || '';

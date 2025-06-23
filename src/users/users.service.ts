@@ -41,8 +41,8 @@ import {
 } from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
 import { Authorization } from '../auth/definitions';
-import { SessionService } from '../auth/session.service';
 import { OAuthUserInfo } from '../auth/oauth/oauth.types';
+import { SessionService } from '../auth/session.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
 import { PageDto } from '../common/DTO/page-response.dto';
@@ -51,6 +51,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { EmailRuleService } from '../email/email-rule.service';
 import { EmailService } from '../email/email.service';
 import { QuestionsService } from '../questions/questions.service';
+import { OAuthUserDto } from './DTO/oauth.dto';
 import { UserDto } from './DTO/user.dto';
 import { SrpService } from './srp.service';
 import { TOTPService } from './totp.service';
@@ -734,6 +735,30 @@ export class UsersService {
       is_follow: isFollow,
       question_count: questionCount,
       answer_count: answerCount,
+    };
+  }
+
+  /**
+   * Get OAuth user DTO with email field for OAuth operations
+   */
+  async getOAuthUserDtoById(
+    userId: number,
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<OAuthUserDto> {
+    const userDto = await this.getUserDtoById(userId, viewerId, ip, userAgent);
+    const user = await this.findUserRecordOrThrow(userId);
+
+    // 检查是否是占位符email，如果是则返回null
+    const email =
+      user.email && user.email.endsWith('@placeholder.internal')
+        ? null
+        : user.email;
+
+    return {
+      ...userDto,
+      email: email,
     };
   }
 
@@ -1623,7 +1648,7 @@ export class UsersService {
     userInfo: OAuthUserInfo,
     ip: string,
     userAgent: string | undefined,
-  ): Promise<[UserDto, string]> {
+  ): Promise<[OAuthUserDto, string]> {
     this.logger.log(
       `Processing OAuth login for provider: ${providerId}, user: ${userInfo.id}`,
     );
@@ -1678,7 +1703,7 @@ export class UsersService {
       });
 
       return [
-        await this.getUserDtoById(
+        await this.getOAuthUserDtoById(
           existingConnection.user.id,
           existingConnection.user.id,
           ip,
@@ -1731,7 +1756,7 @@ export class UsersService {
         });
 
         return [
-          await this.getUserDtoById(
+          await this.getOAuthUserDtoById(
             existingUser.id,
             existingUser.id,
             ip,
@@ -1760,11 +1785,18 @@ export class UsersService {
 
     // 在事务中创建用户、profile 和 OAuth 连接
     const result = await this.prismaService.$transaction(async (tx) => {
+      // 为没有email的用户生成唯一占位符email
+      let userEmail = userInfo.email;
+      if (!userEmail) {
+        // 生成格式：oauth-{providerId}-{providerUserId}@placeholder.internal
+        userEmail = `oauth-${providerId}-${userInfo.id}@placeholder.internal`;
+      }
+
       // 创建用户
       const newUser = await tx.user.create({
         data: {
           username: uniqueUsername,
-          email: userInfo.email || '',
+          email: userEmail,
           hashedPassword,
           srpUpgraded: false, // OAuth 用户默认未升级到 SRP
         },
@@ -1818,7 +1850,7 @@ export class UsersService {
     );
 
     return [
-      await this.getUserDtoById(result.id, result.id, ip, userAgent),
+      await this.getOAuthUserDtoById(result.id, result.id, ip, userAgent),
       await this.createSession(result.id),
     ];
   }

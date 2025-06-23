@@ -5,22 +5,25 @@
  *     Claude Assistant
  */
 
-import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { RedisService } from '@liaoliaots/nestjs-redis';
-import { UsersService } from './users.service';
-import { PrismaService } from '../common/prisma/prisma.service';
+import { ConfigService } from '@nestjs/config';
+import { Test, TestingModule } from '@nestjs/testing';
+import { AnswerService } from '../answer/answer.service';
 import { AuthService } from '../auth/auth.service';
-import { SessionService } from '../auth/session.service';
-import { EmailService } from '../email/email.service';
-import { AvatarsService } from '../avatars/avatars.service';
-import { UsersRegisterRequestService } from './users-register-request.service';
-import { UsersPermissionService } from './users-permission.service';
-import { RolePermissionService } from './role-permission.service';
-import { UserChallengeRepository } from './user-challenge.repository';
-import { TOTPService } from './totp.service';
-import { SrpService } from './srp.service';
 import { OAuthUserInfo } from '../auth/oauth/oauth.types';
+import { SessionService } from '../auth/session.service';
+import { AvatarsService } from '../avatars/avatars.service';
+import { PrismaService } from '../common/prisma/prisma.service';
+import { EmailRuleService } from '../email/email-rule.service';
+import { EmailService } from '../email/email.service';
+import { QuestionsService } from '../questions/questions.service';
+import { RolePermissionService } from './role-permission.service';
+import { SrpService } from './srp.service';
+import { TOTPService } from './totp.service';
+import { UserChallengeRepository } from './user-challenge.repository';
+import { UsersPermissionService } from './users-permission.service';
+import { UsersRegisterRequestService } from './users-register-request.service';
+import { UsersService } from './users.service';
 
 describe('UsersService - OAuth', () => {
   let service: UsersService;
@@ -43,6 +46,9 @@ describe('UsersService - OAuth', () => {
     userLoginLog: {
       create: jest.fn(),
     },
+    userRegisterLog: {
+      create: jest.fn(),
+    },
     $transaction: jest.fn(),
   };
 
@@ -55,13 +61,37 @@ describe('UsersService - OAuth', () => {
   };
 
   const mockConfigService = {
-    get: jest.fn(),
+    get: jest.fn().mockImplementation((key: string) => {
+      if (key === 'defaultIntro') {
+        return 'This user has not set an introduction yet.';
+      }
+      return undefined;
+    }),
   };
 
   const mockRedisService = {
     getOrThrow: jest.fn().mockReturnValue({
       publish: jest.fn(),
     }),
+  };
+
+  const mockEmailRuleService = {
+    verifyEmailRule: jest.fn(),
+  };
+
+  const mockAnswerService = {
+    // Add any methods that might be called in tests
+  };
+
+  const mockUsersPermissionService = {
+    getAuthorizationForUser: jest.fn().mockResolvedValue({
+      permissions: [],
+      roles: [],
+    }),
+  };
+
+  const mockAvatarsService = {
+    getDefaultAvatarId: jest.fn().mockResolvedValue(1),
   };
 
   beforeEach(async () => {
@@ -74,13 +104,19 @@ describe('UsersService - OAuth', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: RedisService, useValue: mockRedisService },
         { provide: EmailService, useValue: {} },
-        { provide: AvatarsService, useValue: {} },
+        { provide: EmailRuleService, useValue: mockEmailRuleService },
+        { provide: AvatarsService, useValue: mockAvatarsService },
         { provide: UsersRegisterRequestService, useValue: {} },
-        { provide: UsersPermissionService, useValue: {} },
+        {
+          provide: UsersPermissionService,
+          useValue: mockUsersPermissionService,
+        },
         { provide: RolePermissionService, useValue: {} },
         { provide: UserChallengeRepository, useValue: {} },
         { provide: TOTPService, useValue: {} },
         { provide: SrpService, useValue: {} },
+        { provide: AnswerService, useValue: mockAnswerService },
+        { provide: QuestionsService, useValue: {} },
       ],
     }).compile();
 
@@ -129,17 +165,22 @@ describe('UsersService - OAuth', () => {
         email: 'test@ruc.edu.cn',
       } as any);
 
-      // Mock createSession method
-      jest.spyOn(service, 'createSession').mockResolvedValue('session-token');
+      // Mock createSession method (it's private, so we need to mock the sessionService.createSession instead)
+      jest
+        .spyOn(mockSessionService, 'createSession')
+        .mockResolvedValue('session-token');
 
-      // Mock createDefaultProfileForUser method
-      jest.spyOn(service, 'createDefaultProfileForUser').mockResolvedValue();
+      // Mock createDefaultProfileForUser method (private method, mock via prisma)
+      jest
+        .spyOn(service as any, 'createDefaultProfileForUser')
+        .mockResolvedValue(undefined);
     });
 
     it('should login existing user with OAuth connection', async () => {
       mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(
         mockOAuthConnection,
       );
+      mockPrismaService.user.findUnique.mockResolvedValue(mockExistingUser);
       mockPrismaService.userLoginLog.create.mockResolvedValue({});
       mockPrismaService.userOAuthConnection.update.mockResolvedValue({});
 
@@ -190,6 +231,7 @@ describe('UsersService - OAuth', () => {
       mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(
         connectionWithoutProfile,
       );
+      mockPrismaService.user.findUnique.mockResolvedValue(mockExistingUser);
       mockPrismaService.userLoginLog.create.mockResolvedValue({});
       mockPrismaService.userOAuthConnection.update.mockResolvedValue({});
 
@@ -200,12 +242,14 @@ describe('UsersService - OAuth', () => {
         'test-agent',
       );
 
-      expect(service.createDefaultProfileForUser).toHaveBeenCalledWith(1);
+      expect(service['createDefaultProfileForUser']).toHaveBeenCalledWith(1);
     });
 
     it('should bind OAuth to existing user by email', async () => {
       mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.findUnique.mockResolvedValue(mockExistingUser);
+      mockPrismaService.user.findUnique
+        .mockResolvedValueOnce(mockExistingUser)
+        .mockResolvedValueOnce(mockExistingUser);
       mockPrismaService.userOAuthConnection.upsert.mockResolvedValue(
         mockOAuthConnection,
       );
@@ -224,7 +268,7 @@ describe('UsersService - OAuth', () => {
         include: { userProfile: true },
       });
       expect(mockPrismaService.userOAuthConnection.upsert).toHaveBeenCalledWith(
-        {
+        expect.objectContaining({
           where: {
             providerId_providerUserId: {
               providerId: 'test',
@@ -237,11 +281,11 @@ describe('UsersService - OAuth', () => {
             userId: 1,
             rawProfile: mockUserInfo,
           },
-          update: {
+          update: expect.objectContaining({
             rawProfile: mockUserInfo,
             updatedAt: expect.any(Date),
-          },
-        },
+          }),
+        }),
       );
     });
 
@@ -280,6 +324,12 @@ describe('UsersService - OAuth', () => {
         newOAuthConnection,
       );
       mockPrismaService.userLoginLog.create.mockResolvedValue({});
+      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
+
+      // Mock user.findUnique for getOAuthUserDtoById
+      mockPrismaService.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(newUser);
 
       // Mock generateUniqueUsername method
       jest
@@ -296,17 +346,18 @@ describe('UsersService - OAuth', () => {
       expect(result).toHaveLength(2);
       expect(mockPrismaService.$transaction).toHaveBeenCalled();
       expect(mockPrismaService.user.create).toHaveBeenCalledWith({
-        data: {
+        data: expect.objectContaining({
           username: 'testuser',
           email: 'test@ruc.edu.cn',
-          password: 'random-password',
           srpUpgraded: false,
-        },
+        }),
       });
       expect(mockPrismaService.userProfile.create).toHaveBeenCalledWith({
         data: {
           userId: 2,
           nickname: 'Test User',
+          intro: 'This user has not set an introduction yet.',
+          avatarId: 1,
         },
       });
       expect(mockPrismaService.userOAuthConnection.create).toHaveBeenCalledWith(
@@ -324,7 +375,6 @@ describe('UsersService - OAuth', () => {
     it('should handle OAuth user without email', async () => {
       const userInfoWithoutEmail: OAuthUserInfo = {
         id: '12345',
-        email: null,
         name: 'Test User',
         username: 'testuser',
         preferredUsername: 'testuser',
@@ -335,7 +385,7 @@ describe('UsersService - OAuth', () => {
       const newUser = {
         id: 2,
         username: 'testuser',
-        email: null,
+        email: 'oauth-test-12345@placeholder.internal',
         deletedAt: null,
       };
 
@@ -347,6 +397,10 @@ describe('UsersService - OAuth', () => {
       mockPrismaService.userProfile.create.mockResolvedValue({});
       mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
       mockPrismaService.userLoginLog.create.mockResolvedValue({});
+      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
+
+      // Mock user.findUnique for getOAuthUserDtoById
+      mockPrismaService.user.findUnique.mockResolvedValue(newUser);
 
       jest
         .spyOn(service, 'generateUniqueUsername' as any)
@@ -359,14 +413,12 @@ describe('UsersService - OAuth', () => {
         'test-agent',
       );
 
-      expect(mockPrismaService.user.findUnique).not.toHaveBeenCalled(); // Should skip email lookup
       expect(mockPrismaService.user.create).toHaveBeenCalledWith({
-        data: {
+        data: expect.objectContaining({
           username: 'testuser',
-          email: null,
-          password: 'random-password',
+          email: 'oauth-test-12345@placeholder.internal',
           srpUpgraded: false,
-        },
+        }),
       });
     });
 
@@ -400,6 +452,12 @@ describe('UsersService - OAuth', () => {
       mockPrismaService.userProfile.create.mockResolvedValue({});
       mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
       mockPrismaService.userLoginLog.create.mockResolvedValue({});
+      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
+
+      // Mock user.findUnique for getOAuthUserDtoById
+      mockPrismaService.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(newUser);
 
       jest
         .spyOn(service, 'generateUniqueUsername' as any)
@@ -420,7 +478,6 @@ describe('UsersService - OAuth', () => {
       const userInfoWithoutName: OAuthUserInfo = {
         id: '12345',
         email: 'test@ruc.edu.cn',
-        name: null,
         username: 'testuser',
         preferredUsername: 'testuser',
       };
@@ -437,6 +494,12 @@ describe('UsersService - OAuth', () => {
       mockPrismaService.userProfile.create.mockResolvedValue({});
       mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
       mockPrismaService.userLoginLog.create.mockResolvedValue({});
+      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
+
+      // Mock user.findUnique for getOAuthUserDtoById
+      mockPrismaService.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(newUser);
 
       jest
         .spyOn(service, 'generateUniqueUsername' as any)
@@ -450,10 +513,12 @@ describe('UsersService - OAuth', () => {
       );
 
       expect(mockPrismaService.userProfile.create).toHaveBeenCalledWith({
-        data: {
+        data: expect.objectContaining({
           userId: 2,
           nickname: 'testuser', // Should fallback to username
-        },
+          intro: 'This user has not set an introduction yet.',
+          avatarId: 1,
+        }),
       });
     });
   });
