@@ -1197,6 +1197,234 @@ describe('User Module', () => {
     });
   });
 
+  describe('OAuth Authentication', () => {
+    let oauthUser: {
+      userId: number;
+      username: string;
+      email: string;
+      accessToken: string;
+      refreshToken: string;
+    };
+
+    beforeAll(async () => {
+      // Mock OAuth service to return test data
+      const oauthService = app.get('OAuthService');
+      if (oauthService) {
+        jest
+          .spyOn(oauthService, 'getAvailableProviders')
+          .mockReturnValue(['test']);
+        jest
+          .spyOn(oauthService, 'generateAuthorizationUrl')
+          .mockReturnValue(
+            'https://test.com/oauth/authorize?client_id=test&redirect_uri=callback&response_type=code',
+          );
+        jest.spyOn(oauthService, 'handleCallback').mockResolvedValue({
+          id: 'oauth-user-123',
+          email: `oauth-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`,
+          name: 'OAuth Test User',
+          username: 'oauthuser',
+          preferredUsername: 'oauthuser',
+        });
+      }
+    });
+
+    it('GET /users/auth/oauth/providers should return available providers', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/users/auth/oauth/providers')
+        .expect(200);
+
+      expect(res.body.data.providers).toBeDefined();
+      expect(Array.isArray(res.body.data.providers)).toBe(true);
+    });
+
+    it('GET /users/auth/oauth/login/:providerId should redirect to provider', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/users/auth/oauth/login/test')
+        .expect(302);
+
+      expect(res.headers.location).toContain(
+        'https://test.com/oauth/authorize',
+      );
+    });
+
+    it('should return 404 for invalid provider', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/users/auth/oauth/login/invalid-provider')
+        .expect(404);
+
+      expect(res.body.message).toMatch(/OAuth provider not found/);
+    });
+
+    it('GET /users/auth/oauth/callback/:providerId should handle OAuth callback', async () => {
+      const agent = request.agent(app.getHttpServer());
+
+      const res = await agent
+        .get('/users/auth/oauth/callback/test?code=test-code&state=test-state')
+        .expect(302);
+
+      // Should redirect to frontend success page
+      expect(res.headers.location).toContain('/oauth-success');
+      expect(res.headers.location).toContain('token=');
+      expect(res.headers.location).toContain('email=');
+
+      // Should set refresh token cookie
+      expect(res.headers['set-cookie']).toBeDefined();
+      const cookies = res.headers['set-cookie'];
+      expect(cookies.some((cookie) => cookie.includes('REFRESH_TOKEN='))).toBe(
+        true,
+      );
+
+      // Extract token from redirect URL for further tests
+      const urlParams = new URLSearchParams(res.headers.location.split('?')[1]);
+      const accessToken = urlParams.get('token');
+      const email = urlParams.get('email');
+
+      expect(accessToken).toBeDefined();
+      expect(email).toBeDefined();
+
+      // Verify the token works
+      const userRes = await agent
+        .get('/users/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(userRes.body.data.user.email).toBe(email);
+
+      oauthUser = {
+        userId: userRes.body.data.user.id,
+        username: userRes.body.data.user.username,
+        email: userRes.body.data.user.email,
+        accessToken: accessToken,
+        refreshToken:
+          cookies
+            .find((c) => c.includes('REFRESH_TOKEN='))
+            ?.split('=')[1]
+            ?.split(';')[0] || '',
+      };
+    });
+
+    it('should handle OAuth callback with invalid code', async () => {
+      const oauthService = app.get('OAuthService');
+      if (oauthService) {
+        jest
+          .spyOn(oauthService, 'handleCallback')
+          .mockRejectedValue(new Error('Invalid authorization code'));
+      }
+
+      const res = await request(app.getHttpServer())
+        .get('/users/auth/oauth/callback/test?code=invalid-code')
+        .expect(302);
+
+      expect(res.headers.location).toContain('/oauth-error');
+      expect(res.headers.location).toContain('error=');
+    });
+
+    it('should handle OAuth callback for invalid provider', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/users/auth/oauth/callback/invalid-provider?code=test-code')
+        .expect(302);
+
+      expect(res.headers.location).toContain('/oauth-error');
+      expect(res.headers.location).toContain('error=');
+    });
+
+    it('should bind OAuth account to existing user by email', async () => {
+      // Create a regular user first
+      const regularUser = await createLegacyUser(app.getHttpServer());
+
+      // Mock OAuth service to return same email
+      const oauthService = app.get('OAuthService');
+      if (oauthService) {
+        jest.spyOn(oauthService, 'handleCallback').mockResolvedValue({
+          id: 'oauth-user-456',
+          email: regularUser.email,
+          name: 'OAuth Existing User',
+          username: 'oauthexisting',
+          preferredUsername: 'oauthexisting',
+        });
+      }
+
+      const res = await request(app.getHttpServer())
+        .get('/users/auth/oauth/callback/test?code=test-code-existing')
+        .expect(302);
+
+      expect(res.headers.location).toContain('/oauth-success');
+
+      // Verify the OAuth login returns the same user
+      const urlParams = new URLSearchParams(res.headers.location.split('?')[1]);
+      const accessToken = urlParams.get('token');
+
+      const userRes = await request(app.getHttpServer())
+        .get('/users/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(userRes.body.data.user.email).toBe(regularUser.email);
+      expect(userRes.body.data.user.id).toBe(regularUser.userId);
+    });
+
+    it('should handle OAuth login for existing OAuth connection', async () => {
+      // Mock OAuth service to return same user info as before
+      const oauthService = app.get('OAuthService');
+      if (oauthService) {
+        jest.spyOn(oauthService, 'handleCallback').mockResolvedValue({
+          id: 'oauth-user-123', // Same ID as first test
+          email: oauthUser.email,
+          name: 'OAuth Test User Updated',
+          username: 'oauthuser',
+          preferredUsername: 'oauthuser',
+        });
+      }
+
+      const res = await request(app.getHttpServer())
+        .get('/users/auth/oauth/callback/test?code=test-code-existing')
+        .expect(302);
+
+      expect(res.headers.location).toContain('/oauth-success');
+
+      const urlParams = new URLSearchParams(res.headers.location.split('?')[1]);
+      const accessToken = urlParams.get('token');
+
+      const userRes = await request(app.getHttpServer())
+        .get('/users/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(userRes.body.data.user.id).toBe(oauthUser.userId);
+      expect(userRes.body.data.user.email).toBe(oauthUser.email);
+    });
+
+    it('should create new user for OAuth without email', async () => {
+      const oauthService = app.get('OAuthService');
+      if (oauthService) {
+        jest.spyOn(oauthService, 'handleCallback').mockResolvedValue({
+          id: 'oauth-user-no-email',
+          email: null,
+          name: 'OAuth No Email User',
+          username: 'oauthnoemail',
+          preferredUsername: 'oauthnoemail',
+        });
+      }
+
+      const res = await request(app.getHttpServer())
+        .get('/users/auth/oauth/callback/test?code=test-code-no-email')
+        .expect(302);
+
+      expect(res.headers.location).toContain('/oauth-success');
+
+      const urlParams = new URLSearchParams(res.headers.location.split('?')[1]);
+      const accessToken = urlParams.get('token');
+
+      const userRes = await request(app.getHttpServer())
+        .get('/users/me')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200);
+
+      expect(userRes.body.data.user.email).toBeNull();
+      expect(userRes.body.data.user.username).toContain('oauthnoemail');
+    });
+  });
+
   afterAll(async () => {
     await app.close();
   });

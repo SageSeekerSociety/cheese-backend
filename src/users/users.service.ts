@@ -42,6 +42,7 @@ import {
 import { AuthService } from '../auth/auth.service';
 import { Authorization } from '../auth/definitions';
 import { SessionService } from '../auth/session.service';
+import { OAuthUserInfo } from '../auth/oauth/oauth.types';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
 import { PageDto } from '../common/DTO/page-response.dto';
@@ -1609,6 +1610,304 @@ export class UsersService {
         srpVerifier,
         srpUpgraded: true,
         lastPasswordChangedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * OAuth 用户登录/注册处理
+   * 将第三方返回的用户信息与本地用户数据库同步
+   */
+  async loginWithOAuth(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[UserDto, string]> {
+    this.logger.log(
+      `Processing OAuth login for provider: ${providerId}, user: ${userInfo.id}`,
+    );
+
+    // 1. 检查已有绑定
+    const existingConnection =
+      await this.prismaService.userOAuthConnection.findUnique({
+        where: {
+          providerId_providerUserId: {
+            providerId,
+            providerUserId: userInfo.id,
+          },
+        },
+        include: {
+          user: {
+            include: {
+              userProfile: true,
+            },
+          },
+        },
+      });
+
+    if (
+      existingConnection &&
+      existingConnection.user &&
+      !existingConnection.user.deletedAt
+    ) {
+      // 用户已存在，检查是否有 profile
+      if (!existingConnection.user.userProfile) {
+        this.logger.warn(
+          `User ${existingConnection.user.id} has OAuth connection but no profile, creating default profile`,
+        );
+        await this.createDefaultProfileForUser(existingConnection.user.id);
+      }
+
+      // 记录登录日志
+      await this.prismaService.userLoginLog.create({
+        data: {
+          userId: existingConnection.user.id,
+          ip,
+          userAgent,
+        },
+      });
+
+      // 更新连接的原始资料
+      await this.prismaService.userOAuthConnection.update({
+        where: { id: existingConnection.id },
+        data: {
+          rawProfile: userInfo as any,
+          updatedAt: new Date(),
+        },
+      });
+
+      return [
+        await this.getUserDtoById(
+          existingConnection.user.id,
+          existingConnection.user.id,
+          ip,
+          userAgent,
+        ),
+        await this.createSession(existingConnection.user.id),
+      ];
+    }
+
+    // 2. 按邮箱匹配现有用户
+    if (userInfo.email) {
+      const existingUser = await this.prismaService.user.findUnique({
+        where: { email: userInfo.email },
+        include: { userProfile: true },
+      });
+
+      if (existingUser && !existingUser.deletedAt) {
+        this.logger.log(
+          `Found existing user by email for OAuth login: ${existingUser.username}`,
+        );
+
+        // 创建关联
+        await this.prismaService.userOAuthConnection.upsert({
+          where: {
+            providerId_providerUserId: {
+              providerId,
+              providerUserId: userInfo.id,
+            },
+          },
+          update: {
+            userId: existingUser.id,
+            rawProfile: userInfo as any,
+            updatedAt: new Date(),
+          },
+          create: {
+            userId: existingUser.id,
+            providerId,
+            providerUserId: userInfo.id,
+            rawProfile: userInfo as any,
+          },
+        });
+
+        // 记录登录日志
+        await this.prismaService.userLoginLog.create({
+          data: {
+            userId: existingUser.id,
+            ip,
+            userAgent,
+          },
+        });
+
+        return [
+          await this.getUserDtoById(
+            existingUser.id,
+            existingUser.id,
+            ip,
+            userAgent,
+          ),
+          await this.createSession(existingUser.id),
+        ];
+      }
+    }
+
+    // 3. 创建新用户
+    this.logger.log(
+      `Creating new user for OAuth login from provider: ${providerId}`,
+    );
+
+    // 生成唯一用户名
+    const baseUsername = this.generateOAuthUsername(userInfo);
+    const uniqueUsername = await this.generateUniqueUsername(baseUsername);
+
+    // 获取默认头像
+    const avatarId = await this.avatarsService.getDefaultAvatarId();
+
+    // 生成随机密码（用户不会使用，仅为占位）
+    const randomPassword = this.generateRandomPassword();
+    const hashedPassword = bcrypt.hashSync(randomPassword, 10);
+
+    // 在事务中创建用户、profile 和 OAuth 连接
+    const result = await this.prismaService.$transaction(async (tx) => {
+      // 创建用户
+      const newUser = await tx.user.create({
+        data: {
+          username: uniqueUsername,
+          email: userInfo.email || '',
+          hashedPassword,
+          srpUpgraded: false, // OAuth 用户默认未升级到 SRP
+        },
+      });
+
+      // 创建用户 profile
+      await tx.userProfile.create({
+        data: {
+          userId: newUser.id,
+          nickname:
+            userInfo.name || userInfo.preferredUsername || uniqueUsername,
+          intro: this.defaultIntro,
+          avatarId,
+        },
+      });
+
+      // 创建 OAuth 连接
+      await tx.userOAuthConnection.create({
+        data: {
+          userId: newUser.id,
+          providerId,
+          providerUserId: userInfo.id,
+          rawProfile: userInfo as any,
+        },
+      });
+
+      // 记录注册日志
+      await tx.userRegisterLog.create({
+        data: {
+          type: 'Success',
+          email: userInfo.email || '',
+          ip,
+          userAgent,
+        },
+      });
+
+      // 记录登录日志
+      await tx.userLoginLog.create({
+        data: {
+          userId: newUser.id,
+          ip,
+          userAgent,
+        },
+      });
+
+      return newUser;
+    });
+
+    this.logger.log(
+      `Created new user ${result.username} (ID: ${result.id}) for OAuth provider: ${providerId}`,
+    );
+
+    return [
+      await this.getUserDtoById(result.id, result.id, ip, userAgent),
+      await this.createSession(result.id),
+    ];
+  }
+
+  /**
+   * 根据 OAuth 用户信息生成用户名基础
+   */
+  private generateOAuthUsername(userInfo: OAuthUserInfo): string {
+    if (
+      userInfo.preferredUsername &&
+      this.isValidUsername(userInfo.preferredUsername)
+    ) {
+      return userInfo.preferredUsername;
+    }
+
+    if (userInfo.username && this.isValidUsername(userInfo.username)) {
+      return userInfo.username;
+    }
+
+    if (userInfo.name) {
+      // 清理名称：去除特殊字符，转为小写
+      const cleaned = userInfo.name
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .toLowerCase()
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+
+      if (cleaned.length >= 4 && this.isValidUsername(cleaned)) {
+        return cleaned;
+      }
+    }
+
+    // 如果都不可用，使用默认格式
+    return `user_${userInfo.id}`.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+  }
+
+  /**
+   * 生成唯一用户名
+   */
+  private async generateUniqueUsername(baseUsername: string): Promise<string> {
+    // 确保用户名长度符合要求
+    let username = baseUsername;
+    if (username.length < 4) {
+      username = `user_${username}`;
+    }
+    if (username.length > 32) {
+      username = username.substring(0, 32);
+    }
+
+    // 检查是否已存在
+    let counter = 0;
+    let uniqueUsername = username;
+
+    while (await this.isUsernameRegistered(uniqueUsername)) {
+      counter++;
+      const suffix = `_${counter}`;
+      const maxBaseLength = 32 - suffix.length;
+      uniqueUsername = username.substring(0, maxBaseLength) + suffix;
+    }
+
+    return uniqueUsername;
+  }
+
+  /**
+   * 生成随机密码
+   */
+  private generateRandomPassword(): string {
+    const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 16; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+
+  /**
+   * 为用户创建默认 profile
+   */
+  private async createDefaultProfileForUser(userId: number): Promise<void> {
+    const avatarId = await this.avatarsService.getDefaultAvatarId();
+    const user = await this.findUserRecordOrThrow(userId);
+
+    await this.prismaService.userProfile.create({
+      data: {
+        userId,
+        nickname: user.username,
+        intro: this.defaultIntro,
+        avatarId,
       },
     });
   }
