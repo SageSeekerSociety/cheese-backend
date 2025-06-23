@@ -1236,21 +1236,23 @@ export class UsersController {
     @Query('state') state?: string,
     @Query('access_type') accessType?: string,
     @Res() res?: Response,
-  ): Promise<Response> {
+  ): Promise<void> {
     try {
       const authUrl = await this.oauthService.generateAuthorizationUrl(
         providerId,
         state,
         accessType,
       );
-      return res!.redirect(authUrl);
+      res!.redirect(authUrl);
+      return;
     } catch (error) {
       if (error instanceof OAuthError) {
         const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
         const errorPath =
           this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
         const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(error.message)}&provider=${providerId}`;
-        return res!.redirect(errorUrl);
+        res!.redirect(errorUrl);
+        return;
       }
       throw error;
     }
@@ -1264,7 +1266,7 @@ export class UsersController {
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
     @Res() res: Response,
-  ): Promise<Response> {
+  ): Promise<void> {
     try {
       // 检查是否有错误
       if (query.error) {
@@ -1272,7 +1274,8 @@ export class UsersController {
         const errorPath =
           this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
         const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(query.error)}&provider=${providerId}&description=${encodeURIComponent(query.error_description || '')}`;
-        return res.redirect(errorUrl);
+        res.redirect(errorUrl);
+        return;
       }
 
       if (!query.code) {
@@ -1325,11 +1328,12 @@ export class UsersController {
       });
 
       // 7. 重定向到前端
-      return res.redirect(frontendUrl);
+      res.redirect(frontendUrl);
+      return;
     } catch (error) {
       this.logger.error(
-        `OAuth callback failed for provider ${providerId}: ${error.message}`,
-        error.stack,
+        `OAuth callback failed for provider ${providerId}: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
       );
 
       const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
@@ -1338,7 +1342,8 @@ export class UsersController {
       const errorMessage =
         error instanceof OAuthError ? error.message : 'Internal server error';
       const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(errorMessage)}&provider=${providerId}`;
-      return res.redirect(errorUrl);
+      res.redirect(errorUrl);
+      return;
     }
   }
 }

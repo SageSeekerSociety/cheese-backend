@@ -39,8 +39,8 @@ export class OAuthService {
         await this.loadProvider(providerId, pluginPaths, allowNpmLoading);
       } catch (error) {
         this.logger.error(
-          `Failed to load OAuth provider '${providerId}': ${error.message}`,
-          error.stack,
+          `Failed to load OAuth provider '${providerId}': ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? error.stack : undefined,
         );
       }
     }
@@ -186,7 +186,7 @@ export class OAuthService {
         }
       } catch (error) {
         this.logger.debug(
-          `Failed to load provider '${providerId}' from ${modulePath}: ${error.message}`,
+          `Failed to load provider '${providerId}' from ${modulePath}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     }
@@ -213,7 +213,7 @@ export class OAuthService {
       }
     } catch (error) {
       this.logger.debug(
-        `Failed to load provider '${providerId}' from npm package '${packageName}': ${error.message}`,
+        `Failed to load provider '${providerId}' from npm package '${packageName}': ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 
@@ -274,7 +274,7 @@ export class OAuthService {
       return provider.getAuthorizationUrl(state, accessType);
     } catch (error) {
       throw new OAuthError(
-        `Failed to generate authorization URL for provider '${providerId}': ${error.message}`,
+        `Failed to generate authorization URL for provider '${providerId}': ${error instanceof Error ? error.message : String(error)}`,
         providerId,
         'authorization',
         error,
@@ -300,7 +300,7 @@ export class OAuthService {
       return await provider.handleCallback(code, state);
     } catch (error) {
       throw new OAuthError(
-        `Failed to handle callback for provider '${providerId}': ${error.message}`,
+        `Failed to handle callback for provider '${providerId}': ${error instanceof Error ? error.message : String(error)}`,
         providerId,
         'token_exchange',
         error,
@@ -322,7 +322,7 @@ export class OAuthService {
       return await provider.getUserInfo(accessToken);
     } catch (error) {
       throw new OAuthError(
-        `Failed to get user info from provider '${providerId}': ${error.message}`,
+        `Failed to get user info from provider '${providerId}': ${error instanceof Error ? error.message : String(error)}`,
         providerId,
         'user_info',
         error,
