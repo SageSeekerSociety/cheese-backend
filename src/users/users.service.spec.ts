@@ -2,7 +2,7 @@
  * Description: Unit tests for Users Service OAuth functionality
  *
  * Author(s):
- *     Claude Assistant
+ *      HuanCheng65
  */
 
 import { RedisService } from '@liaoliaots/nestjs-redis';
@@ -520,6 +520,213 @@ describe('UsersService - OAuth', () => {
           avatarId: 1,
         }),
       });
+    });
+
+    it('should handle database transaction errors during user creation', async () => {
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      // Mock transaction to throw error
+      mockPrismaService.$transaction.mockRejectedValue(
+        new Error('Database transaction failed'),
+      );
+
+      jest
+        .spyOn(service, 'generateUniqueUsername' as any)
+        .mockResolvedValue('testuser');
+
+      await expect(
+        service.loginWithOAuth('test', mockUserInfo, '127.0.0.1', 'test-agent'),
+      ).rejects.toThrow('Database transaction failed');
+
+      expect(mockPrismaService.$transaction).toHaveBeenCalled();
+    });
+
+    it('should handle OAuth connection update errors', async () => {
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(
+        mockOAuthConnection,
+      );
+      mockPrismaService.user.findUnique.mockResolvedValue(mockExistingUser);
+      mockPrismaService.userLoginLog.create.mockResolvedValue({});
+
+      // Mock update to throw error
+      mockPrismaService.userOAuthConnection.update.mockRejectedValue(
+        new Error('Update failed'),
+      );
+
+      await expect(
+        service.loginWithOAuth('test', mockUserInfo, '127.0.0.1', 'test-agent'),
+      ).rejects.toThrow('Update failed');
+    });
+
+    it('should handle missing OAuth user ID', async () => {
+      const userInfoWithoutId: Omit<OAuthUserInfo, 'id'> & { id?: string } = {
+        email: 'test@ruc.edu.cn',
+        name: 'Test User',
+        username: 'testuser',
+        preferredUsername: 'testuser',
+      };
+
+      // Call with undefined id
+      await expect(
+        service.loginWithOAuth(
+          'test',
+          userInfoWithoutId as OAuthUserInfo,
+          '127.0.0.1',
+          'test-agent',
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('should handle very long OAuth user data', async () => {
+      const longString = 'a'.repeat(1000);
+      const userInfoWithLongData: OAuthUserInfo = {
+        id: '12345',
+        email: 'test@ruc.edu.cn',
+        name: longString,
+        username: longString,
+        preferredUsername: longString,
+      };
+
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      const newUser = {
+        id: 2,
+        username: 'shortened-username', // Should be shortened
+        email: 'test@ruc.edu.cn',
+      };
+      mockPrismaService.user.create.mockResolvedValue(newUser);
+      mockPrismaService.userProfile.create.mockResolvedValue({});
+      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
+      mockPrismaService.userLoginLog.create.mockResolvedValue({});
+      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
+
+      mockPrismaService.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(newUser);
+
+      jest
+        .spyOn(service, 'generateUniqueUsername' as any)
+        .mockResolvedValue('shortened-username');
+
+      const result = await service.loginWithOAuth(
+        'test',
+        userInfoWithLongData,
+        '127.0.0.1',
+        'test-agent',
+      );
+
+      expect(result).toHaveLength(2);
+      expect(mockPrismaService.userProfile.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          nickname: longString.substring(0, 255), // Should be truncated if needed
+        }),
+      });
+    });
+
+    it('should handle OAuth provider with special characters in user data', async () => {
+      const userInfoWithSpecialChars: OAuthUserInfo = {
+        id: '12345<script>alert("xss")</script>',
+        email: 'test+special@ruc.edu.cn',
+        name: 'Test User <>&"\'',
+        username: 'test-user-123',
+        preferredUsername: 'test_user_123',
+      };
+
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      const newUser = {
+        id: 2,
+        username: 'test-user-123',
+        email: 'test+special@ruc.edu.cn',
+      };
+      mockPrismaService.user.create.mockResolvedValue(newUser);
+      mockPrismaService.userProfile.create.mockResolvedValue({});
+      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
+      mockPrismaService.userLoginLog.create.mockResolvedValue({});
+      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
+
+      mockPrismaService.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(newUser);
+
+      jest
+        .spyOn(service, 'generateUniqueUsername' as any)
+        .mockResolvedValue('test-user-123');
+
+      const result = await service.loginWithOAuth(
+        'test',
+        userInfoWithSpecialChars,
+        '127.0.0.1',
+        'test-agent',
+      );
+
+      expect(result).toHaveLength(2);
+      expect(mockPrismaService.userOAuthConnection.create).toHaveBeenCalledWith(
+        {
+          data: {
+            userId: 2,
+            providerId: 'test',
+            providerUserId: '12345<script>alert("xss")</script>', // Should preserve original OAuth ID
+            rawProfile: userInfoWithSpecialChars,
+          },
+        },
+      );
+    });
+
+    it('should use preferredUsername when username is not available', async () => {
+      const userInfoWithPreferredUsername: OAuthUserInfo = {
+        id: '12345',
+        email: 'test@ruc.edu.cn',
+        name: 'Test User',
+        preferredUsername: 'preferred-user',
+      };
+
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      mockPrismaService.user.create.mockResolvedValue({
+        id: 2,
+        username: 'preferred-user',
+        email: 'test@ruc.edu.cn',
+      });
+      mockPrismaService.userProfile.create.mockResolvedValue({});
+      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
+      mockPrismaService.userLoginLog.create.mockResolvedValue({});
+      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
+
+      mockPrismaService.user.findUnique
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 2, username: 'preferred-user' });
+
+      jest
+        .spyOn(service, 'generateUniqueUsername' as any)
+        .mockResolvedValue('preferred-user');
+
+      await service.loginWithOAuth(
+        'test',
+        userInfoWithPreferredUsername,
+        '127.0.0.1',
+        'test-agent',
+      );
+
+      expect(service['generateUniqueUsername']).toHaveBeenCalledWith(
+        'preferred-user',
+      );
     });
   });
 });

@@ -2,7 +2,7 @@
  * Description: OAuth related DTOs
  *
  * Author(s):
- *     Claude Assistant
+ *      HuanCheng65
  */
 
 import { IsOptional, IsString } from 'class-validator';

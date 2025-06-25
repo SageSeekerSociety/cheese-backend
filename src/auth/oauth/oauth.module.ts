@@ -2,7 +2,7 @@
  * Description: OAuth Module - 提供 OAuth 功能的 NestJS 模块
  *
  * Author(s):
- *     Claude Assistant
+ *      HuanCheng65
  */
 
 import { DynamicModule, Module, OnModuleInit } from '@nestjs/common';
@@ -10,7 +10,11 @@ import { ConfigModule } from '@nestjs/config';
 import { OAuthService } from './oauth.service';
 import { OAuthProvider } from './oauth.types';
 
-@Module({})
+@Module({
+  imports: [ConfigModule],
+  providers: [OAuthService],
+  exports: [OAuthService],
+})
 export class OAuthModule implements OnModuleInit {
   constructor(private readonly oauthService: OAuthService) {}
 

@@ -2,7 +2,7 @@
  * Description: OAuth 类型定义和接口
  *
  * Author(s):
- *     Claude Assistant
+ *      HuanCheng65
  */
 
 export interface OAuthUserInfo {

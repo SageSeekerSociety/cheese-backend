@@ -2,14 +2,14 @@
  * Description: OAuth Service - 动态加载和管理多个 OAuth 提供商
  *
  * Author(s):
- *     Claude Assistant
+ *      HuanCheng65
  */
 
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import path from 'node:path';
 import fs from 'node:fs';
-import { OAuthProvider, OAuthProviderConfig, OAuthError } from './oauth.types';
+import path from 'node:path';
+import { OAuthError, OAuthProvider, OAuthProviderConfig } from './oauth.types';
 
 @Injectable()
 export class OAuthService {
