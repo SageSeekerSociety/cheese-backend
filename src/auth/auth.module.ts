@@ -13,6 +13,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../common/prisma/prisma.module';
 import { AuthService } from './auth.service';
 import { SessionService } from './session.service';
+import { OAuthModule } from './oauth/oauth.module';
 
 @Module({
   imports: [
@@ -30,9 +31,10 @@ import { SessionService } from './session.service';
       inject: [ConfigService],
     }),
     PrismaModule,
+    OAuthModule.register(),
   ],
   controllers: [],
   providers: [AuthService, SessionService],
-  exports: [AuthService, SessionService],
+  exports: [AuthService, SessionService, OAuthModule],
 })
 export class AuthModule {}

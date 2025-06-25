@@ -17,6 +17,7 @@ import {
   HttpCode,
   Inject,
   Ip,
+  Logger,
   Param,
   ParseIntPipe,
   Patch,
@@ -39,6 +40,8 @@ import {
   ResourceId,
   ResourceOwnerIdGetter,
 } from '../auth/guard.decorator';
+import { OAuthService } from '../auth/oauth/oauth.service';
+import { OAuthError } from '../auth/oauth/oauth.types';
 import { SessionService } from '../auth/session.service';
 import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
@@ -60,6 +63,10 @@ import { GetFollowedQuestionsResponseDto } from './DTO/get-followed-questions.dt
 import { GetFollowersResponseDto } from './DTO/get-followers.dto';
 import { GetUserResponseDto } from './DTO/get-user.dto';
 import { LoginRequestDto, LoginResponseDto } from './DTO/login.dto';
+import {
+  GetOAuthProvidersResponseDto,
+  OAuthCallbackQueryDto,
+} from './DTO/oauth.dto';
 import {
   DeletePasskeyResponseDto,
   GetPasskeysResponseDto,
@@ -127,6 +134,8 @@ declare module 'express-session' {
 
 @Controller('/users')
 export class UsersController {
+  private readonly logger = new Logger(UsersController.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly authService: AuthService,
@@ -138,6 +147,7 @@ export class UsersController {
     @Inject(forwardRef(() => QuestionsService))
     private readonly questionsService: QuestionsService,
     private readonly configService: ConfigService,
+    private readonly oauthService: OAuthService,
   ) {}
 
   @ResourceOwnerIdGetter('user')
@@ -1202,5 +1212,138 @@ export class UsersController {
       code: 200,
       message: 'Password changed successfully',
     };
+  }
+
+  // OAuth 相关路由
+
+  @Get('/auth/oauth/providers')
+  @NoAuth()
+  async getOAuthProviders(): Promise<GetOAuthProvidersResponseDto> {
+    const providers = await this.oauthService.getProvidersConfig();
+    return {
+      code: 200,
+      message: 'Get OAuth providers successfully.',
+      data: {
+        providers,
+      },
+    };
+  }
+
+  @Get('/auth/oauth/login/:providerId')
+  @NoAuth()
+  async oauthLogin(
+    @Param('providerId') providerId: string,
+    @Query('state') state?: string,
+    @Query('access_type') accessType?: string,
+    @Res() res?: Response,
+  ): Promise<void> {
+    try {
+      const authUrl = await this.oauthService.generateAuthorizationUrl(
+        providerId,
+        state,
+        accessType,
+      );
+      res!.redirect(authUrl);
+      return;
+    } catch (error) {
+      if (error instanceof OAuthError) {
+        const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+        const errorPath =
+          this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+        const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(error.message)}&provider=${providerId}`;
+        res!.redirect(errorUrl);
+        return;
+      }
+      throw error;
+    }
+  }
+
+  @Get('/auth/oauth/callback/:providerId')
+  @NoAuth()
+  async oauthCallback(
+    @Param('providerId') providerId: string,
+    @Query() query: OAuthCallbackQueryDto,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      // 检查是否有错误
+      if (query.error) {
+        const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+        const errorPath =
+          this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+        const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(query.error)}&provider=${providerId}&description=${encodeURIComponent(query.error_description || '')}`;
+        res.redirect(errorUrl);
+        return;
+      }
+
+      if (!query.code) {
+        throw new Error('Authorization code not provided');
+      }
+
+      // 1. 交换访问令牌
+      const accessToken = await this.oauthService.handleCallback(
+        providerId,
+        query.code,
+        query.state,
+      );
+
+      // 2. 获取用户信息
+      const userInfo = await this.oauthService.getUserInfo(
+        providerId,
+        accessToken,
+      );
+
+      // 3. 处理用户登录/注册
+      const [userDto, refreshToken] = await this.usersService.loginWithOAuth(
+        providerId,
+        userInfo,
+        ip,
+        userAgent,
+      );
+
+      // 4. 生成 JWT Access Token
+      const [newRefreshToken, jwtAccessToken] =
+        await this.sessionService.refreshSession(refreshToken);
+      const newRefreshTokenExpire = new Date(
+        this.authService.decode(newRefreshToken).validUntil,
+      );
+
+      // 5. 构造前端跳转 URL
+      const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+      const successPath =
+        this.configService.get('FRONTEND_OAUTH_SUCCESS_PATH') ||
+        '/oauth-success';
+      const frontendUrl = `${frontendBaseUrl}${successPath}?token=${encodeURIComponent(jwtAccessToken)}&email=${encodeURIComponent(userDto.email || userDto.username)}&provider=${providerId}`;
+
+      // 6. 设置 Refresh Token Cookie
+      const cookieBasePath = this.configService.get('cookieBasePath') || '';
+      res.cookie('REFRESH_TOKEN', newRefreshToken, {
+        httpOnly: true,
+        sameSite: 'lax', // 允许第三方跳转携带
+        path: path.posix.join(cookieBasePath, 'users/auth'),
+        expires: newRefreshTokenExpire,
+        secure: process.env.NODE_ENV === 'production', // 生产环境使用 HTTPS
+      });
+
+      // 7. 重定向到前端
+      res.redirect(frontendUrl);
+      return;
+    } catch (error) {
+      this.logger.error(
+        `OAuth callback failed for provider ${providerId}: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+
+      const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+      const errorPath =
+        this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+      const errorMessage =
+        error instanceof OAuthError ? error.message : 'Internal server error';
+      const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(errorMessage)}&provider=${providerId}`;
+      res.redirect(errorUrl);
+      return;
+    }
   }
 }

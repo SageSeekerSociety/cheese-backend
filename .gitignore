@@ -47,3 +47,7 @@ src/avatars/images
 
 # Runtime data
 uploads/
+
+# OAuth Providers (sensitive, do not commit)
+oauth-providers/
+plugins/
