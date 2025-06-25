@@ -41,6 +41,7 @@ import {
 } from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
 import { Authorization } from '../auth/definitions';
+import { OAuthUserInfo } from '../auth/oauth/oauth.types';
 import { SessionService } from '../auth/session.service';
 import { AvatarNotFoundError } from '../avatars/avatars.error';
 import { AvatarsService } from '../avatars/avatars.service';
@@ -50,6 +51,7 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { EmailRuleService } from '../email/email-rule.service';
 import { EmailService } from '../email/email.service';
 import { QuestionsService } from '../questions/questions.service';
+import { OAuthUserDto } from './DTO/oauth.dto';
 import { UserDto } from './DTO/user.dto';
 import { SrpService } from './srp.service';
 import { TOTPService } from './totp.service';
@@ -733,6 +735,30 @@ export class UsersService {
       is_follow: isFollow,
       question_count: questionCount,
       answer_count: answerCount,
+    };
+  }
+
+  /**
+   * Get OAuth user DTO with email field for OAuth operations
+   */
+  async getOAuthUserDtoById(
+    userId: number,
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<OAuthUserDto> {
+    const userDto = await this.getUserDtoById(userId, viewerId, ip, userAgent);
+    const user = await this.findUserRecordOrThrow(userId);
+
+    // 检查是否是占位符email，如果是则返回null
+    const email =
+      user.email && user.email.endsWith('@placeholder.internal')
+        ? null
+        : user.email;
+
+    return {
+      ...userDto,
+      email: email,
     };
   }
 
@@ -1609,6 +1635,364 @@ export class UsersService {
         srpVerifier,
         srpUpgraded: true,
         lastPasswordChangedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * OAuth 用户登录/注册处理
+   * 将第三方返回的用户信息与本地用户数据库同步
+   */
+  async loginWithOAuth(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    this.logger.log(
+      `Processing OAuth login for provider: ${providerId}, user: ${userInfo.id}`,
+    );
+
+    // 1. 检查已有绑定
+    const existingConnection =
+      await this.prismaService.userOAuthConnection.findUnique({
+        where: {
+          providerId_providerUserId: {
+            providerId,
+            providerUserId: userInfo.id,
+          },
+        },
+        include: {
+          user: {
+            include: {
+              userProfile: true,
+            },
+          },
+        },
+      });
+
+    if (
+      existingConnection &&
+      existingConnection.user &&
+      !existingConnection.user.deletedAt
+    ) {
+      return await this.handleExistingOAuthConnection(
+        existingConnection,
+        userInfo,
+        ip,
+        userAgent,
+      );
+    }
+
+    // 2. 按邮箱匹配现有用户
+    if (userInfo.email) {
+      const existingUser = await this.prismaService.user.findUnique({
+        where: { email: userInfo.email },
+        include: { userProfile: true },
+      });
+
+      if (existingUser && !existingUser.deletedAt) {
+        return await this.bindOAuthToExistingUserByEmail(
+          existingUser,
+          providerId,
+          userInfo,
+          ip,
+          userAgent,
+        );
+      }
+    }
+
+    // 3. 创建新用户
+    return await this.createNewOAuthUser(providerId, userInfo, ip, userAgent);
+  }
+
+  /**
+   * 处理已存在的 OAuth 连接
+   */
+  private async handleExistingOAuthConnection(
+    existingConnection: any,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    // 用户已存在，检查是否有 profile
+    if (!existingConnection.user.userProfile) {
+      this.logger.warn(
+        `User ${existingConnection.user.id} has OAuth connection but no profile, creating default profile`,
+      );
+      await this.createDefaultProfileForUser(existingConnection.user.id);
+    }
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: existingConnection.user.id,
+        ip,
+        userAgent,
+      },
+    });
+
+    // 更新连接的原始资料
+    await this.prismaService.userOAuthConnection.update({
+      where: { id: existingConnection.id },
+      data: {
+        rawProfile: userInfo as any,
+        updatedAt: new Date(),
+      },
+    });
+
+    return [
+      await this.getOAuthUserDtoById(
+        existingConnection.user.id,
+        existingConnection.user.id,
+        ip,
+        userAgent,
+      ),
+      await this.createSession(existingConnection.user.id),
+    ];
+  }
+
+  /**
+   * 将 OAuth 连接绑定到现有用户（通过邮箱匹配）
+   */
+  private async bindOAuthToExistingUserByEmail(
+    existingUser: any,
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    this.logger.log(
+      `Found existing user by email for OAuth login: ${existingUser.username}`,
+    );
+
+    // 创建关联
+    await this.prismaService.userOAuthConnection.upsert({
+      where: {
+        providerId_providerUserId: {
+          providerId,
+          providerUserId: userInfo.id,
+        },
+      },
+      update: {
+        userId: existingUser.id,
+        rawProfile: userInfo as any,
+        updatedAt: new Date(),
+      },
+      create: {
+        userId: existingUser.id,
+        providerId,
+        providerUserId: userInfo.id,
+        rawProfile: userInfo as any,
+      },
+    });
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: existingUser.id,
+        ip,
+        userAgent,
+      },
+    });
+
+    return [
+      await this.getOAuthUserDtoById(
+        existingUser.id,
+        existingUser.id,
+        ip,
+        userAgent,
+      ),
+      await this.createSession(existingUser.id),
+    ];
+  }
+
+  /**
+   * 为 OAuth 用户创建新账户
+   */
+  private async createNewOAuthUser(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    this.logger.log(
+      `Creating new user for OAuth login from provider: ${providerId}`,
+    );
+
+    // 生成唯一用户名
+    const baseUsername = this.generateOAuthUsername(userInfo);
+    const uniqueUsername = await this.generateUniqueUsername(baseUsername);
+
+    // 获取默认头像
+    const avatarId = await this.avatarsService.getDefaultAvatarId();
+
+    // 生成随机密码（用户不会使用，仅为占位）
+    const randomPassword = this.generateRandomPassword();
+    const hashedPassword = bcrypt.hashSync(randomPassword, 10);
+
+    // 在事务中创建用户、profile 和 OAuth 连接
+    const result = await this.prismaService.$transaction(async (tx) => {
+      // 为没有email的用户生成唯一占位符email
+      let userEmail = userInfo.email;
+      if (!userEmail) {
+        // 生成格式：oauth-{providerId}-{providerUserId}@placeholder.internal
+        userEmail = `oauth-${providerId}-${userInfo.id}@placeholder.internal`;
+      }
+
+      // 创建用户
+      const newUser = await tx.user.create({
+        data: {
+          username: uniqueUsername,
+          email: userEmail,
+          hashedPassword,
+          srpUpgraded: false, // OAuth 用户默认未升级到 SRP
+        },
+      });
+
+      // 创建用户 profile
+      const nickname = (
+        userInfo.name ||
+        userInfo.preferredUsername ||
+        uniqueUsername
+      ).substring(0, 255); // 限制nickname长度为255个字符
+
+      await tx.userProfile.create({
+        data: {
+          userId: newUser.id,
+          nickname,
+          intro: this.defaultIntro,
+          avatarId,
+        },
+      });
+
+      // 创建 OAuth 连接
+      await tx.userOAuthConnection.create({
+        data: {
+          userId: newUser.id,
+          providerId,
+          providerUserId: userInfo.id,
+          rawProfile: userInfo as any,
+        },
+      });
+
+      // 记录注册日志
+      await tx.userRegisterLog.create({
+        data: {
+          type: 'Success',
+          email: userInfo.email || '',
+          ip,
+          userAgent,
+        },
+      });
+
+      // 记录登录日志
+      await tx.userLoginLog.create({
+        data: {
+          userId: newUser.id,
+          ip,
+          userAgent,
+        },
+      });
+
+      return newUser;
+    });
+
+    this.logger.log(
+      `Created new user ${result.username} (ID: ${result.id}) for OAuth provider: ${providerId}`,
+    );
+
+    return [
+      await this.getOAuthUserDtoById(result.id, result.id, ip, userAgent),
+      await this.createSession(result.id),
+    ];
+  }
+
+  /**
+   * 根据 OAuth 用户信息生成用户名基础
+   */
+  private generateOAuthUsername(userInfo: OAuthUserInfo): string {
+    if (
+      userInfo.preferredUsername &&
+      this.isValidUsername(userInfo.preferredUsername)
+    ) {
+      return userInfo.preferredUsername;
+    }
+
+    if (userInfo.username && this.isValidUsername(userInfo.username)) {
+      return userInfo.username;
+    }
+
+    if (userInfo.name) {
+      // 清理名称：去除特殊字符，转为小写
+      const cleaned = userInfo.name
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .toLowerCase()
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+
+      if (cleaned.length >= 4 && this.isValidUsername(cleaned)) {
+        return cleaned;
+      }
+    }
+
+    // 如果都不可用，使用默认格式
+    return `user_${userInfo.id}`.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+  }
+
+  /**
+   * 生成唯一用户名
+   */
+  private async generateUniqueUsername(baseUsername: string): Promise<string> {
+    // 确保用户名长度符合要求
+    let username = baseUsername;
+    if (username.length < 4) {
+      username = `user_${username}`;
+    }
+    if (username.length > 32) {
+      username = username.substring(0, 32);
+    }
+
+    // 检查是否已存在
+    let counter = 0;
+    let uniqueUsername = username;
+
+    while (await this.isUsernameRegistered(uniqueUsername)) {
+      counter++;
+      const suffix = `_${counter}`;
+      const maxBaseLength = 32 - suffix.length;
+      uniqueUsername = username.substring(0, maxBaseLength) + suffix;
+    }
+
+    return uniqueUsername;
+  }
+
+  /**
+   * 生成随机密码
+   */
+  private generateRandomPassword(): string {
+    const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let password = '';
+    for (let i = 0; i < 16; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+
+  /**
+   * 为用户创建默认 profile
+   */
+  private async createDefaultProfileForUser(userId: number): Promise<void> {
+    const avatarId = await this.avatarsService.getDefaultAvatarId();
+    const user = await this.findUserRecordOrThrow(userId);
+
+    await this.prismaService.userProfile.create({
+      data: {
+        userId,
+        nickname: user.username,
+        intro: this.defaultIntro,
+        avatarId,
       },
     });
   }

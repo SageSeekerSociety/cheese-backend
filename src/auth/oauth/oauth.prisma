@@ -1,0 +1,19 @@
+import { User } from "../../users/users"
+
+model UserOAuthConnection {
+  id             Int       @id @default(autoincrement())
+  userId         Int       @map("user_id")
+  providerId     String    @map("provider_id")        // OAuth提供商ID，如 'ruc', 'google'
+  providerUserId String    @map("provider_user_id")  // 提供商侧用户唯一标识
+  /// [rawProfileType]
+  rawProfile     Json?     @map("raw_profile")       // 原始用户信息(JSON)
+  refreshToken   String?   @map("refresh_token")     // 可选，OAuth长效令牌
+  tokenExpires   DateTime? @map("token_expires")     // 可选，OAuth令牌过期时间
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, providerUserId])
+  @@index([userId])
+  @@map("user_oauth_connection")
+}

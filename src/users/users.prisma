@@ -9,6 +9,7 @@ import { AttitudeLog } from "../attitude/attitude"
 import { QuestionInvitationRelation } from "../questions/questions.invitation"
 import { Material } from "../materials/materials"
 import { MaterialBundle } from "../materialbundles/materialbundles"
+import { UserOAuthConnection } from "../auth/oauth/oauth"
 
 model User {
   id                                                                 Int                          @id(map: "PK_cace4a159ff9f2512dd42373760") @default(autoincrement())
@@ -54,6 +55,7 @@ model User {
   totpEnabled                                                        Boolean         @default(false)   @map("totp_enabled") 
   totpAlwaysRequired                                                Boolean         @default(false)   @map("totp_always_required")
   backupCodes                                                        UserBackupCode[]
+  oauthConnections                                                   UserOAuthConnection[]
 
   @@map("user")
 }
