@@ -50,3 +50,4 @@ uploads/
 
 # OAuth Providers (sensitive, do not commit)
 oauth-providers/
+plugins/
