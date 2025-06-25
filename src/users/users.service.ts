@@ -1676,41 +1676,12 @@ export class UsersService {
       existingConnection.user &&
       !existingConnection.user.deletedAt
     ) {
-      // 用户已存在，检查是否有 profile
-      if (!existingConnection.user.userProfile) {
-        this.logger.warn(
-          `User ${existingConnection.user.id} has OAuth connection but no profile, creating default profile`,
-        );
-        await this.createDefaultProfileForUser(existingConnection.user.id);
-      }
-
-      // 记录登录日志
-      await this.prismaService.userLoginLog.create({
-        data: {
-          userId: existingConnection.user.id,
-          ip,
-          userAgent,
-        },
-      });
-
-      // 更新连接的原始资料
-      await this.prismaService.userOAuthConnection.update({
-        where: { id: existingConnection.id },
-        data: {
-          rawProfile: userInfo as any,
-          updatedAt: new Date(),
-        },
-      });
-
-      return [
-        await this.getOAuthUserDtoById(
-          existingConnection.user.id,
-          existingConnection.user.id,
-          ip,
-          userAgent,
-        ),
-        await this.createSession(existingConnection.user.id),
-      ];
+      return await this.handleExistingOAuthConnection(
+        existingConnection,
+        userInfo,
+        ip,
+        userAgent,
+      );
     }
 
     // 2. 按邮箱匹配现有用户
@@ -1721,53 +1692,130 @@ export class UsersService {
       });
 
       if (existingUser && !existingUser.deletedAt) {
-        this.logger.log(
-          `Found existing user by email for OAuth login: ${existingUser.username}`,
+        return await this.bindOAuthToExistingUserByEmail(
+          existingUser,
+          providerId,
+          userInfo,
+          ip,
+          userAgent,
         );
-
-        // 创建关联
-        await this.prismaService.userOAuthConnection.upsert({
-          where: {
-            providerId_providerUserId: {
-              providerId,
-              providerUserId: userInfo.id,
-            },
-          },
-          update: {
-            userId: existingUser.id,
-            rawProfile: userInfo as any,
-            updatedAt: new Date(),
-          },
-          create: {
-            userId: existingUser.id,
-            providerId,
-            providerUserId: userInfo.id,
-            rawProfile: userInfo as any,
-          },
-        });
-
-        // 记录登录日志
-        await this.prismaService.userLoginLog.create({
-          data: {
-            userId: existingUser.id,
-            ip,
-            userAgent,
-          },
-        });
-
-        return [
-          await this.getOAuthUserDtoById(
-            existingUser.id,
-            existingUser.id,
-            ip,
-            userAgent,
-          ),
-          await this.createSession(existingUser.id),
-        ];
       }
     }
 
     // 3. 创建新用户
+    return await this.createNewOAuthUser(providerId, userInfo, ip, userAgent);
+  }
+
+  /**
+   * 处理已存在的 OAuth 连接
+   */
+  private async handleExistingOAuthConnection(
+    existingConnection: any,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    // 用户已存在，检查是否有 profile
+    if (!existingConnection.user.userProfile) {
+      this.logger.warn(
+        `User ${existingConnection.user.id} has OAuth connection but no profile, creating default profile`,
+      );
+      await this.createDefaultProfileForUser(existingConnection.user.id);
+    }
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: existingConnection.user.id,
+        ip,
+        userAgent,
+      },
+    });
+
+    // 更新连接的原始资料
+    await this.prismaService.userOAuthConnection.update({
+      where: { id: existingConnection.id },
+      data: {
+        rawProfile: userInfo as any,
+        updatedAt: new Date(),
+      },
+    });
+
+    return [
+      await this.getOAuthUserDtoById(
+        existingConnection.user.id,
+        existingConnection.user.id,
+        ip,
+        userAgent,
+      ),
+      await this.createSession(existingConnection.user.id),
+    ];
+  }
+
+  /**
+   * 将 OAuth 连接绑定到现有用户（通过邮箱匹配）
+   */
+  private async bindOAuthToExistingUserByEmail(
+    existingUser: any,
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    this.logger.log(
+      `Found existing user by email for OAuth login: ${existingUser.username}`,
+    );
+
+    // 创建关联
+    await this.prismaService.userOAuthConnection.upsert({
+      where: {
+        providerId_providerUserId: {
+          providerId,
+          providerUserId: userInfo.id,
+        },
+      },
+      update: {
+        userId: existingUser.id,
+        rawProfile: userInfo as any,
+        updatedAt: new Date(),
+      },
+      create: {
+        userId: existingUser.id,
+        providerId,
+        providerUserId: userInfo.id,
+        rawProfile: userInfo as any,
+      },
+    });
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: existingUser.id,
+        ip,
+        userAgent,
+      },
+    });
+
+    return [
+      await this.getOAuthUserDtoById(
+        existingUser.id,
+        existingUser.id,
+        ip,
+        userAgent,
+      ),
+      await this.createSession(existingUser.id),
+    ];
+  }
+
+  /**
+   * 为 OAuth 用户创建新账户
+   */
+  private async createNewOAuthUser(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
     this.logger.log(
       `Creating new user for OAuth login from provider: ${providerId}`,
     );
@@ -1803,11 +1851,16 @@ export class UsersService {
       });
 
       // 创建用户 profile
+      const nickname = (
+        userInfo.name ||
+        userInfo.preferredUsername ||
+        uniqueUsername
+      ).substring(0, 255); // 限制nickname长度为255个字符
+
       await tx.userProfile.create({
         data: {
           userId: newUser.id,
-          nickname:
-            userInfo.name || userInfo.preferredUsername || uniqueUsername,
+          nickname,
           intro: this.defaultIntro,
           avatarId,
         },
