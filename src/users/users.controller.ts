@@ -26,13 +26,18 @@ import {
   Query,
   Req,
   Res,
+  UseFilters,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import path from 'node:path';
 import qrcode from 'qrcode';
 import { AnswerService } from '../answer/answer.service';
-import { AuthenticationRequiredError } from '../auth/auth.error';
+import {
+  AuthenticationRequiredError,
+  InvalidTokenError,
+} from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
 import {
   AuthToken,
@@ -46,6 +51,7 @@ import { SessionService } from '../auth/session.service';
 import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { NoAuth } from '../common/interceptor/token-validate.interceptor';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionsService } from '../questions/questions.service';
@@ -122,6 +128,7 @@ import {
 import { UserDto } from './DTO/user.dto';
 import { TOTPService } from './totp.service';
 import {
+  InvalidLoginCredentialsError,
   PasskeyNotFoundError,
   TOTPRequiredError,
   UserIdNotFoundError,
@@ -139,6 +146,7 @@ declare module 'express-session' {
 }
 
 @Controller('/users')
+@UseFilters(BaseErrorExceptionFilter)
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
@@ -204,6 +212,7 @@ export class UsersController {
 
   @Post('/verify/email')
   @NoAuth()
+  @Throttle({ default: { limit: 1, ttl: 60000 } }) // 1 request per minute
   async sendRegisterEmailCode(
     @Body() { email }: SendEmailVerifyCodeRequestDto,
     @Ip() ip: string,
@@ -218,6 +227,7 @@ export class UsersController {
 
   @Post('/')
   @NoAuth()
+  @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 registrations per hour
   async register(
     @Body()
     {
@@ -332,6 +342,7 @@ export class UsersController {
 
   @Post('/auth/login')
   @NoAuth()
+  @Throttle({ default: { limit: 5, ttl: 900000 } }) // 5 login attempts per 15 minutes
   async login(
     @Body() { username, password }: LoginRequestDto,
     @Ip() ip: string,
@@ -463,6 +474,7 @@ export class UsersController {
 
   @Post('/recover/password/request')
   @NoAuth()
+  @Throttle({ default: { limit: 2, ttl: 300000 } }) // 2 password reset requests per 5 minutes
   async sendResetPasswordEmail(
     @Body() { email }: ResetPasswordRequestRequestDto,
     @Ip() ip: string,
@@ -897,6 +909,7 @@ export class UsersController {
 
   @Post('auth/verify-2fa')
   @NoAuth()
+  @Throttle({ default: { limit: 3, ttl: 300000 } }) // 3 2FA attempts per 5 minutes
   async verify2FA(
     @Body() dto: Verify2FARequestDto,
     @Ip() ip: string,
@@ -1100,6 +1113,7 @@ export class UsersController {
 
   @Post('/auth/srp/init')
   @NoAuth()
+  @Throttle({ default: { limit: 10, ttl: 900000 } }) // 10 SRP init attempts per 15 minutes
   async srpInit(
     @Body() { username }: SrpInitRequestDto,
     @Ip() ip: string,
@@ -1125,6 +1139,7 @@ export class UsersController {
 
   @Post('/auth/srp/verify')
   @NoAuth()
+  @Throttle({ default: { limit: 5, ttl: 900000 } }) // 5 SRP verify attempts per 15 minutes
   async srpVerify(
     @Body()
     { username, clientPublicEphemeral, clientProof }: SrpVerifyRequestDto,
@@ -1209,41 +1224,40 @@ export class UsersController {
       requires_2fa: boolean;
     };
   }> {
-    try {
-      const user =
-        await this.usersService.findUserRecordByUsernameOrThrow(username);
+    const user = await this.prismaService.user.findUnique({
+      where: { username },
+    });
 
-      const hasPasskeys =
-        (await this.prismaService.passkey.count({
-          where: { userId: user.id },
-        })) > 0;
-
+    if (!user) {
+      // Return default "safe" authentication methods to prevent user enumeration
+      // This makes it appear that the user exists but only supports basic auth
       return {
         code: 200,
         message: 'Authentication methods retrieved successfully.',
         data: {
-          supports_srp: user.srpUpgraded,
-          supports_passkey: hasPasskeys,
-          supports_2fa: user.totpEnabled,
-          requires_2fa: user.totpAlwaysRequired,
+          supports_srp: false,
+          supports_passkey: false,
+          supports_2fa: false,
+          requires_2fa: false,
         },
       };
-    } catch (error) {
-      if (error instanceof UsernameNotFoundError) {
-        // 如果用户不存在，返回所有方法都不支持
-        return {
-          code: 200,
-          message: 'User not found, no authentication methods available.',
-          data: {
-            supports_srp: false,
-            supports_passkey: false,
-            supports_2fa: false,
-            requires_2fa: false,
-          },
-        };
-      }
-      throw error;
     }
+
+    const hasPasskeys =
+      (await this.prismaService.passkey.count({
+        where: { userId: user.id },
+      })) > 0;
+
+    return {
+      code: 200,
+      message: 'Authentication methods retrieved successfully.',
+      data: {
+        supports_srp: user.srpUpgraded,
+        supports_passkey: hasPasskeys,
+        supports_2fa: user.totpEnabled,
+        requires_2fa: user.totpAlwaysRequired,
+      },
+    };
   }
 
   @Patch('/:id/password')
@@ -1273,6 +1287,33 @@ export class UsersController {
       data: {
         providers,
       },
+    };
+  }
+
+  @Get('/auth/oauth/state')
+  @NoAuth()
+  async getOAuthState(@Query('token') stateToken: string): Promise<{
+    code: number;
+    message: string;
+    data: {
+      providerId: string;
+      userInfo: {
+        id: string;
+        email?: string;
+        name?: string;
+        username?: string;
+        preferredUsername?: string;
+      };
+      suggestedUsername: string;
+      suggestedNickname: string;
+      emailConflict: boolean;
+    };
+  }> {
+    const stateInfo = await this.usersService.getOAuthStateInfo(stateToken);
+    return {
+      code: 200,
+      message: 'Get OAuth state successfully.',
+      data: stateInfo,
     };
   }
 
@@ -1350,8 +1391,8 @@ export class UsersController {
         return;
       }
 
-      // 原有的登录/注册逻辑
-      const result = await this.usersService.loginWithOAuth(
+      // 新的OAuth流程处理
+      const result = await this.usersService.initiateOAuthFlow(
         providerId,
         userInfo,
         ip,
@@ -1359,11 +1400,11 @@ export class UsersController {
       );
 
       if (Array.isArray(result)) {
-        // 成功登录/注册，直接跳转到成功页面
+        // 已有OAuth连接，直接登录成功
         const [userDto, refreshToken] = result;
         await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto);
-      } else {
-        // 需要验证，重定向到统一的验证页面
+      } else if ('requiresVerification' in result) {
+        // 邮箱已存在，需要验证身份后强制绑定
         const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
         const verifyPath =
           this.configService.get('FRONTEND_OAUTH_VERIFY_PATH') ||
@@ -1383,6 +1424,18 @@ export class UsersController {
         }
 
         res.redirect(`${frontendBaseUrl}${verifyPath}?${params.toString()}`);
+      } else {
+        // 需要用户决策：创建新账户还是绑定已有账户
+        const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+        const completePath =
+          this.configService.get('FRONTEND_OAUTH_COMPLETE_PATH') ||
+          '/oauth-complete';
+
+        const params = new URLSearchParams({
+          stateToken: result.stateToken,
+        });
+
+        res.redirect(`${frontendBaseUrl}${completePath}?${params.toString()}`);
       }
     } catch (error) {
       this.logger.error('OAuth callback failed:', error);
@@ -1517,6 +1570,144 @@ export class UsersController {
       }
 
       const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+      const errorPath =
+        this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+      const errorUrl = `${frontendBaseUrl}${errorPath}?error_code=${errorCode}&error=${encodeURIComponent(errorMessage)}`;
+      res.redirect(errorUrl);
+    }
+  }
+
+  @Post('/oauth/create')
+  @NoAuth()
+  async createOAuthUser(
+    @Body()
+    {
+      stateToken,
+      username,
+      nickname,
+    }: {
+      stateToken: string;
+      username: string;
+      nickname: string;
+    },
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const [userDto, refreshToken] =
+        await this.usersService.createOAuthUserFromDecision(
+          stateToken,
+          username,
+          nickname,
+          ip,
+          userAgent,
+        );
+
+      // 使用提取的成功重定向方法
+      await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto, {
+        created: 'true',
+      });
+    } catch (error) {
+      this.logger.error('OAuth user creation failed:', error);
+
+      let errorCode = 'CREATION_FAILED';
+      let errorMessage = 'Failed to create user';
+
+      if (error instanceof Error) {
+        if (error instanceof InvalidTokenError) {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = 'Session expired, please try again';
+        } else if (error.message.includes('Username already registered')) {
+          errorCode = 'USERNAME_TAKEN';
+          errorMessage = 'Username already registered';
+        } else if (error.message.includes('Invalid username')) {
+          errorCode = 'INVALID_USERNAME';
+          errorMessage = 'Invalid username format';
+        } else if (error.message.includes('Invalid or expired')) {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = 'Session expired, please try again';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      const frontendBaseUrl =
+        this.configService.get('FRONTEND_BASE_URL') || 'http://localhost:3000';
+      const errorPath =
+        this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+      const errorUrl = `${frontendBaseUrl}${errorPath}?error_code=${errorCode}&error=${encodeURIComponent(errorMessage)}`;
+      res.redirect(errorUrl);
+    }
+  }
+
+  @Post('/oauth/bind')
+  @NoAuth()
+  async bindOAuthToExistingUser(
+    @Body()
+    {
+      stateToken,
+      username,
+      password,
+      clientPublicEphemeral,
+      clientProof,
+    }: {
+      stateToken: string;
+      username: string;
+      password?: string;
+      clientPublicEphemeral?: string;
+      clientProof?: string;
+    },
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const credentials = {
+        password,
+        clientPublicEphemeral,
+        clientProof,
+      };
+
+      const [userDto, refreshToken] =
+        await this.usersService.bindOAuthToExistingUser(
+          stateToken,
+          username,
+          credentials,
+          ip,
+          userAgent,
+        );
+
+      // 使用提取的成功重定向方法
+      await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto, {
+        bound: 'true',
+      });
+    } catch (error) {
+      this.logger.error('OAuth binding to existing user failed:', error);
+
+      let errorCode = 'BINDING_FAILED';
+      let errorMessage = 'Failed to bind OAuth account';
+
+      if (error instanceof Error) {
+        if (error instanceof InvalidTokenError) {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = 'Session expired, please try again';
+        } else if (error instanceof UsernameNotFoundError) {
+          errorCode = 'USER_NOT_FOUND';
+          errorMessage = 'User not found';
+        } else if (error instanceof InvalidLoginCredentialsError) {
+          errorCode = 'INVALID_CREDENTIALS';
+          errorMessage = 'Invalid login credentials';
+        } else if (error.message.includes('Invalid or expired')) {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = 'Session expired, please try again';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      const frontendBaseUrl =
+        this.configService.get('FRONTEND_BASE_URL') || 'http://localhost:3000';
       const errorPath =
         this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
       const errorUrl = `${frontendBaseUrl}${errorPath}?error_code=${errorCode}&error=${encodeURIComponent(errorMessage)}`;

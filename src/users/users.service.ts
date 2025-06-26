@@ -63,11 +63,11 @@ import {
   ChallengeNotFoundError,
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
-  EmailNotFoundError,
   EmailSendFailedError,
   FollowYourselfError,
   InvalidEmailAddressError,
   InvalidEmailSuffixError,
+  InvalidLoginCredentialsError,
   InvalidNicknameError,
   InvalidPasswordError,
   InvalidUsernameError,
@@ -642,10 +642,10 @@ export class UsersService {
       let finalSrpVerifier = srpVerifier;
       let isSrpUpgraded = true;
 
-      // 如果是传统认证方式，生成密码哈希
+      // 如果是传统认证方式，生成密码哈希 (使用异步版本)
       if (isLegacyAuth && password) {
-        const salt = bcrypt.genSaltSync(10);
-        hashedPassword = bcrypt.hashSync(password, salt);
+        const salt = await bcrypt.genSalt(10);
+        hashedPassword = await bcrypt.hash(password, salt);
         finalSrpSalt = '';
         finalSrpVerifier = '';
         isSrpUpgraded = false;
@@ -701,42 +701,130 @@ export class UsersService {
     ip: string,
     userAgent: string | undefined, // optional
   ): Promise<UserDto> {
-    const [user, profile] =
-      await this.findUserRecordAndProfileRecordOrThrow(userId);
-    const vieweeId = user.id;
-    await this.prismaService.userProfileQueryLog.create({
-      data: {
-        viewerId,
-        vieweeId,
-        ip,
-        userAgent,
-      },
+    const [userDto] = await this.getUsersDtoByIds(
+      [userId],
+      viewerId,
+      ip,
+      userAgent,
+    );
+    return userDto;
+  }
+
+  /**
+   * Batch fetch user DTOs to solve N+1 query problem
+   * This method efficiently fetches multiple user DTOs with minimal database queries
+   */
+  async getUsersDtoByIds(
+    userIds: number[],
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<UserDto[]> {
+    if (userIds.length === 0) return [];
+
+    // Remove duplicates while preserving order
+    const uniqueUserIds = [...new Set(userIds)];
+
+    // 1. Batch fetch users and profiles
+    const usersWithProfiles = await this.prismaService.user.findMany({
+      where: { id: { in: uniqueUserIds } },
+      include: { userProfile: true },
     });
-    const followCountPromise = this.getFollowingCount(userId);
-    const fansCountPromise = this.getFollowedCount(userId);
-    const ifFollowPromise = this.isUserFollowUser(viewerId, userId);
-    const answerCountPromise = this.answerService.getAnswerCount(userId);
-    const questionCountPromise = this.questionsService.getQuestionCount(userId);
-    const [followCount, fansCount, isFollow, answerCount, questionCount] =
-      await Promise.all([
-        followCountPromise,
-        fansCountPromise,
-        ifFollowPromise,
-        answerCountPromise,
-        questionCountPromise,
-      ]);
-    return {
-      id: user.id,
-      username: user.username,
-      nickname: profile.nickname,
-      avatarId: profile.avatarId,
-      intro: profile.intro,
-      follow_count: followCount,
-      fans_count: fansCount,
-      is_follow: isFollow,
-      question_count: questionCount,
-      answer_count: answerCount,
-    };
+
+    // Create a map for quick lookup
+    const userMap = new Map(usersWithProfiles.map((u) => [u.id, u]));
+
+    // 2. Batch fetch follow counts (following count for each user)
+    const followCounts =
+      await this.prismaService.userFollowingRelationship.groupBy({
+        by: ['followerId'],
+        where: { followerId: { in: uniqueUserIds } },
+        _count: { followerId: true },
+      });
+    const followCountMap = new Map(
+      followCounts.map((fc) => [fc.followerId, fc._count.followerId]),
+    );
+
+    // 3. Batch fetch fan counts (follower count for each user)
+    const fanCounts =
+      await this.prismaService.userFollowingRelationship.groupBy({
+        by: ['followeeId'],
+        where: { followeeId: { in: uniqueUserIds } },
+        _count: { followeeId: true },
+      });
+    const fanCountMap = new Map(
+      fanCounts.map((fc) => [fc.followeeId, fc._count.followeeId]),
+    );
+
+    // 4. Batch fetch follow relationships for viewer
+    let followedUserIds = new Set<number>();
+    if (viewerId) {
+      const followedByViewer =
+        await this.prismaService.userFollowingRelationship.findMany({
+          where: { followerId: viewerId, followeeId: { in: uniqueUserIds } },
+          select: { followeeId: true },
+        });
+      followedUserIds = new Set(followedByViewer.map((r) => r.followeeId));
+    }
+
+    // 5. Batch fetch answer counts
+    const answerCounts = await this.prismaService.answer.groupBy({
+      by: ['createdById'],
+      where: { createdById: { in: uniqueUserIds } },
+      _count: { createdById: true },
+    });
+    const answerCountMap = new Map(
+      answerCounts.map((ac) => [ac.createdById, ac._count.createdById]),
+    );
+
+    // 6. Batch fetch question counts
+    const questionCounts = await this.prismaService.question.groupBy({
+      by: ['createdById'],
+      where: { createdById: { in: uniqueUserIds } },
+      _count: { createdById: true },
+    });
+    const questionCountMap = new Map(
+      questionCounts.map((qc) => [qc.createdById, qc._count.createdById]),
+    );
+
+    // 7. Check which users exist and build DTOs
+    const userDtos: UserDto[] = [];
+    const existingUserIds: number[] = [];
+
+    for (const userId of userIds) {
+      const user = userMap.get(userId);
+      if (!user || !user.userProfile) {
+        throw new UserIdNotFoundError(userId);
+      }
+
+      existingUserIds.push(userId);
+      userDtos.push({
+        id: user.id,
+        username: user.username,
+        nickname: user.userProfile.nickname,
+        avatarId: user.userProfile.avatarId,
+        intro: user.userProfile.intro,
+        follow_count: followCountMap.get(userId) || 0,
+        fans_count: fanCountMap.get(userId) || 0,
+        is_follow: followedUserIds.has(userId),
+        question_count: (questionCountMap.get(userId) as number) || 0,
+        answer_count: (answerCountMap.get(userId) as number) || 0,
+      });
+    }
+
+    // 8. Create user profile query logs only for existing users
+    if (existingUserIds.length > 0) {
+      await this.prismaService.userProfileQueryLog.createMany({
+        data: existingUserIds.map((userId) => ({
+          viewerId,
+          vieweeId: userId,
+          ip,
+          userAgent,
+        })),
+      });
+    }
+
+    return userDtos;
   }
 
   /**
@@ -772,8 +860,9 @@ export class UsersService {
     password: string,
     autoUpgradeToSrp: boolean = true,
   ): Promise<{ verified: boolean; wasUpgraded: boolean }> {
-    // 验证密码
-    if (!bcrypt.compareSync(password, user.hashedPassword!)) {
+    // 验证密码 (使用异步版本)
+    const passwordMatch = await bcrypt.compare(password, user.hashedPassword!);
+    if (!passwordMatch) {
       return { verified: false, wasUpgraded: false };
     }
 
@@ -813,21 +902,58 @@ export class UsersService {
     userAgent: string | undefined,
     isLegacyAuth: boolean = false,
   ): Promise<[UserDto, string]> {
-    const user = await this.findUserRecordByUsernameOrThrow(username);
+    // Use secure login to prevent user enumeration
+    return this.secureLogin(username, password, ip, userAgent, isLegacyAuth);
+  }
 
-    // 使用公共认证方法
-    const { verified } = await this.authenticateUserWithPassword(
-      user,
-      username,
-      password,
-      !isLegacyAuth, // 只有在非legacy模式下才自动升级
-    );
+  /**
+   * Secure login implementation that prevents user enumeration attacks
+   * Always performs constant-time operations regardless of user existence
+   */
+  private async secureLogin(
+    username: string,
+    password: string,
+    ip: string,
+    userAgent: string | undefined,
+    isLegacyAuth: boolean = false,
+  ): Promise<[UserDto, string]> {
+    let user: any = null;
+    let userExists = false;
 
-    if (!verified) {
-      throw new PasswordNotMatchError(username);
+    try {
+      user = await this.prismaService.user.findUnique({
+        where: { username },
+      });
+      userExists = !!user;
+    } catch {
+      // If database error occurs, treat as user not found
+      userExists = false;
     }
 
-    // 如果用户启用了 2FA，需要进行风险评估
+    // Always perform password comparison to prevent timing attacks
+    let verified = false;
+    if (userExists && user) {
+      const { verified: authResult } = await this.authenticateUserWithPassword(
+        user,
+        username,
+        password,
+        !isLegacyAuth,
+      );
+      verified = authResult;
+    } else {
+      // Perform dummy password comparison with fixed hash to maintain constant time
+      await bcrypt.compare(
+        password,
+        '$2a$10$N9qo8uLOickgx2ZMRZoMye.IUlKdJvQq1iRgMZdRJUjN1zF4JTqSK',
+      );
+    }
+
+    // If authentication failed or user doesn't exist, throw generic error
+    if (!verified || !userExists) {
+      throw new InvalidLoginCredentialsError();
+    }
+
+    // Check 2FA requirements
     if (user.totpEnabled) {
       const requireTOTP = await this.shouldRequire2FA(user.id, ip, userAgent);
 
@@ -837,7 +963,7 @@ export class UsersService {
       }
     }
 
-    // Login successfully.
+    // Login successful - record login log
     await this.prismaService.userLoginLog.create({
       data: {
         userId: user.id,
@@ -845,6 +971,7 @@ export class UsersService {
         userAgent,
       },
     });
+
     return [
       await this.getUserDtoById(user.id, user.id, ip, userAgent),
       await this.createSession(user.id),
@@ -970,60 +1097,73 @@ export class UsersService {
     ip: string,
     userAgent: string | undefined,
   ): Promise<void> {
-    // Check email.
+    // Check email format first
     if (isEmail(email) == false) {
       throw new InvalidEmailAddressError(email);
     }
     if ((await this.emailRuleService.isEmailSuffixSupported(email)) == false) {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
     }
+
     const user = await this.prismaService.user.findUnique({
-      where: {
-        email,
-      },
+      where: { email },
     });
-    if (user == undefined) {
+
+    if (user) {
+      // User exists - generate token and send email
+      const token = this.authService.sign(
+        {
+          userId: user.id,
+          username: user.username,
+          permissions: [
+            {
+              authorizedActions: ['modify'],
+              authorizedResource: {
+                ownedByUser: user.id,
+                types: ['users/password:reset'],
+                resourceIds: undefined,
+                data: Date.now(),
+              },
+            },
+          ],
+        },
+        this.passwordResetEmailValidSeconds,
+      );
+
+      try {
+        await this.emailService.sendPasswordResetEmail(
+          email,
+          user.username,
+          token,
+        );
+        await this.createPasswordResetLog(
+          UserResetPasswordLogType.RequestSuccess,
+          user.id,
+          ip,
+          userAgent,
+        );
+      } catch {
+        await this.createPasswordResetLog(
+          UserResetPasswordLogType.RequestFailDueToSecurity,
+          user.id,
+          ip,
+          userAgent,
+        );
+        throw new EmailSendFailedError(email);
+      }
+    } else {
+      // User doesn't exist - log but don't reveal this information
       await this.createPasswordResetLog(
         UserResetPasswordLogType.RequestFailDueToNoneExistentEmail,
         undefined,
         ip,
         userAgent,
       );
-      throw new EmailNotFoundError(email);
+      // Don't throw an error - pretend we sent the email successfully
+      // This prevents email enumeration attacks
     }
-    const token = this.authService.sign(
-      {
-        userId: user.id,
-        username: user.username,
-        permissions: [
-          {
-            authorizedActions: ['modify'],
-            authorizedResource: {
-              ownedByUser: user.id,
-              types: ['users/password:reset'],
-              resourceIds: undefined,
-              data: Date.now(),
-            },
-          },
-        ],
-      },
-      this.passwordResetEmailValidSeconds,
-    );
-    try {
-      await this.emailService.sendPasswordResetEmail(
-        email,
-        user.username,
-        token,
-      );
-    } catch {
-      throw new EmailSendFailedError(email);
-    }
-    await this.createPasswordResetLog(
-      UserResetPasswordLogType.RequestSuccess,
-      user.id,
-      ip,
-      userAgent,
-    );
+
+    // Always succeed from the API perspective to prevent user enumeration
   }
 
   async verifyAndResetPassword(
@@ -1288,11 +1428,16 @@ export class UsersService {
           take: pageSize + 1,
           orderBy: { followerId: 'asc' },
         });
-      const DTOs = await Promise.all(
-        relations.map((r) => {
-          return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
-        }),
+
+      // Batch fetch user DTOs to solve N+1 query problem
+      const followerIds = relations.map((r) => r.followerId);
+      const DTOs = await this.getUsersDtoByIds(
+        followerIds,
+        viewerId,
+        ip,
+        userAgent,
       );
+
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise =
@@ -1313,12 +1458,21 @@ export class UsersService {
           take: pageSize + 1,
           orderBy: { followerId: 'asc' },
         });
-      const DTOs = await Promise.all(
-        (await queriedRelationsPromise).map((r) => {
-          return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
-        }),
+
+      const [prev, queriedRelations] = await Promise.all([
+        prevRelationshipsPromise,
+        queriedRelationsPromise,
+      ]);
+
+      // Batch fetch user DTOs to solve N+1 query problem
+      const followerIds = queriedRelations.map((r) => r.followerId);
+      const DTOs = await this.getUsersDtoByIds(
+        followerIds,
+        viewerId,
+        ip,
+        userAgent,
       );
-      const prev = await prevRelationshipsPromise;
+
       return PageHelper.PageMiddle(
         prev,
         DTOs,
@@ -1346,11 +1500,16 @@ export class UsersService {
           take: pageSize + 1,
           orderBy: { followeeId: 'asc' },
         });
-      const DTOs = await Promise.all(
-        relations.map((r) => {
-          return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
-        }),
+
+      // Batch fetch user DTOs to solve N+1 query problem
+      const followeeIds = relations.map((r) => r.followeeId);
+      const DTOs = await this.getUsersDtoByIds(
+        followeeIds,
+        viewerId,
+        ip,
+        userAgent,
       );
+
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise =
@@ -1371,12 +1530,21 @@ export class UsersService {
           take: pageSize + 1,
           orderBy: { followeeId: 'asc' },
         });
-      const DTOs = await Promise.all(
-        (await queriedRelationsPromise).map((r) => {
-          return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
-        }),
+
+      const [prev, queriedRelations] = await Promise.all([
+        prevRelationshipsPromise,
+        queriedRelationsPromise,
+      ]);
+
+      // Batch fetch user DTOs to solve N+1 query problem
+      const followeeIds = queriedRelations.map((r) => r.followeeId);
+      const DTOs = await this.getUsersDtoByIds(
+        followeeIds,
+        viewerId,
+        ip,
+        userAgent,
       );
-      const prev = await prevRelationshipsPromise;
+
       return PageHelper.PageMiddle(
         prev,
         DTOs,
@@ -1557,10 +1725,14 @@ export class UsersService {
     serverPublicEphemeral: string;
     serverSecretEphemeral: string;
   }> {
-    const user = await this.findUserRecordByUsernameOrThrow(username);
+    const user = await this.prismaService.user.findUnique({
+      where: { username },
+    });
 
-    if (!user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
-      throw new SrpNotUpgradedError(username);
+    // Return generic error for both non-existent users and non-SRP users
+    // to prevent user enumeration
+    if (!user || !user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
+      throw new InvalidLoginCredentialsError();
     }
 
     // 创建 SRP 服务器会话
@@ -1593,10 +1765,14 @@ export class UsersService {
     tempToken?: string;
     user?: UserDto;
   }> {
-    const user = await this.findUserRecordByUsernameOrThrow(username);
+    const user = await this.prismaService.user.findUnique({
+      where: { username },
+    });
 
-    if (!user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
-      throw new SrpNotUpgradedError(username);
+    // Return generic error for both non-existent users and verification failures
+    // to prevent user enumeration
+    if (!user || !user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
+      throw new InvalidLoginCredentialsError();
     }
 
     const { success, serverProof } = await this.srpService.verifyClient(
@@ -1609,7 +1785,7 @@ export class UsersService {
     );
 
     if (!success) {
-      throw new SrpVerificationError();
+      throw new InvalidLoginCredentialsError();
     }
 
     // 记录登录日志
@@ -1680,16 +1856,16 @@ export class UsersService {
   }
 
   /**
-   * OAuth 用户登录/注册处理
-   * 如果邮箱已存在，返回验证所需信息；否则创建新用户
+   * OAuth 流程入口 - 处理OAuth回调后的预检查和流程分发
+   * 根据用户状态返回不同的处理结果
    */
-  async loginWithOAuth(
+  async initiateOAuthFlow(
     providerId: string,
     userInfo: OAuthUserInfo,
     ip: string,
     userAgent: string | undefined,
   ): Promise<
-    | [OAuthUserDto, string] // 成功登录/注册
+    | [OAuthUserDto, string] // 已有OAuth连接，直接登录
     | {
         requiresVerification: true;
         verificationType: 'password' | 'srp';
@@ -1697,7 +1873,11 @@ export class UsersService {
         sessionId: string;
         salt?: string;
         serverPublicEphemeral?: string;
-      } // 需要验证
+      } // 邮箱已存在，需要验证身份
+    | {
+        requiresDecision: true;
+        stateToken: string;
+      } // 新用户或邮箱不冲突，需要用户决策
   > {
     // 1. 检查是否已有OAuth连接
     const existingConnection =
@@ -1735,7 +1915,7 @@ export class UsersService {
       });
 
       if (existingUser && !existingUser.deletedAt) {
-        // 邮箱冲突，需要验证身份
+        // 邮箱冲突，需要验证身份后强制绑定
         if (existingUser.srpUpgraded) {
           // SRP用户，启动SRP验证
           return this.initOAuthSrpVerification(
@@ -1754,8 +1934,18 @@ export class UsersService {
       }
     }
 
-    // 3. 没有冲突，创建新用户
-    return this.createNewOAuthUser(providerId, userInfo, ip, userAgent);
+    // 3. 没有邮箱冲突，生成决策令牌让用户选择
+    const stateToken = await this.generateOAuthStateToken(
+      providerId,
+      userInfo,
+      ip,
+      userAgent,
+    );
+
+    return {
+      requiresDecision: true,
+      stateToken,
+    };
   }
 
   /**
@@ -1862,6 +2052,380 @@ export class UsersService {
     const timestamp = Date.now();
     const random = crypto.randomBytes(8).toString('hex');
     return `oauth_${type}_${providerId}_${providerUserId}_${timestamp}_${random}`;
+  }
+
+  /**
+   * 生成OAuth状态令牌 - 用于决策页面
+   * 包含OAuth用户信息，供后续创建用户或绑定使用
+   */
+  private async generateOAuthStateToken(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<string> {
+    const tokenData = {
+      providerId,
+      userInfo,
+      ip,
+      userAgent,
+      timestamp: Date.now(),
+    };
+
+    // 使用AuthService生成带签名的令牌，有效期15分钟
+    return this.authService.sign(
+      {
+        userId: 0, // 占位符，实际不使用
+        username: 'oauth_state_token',
+        permissions: [
+          {
+            authorizedActions: ['oauth-decision'],
+            authorizedResource: {
+              ownedByUser: 0,
+              types: ['oauth/state-token'],
+              resourceIds: undefined,
+              data: tokenData,
+            },
+          },
+        ],
+      },
+      15 * 60, // 15分钟有效期
+    );
+  }
+
+  /**
+   * 解码OAuth状态令牌
+   * 验证令牌有效性并返回包含的OAuth信息
+   */
+  private async decodeOAuthStateToken(stateToken: string): Promise<{
+    providerId: string;
+    userInfo: OAuthUserInfo;
+    ip: string;
+    userAgent: string | undefined;
+    timestamp: number;
+  }> {
+    try {
+      // 验证令牌并审计权限
+      await this.authService.audit(
+        stateToken,
+        'oauth-decision',
+        0,
+        'oauth/state-token',
+        undefined,
+      );
+
+      // 解码令牌获取数据
+      const decoded = this.authService.decode(stateToken);
+      const tokenData =
+        decoded.authorization.permissions[0].authorizedResource.data;
+
+      return tokenData as {
+        providerId: string;
+        userInfo: OAuthUserInfo;
+        ip: string;
+        userAgent: string | undefined;
+        timestamp: number;
+      };
+    } catch (error) {
+      throw new Error('Invalid or expired OAuth state token');
+    }
+  }
+
+  /**
+   * 获取OAuth状态信息 - 供决策页面使用
+   * 解析状态令牌并返回用户信息和建议的用户名等
+   */
+  async getOAuthStateInfo(stateToken: string): Promise<{
+    providerId: string;
+    userInfo: {
+      id: string;
+      email?: string;
+      name?: string;
+      username?: string;
+      preferredUsername?: string;
+    };
+    suggestedUsername: string;
+    suggestedNickname: string;
+    emailConflict: boolean;
+  }> {
+    let providerId: string;
+    let userInfo: OAuthUserInfo;
+
+    try {
+      const decoded = await this.decodeOAuthStateToken(stateToken);
+      providerId = decoded.providerId;
+      userInfo = decoded.userInfo;
+    } catch (error) {
+      this.logger.debug(
+        'Failed to decode state token in getOAuthStateInfo:',
+        error,
+      );
+      throw new Error('Invalid or expired OAuth state token');
+    }
+
+    // 生成建议的用户名和昵称
+    const baseUsername = this.generateOAuthUsername(userInfo);
+    const suggestedUsername = await this.generateUniqueUsername(baseUsername);
+
+    // 生成符合规范的昵称（清理特殊字符，保留字母、数字、下划线、连字符和中文字符）
+    let rawNickname =
+      userInfo.name || userInfo.preferredUsername || suggestedUsername;
+    const suggestedNickname = rawNickname
+      .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '_') // 替换不符合规范的字符为下划线
+      .replace(/_+/g, '_') // 合并连续的下划线
+      .replace(/^_|_$/g, '') // 去除首尾下划线
+      .substring(0, 16); // 限制长度
+
+    // 检查邮箱是否冲突（这里应该不会冲突，因为有冲突的话不会走到决策页面）
+    let emailConflict = false;
+    if (userInfo.email) {
+      emailConflict = await this.isEmailRegistered(userInfo.email);
+    }
+
+    return {
+      providerId,
+      userInfo: {
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        username: userInfo.username,
+        preferredUsername: userInfo.preferredUsername,
+      },
+      suggestedUsername,
+      suggestedNickname,
+      emailConflict,
+    };
+  }
+
+  /**
+   * 根据用户决策创建OAuth用户
+   * 用于处理决策页面的"创建新账户"操作
+   */
+  async createOAuthUserFromDecision(
+    stateToken: string,
+    username: string,
+    nickname: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    // 解码状态令牌获取OAuth信息
+    let providerId: string;
+    let userInfo: OAuthUserInfo;
+
+    try {
+      const decoded = await this.decodeOAuthStateToken(stateToken);
+      providerId = decoded.providerId;
+      userInfo = decoded.userInfo;
+    } catch (error) {
+      this.logger.debug(
+        'Failed to decode state token in createOAuthUserFromDecision:',
+        error,
+      );
+      throw new Error('Invalid or expired OAuth state token');
+    }
+
+    // 验证用户名格式
+    if (!this.isValidUsername(username)) {
+      throw new InvalidUsernameError(username, this.usernameRule);
+    }
+
+    // 验证昵称格式
+    if (!this.isValidNickname(nickname)) {
+      throw new InvalidNicknameError(nickname, this.nicknameRule);
+    }
+
+    // 检查用户名是否已被占用
+    if (await this.isUsernameRegistered(username)) {
+      throw new UsernameAlreadyRegisteredError(username);
+    }
+
+    // 如果有邮箱，再次检查邮箱是否冲突（防止竞态条件）
+    if (userInfo.email && (await this.isEmailRegistered(userInfo.email))) {
+      throw new EmailAlreadyRegisteredError(userInfo.email);
+    }
+
+    // 获取默认头像
+    const avatarId = await this.avatarsService.getDefaultAvatarId();
+
+    // 生成随机密码（用户不会使用，仅为占位）
+    const randomPassword = this.generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+    // 在事务中创建用户、profile 和 OAuth 连接
+    const result = await this.prismaService.$transaction(async (tx) => {
+      // 为没有email的用户生成唯一占位符email
+      let userEmail = userInfo.email;
+      if (!userEmail) {
+        // 生成格式：oauth-{providerId}-{providerUserId}@placeholder.internal
+        userEmail = `oauth-${providerId}-${userInfo.id}@placeholder.internal`;
+      }
+
+      // 创建用户
+      const newUser = await tx.user.create({
+        data: {
+          username,
+          email: userEmail,
+          hashedPassword,
+          srpUpgraded: false, // OAuth 用户默认未升级到 SRP
+        },
+      });
+
+      // 创建用户 profile
+      await tx.userProfile.create({
+        data: {
+          userId: newUser.id,
+          nickname,
+          intro: this.defaultIntro,
+          avatarId,
+        },
+      });
+
+      // 创建 OAuth 连接
+      await tx.userOAuthConnection.create({
+        data: {
+          userId: newUser.id,
+          providerId,
+          providerUserId: userInfo.id,
+          rawProfile: userInfo as any,
+        },
+      });
+
+      // 记录注册日志
+      await tx.userRegisterLog.create({
+        data: {
+          type: 'Success',
+          email: userInfo.email || '',
+          ip,
+          userAgent,
+        },
+      });
+
+      // 记录登录日志
+      await tx.userLoginLog.create({
+        data: {
+          userId: newUser.id,
+          ip,
+          userAgent,
+        },
+      });
+
+      return newUser;
+    });
+
+    this.logger.log(
+      `Created new user ${result.username} (ID: ${result.id}) via OAuth decision for provider: ${providerId}`,
+    );
+
+    return [
+      await this.getOAuthUserDtoById(result.id, result.id, ip, userAgent),
+      await this.createSession(result.id),
+    ];
+  }
+
+  /**
+   * 将OAuth账户绑定到已有用户
+   * 用于处理决策页面的"绑定到已有账户"操作
+   */
+  async bindOAuthToExistingUser(
+    stateToken: string,
+    username: string,
+    credentials: {
+      password?: string;
+      clientPublicEphemeral?: string;
+      clientProof?: string;
+    },
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    // 解码状态令牌获取OAuth信息
+    let providerId: string;
+    let userInfo: OAuthUserInfo;
+
+    try {
+      const decoded = await this.decodeOAuthStateToken(stateToken);
+      providerId = decoded.providerId;
+      userInfo = decoded.userInfo;
+    } catch (error) {
+      this.logger.debug(
+        'Failed to decode state token in bindOAuthToExistingUser:',
+        error,
+      );
+      throw new Error('Invalid or expired OAuth state token');
+    }
+
+    // 查找要绑定的用户
+    const user = await this.findUserRecordByUsernameOrThrow(username);
+
+    // 验证用户身份
+    let verified = false;
+    if (user.srpUpgraded && user.srpSalt && user.srpVerifier) {
+      // SRP用户验证
+      if (!credentials.clientPublicEphemeral || !credentials.clientProof) {
+        throw new Error('SRP credentials required for this user');
+      }
+      // 这里需要服务器临时密钥，但在决策页面流程中我们没有保存
+      // 为了简化，我们让前端在绑定时重新初始化SRP流程
+      throw new Error(
+        'SRP users should use the verification flow, not the decision flow',
+      );
+    } else {
+      // 传统用户验证
+      if (!credentials.password) {
+        throw new Error('Password required for this user');
+      }
+
+      const { verified: authResult } = await this.authenticateUserWithPassword(
+        user,
+        username,
+        credentials.password,
+        true, // 自动升级到SRP
+      );
+      verified = authResult;
+    }
+
+    if (!verified) {
+      throw new InvalidLoginCredentialsError();
+    }
+
+    // 检查该OAuth账户是否已被其他用户绑定
+    const existingConnection =
+      await this.prismaService.userOAuthConnection.findUnique({
+        where: {
+          providerId_providerUserId: {
+            providerId,
+            providerUserId: userInfo.id,
+          },
+        },
+      });
+
+    if (existingConnection) {
+      if (existingConnection.userId === user.id) {
+        throw new Error('This OAuth account is already linked to your account');
+      } else {
+        throw new Error('This OAuth account is already linked to another user');
+      }
+    }
+
+    // 创建OAuth连接
+    await this.createOAuthConnection(user.id, providerId, userInfo);
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: user.id,
+        ip,
+        userAgent,
+      },
+    });
+
+    this.logger.log(
+      `User ${user.username} (ID: ${user.id}) bound OAuth account: ${providerId}:${userInfo.id}`,
+    );
+
+    return [
+      await this.getOAuthUserDtoById(user.id, user.id, ip, userAgent),
+      await this.createSession(user.id),
+    ];
   }
 
   /**
@@ -2115,7 +2679,7 @@ export class UsersService {
 
     // 生成随机密码（用户不会使用，仅为占位）
     const randomPassword = this.generateRandomPassword();
-    const hashedPassword = bcrypt.hashSync(randomPassword, 10);
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
     // 在事务中创建用户、profile 和 OAuth 连接
     const result = await this.prismaService.$transaction(async (tx) => {
