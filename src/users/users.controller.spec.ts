@@ -984,6 +984,52 @@ describe('UsersController', () => {
           expect.stringContaining('/oauth-success?bound=true'),
         );
       });
+
+      it('should redirect to error page if binding callback service call fails', async () => {
+        const errorMessage = 'Service error during binding';
+        mockUsersService.handleOAuthBindingCallback.mockRejectedValue(
+          new Error(errorMessage),
+        );
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({ id: '123' });
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth-code', state: 'binding:session-id' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('error=Service+error+during+binding'),
+        );
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('error_code=BINDING_ERROR'),
+        );
+      });
+
+      it('should redirect to error page for invalid binding state format', async () => {
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({ id: '123' });
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth-code', state: 'binding:' }, // Invalid state
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(
+          mockUsersService.handleOAuthBindingCallback,
+        ).not.toHaveBeenCalled();
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('error=Invalid+binding+state+format'),
+        );
+      });
     });
 
     describe('oauthVerify', () => {
