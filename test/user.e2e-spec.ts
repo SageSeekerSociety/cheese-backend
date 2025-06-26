@@ -619,7 +619,9 @@ describe('User Module', () => {
       });
 
       expect(verifyResponse.status).toBe(401);
-      expect(verifyResponse.body.message).toMatch(/^SrpVerificationError: /);
+      expect(verifyResponse.body.message).toMatch(
+        /^InvalidLoginCredentialsError: /,
+      );
     });
 
     it('should return UsernameNotFoundError', async () => {
@@ -628,9 +630,9 @@ describe('User Module', () => {
         .send({
           username: TestUsername + 'KKK',
         });
-      expect(respond.status).toBe(404);
-      expect(respond.body.code).toBe(404);
-      expect(respond.body.message).toMatch(/^UsernameNotFoundError: /);
+      expect(respond.status).toBe(401);
+      expect(respond.body.code).toBe(401);
+      expect(respond.body.message).toMatch(/^InvalidLoginCredentialsError: /);
     });
 
     it('should refresh access token successfully', async () => {
@@ -705,15 +707,16 @@ describe('User Module', () => {
       );
     });
 
-    it('should return EmailNotFoundError', async () => {
+    it('should handle non-existent email gracefully (no enumeration)', async () => {
       const respond = await request(app.getHttpServer())
         .post('/users/recover/password/request')
         .send({
           email: 'KKK-' + TestEmail,
         });
-      expect(respond.body.message).toMatch(/^EmailNotFoundError: /);
-      expect(respond.body.code).toBe(404);
-      expect(respond.status).toBe(404);
+      // Should return success to prevent email enumeration attacks
+      expect(respond.body.message).toBe('Send email successfully.');
+      expect(respond.body.code).toBe(201);
+      expect(respond.status).toBe(201);
     });
 
     it('should send a password reset email and reset the password', async () => {
@@ -1247,6 +1250,99 @@ describe('User Module', () => {
       }
     });
 
+    it('GET /users/auth/oauth/state should return OAuth state info', async () => {
+      // First, we need to get a valid state token
+      const oauthService = app.get(OAuthService);
+      const uniqueId = `oauth-state-test-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+      if (oauthService) {
+        jest
+          .spyOn(oauthService, 'handleCallback')
+          .mockResolvedValue('mock_access_token_state');
+        jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
+          id: uniqueId,
+          email: `oauth-state-test-${Date.now()}@example.com`,
+          name: 'OAuth_State_Test_User',
+          username: 'oauthstateuser',
+          preferredUsername: 'oauthstateuser',
+        });
+      }
+
+      const agent = request.agent(app.getHttpServer());
+
+      // Get state token from OAuth callback
+      const res = await agent
+        .get(
+          `/users/auth/oauth/callback/test?code=test-code-state&state=test-state`,
+        )
+        .expect(302);
+
+      expect(res.headers.location).toContain('/oauth-complete');
+
+      const callbackUrlParams = new URLSearchParams(
+        res.headers.location.split('?')[1],
+      );
+      const stateToken = callbackUrlParams.get('stateToken');
+      expect(stateToken).toBeDefined();
+
+      // Test the OAuth state endpoint
+      const stateRes = await agent
+        .get(`/users/auth/oauth/state?token=${stateToken}`)
+        .expect(200);
+
+      expect(stateRes.body.code).toBe(200);
+      expect(stateRes.body.data.providerId).toBe('test');
+      expect(stateRes.body.data.userInfo.id).toBe(uniqueId);
+      expect(stateRes.body.data.suggestedUsername).toBeDefined();
+      expect(stateRes.body.data.suggestedNickname).toBeDefined();
+      expect(stateRes.body.data.emailConflict).toBe(false);
+    });
+
+    it('POST /users/oauth/create should create new user from decision', async () => {
+      // First, get a state token
+      const oauthService = app.get(OAuthService);
+      const uniqueId = `oauth-create-test-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
+      if (oauthService) {
+        jest
+          .spyOn(oauthService, 'handleCallback')
+          .mockResolvedValue('mock_access_token_create');
+        jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
+          id: uniqueId,
+          email: `oauth-create-test-${Date.now()}@example.com`,
+          name: 'OAuth_Create_Test_User',
+          username: 'oauthcreateuser',
+          preferredUsername: 'oauthcreateuser',
+        });
+      }
+
+      const agent = request.agent(app.getHttpServer());
+
+      // Get state token from OAuth callback
+      const callbackRes = await agent
+        .get(
+          `/users/auth/oauth/callback/test?code=test-code-create&state=test-state`,
+        )
+        .expect(302);
+
+      const callbackUrlParams = new URLSearchParams(
+        callbackRes.headers.location.split('?')[1],
+      );
+      const stateToken = callbackUrlParams.get('stateToken');
+
+      // Create user via decision endpoint
+      const createRes = await agent
+        .post('/users/oauth/create')
+        .send({
+          stateToken: stateToken,
+          username: `testuser_${Date.now()}`,
+          nickname: 'Test_User',
+        })
+        .expect(302);
+
+      expect(createRes.headers.location).toContain('/oauth-success');
+      expect(createRes.headers.location).toContain('created=true');
+      expect(createRes.headers['set-cookie']).toBeDefined();
+    });
+
     it('GET /users/auth/oauth/providers should return available providers', async () => {
       const res = await request(app.getHttpServer())
         .get('/users/auth/oauth/providers')
@@ -1293,14 +1389,15 @@ describe('User Module', () => {
     it('GET /users/auth/oauth/callback/:providerId should handle OAuth callback', async () => {
       // Override OAuth mocks for this specific test
       const oauthService = app.get(OAuthService);
+      const uniqueId = `oauth-user-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
       if (oauthService) {
         jest
           .spyOn(oauthService, 'handleCallback')
           .mockResolvedValue('mock_access_token');
         jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
-          id: 'oauth-user-123',
-          email: `oauth-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`,
-          name: 'OAuth Test User',
+          id: uniqueId,
+          email: `oauth-test-${Date.now()}-${Math.floor(Math.random() * 1000000)}@example.com`,
+          name: 'OAuth_Test_User',
           username: 'oauthuser',
           preferredUsername: 'oauthuser',
         });
@@ -1312,26 +1409,61 @@ describe('User Module', () => {
         .get('/users/auth/oauth/callback/test?code=test-code&state=test-state')
         .expect(302);
 
-      // Should redirect to frontend success page
-      expect(res.headers.location).toContain('/oauth-success');
-      expect(res.headers.location).toContain('token=');
-      expect(res.headers.location).toContain('email=');
+      // Should redirect to frontend decision page for new users
+      expect(res.headers.location).toContain('/oauth-complete');
+      expect(res.headers.location).toContain('stateToken=');
 
-      // Should set refresh token cookie
-      expect(res.headers['set-cookie']).toBeDefined();
-      const cookies = Array.isArray(res.headers['set-cookie'])
-        ? res.headers['set-cookie']
-        : [res.headers['set-cookie']];
+      // Should not set refresh token cookie yet (user hasn't made decision)
+      expect(res.headers['set-cookie']).toBeUndefined();
+
+      // Extract stateToken from redirect URL for further tests
+      const callbackUrlParams = new URLSearchParams(
+        res.headers.location.split('?')[1],
+      );
+      const stateToken = callbackUrlParams.get('stateToken');
+
+      expect(stateToken).toBeDefined();
+
+      // Test the new OAuth state endpoint
+      const stateRes = await agent
+        .get(`/users/auth/oauth/state?token=${stateToken}`)
+        .expect(200);
+
+      expect(stateRes.body.data.providerId).toBe('test');
+      expect(stateRes.body.data.userInfo.id).toBe(uniqueId);
+      expect(stateRes.body.data.suggestedUsername).toBeDefined();
+      expect(stateRes.body.data.suggestedNickname).toBeDefined();
+
+      // Simulate user creating new account via decision page
+      const createRes = await agent
+        .post('/users/oauth/create')
+        .send({
+          stateToken: stateToken,
+          username: stateRes.body.data.suggestedUsername,
+          nickname: stateRes.body.data.suggestedNickname,
+        })
+        .expect(302);
+
+      // Now should redirect to success page
+      expect(createRes.headers.location).toContain('/oauth-success');
+      expect(createRes.headers.location).toContain('token=');
+      expect(createRes.headers.location).toContain('created=true');
+
+      // Should set refresh token cookie after creation
+      expect(createRes.headers['set-cookie']).toBeDefined();
+      const cookies = Array.isArray(createRes.headers['set-cookie'])
+        ? createRes.headers['set-cookie']
+        : [createRes.headers['set-cookie']];
       expect(
         cookies.some((cookie: string) => cookie.includes('REFRESH_TOKEN=')),
       ).toBe(true);
 
       // Extract token from redirect URL for further tests
-      const callbackUrlParams = new URLSearchParams(
-        res.headers.location.split('?')[1],
+      const createUrlParams = new URLSearchParams(
+        createRes.headers.location.split('?')[1],
       );
-      const accessToken = callbackUrlParams.get('token');
-      const email = callbackUrlParams.get('email');
+      const accessToken = createUrlParams.get('token');
+      const email = createUrlParams.get('email');
 
       expect(accessToken).toBeDefined();
       expect(email).toBeDefined();
@@ -1348,7 +1480,9 @@ describe('User Module', () => {
         .expect(200);
 
       // Verify email from URL parameter (UserDto doesn't include email field)
-      expect(decodeURIComponent(email!)).toMatch(/^oauth-\d+@ruc\.edu\.cn$/);
+      expect(decodeURIComponent(email!)).toMatch(
+        /^oauth-test-\d+-\d+@example\.com$/,
+      );
 
       oauthUser = {
         userId: userRes.body.data.user.id,
@@ -1605,6 +1739,305 @@ describe('User Module', () => {
 
       expect(verifyRes.headers.location).toContain('/oauth-error');
       expect(verifyRes.headers.location).toContain('error=');
+    });
+
+    describe('OAuth Decision Flow Tests', () => {
+      it('POST /users/oauth/bind should bind OAuth to existing user with password', async () => {
+        // Create a legacy user first
+        const legacyUser = await createLegacyUser(app.getHttpServer());
+
+        // Override OAuth mocks to return unique user info
+        const oauthService = app.get(OAuthService);
+        const uniqueId = `oauth-bind-decision-${Date.now()}`;
+        if (oauthService) {
+          jest
+            .spyOn(oauthService, 'handleCallback')
+            .mockResolvedValue('mock_access_token_bind_decision');
+          jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
+            id: uniqueId,
+            email: `oauth-bind-decision-${Date.now()}@example.com`,
+            name: 'OAuth Bind Decision User',
+            username: 'oauthbinddecision',
+            preferredUsername: 'oauthbinddecision',
+          });
+        }
+
+        const agent = request.agent(app.getHttpServer());
+
+        // Step 1: OAuth callback - should redirect to decision page
+        const callbackRes = await agent
+          .get(
+            `/users/auth/oauth/callback/test?code=test-code-bind-decision&state=test-state`,
+          )
+          .expect(302);
+
+        expect(callbackRes.headers.location).toContain('/oauth-complete');
+
+        // Extract stateToken from redirect URL
+        const callbackUrlParams = new URLSearchParams(
+          callbackRes.headers.location.split('?')[1],
+        );
+        const stateToken = callbackUrlParams.get('stateToken')!;
+
+        // Step 2: User chooses to bind to existing account
+        const bindRes = await agent
+          .post('/users/oauth/bind')
+          .send({
+            stateToken: stateToken,
+            username: legacyUser.username,
+            password: legacyUser.password,
+          })
+          .expect(302);
+
+        expect(bindRes.headers.location).toContain('/oauth-success');
+        expect(bindRes.headers.location).toContain('bound=true');
+
+        // Verify it's the same user
+        const bindUrlParams = new URLSearchParams(
+          bindRes.headers.location.split('?')[1],
+        );
+        const accessToken = bindUrlParams.get('token')!;
+
+        const authService = app.get(AuthService);
+        const payload = authService.decode(accessToken);
+        const userId = payload.authorization.userId;
+
+        expect(userId).toBe(legacyUser.userId);
+      });
+
+      it('POST /users/oauth/bind should reject with invalid credentials', async () => {
+        // Create a legacy user first
+        const legacyUser = await createLegacyUser(app.getHttpServer());
+
+        // Override OAuth mocks to return unique user info
+        const oauthService = app.get(OAuthService);
+        const uniqueId = `oauth-bind-invalid-${Date.now()}`;
+        if (oauthService) {
+          jest
+            .spyOn(oauthService, 'handleCallback')
+            .mockResolvedValue('mock_access_token_bind_invalid');
+          jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
+            id: uniqueId,
+            email: `oauth-bind-invalid-${Date.now()}@example.com`,
+            name: 'OAuth Bind Invalid User',
+            username: 'oauthbindinvalid',
+            preferredUsername: 'oauthbindinvalid',
+          });
+        }
+
+        const agent = request.agent(app.getHttpServer());
+
+        // Step 1: OAuth callback - should redirect to decision page
+        const callbackRes = await agent
+          .get(
+            `/users/auth/oauth/callback/test?code=test-code-bind-invalid&state=test-state`,
+          )
+          .expect(302);
+
+        expect(callbackRes.headers.location).toContain('/oauth-complete');
+
+        // Extract stateToken from redirect URL
+        const callbackUrlParams = new URLSearchParams(
+          callbackRes.headers.location.split('?')[1],
+        );
+        const stateToken = callbackUrlParams.get('stateToken')!;
+
+        // Step 2: User tries to bind with wrong password
+        const bindRes = await agent
+          .post('/users/oauth/bind')
+          .send({
+            stateToken: stateToken,
+            username: legacyUser.username,
+            password: 'wrong-password',
+          })
+          .expect(302);
+
+        expect(bindRes.headers.location).toContain('/oauth-error');
+        expect(bindRes.headers.location).toContain('error=');
+      });
+
+      it('should handle invalid state token in decision endpoints', async () => {
+        const agent = request.agent(app.getHttpServer());
+
+        // Try to create user with invalid state token
+        const createRes = await agent
+          .post('/users/oauth/create')
+          .send({
+            stateToken: 'invalid-state-token',
+            username: 'testuser',
+            nickname: 'Test User',
+          })
+          .expect(302);
+
+        expect(createRes.headers.location).toContain('/oauth-error');
+        expect(createRes.headers.location).toContain('error=');
+
+        // Try to bind with invalid state token
+        const bindRes = await agent
+          .post('/users/oauth/bind')
+          .send({
+            stateToken: 'invalid-state-token',
+            username: 'testuser',
+            password: 'password',
+          })
+          .expect(302);
+
+        expect(bindRes.headers.location).toContain('/oauth-error');
+        expect(bindRes.headers.location).toContain('error=');
+      });
+
+      it('should handle username conflicts in user creation', async () => {
+        // Create a user first to cause username conflict
+        const existingUser = await createLegacyUser(app.getHttpServer());
+
+        // Override OAuth mocks to return unique user info
+        const oauthService = app.get(OAuthService);
+        const uniqueId = `oauth-username-conflict-${Date.now()}`;
+        if (oauthService) {
+          jest
+            .spyOn(oauthService, 'handleCallback')
+            .mockResolvedValue('mock_access_token_username_conflict');
+          jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
+            id: uniqueId,
+            email: `oauth-username-conflict-${Date.now()}@example.com`,
+            name: 'OAuth Username Conflict User',
+            username: 'oauthusernameconflict',
+            preferredUsername: 'oauthusernameconflict',
+          });
+        }
+
+        const agent = request.agent(app.getHttpServer());
+
+        // Step 1: OAuth callback - should redirect to decision page
+        const callbackRes = await agent
+          .get(
+            `/users/auth/oauth/callback/test?code=test-code-username-conflict&state=test-state`,
+          )
+          .expect(302);
+
+        expect(callbackRes.headers.location).toContain('/oauth-complete');
+
+        // Extract stateToken from redirect URL
+        const callbackUrlParams = new URLSearchParams(
+          callbackRes.headers.location.split('?')[1],
+        );
+        const stateToken = callbackUrlParams.get('stateToken')!;
+
+        // Step 2: User tries to create account with existing username
+        const createRes = await agent
+          .post('/users/oauth/create')
+          .send({
+            stateToken: stateToken,
+            username: existingUser.username, // This should conflict
+            nickname: 'TestUser', // Use valid nickname without spaces
+          })
+          .expect(302);
+
+        expect(createRes.headers.location).toContain('/oauth-error');
+        expect(createRes.headers.location).toContain('error=');
+        // The actual error message contains "Username already registered" so look for that
+        expect(createRes.headers.location).toContain(
+          'Username%20already%20registered',
+        );
+      });
+
+      it('should handle SRP user email conflicts properly', async () => {
+        // Create a new SRP user for this test to ensure email conflict
+        const srpUsername = `TestSRPUser-${Math.floor(Math.random() * 10000000000)}`;
+        const srpPassword = 'SRP@123456';
+        const srpEmail = `srp-test-${Math.floor(Math.random() * 10000000000)}@ruc.edu.cn`;
+
+        // Send verification email
+        await request(app.getHttpServer())
+          .post('/users/verify/email')
+          .send({ email: srpEmail })
+          .expect(201);
+
+        const verificationCode = (
+          MockedEmailService.mock.instances[0].sendRegisterCode as jest.Mock
+        ).mock.calls.slice(-1)[0][1]; // Get the last call's verification code
+
+        // Create SRP user
+        const salt = srpClient.generateSalt();
+        const privateKey = srpClient.derivePrivateKey(
+          salt,
+          srpUsername,
+          srpPassword,
+        );
+        const verifier = srpClient.deriveVerifier(privateKey);
+
+        await request(app.getHttpServer())
+          .post('/users')
+          .send({
+            username: srpUsername,
+            nickname: 'srp_user',
+            srpSalt: salt,
+            srpVerifier: verifier,
+            email: srpEmail,
+            emailCode: verificationCode,
+          })
+          .expect(201);
+
+        // Override OAuth mocks to return the SRP user's email
+        const oauthService = app.get(OAuthService);
+        const uniqueId = `oauth-srp-conflict-${Date.now()}`;
+        if (oauthService) {
+          jest
+            .spyOn(oauthService, 'handleCallback')
+            .mockResolvedValue('mock_access_token_srp_conflict');
+          jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
+            id: uniqueId,
+            email: srpEmail, // Use the same email as SRP user
+            name: 'OAuth SRP Conflict User',
+            username: 'oauthsrpconflict',
+            preferredUsername: 'oauthsrpconflict',
+          });
+        }
+
+        const agent = request.agent(app.getHttpServer());
+
+        // OAuth callback should redirect to SRP verification page
+        const callbackRes = await agent
+          .get(
+            `/users/auth/oauth/callback/test?code=test-code-srp-conflict&state=test-state`,
+          )
+          .expect(302);
+
+        expect(callbackRes.headers.location).toContain('/oauth-verify');
+        expect(callbackRes.headers.location).toContain('type=srp');
+        expect(callbackRes.headers.location).toContain('email=');
+        expect(callbackRes.headers.location).toContain('sessionId=');
+        expect(callbackRes.headers.location).toContain('salt=');
+        expect(callbackRes.headers.location).toContain(
+          'serverPublicEphemeral=',
+        );
+
+        // Should include email and type in URL params
+        const urlParams = new URLSearchParams(
+          callbackRes.headers.location.split('?')[1],
+        );
+        expect(decodeURIComponent(urlParams.get('email')!)).toBe(srpEmail);
+        expect(urlParams.get('type')).toBe('srp');
+        expect(urlParams.get('sessionId')).toMatch(/^oauth_srp_/);
+      });
+
+      it('should handle expired state tokens gracefully', async () => {
+        const agent = request.agent(app.getHttpServer());
+
+        // Try to create user with malformed state token (simulates expired/invalid token)
+        const createRes = await agent
+          .post('/users/oauth/create')
+          .send({
+            stateToken: 'malformed-state-token',
+            username: 'testuser',
+            nickname: 'TestUser',
+          })
+          .expect(302);
+
+        expect(createRes.headers.location).toContain('/oauth-error');
+        expect(createRes.headers.location).toContain('error=');
+        expect(createRes.headers.location).toContain('TOKEN_EXPIRED');
+      });
     });
   });
 

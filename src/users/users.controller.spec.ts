@@ -2,7 +2,7 @@
  * Description: Unit tests for Users Controller
  *
  * Author(s):
- *      AI Assistant
+ *      HuanCheng65
  */
 
 import { ConfigService } from '@nestjs/config';
@@ -22,7 +22,6 @@ import {
   InvalidEmailAddressError,
   TOTPRequiredError,
   UserIdNotFoundError,
-  UsernameNotFoundError,
 } from './users.error';
 import { UsersService } from './users.service';
 
@@ -61,7 +60,10 @@ describe('UsersController', () => {
     srpInit: jest.fn(),
     srpVerify: jest.fn(),
     changePassword: jest.fn(),
-    loginWithOAuth: jest.fn(),
+    initiateOAuthFlow: jest.fn(),
+    getOAuthStateInfo: jest.fn(),
+    createOAuthUserFromDecision: jest.fn(),
+    bindOAuthToExistingUser: jest.fn(),
     completeOAuthVerification: jest.fn(),
     initOAuthBinding: jest.fn(),
     getUserOAuthConnections: jest.fn(),
@@ -691,14 +693,13 @@ describe('UsersController', () => {
   describe('getAuthMethods', () => {
     it('should get auth methods for user', async () => {
       const mockUser = {
+        id: 1,
         srpUpgraded: true,
         totpEnabled: true,
         totpAlwaysRequired: false,
       };
 
-      mockUsersService.findUserRecordByUsernameOrThrow.mockResolvedValue(
-        mockUser,
-      );
+      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
       mockPrismaService.passkey.count.mockResolvedValue(1);
 
       const result = await controller.getAuthMethods('testuser');
@@ -716,15 +717,13 @@ describe('UsersController', () => {
     });
 
     it('should handle username not found gracefully', async () => {
-      mockUsersService.findUserRecordByUsernameOrThrow.mockRejectedValue(
-        new UsernameNotFoundError('nonexistent'),
-      );
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
 
       const result = await controller.getAuthMethods('nonexistent');
 
       expect(result).toEqual({
         code: 200,
-        message: 'User not found, no authentication methods available.',
+        message: 'Authentication methods retrieved successfully.',
         data: {
           supports_srp: false,
           supports_passkey: false,
@@ -862,7 +861,7 @@ describe('UsersController', () => {
     describe('oauthCallback', () => {
       it('should handle successful login and redirect', async () => {
         const mockUserDto = { id: 1, email: 'test@example.com' };
-        mockUsersService.loginWithOAuth.mockResolvedValue([
+        mockUsersService.initiateOAuthFlow.mockResolvedValue([
           mockUserDto as any,
           'refresh-token',
         ]);
@@ -888,7 +887,7 @@ describe('UsersController', () => {
           mockRes,
         );
 
-        expect(mockUsersService.loginWithOAuth).toHaveBeenCalled();
+        expect(mockUsersService.initiateOAuthFlow).toHaveBeenCalled();
         expect(mockRes.redirect).toHaveBeenCalledWith(
           expect.stringContaining('/oauth-success'),
         );
@@ -896,7 +895,7 @@ describe('UsersController', () => {
       });
 
       it('should redirect to verification page when required', async () => {
-        mockUsersService.loginWithOAuth.mockResolvedValue({
+        mockUsersService.initiateOAuthFlow.mockResolvedValue({
           requiresVerification: true,
           verificationType: 'password',
           email: 'test@example.com',
@@ -923,6 +922,33 @@ describe('UsersController', () => {
         const redirectUrl = (mockRes.redirect as jest.Mock).mock.calls[0][0];
         expect(redirectUrl).toContain('type=password');
         expect(redirectUrl).toContain('sessionId=session123');
+      });
+
+      it('should redirect to decision page when user choice required', async () => {
+        mockUsersService.initiateOAuthFlow.mockResolvedValue({
+          requiresDecision: true,
+          stateToken: 'state-token-123',
+        });
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({
+          id: '123',
+          email: 'new@example.com',
+        });
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth_code' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-complete'),
+        );
+        const redirectUrl = (mockRes.redirect as jest.Mock).mock.calls[0][0];
+        expect(redirectUrl).toContain('stateToken=state-token-123');
       });
 
       it('should redirect to error page on OAuth error in query', async () => {
@@ -1190,6 +1216,429 @@ describe('UsersController', () => {
     it('should return user id as owner', async () => {
       const result = await controller.getUserOwner(123);
       expect(result).toBe(123);
+    });
+  });
+
+  describe('Additional OAuth methods', () => {
+    describe('getOAuthState', () => {
+      it('should get OAuth state info successfully', async () => {
+        const mockStateInfo = {
+          providerId: 'google',
+          userInfo: {
+            id: '123',
+            email: 'test@example.com',
+            name: 'Test User',
+          },
+          suggestedUsername: 'testuser',
+          suggestedNickname: 'Test User',
+          emailConflict: false,
+        };
+
+        mockUsersService.getOAuthStateInfo.mockResolvedValue(mockStateInfo);
+
+        const result = await controller.getOAuthState('state-token-123');
+
+        expect(result).toEqual({
+          code: 200,
+          message: 'Get OAuth state successfully.',
+          data: mockStateInfo,
+        });
+        expect(mockUsersService.getOAuthStateInfo).toHaveBeenCalledWith(
+          'state-token-123',
+        );
+      });
+    });
+
+    describe('createOAuthUser', () => {
+      const mockResponse = {
+        cookie: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+        redirect: jest.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      it('should create OAuth user successfully', async () => {
+        const mockUserDto = {
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+        };
+
+        mockUsersService.createOAuthUserFromDecision.mockResolvedValue([
+          mockUserDto as any,
+          'refresh-token',
+        ]);
+        mockSessionService.refreshSession.mockResolvedValue([
+          'new-refresh-token',
+          'access-token',
+        ]);
+        mockAuthService.decode.mockReturnValue({
+          validUntil: Date.now() + 86400000,
+        });
+
+        await controller.createOAuthUser(
+          {
+            stateToken: 'state-token-123',
+            username: 'testuser',
+            nickname: 'Test User',
+          },
+          'ip',
+          'ua',
+          mockResponse,
+        );
+
+        expect(
+          mockUsersService.createOAuthUserFromDecision,
+        ).toHaveBeenCalledWith(
+          'state-token-123',
+          'testuser',
+          'Test User',
+          'ip',
+          'ua',
+        );
+        expect(mockResponse.cookie).toHaveBeenCalled();
+        expect(mockResponse.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-success'),
+        );
+      });
+    });
+
+    describe('bindOAuthToExistingUser', () => {
+      const mockResponse = {
+        cookie: jest.fn().mockReturnThis(),
+        json: jest.fn().mockReturnThis(),
+        redirect: jest.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      it('should bind OAuth to existing user with password', async () => {
+        const mockUserDto = {
+          id: 1,
+          username: 'existinguser',
+          email: 'test@example.com',
+        };
+
+        mockUsersService.bindOAuthToExistingUser.mockResolvedValue([
+          mockUserDto as any,
+          'refresh-token',
+        ]);
+        mockSessionService.refreshSession.mockResolvedValue([
+          'new-refresh-token',
+          'access-token',
+        ]);
+        mockAuthService.decode.mockReturnValue({
+          validUntil: Date.now() + 86400000,
+        });
+
+        await controller.bindOAuthToExistingUser(
+          {
+            stateToken: 'state-token-123',
+            username: 'existinguser',
+            password: 'password123',
+          },
+          'ip',
+          'ua',
+          mockResponse,
+        );
+
+        expect(mockUsersService.bindOAuthToExistingUser).toHaveBeenCalledWith(
+          'state-token-123',
+          'existinguser',
+          { password: 'password123' },
+          'ip',
+          'ua',
+        );
+        expect(mockResponse.cookie).toHaveBeenCalled();
+        expect(mockResponse.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-success'),
+        );
+      });
+
+      it('should bind OAuth to existing user with SRP', async () => {
+        const mockUserDto = {
+          id: 1,
+          username: 'existinguser',
+          email: 'test@example.com',
+        };
+
+        mockUsersService.bindOAuthToExistingUser.mockResolvedValue([
+          mockUserDto as any,
+          'refresh-token',
+        ]);
+        mockSessionService.refreshSession.mockResolvedValue([
+          'new-refresh-token',
+          'access-token',
+        ]);
+        mockAuthService.decode.mockReturnValue({
+          validUntil: Date.now() + 86400000,
+        });
+
+        await controller.bindOAuthToExistingUser(
+          {
+            stateToken: 'state-token-123',
+            username: 'existinguser',
+            clientPublicEphemeral: 'client-public',
+            clientProof: 'client-proof',
+          },
+          'ip',
+          'ua',
+          mockResponse,
+        );
+
+        expect(mockUsersService.bindOAuthToExistingUser).toHaveBeenCalledWith(
+          'state-token-123',
+          'existinguser',
+          {
+            clientPublicEphemeral: 'client-public',
+            clientProof: 'client-proof',
+          },
+          'ip',
+          'ua',
+        );
+      });
+    });
+  });
+
+  describe('Error handling tests', () => {
+    describe('oauthCallback error scenarios', () => {
+      const mockRes = {
+        redirect: jest.fn(),
+        cookie: jest.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('should handle missing authorization code', async () => {
+        // Mock the OAuth service to throw an error for empty code
+        mockOAuthService.handleCallback.mockRejectedValue(
+          new Error('Authorization code is required'),
+        );
+
+        await controller.oauthCallback(
+          'google',
+          { code: '' }, // Empty code
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-error'),
+        );
+      });
+
+      it('should handle OAuth service getUserInfo failure', async () => {
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockRejectedValue(
+          new Error('Failed to get user info'),
+        );
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth_code' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-error'),
+        );
+      });
+
+      it('should handle initiateOAuthFlow failure', async () => {
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({
+          id: '123',
+          email: 'test@example.com',
+        });
+        mockUsersService.initiateOAuthFlow.mockRejectedValue(
+          new Error('OAuth flow error'),
+        );
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth_code' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-error'),
+        );
+      });
+    });
+
+    describe('bindOAuth error scenarios', () => {
+      it('should handle initOAuthBinding failure', async () => {
+        mockUsersService.initOAuthBinding.mockRejectedValue(
+          new Error('Binding init failed'),
+        );
+
+        await expect(
+          controller.bindOAuth(1, 'google', {}, 'token'),
+        ).rejects.toThrow('Binding init failed');
+      });
+
+      it('should handle generateAuthorizationUrl failure', async () => {
+        mockUsersService.initOAuthBinding.mockResolvedValue({
+          bindingSessionId: 'binding123',
+        });
+        mockOAuthService.generateAuthorizationUrl.mockRejectedValue(
+          new Error('URL generation failed'),
+        );
+
+        await expect(
+          controller.bindOAuth(1, 'google', {}, 'token'),
+        ).rejects.toThrow('URL generation failed');
+      });
+    });
+
+    describe('getUserOAuthConnections error scenarios', () => {
+      it('should handle service error', async () => {
+        mockUsersService.getUserOAuthConnections.mockRejectedValue(
+          new Error('Service error'),
+        );
+
+        await expect(
+          controller.getUserOAuthConnections(1, 'Bearer token'),
+        ).rejects.toThrow('Service error');
+      });
+    });
+
+    describe('unbindOAuth error scenarios', () => {
+      it('should handle service error', async () => {
+        mockUsersService.unbindOAuth.mockRejectedValue(
+          new Error('Unbind failed'),
+        );
+
+        await expect(
+          controller.unbindOAuth(1, 1, 'Bearer token'),
+        ).rejects.toThrow('Unbind failed');
+      });
+    });
+  });
+
+  describe('Edge cases and validation', () => {
+    describe('oauthLogin with different parameters', () => {
+      const mockResponse = {
+        redirect: jest.fn(),
+      } as unknown as Response;
+
+      it('should handle OAuth login with state parameter', async () => {
+        mockOAuthService.generateAuthorizationUrl.mockResolvedValue(
+          'https://oauth.provider/auth?state=custom-state',
+        );
+
+        await controller.oauthLogin(
+          'google',
+          'custom-state',
+          'offline',
+          mockResponse,
+        );
+
+        expect(mockOAuthService.generateAuthorizationUrl).toHaveBeenCalledWith(
+          'google',
+          'custom-state',
+          'offline',
+        );
+        expect(mockResponse.redirect).toHaveBeenCalledWith(
+          'https://oauth.provider/auth?state=custom-state',
+        );
+      });
+
+      it('should handle OAuth login without state parameter', async () => {
+        mockOAuthService.generateAuthorizationUrl.mockResolvedValue(
+          'https://oauth.provider/auth',
+        );
+
+        await controller.oauthLogin(
+          'github',
+          undefined,
+          'online',
+          mockResponse,
+        );
+
+        expect(mockOAuthService.generateAuthorizationUrl).toHaveBeenCalledWith(
+          'github',
+          undefined,
+          'online',
+        );
+      });
+    });
+
+    describe('OAuth callback with various state formats', () => {
+      const mockRes = {
+        redirect: jest.fn(),
+        cookie: jest.fn().mockReturnThis(),
+      } as unknown as Response;
+
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('should handle binding state with extra data', async () => {
+        mockUsersService.handleOAuthBindingCallback.mockResolvedValue({
+          success: true,
+          message: 'Success',
+        });
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({
+          id: '123',
+          email: 'test@example.com',
+        });
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth-code', state: 'binding:session-id:extra-data' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(
+          mockUsersService.handleOAuthBindingCallback,
+        ).toHaveBeenCalledWith('google', expect.any(Object), 'session-id');
+      });
+
+      it('should handle non-binding state', async () => {
+        const mockUserDto = { id: 1, email: 'test@example.com' };
+        mockUsersService.initiateOAuthFlow.mockResolvedValue([
+          mockUserDto as any,
+          'refresh-token',
+        ]);
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({
+          id: '123',
+          email: 'test@example.com',
+        });
+        mockSessionService.refreshSession.mockResolvedValue([
+          'new-refresh',
+          'jwt-access',
+        ]);
+        mockAuthService.decode.mockReturnValue({
+          validUntil: Date.now() + 10000,
+        });
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth-code', state: 'regular-state' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(mockUsersService.initiateOAuthFlow).toHaveBeenCalled();
+        expect(
+          mockUsersService.handleOAuthBindingCallback,
+        ).not.toHaveBeenCalled();
+      });
     });
   });
 });

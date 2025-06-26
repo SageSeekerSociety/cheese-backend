@@ -280,3 +280,9 @@ export class InvalidPublicKeyError extends BaseError {
     super('InvalidPublicKeyError', 'Invalid public key provided.', 422);
   }
 }
+
+export class InvalidLoginCredentialsError extends BaseError {
+  constructor() {
+    super('InvalidLoginCredentialsError', 'Invalid username or password.', 401);
+  }
+}

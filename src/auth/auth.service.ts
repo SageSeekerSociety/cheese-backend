@@ -79,7 +79,7 @@ export class AuthService {
   // Parameters:
   //    token: both the pure jwt token and the one with "Bearer " or "bearer " are supported.
   verify(token: string | undefined): Authorization {
-    if (token == undefined || token == '')
+    if (token == undefined || token == '' || typeof token !== 'string')
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
@@ -225,7 +225,7 @@ export class AuthService {
 
   // Decode a token, WITHOUT verifying it.
   decode(token: string | undefined): TokenPayload {
-    if (token == undefined || token == '')
+    if (token == undefined || token == '' || typeof token !== 'string')
       throw new AuthenticationRequiredError();
     if (token.indexOf('Bearer ') == 0) token = token.slice(7);
     else if (token.indexOf('bearer ') == 0) token = token.slice(7);
