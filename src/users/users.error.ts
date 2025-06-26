@@ -230,6 +230,51 @@ export class SrpVerificationError extends BaseError {
   }
 }
 
+export class OAuthSrpVerificationRequiredError extends BaseError {
+  constructor(
+    public email: string,
+    public providerId: string,
+    public salt: string,
+    public serverPublicEphemeral: string,
+    public srpSessionId: string,
+  ) {
+    super(
+      'OAuthSrpVerificationRequiredError',
+      `OAuth login requires SRP verification for email: ${email}`,
+      422,
+    );
+  }
+}
+
+export class OAuthLegacyPasswordRequiredError extends BaseError {
+  constructor(
+    public email: string,
+    public providerId: string,
+    public oauthSessionId: string,
+  ) {
+    super(
+      'OAuthLegacyPasswordRequiredError',
+      `OAuth login requires password verification and SRP upgrade for email: ${email}`,
+      422,
+    );
+  }
+}
+
+export class OAuthAccountChoiceRequiredError extends BaseError {
+  constructor(
+    public email: string,
+    public providerId: string,
+    public oauthUserInfo: any,
+    public existingUsername: string,
+  ) {
+    super(
+      'OAuthAccountChoiceRequiredError',
+      `Email ${email} is already registered. Account choice required.`,
+      409,
+    );
+  }
+}
+
 export class InvalidPublicKeyError extends BaseError {
   constructor() {
     super('InvalidPublicKeyError', 'Invalid public key provided.', 422);

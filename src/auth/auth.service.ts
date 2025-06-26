@@ -11,6 +11,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import Ajv from 'ajv';
 import { readFileSync } from 'fs';
+import crypto from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
@@ -248,7 +249,8 @@ export class AuthService {
 
     // 添加 0-5 分钟随机偏移
     const baseValidSeconds = 15 * 60;
-    const randomOffset = Math.floor(Math.random() * 300);
+    // Use crypto.randomInt for a secure, unbiased random offset from 0 to 299
+    const randomOffset = crypto.randomInt(300);
     const sudoValidSeconds = baseValidSeconds + randomOffset;
 
     const newAuthorization: Authorization = {
