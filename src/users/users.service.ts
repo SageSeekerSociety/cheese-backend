@@ -63,7 +63,6 @@ import {
   ChallengeNotFoundError,
   CodeNotMatchError,
   EmailAlreadyRegisteredError,
-  EmailNotFoundError,
   EmailSendFailedError,
   FollowYourselfError,
   InvalidEmailAddressError,
@@ -1854,16 +1853,16 @@ export class UsersService {
   }
 
   /**
-   * OAuth 用户登录/注册处理
-   * 如果邮箱已存在，返回验证所需信息；否则创建新用户
+   * OAuth 流程入口 - 处理OAuth回调后的预检查和流程分发
+   * 根据用户状态返回不同的处理结果
    */
-  async loginWithOAuth(
+  async initiateOAuthFlow(
     providerId: string,
     userInfo: OAuthUserInfo,
     ip: string,
     userAgent: string | undefined,
   ): Promise<
-    | [OAuthUserDto, string] // 成功登录/注册
+    | [OAuthUserDto, string] // 已有OAuth连接，直接登录
     | {
         requiresVerification: true;
         verificationType: 'password' | 'srp';
@@ -1871,7 +1870,11 @@ export class UsersService {
         sessionId: string;
         salt?: string;
         serverPublicEphemeral?: string;
-      } // 需要验证
+      } // 邮箱已存在，需要验证身份
+    | {
+        requiresDecision: true;
+        stateToken: string;
+      } // 新用户或邮箱不冲突，需要用户决策
   > {
     // 1. 检查是否已有OAuth连接
     const existingConnection =
@@ -1909,7 +1912,7 @@ export class UsersService {
       });
 
       if (existingUser && !existingUser.deletedAt) {
-        // 邮箱冲突，需要验证身份
+        // 邮箱冲突，需要验证身份后强制绑定
         if (existingUser.srpUpgraded) {
           // SRP用户，启动SRP验证
           return this.initOAuthSrpVerification(
@@ -1928,8 +1931,18 @@ export class UsersService {
       }
     }
 
-    // 3. 没有冲突，创建新用户
-    return this.createNewOAuthUser(providerId, userInfo, ip, userAgent);
+    // 3. 没有邮箱冲突，生成决策令牌让用户选择
+    const stateToken = await this.generateOAuthStateToken(
+      providerId,
+      userInfo,
+      ip,
+      userAgent,
+    );
+
+    return {
+      requiresDecision: true,
+      stateToken,
+    };
   }
 
   /**
@@ -2036,6 +2049,380 @@ export class UsersService {
     const timestamp = Date.now();
     const random = crypto.randomBytes(8).toString('hex');
     return `oauth_${type}_${providerId}_${providerUserId}_${timestamp}_${random}`;
+  }
+
+  /**
+   * 生成OAuth状态令牌 - 用于决策页面
+   * 包含OAuth用户信息，供后续创建用户或绑定使用
+   */
+  private async generateOAuthStateToken(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<string> {
+    const tokenData = {
+      providerId,
+      userInfo,
+      ip,
+      userAgent,
+      timestamp: Date.now(),
+    };
+
+    // 使用AuthService生成带签名的令牌，有效期15分钟
+    return this.authService.sign(
+      {
+        userId: 0, // 占位符，实际不使用
+        username: 'oauth_state_token',
+        permissions: [
+          {
+            authorizedActions: ['oauth-decision'],
+            authorizedResource: {
+              ownedByUser: 0,
+              types: ['oauth/state-token'],
+              resourceIds: undefined,
+              data: tokenData,
+            },
+          },
+        ],
+      },
+      15 * 60, // 15分钟有效期
+    );
+  }
+
+  /**
+   * 解码OAuth状态令牌
+   * 验证令牌有效性并返回包含的OAuth信息
+   */
+  private async decodeOAuthStateToken(stateToken: string): Promise<{
+    providerId: string;
+    userInfo: OAuthUserInfo;
+    ip: string;
+    userAgent: string | undefined;
+    timestamp: number;
+  }> {
+    try {
+      // 验证令牌并审计权限
+      await this.authService.audit(
+        stateToken,
+        'oauth-decision',
+        0,
+        'oauth/state-token',
+        undefined,
+      );
+
+      // 解码令牌获取数据
+      const decoded = this.authService.decode(stateToken);
+      const tokenData =
+        decoded.authorization.permissions[0].authorizedResource.data;
+
+      return tokenData as {
+        providerId: string;
+        userInfo: OAuthUserInfo;
+        ip: string;
+        userAgent: string | undefined;
+        timestamp: number;
+      };
+    } catch (error) {
+      throw new Error('Invalid or expired OAuth state token');
+    }
+  }
+
+  /**
+   * 获取OAuth状态信息 - 供决策页面使用
+   * 解析状态令牌并返回用户信息和建议的用户名等
+   */
+  async getOAuthStateInfo(stateToken: string): Promise<{
+    providerId: string;
+    userInfo: {
+      id: string;
+      email?: string;
+      name?: string;
+      username?: string;
+      preferredUsername?: string;
+    };
+    suggestedUsername: string;
+    suggestedNickname: string;
+    emailConflict: boolean;
+  }> {
+    let providerId: string;
+    let userInfo: OAuthUserInfo;
+
+    try {
+      const decoded = await this.decodeOAuthStateToken(stateToken);
+      providerId = decoded.providerId;
+      userInfo = decoded.userInfo;
+    } catch (error) {
+      this.logger.debug(
+        'Failed to decode state token in getOAuthStateInfo:',
+        error,
+      );
+      throw new Error('Invalid or expired OAuth state token');
+    }
+
+    // 生成建议的用户名和昵称
+    const baseUsername = this.generateOAuthUsername(userInfo);
+    const suggestedUsername = await this.generateUniqueUsername(baseUsername);
+
+    // 生成符合规范的昵称（清理特殊字符，保留字母、数字、下划线、连字符和中文字符）
+    let rawNickname =
+      userInfo.name || userInfo.preferredUsername || suggestedUsername;
+    const suggestedNickname = rawNickname
+      .replace(/[^a-zA-Z0-9_\u4e00-\u9fa5-]/g, '_') // 替换不符合规范的字符为下划线
+      .replace(/_+/g, '_') // 合并连续的下划线
+      .replace(/^_|_$/g, '') // 去除首尾下划线
+      .substring(0, 16); // 限制长度
+
+    // 检查邮箱是否冲突（这里应该不会冲突，因为有冲突的话不会走到决策页面）
+    let emailConflict = false;
+    if (userInfo.email) {
+      emailConflict = await this.isEmailRegistered(userInfo.email);
+    }
+
+    return {
+      providerId,
+      userInfo: {
+        id: userInfo.id,
+        email: userInfo.email,
+        name: userInfo.name,
+        username: userInfo.username,
+        preferredUsername: userInfo.preferredUsername,
+      },
+      suggestedUsername,
+      suggestedNickname,
+      emailConflict,
+    };
+  }
+
+  /**
+   * 根据用户决策创建OAuth用户
+   * 用于处理决策页面的"创建新账户"操作
+   */
+  async createOAuthUserFromDecision(
+    stateToken: string,
+    username: string,
+    nickname: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    // 解码状态令牌获取OAuth信息
+    let providerId: string;
+    let userInfo: OAuthUserInfo;
+
+    try {
+      const decoded = await this.decodeOAuthStateToken(stateToken);
+      providerId = decoded.providerId;
+      userInfo = decoded.userInfo;
+    } catch (error) {
+      this.logger.debug(
+        'Failed to decode state token in createOAuthUserFromDecision:',
+        error,
+      );
+      throw new Error('Invalid or expired OAuth state token');
+    }
+
+    // 验证用户名格式
+    if (!this.isValidUsername(username)) {
+      throw new InvalidUsernameError(username, this.usernameRule);
+    }
+
+    // 验证昵称格式
+    if (!this.isValidNickname(nickname)) {
+      throw new InvalidNicknameError(nickname, this.nicknameRule);
+    }
+
+    // 检查用户名是否已被占用
+    if (await this.isUsernameRegistered(username)) {
+      throw new UsernameAlreadyRegisteredError(username);
+    }
+
+    // 如果有邮箱，再次检查邮箱是否冲突（防止竞态条件）
+    if (userInfo.email && (await this.isEmailRegistered(userInfo.email))) {
+      throw new EmailAlreadyRegisteredError(userInfo.email);
+    }
+
+    // 获取默认头像
+    const avatarId = await this.avatarsService.getDefaultAvatarId();
+
+    // 生成随机密码（用户不会使用，仅为占位）
+    const randomPassword = this.generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+    // 在事务中创建用户、profile 和 OAuth 连接
+    const result = await this.prismaService.$transaction(async (tx) => {
+      // 为没有email的用户生成唯一占位符email
+      let userEmail = userInfo.email;
+      if (!userEmail) {
+        // 生成格式：oauth-{providerId}-{providerUserId}@placeholder.internal
+        userEmail = `oauth-${providerId}-${userInfo.id}@placeholder.internal`;
+      }
+
+      // 创建用户
+      const newUser = await tx.user.create({
+        data: {
+          username,
+          email: userEmail,
+          hashedPassword,
+          srpUpgraded: false, // OAuth 用户默认未升级到 SRP
+        },
+      });
+
+      // 创建用户 profile
+      await tx.userProfile.create({
+        data: {
+          userId: newUser.id,
+          nickname,
+          intro: this.defaultIntro,
+          avatarId,
+        },
+      });
+
+      // 创建 OAuth 连接
+      await tx.userOAuthConnection.create({
+        data: {
+          userId: newUser.id,
+          providerId,
+          providerUserId: userInfo.id,
+          rawProfile: userInfo as any,
+        },
+      });
+
+      // 记录注册日志
+      await tx.userRegisterLog.create({
+        data: {
+          type: 'Success',
+          email: userInfo.email || '',
+          ip,
+          userAgent,
+        },
+      });
+
+      // 记录登录日志
+      await tx.userLoginLog.create({
+        data: {
+          userId: newUser.id,
+          ip,
+          userAgent,
+        },
+      });
+
+      return newUser;
+    });
+
+    this.logger.log(
+      `Created new user ${result.username} (ID: ${result.id}) via OAuth decision for provider: ${providerId}`,
+    );
+
+    return [
+      await this.getOAuthUserDtoById(result.id, result.id, ip, userAgent),
+      await this.createSession(result.id),
+    ];
+  }
+
+  /**
+   * 将OAuth账户绑定到已有用户
+   * 用于处理决策页面的"绑定到已有账户"操作
+   */
+  async bindOAuthToExistingUser(
+    stateToken: string,
+    username: string,
+    credentials: {
+      password?: string;
+      clientPublicEphemeral?: string;
+      clientProof?: string;
+    },
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    // 解码状态令牌获取OAuth信息
+    let providerId: string;
+    let userInfo: OAuthUserInfo;
+
+    try {
+      const decoded = await this.decodeOAuthStateToken(stateToken);
+      providerId = decoded.providerId;
+      userInfo = decoded.userInfo;
+    } catch (error) {
+      this.logger.debug(
+        'Failed to decode state token in bindOAuthToExistingUser:',
+        error,
+      );
+      throw new Error('Invalid or expired OAuth state token');
+    }
+
+    // 查找要绑定的用户
+    const user = await this.findUserRecordByUsernameOrThrow(username);
+
+    // 验证用户身份
+    let verified = false;
+    if (user.srpUpgraded && user.srpSalt && user.srpVerifier) {
+      // SRP用户验证
+      if (!credentials.clientPublicEphemeral || !credentials.clientProof) {
+        throw new Error('SRP credentials required for this user');
+      }
+      // 这里需要服务器临时密钥，但在决策页面流程中我们没有保存
+      // 为了简化，我们让前端在绑定时重新初始化SRP流程
+      throw new Error(
+        'SRP users should use the verification flow, not the decision flow',
+      );
+    } else {
+      // 传统用户验证
+      if (!credentials.password) {
+        throw new Error('Password required for this user');
+      }
+
+      const { verified: authResult } = await this.authenticateUserWithPassword(
+        user,
+        username,
+        credentials.password,
+        true, // 自动升级到SRP
+      );
+      verified = authResult;
+    }
+
+    if (!verified) {
+      throw new InvalidLoginCredentialsError();
+    }
+
+    // 检查该OAuth账户是否已被其他用户绑定
+    const existingConnection =
+      await this.prismaService.userOAuthConnection.findUnique({
+        where: {
+          providerId_providerUserId: {
+            providerId,
+            providerUserId: userInfo.id,
+          },
+        },
+      });
+
+    if (existingConnection) {
+      if (existingConnection.userId === user.id) {
+        throw new Error('This OAuth account is already linked to your account');
+      } else {
+        throw new Error('This OAuth account is already linked to another user');
+      }
+    }
+
+    // 创建OAuth连接
+    await this.createOAuthConnection(user.id, providerId, userInfo);
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: user.id,
+        ip,
+        userAgent,
+      },
+    });
+
+    this.logger.log(
+      `User ${user.username} (ID: ${user.id}) bound OAuth account: ${providerId}:${userInfo.id}`,
+    );
+
+    return [
+      await this.getOAuthUserDtoById(user.id, user.id, ip, userAgent),
+      await this.createSession(user.id),
+    ];
   }
 
   /**

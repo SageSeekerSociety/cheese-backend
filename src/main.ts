@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { RedisStore } from 'connect-redis';
+import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import Redis from 'ioredis';
 import { AppModule } from './app.module';
@@ -18,6 +19,9 @@ async function bootstrap() {
     credentials: process.env.CORS_CREDENTIALS === 'true',
   };
   app.enableCors(corsOptions);
+
+  // Configure cookie parser middleware
+  app.use(cookieParser(process.env.COOKIE_SECRET));
 
   const redis = new Redis({
     host: process.env.REDIS_HOST ?? 'localhost',

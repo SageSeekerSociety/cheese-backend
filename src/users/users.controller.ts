@@ -27,13 +27,16 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
+import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import path from 'node:path';
 import qrcode from 'qrcode';
 import { AnswerService } from '../answer/answer.service';
-import { AuthenticationRequiredError } from '../auth/auth.error';
+import {
+  AuthenticationRequiredError,
+  InvalidTokenError,
+} from '../auth/auth.error';
 import { AuthService } from '../auth/auth.service';
 import {
   AuthToken,
@@ -1284,6 +1287,33 @@ export class UsersController {
     };
   }
 
+  @Get('/auth/oauth/state')
+  @NoAuth()
+  async getOAuthState(@Query('token') stateToken: string): Promise<{
+    code: number;
+    message: string;
+    data: {
+      providerId: string;
+      userInfo: {
+        id: string;
+        email?: string;
+        name?: string;
+        username?: string;
+        preferredUsername?: string;
+      };
+      suggestedUsername: string;
+      suggestedNickname: string;
+      emailConflict: boolean;
+    };
+  }> {
+    const stateInfo = await this.usersService.getOAuthStateInfo(stateToken);
+    return {
+      code: 200,
+      message: 'Get OAuth state successfully.',
+      data: stateInfo,
+    };
+  }
+
   @Get('/auth/oauth/login/:providerId')
   @NoAuth()
   async oauthLogin(
@@ -1358,8 +1388,8 @@ export class UsersController {
         return;
       }
 
-      // 原有的登录/注册逻辑
-      const result = await this.usersService.loginWithOAuth(
+      // 新的OAuth流程处理
+      const result = await this.usersService.initiateOAuthFlow(
         providerId,
         userInfo,
         ip,
@@ -1367,11 +1397,11 @@ export class UsersController {
       );
 
       if (Array.isArray(result)) {
-        // 成功登录/注册，直接跳转到成功页面
+        // 已有OAuth连接，直接登录成功
         const [userDto, refreshToken] = result;
         await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto);
-      } else {
-        // 需要验证，重定向到统一的验证页面
+      } else if ('requiresVerification' in result) {
+        // 邮箱已存在，需要验证身份后强制绑定
         const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
         const verifyPath =
           this.configService.get('FRONTEND_OAUTH_VERIFY_PATH') ||
@@ -1391,6 +1421,18 @@ export class UsersController {
         }
 
         res.redirect(`${frontendBaseUrl}${verifyPath}?${params.toString()}`);
+      } else {
+        // 需要用户决策：创建新账户还是绑定已有账户
+        const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+        const completePath =
+          this.configService.get('FRONTEND_OAUTH_COMPLETE_PATH') ||
+          '/oauth-complete';
+
+        const params = new URLSearchParams({
+          stateToken: result.stateToken,
+        });
+
+        res.redirect(`${frontendBaseUrl}${completePath}?${params.toString()}`);
       }
     } catch (error) {
       this.logger.error('OAuth callback failed:', error);
@@ -1525,6 +1567,144 @@ export class UsersController {
       }
 
       const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+      const errorPath =
+        this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+      const errorUrl = `${frontendBaseUrl}${errorPath}?error_code=${errorCode}&error=${encodeURIComponent(errorMessage)}`;
+      res.redirect(errorUrl);
+    }
+  }
+
+  @Post('/oauth/create')
+  @NoAuth()
+  async createOAuthUser(
+    @Body()
+    {
+      stateToken,
+      username,
+      nickname,
+    }: {
+      stateToken: string;
+      username: string;
+      nickname: string;
+    },
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const [userDto, refreshToken] =
+        await this.usersService.createOAuthUserFromDecision(
+          stateToken,
+          username,
+          nickname,
+          ip,
+          userAgent,
+        );
+
+      // 使用提取的成功重定向方法
+      await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto, {
+        created: 'true',
+      });
+    } catch (error) {
+      this.logger.error('OAuth user creation failed:', error);
+
+      let errorCode = 'CREATION_FAILED';
+      let errorMessage = 'Failed to create user';
+
+      if (error instanceof Error) {
+        if (error instanceof InvalidTokenError) {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = 'Session expired, please try again';
+        } else if (error.message.includes('Username already registered')) {
+          errorCode = 'USERNAME_TAKEN';
+          errorMessage = 'Username already registered';
+        } else if (error.message.includes('Invalid username')) {
+          errorCode = 'INVALID_USERNAME';
+          errorMessage = 'Invalid username format';
+        } else if (error.message.includes('Invalid or expired')) {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = 'Session expired, please try again';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      const frontendBaseUrl =
+        this.configService.get('FRONTEND_BASE_URL') || 'http://localhost:3000';
+      const errorPath =
+        this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+      const errorUrl = `${frontendBaseUrl}${errorPath}?error_code=${errorCode}&error=${encodeURIComponent(errorMessage)}`;
+      res.redirect(errorUrl);
+    }
+  }
+
+  @Post('/oauth/bind')
+  @NoAuth()
+  async bindOAuthToExistingUser(
+    @Body()
+    {
+      stateToken,
+      username,
+      password,
+      clientPublicEphemeral,
+      clientProof,
+    }: {
+      stateToken: string;
+      username: string;
+      password?: string;
+      clientPublicEphemeral?: string;
+      clientProof?: string;
+    },
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const credentials = {
+        password,
+        clientPublicEphemeral,
+        clientProof,
+      };
+
+      const [userDto, refreshToken] =
+        await this.usersService.bindOAuthToExistingUser(
+          stateToken,
+          username,
+          credentials,
+          ip,
+          userAgent,
+        );
+
+      // 使用提取的成功重定向方法
+      await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto, {
+        bound: 'true',
+      });
+    } catch (error) {
+      this.logger.error('OAuth binding to existing user failed:', error);
+
+      let errorCode = 'BINDING_FAILED';
+      let errorMessage = 'Failed to bind OAuth account';
+
+      if (error instanceof Error) {
+        if (error instanceof InvalidTokenError) {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = 'Session expired, please try again';
+        } else if (error instanceof UsernameNotFoundError) {
+          errorCode = 'USER_NOT_FOUND';
+          errorMessage = 'User not found';
+        } else if (error instanceof InvalidLoginCredentialsError) {
+          errorCode = 'INVALID_CREDENTIALS';
+          errorMessage = 'Invalid login credentials';
+        } else if (error.message.includes('Invalid or expired')) {
+          errorCode = 'TOKEN_EXPIRED';
+          errorMessage = 'Session expired, please try again';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      const frontendBaseUrl =
+        this.configService.get('FRONTEND_BASE_URL') || 'http://localhost:3000';
       const errorPath =
         this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
       const errorUrl = `${frontendBaseUrl}${errorPath}?error_code=${errorCode}&error=${encodeURIComponent(errorMessage)}`;
