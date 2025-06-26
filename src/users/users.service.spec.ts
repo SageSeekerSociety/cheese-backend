@@ -837,15 +837,16 @@ describe('UsersService - OAuth', () => {
         email: `oauth-${providerId}-${userInfo.id}@placeholder.internal`,
       };
 
+      const mockTx = {
+        user: { create: jest.fn().mockResolvedValue(createdUser) },
+        userProfile: { create: jest.fn().mockResolvedValue({}) },
+        userOAuthConnection: { create: jest.fn().mockResolvedValue({}) },
+        userRegisterLog: { create: jest.fn().mockResolvedValue({}) },
+        userLoginLog: { create: jest.fn().mockResolvedValue({}) },
+      };
+
       mockPrismaService.$transaction.mockImplementation(async (cb) => {
-        const tx = {
-          user: { create: jest.fn().mockResolvedValue(createdUser) },
-          userProfile: { create: jest.fn() },
-          userOAuthConnection: { create: jest.fn() },
-          userRegisterLog: { create: jest.fn() },
-          userLoginLog: { create: jest.fn() },
-        };
-        await cb(tx);
+        await cb(mockTx);
         return createdUser;
       });
 
@@ -864,23 +865,18 @@ describe('UsersService - OAuth', () => {
       );
       expect(Array.isArray(result)).toBe(true);
 
-      const txCallback = (mockPrismaService.$transaction as jest.Mock).mock
-        .calls[0][0];
-      const txMock = {
-        user: { create: jest.fn() },
-        userProfile: { create: jest.fn() },
-        userOAuthConnection: { create: jest.fn() },
-        userRegisterLog: { create: jest.fn() },
-        userLoginLog: { create: jest.fn() },
-      };
-      await txCallback(txMock);
-
-      expect(txMock.user.create).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(mockTx.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
           username: 'test_preferred',
           email: `oauth-${providerId}-${userInfo.id}@placeholder.internal`,
         }),
-      );
+      });
+      expect(mockTx.userProfile.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: createdUser.id,
+          nickname: 'Test User',
+        }),
+      });
     });
 
     it('should generate unique username if base username exists', async () => {
@@ -892,22 +888,22 @@ describe('UsersService - OAuth', () => {
 
       mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
       mockPrismaService.user.findUnique.mockResolvedValue(null);
-      // isUsernameRegistered will be called.
       mockPrismaService.user.count
         .mockResolvedValueOnce(1)
-        .mockResolvedValueOnce(0); // first call true, second false
+        .mockResolvedValueOnce(0);
 
       const createdUser = { id: 12, username: 'duplicate_user_1' };
 
+      const mockTx = {
+        user: { create: jest.fn().mockResolvedValue(createdUser) },
+        userProfile: { create: jest.fn().mockResolvedValue({}) },
+        userOAuthConnection: { create: jest.fn().mockResolvedValue({}) },
+        userRegisterLog: { create: jest.fn().mockResolvedValue({}) },
+        userLoginLog: { create: jest.fn().mockResolvedValue({}) },
+      };
+
       mockPrismaService.$transaction.mockImplementation(async (cb) => {
-        const tx = {
-          user: { create: jest.fn().mockResolvedValue(createdUser) },
-          userProfile: { create: jest.fn() },
-          userOAuthConnection: { create: jest.fn() },
-          userRegisterLog: { create: jest.fn() },
-          userLoginLog: { create: jest.fn() },
-        };
-        await cb(tx);
+        await cb(mockTx);
         return createdUser;
       });
 
@@ -917,20 +913,16 @@ describe('UsersService - OAuth', () => {
       } as any);
 
       await service.loginWithOAuth(providerId, userInfo, 'ip', 'ua');
-      const txCallback = (mockPrismaService.$transaction as jest.Mock).mock
-        .calls[0][0];
-      const txMock = {
-        user: { create: jest.fn() },
-        userProfile: { create: jest.fn() },
-        userOAuthConnection: { create: jest.fn() },
-        userRegisterLog: { create: jest.fn() },
-        userLoginLog: { create: jest.fn() },
-      };
-      await txCallback(txMock);
 
-      expect(txMock.user.create).toHaveBeenCalledWith(
-        expect.objectContaining({ username: 'duplicate_user_1' }),
-      );
+      expect(mockTx.user.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ username: 'duplicate_user_1' }),
+      });
+      expect(mockTx.userProfile.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: createdUser.id,
+          nickname: 'duplicate_user',
+        }),
+      });
     });
 
     it('should not create a new OAuth connection if one already exists', async () => {
