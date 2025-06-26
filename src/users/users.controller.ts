@@ -26,6 +26,7 @@ import {
   Query,
   Req,
   Res,
+  UseFilters,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
@@ -50,6 +51,7 @@ import { SessionService } from '../auth/session.service';
 import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
 import { PageDto } from '../common/DTO/page.dto';
+import { BaseErrorExceptionFilter } from '../common/error/error-filter';
 import { NoAuth } from '../common/interceptor/token-validate.interceptor';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { QuestionsService } from '../questions/questions.service';
@@ -144,6 +146,7 @@ declare module 'express-session' {
 }
 
 @Controller('/users')
+@UseFilters(BaseErrorExceptionFilter)
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 

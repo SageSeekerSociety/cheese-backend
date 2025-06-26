@@ -46,9 +46,8 @@ import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
 import {
   ChallengeNotFoundError,
+  InvalidLoginCredentialsError,
   PasskeyNotFoundError,
-  SrpNotUpgradedError,
-  SrpVerificationError,
   UserIdNotFoundError,
 } from './users.error';
 
@@ -1029,17 +1028,17 @@ describe('Users Module', () => {
       expect(mockPrismaService.userLoginLog.create).toHaveBeenCalled(); // Login log still created before 2FA step
     });
 
-    it('should throw SrpNotUpgradedError for non-upgraded users', async () => {
+    it('should throw InvalidLoginCredentialsError for non-upgraded users', async () => {
       mockPrismaService.user.findUnique.mockResolvedValueOnce({
         ...srpUser,
         srpUpgraded: false,
       } as any);
       await expect(usersService.handleSrpInit(username)).rejects.toThrow(
-        SrpNotUpgradedError,
+        InvalidLoginCredentialsError,
       );
     });
 
-    it('should throw SrpVerificationError for failed verification', async () => {
+    it('should throw InvalidLoginCredentialsError for failed verification', async () => {
       mockPrismaService.user.findUnique.mockResolvedValueOnce(srpUser as any);
       mockSrpService.verifyClient.mockResolvedValueOnce({
         success: false, // Verification fails
@@ -1048,7 +1047,7 @@ describe('Users Module', () => {
 
       await expect(
         usersService.handleSrpVerify(username, 'A', 'M1', 'b', 'ip', 'agent'),
-      ).rejects.toThrow(SrpVerificationError);
+      ).rejects.toThrow(InvalidLoginCredentialsError);
     });
   });
 });
