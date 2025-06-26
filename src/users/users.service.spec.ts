@@ -26,6 +26,14 @@ import { UsersRegisterRequestService } from './users-register-request.service';
 import { UserIdNotFoundError, UsernameNotFoundError } from './users.error';
 import { UsersService } from './users.service';
 
+// Mock @simplewebauthn/server at the top level to ensure proper hoisting
+jest.mock('@simplewebauthn/server', () => ({
+  generateRegistrationOptions: jest.fn(),
+  generateAuthenticationOptions: jest.fn(),
+  verifyRegistrationResponse: jest.fn(),
+  verifyAuthenticationResponse: jest.fn(),
+}));
+
 describe('UsersService - OAuth', () => {
   let service: UsersService;
   let prismaService: PrismaService;
@@ -359,10 +367,11 @@ describe('UsersService - OAuth', () => {
           rp: { name: 'Test RP', id: 'localhost' },
         };
 
-        // Mock the generateRegistrationOptions function
-        jest.doMock('@simplewebauthn/server', () => ({
-          generateRegistrationOptions: jest.fn().mockResolvedValue(mockOptions),
-        }));
+        // Configure the mocked function to return the desired options
+        const { generateRegistrationOptions } = jest.requireMock(
+          '@simplewebauthn/server',
+        );
+        generateRegistrationOptions.mockResolvedValueOnce(mockOptions);
 
         const options = await service.generatePasskeyRegistrationOptions(1);
 
