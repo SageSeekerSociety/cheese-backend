@@ -787,26 +787,17 @@ export class UsersService {
       questionCounts.map((qc) => [qc.createdById, qc._count.createdById]),
     );
 
-    // 7. Create user profile query logs for all users
-    if (uniqueUserIds.length > 0) {
-      await this.prismaService.userProfileQueryLog.createMany({
-        data: uniqueUserIds.map((userId) => ({
-          viewerId,
-          vieweeId: userId,
-          ip,
-          userAgent,
-        })),
-      });
-    }
-
-    // 8. Build DTOs in the original order
+    // 7. Check which users exist and build DTOs
     const userDtos: UserDto[] = [];
+    const existingUserIds: number[] = [];
+
     for (const userId of userIds) {
       const user = userMap.get(userId);
       if (!user || !user.userProfile) {
         throw new UserIdNotFoundError(userId);
       }
 
+      existingUserIds.push(userId);
       userDtos.push({
         id: user.id,
         username: user.username,
@@ -818,6 +809,18 @@ export class UsersService {
         is_follow: followedUserIds.has(userId),
         question_count: (questionCountMap.get(userId) as number) || 0,
         answer_count: (answerCountMap.get(userId) as number) || 0,
+      });
+    }
+
+    // 8. Create user profile query logs only for existing users
+    if (existingUserIds.length > 0) {
+      await this.prismaService.userProfileQueryLog.createMany({
+        data: existingUserIds.map((userId) => ({
+          viewerId,
+          vieweeId: userId,
+          ip,
+          userAgent,
+        })),
       });
     }
 
