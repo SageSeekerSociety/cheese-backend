@@ -23,7 +23,11 @@ import { TOTPService } from './totp.service';
 import { UserChallengeRepository } from './user-challenge.repository';
 import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
-import { UserIdNotFoundError, UsernameNotFoundError } from './users.error';
+import {
+  SrpVerificationError,
+  UserIdNotFoundError,
+  UsernameNotFoundError,
+} from './users.error';
 import { UsersService } from './users.service';
 
 // Mock @simplewebauthn/server at the top level to ensure proper hoisting
@@ -167,6 +171,7 @@ describe('UsersService - OAuth', () => {
         secret: 'server-secret-key',
       },
     }),
+    verifyClient: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -1180,6 +1185,105 @@ describe('UsersService - OAuth', () => {
       } else {
         fail('Expected password verification requirement');
       }
+    });
+  });
+
+  describe('completeOAuthVerification', () => {
+    const ip = '127.0.0.1';
+    const userAgent = 'test-agent';
+
+    it('should complete SRP verification and link account successfully', async () => {
+      const sessionId = 'srp-session-id';
+      const sessionData = {
+        type: 'srp',
+        providerId: 'github',
+        userInfo: { id: 'gh123', name: 'GitHub User' },
+        existingUserId: 1,
+        serverEphemeral: { secret: 'server-secret' },
+      };
+      const credentials = {
+        clientPublicEphemeral: 'client-public',
+        clientProof: 'client-proof',
+      };
+      const mockUser = {
+        id: 1,
+        username: 'testuser',
+        srpSalt: 'salt',
+        srpVerifier: 'verifier',
+        srpUpgraded: true,
+      };
+
+      mockRedis.get.mockResolvedValue(JSON.stringify(sessionData));
+      jest
+        .spyOn(service, 'findUserRecordOrThrow')
+        .mockResolvedValue(mockUser as any);
+      (mockSrpService.verifyClient as jest.Mock).mockResolvedValue({
+        success: true,
+      });
+      jest
+        .spyOn(service, 'getOAuthUserDtoById')
+        .mockResolvedValue({ id: 1 } as any);
+      (mockSessionService.createSession as jest.Mock).mockResolvedValue(
+        'new-refresh-token',
+      );
+
+      const [userDto, refreshToken] = await service.completeOAuthVerification(
+        sessionId,
+        credentials,
+        ip,
+        userAgent,
+      );
+
+      expect(mockRedis.get).toHaveBeenCalledWith(`oauth_session:${sessionId}`);
+      expect(mockSrpService.verifyClient).toHaveBeenCalledWith(
+        'server-secret',
+        'client-public',
+        'salt',
+        'testuser',
+        'verifier',
+        'client-proof',
+      );
+      expect(mockPrismaService.userOAuthConnection.create).toHaveBeenCalled();
+      expect(mockPrismaService.userLoginLog.create).toHaveBeenCalled();
+      expect(userDto.id).toBe(1);
+      expect(refreshToken).toBe('new-refresh-token');
+      expect(mockRedis.del).toHaveBeenCalledWith(`oauth_session:${sessionId}`);
+    });
+
+    it('should throw SrpVerificationError if SRP verification fails', async () => {
+      const sessionId = 'srp-fail-session-id';
+      const sessionData = {
+        type: 'srp',
+        existingUserId: 1,
+        serverEphemeral: { secret: 'server-secret' },
+      };
+      const mockUser = {
+        id: 1,
+        username: 'testuser',
+        srpSalt: 'salt',
+        srpVerifier: 'verifier',
+      };
+      mockRedis.get.mockResolvedValue(JSON.stringify(sessionData));
+      jest
+        .spyOn(service, 'findUserRecordOrThrow')
+        .mockResolvedValue(mockUser as any);
+      (mockSrpService.verifyClient as jest.Mock).mockResolvedValue({
+        success: false,
+      });
+
+      await expect(
+        service.completeOAuthVerification(sessionId, {}, ip, userAgent),
+      ).rejects.toThrow(SrpVerificationError);
+    });
+
+    it('should throw an error for invalid session type', async () => {
+      const sessionId = 'invalid-session-id';
+      const sessionData = { type: 'invalid-type' };
+      mockRedis.get.mockResolvedValue(JSON.stringify(sessionData));
+
+      await expect(
+        service.completeOAuthVerification(sessionId, {}, ip, userAgent),
+      ).rejects.toThrow('Invalid session type');
     });
   });
 });
