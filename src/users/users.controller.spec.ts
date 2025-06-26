@@ -471,6 +471,50 @@ describe('UsersController', () => {
     });
   });
 
+  describe('getCurrentUser', () => {
+    it('should get current user successfully', async () => {
+      const mockUserDto = {
+        id: 1,
+        username: 'testuser',
+        nickname: 'Test User',
+        email: 'test@example.com',
+      };
+
+      mockUsersService.getUserDtoById.mockResolvedValue(mockUserDto);
+
+      const result = await controller.getCurrentUser(
+        'Bearer token',
+        1,
+        '127.0.0.1',
+        'test-agent',
+      );
+
+      expect(result).toEqual({
+        code: 200,
+        message: 'Query current user successfully.',
+        data: {
+          user: mockUserDto,
+        },
+      });
+      expect(mockUsersService.getUserDtoById).toHaveBeenCalledWith(
+        1,
+        1,
+        '127.0.0.1',
+        'test-agent',
+      );
+    });
+
+    it('should throw error when current user not found', async () => {
+      mockUsersService.getUserDtoById.mockRejectedValue(
+        new UserIdNotFoundError(1),
+      );
+
+      await expect(
+        controller.getCurrentUser('Bearer token', 1, '127.0.0.1', 'test-agent'),
+      ).rejects.toThrow(UserIdNotFoundError);
+    });
+  });
+
   describe('getUser', () => {
     it('should get user successfully', async () => {
       const mockUserDto = {

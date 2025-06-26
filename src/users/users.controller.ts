@@ -521,7 +521,30 @@ export class UsersController {
     };
   }
 
-  @Get('/:id')
+  @Get('/me')
+  @Guard('query', 'user')
+  async getCurrentUser(
+    @Headers('Authorization') @AuthToken() auth: string | undefined,
+    @UserId(true) userId: number,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+  ): Promise<GetUserResponseDto> {
+    const user = await this.usersService.getUserDtoById(
+      userId,
+      userId,
+      ip,
+      userAgent,
+    );
+    return {
+      code: 200,
+      message: 'Query current user successfully.',
+      data: {
+        user: user,
+      },
+    };
+  }
+
+  @Get('/:id(\\d+)')
   @Guard('query', 'user')
   async getUser(
     @Param('id', ParseIntPipe) @ResourceId() id: number,

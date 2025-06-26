@@ -663,6 +663,31 @@ describe('User Module', () => {
     });
   });
 
+  describe('current user info', () => {
+    it('should get current user info successfully', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/users/me')
+        .set('Authorization', `Bearer ${TestToken}`)
+        .expect(200);
+
+      expect(response.body.message).toBe('Query current user successfully.');
+      expect(response.body.data.user.username).toBe(TestUsername);
+      expect(response.body.data.user.nickname).toBe('test_user');
+      expect(response.body.data.user.id).toBeDefined();
+    });
+
+    it('should return 401 when not authenticated', async () => {
+      await request(app.getHttpServer()).get('/users/me').expect(401);
+    });
+
+    it('should return 401 with invalid token', async () => {
+      await request(app.getHttpServer())
+        .get('/users/me')
+        .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+    });
+  });
+
   describe('password reset logic', () => {
     it('should return InvalidEmailAddressError', async () => {
       const respond = await request(app.getHttpServer())
