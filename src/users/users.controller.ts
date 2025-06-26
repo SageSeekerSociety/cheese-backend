@@ -75,6 +75,10 @@ import {
   OAuthBindRequestDto,
   OAuthBindResponseDto,
   OAuthCallbackQueryDto,
+  OAuthCreateUserRequestDto,
+  OAuthSrpBindInitRequestDto,
+  OAuthSrpBindInitResponseDto,
+  OAuthSrpBindVerifyRequestDto,
   OAuthUserDto,
   OAuthVerifyRequestDto,
   UnbindOAuthResponseDto,
@@ -1585,11 +1589,10 @@ export class UsersController {
       stateToken,
       username,
       nickname,
-    }: {
-      stateToken: string;
-      username: string;
-      nickname: string;
-    },
+      passwordMode,
+      srpSalt,
+      srpVerifier,
+    }: OAuthCreateUserRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
     @Res() res: Response,
@@ -1602,11 +1605,15 @@ export class UsersController {
           nickname,
           ip,
           userAgent,
+          passwordMode,
+          srpSalt,
+          srpVerifier,
         );
 
       // 使用提取的成功重定向方法
       await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto, {
         created: 'true',
+        authMode: passwordMode || 'none',
       });
     } catch (error) {
       this.logger.error('OAuth user creation failed:', error);
@@ -1624,6 +1631,12 @@ export class UsersController {
         } else if (error.message.includes('Invalid username')) {
           errorCode = 'INVALID_USERNAME';
           errorMessage = 'Invalid username format';
+        } else if (error.message.includes('SRP mode requires')) {
+          errorCode = 'INVALID_SRP_CREDENTIALS';
+          errorMessage = 'SRP mode requires both salt and verifier';
+        } else if (error.message.includes('Invalid password mode')) {
+          errorCode = 'INVALID_AUTH_MODE';
+          errorMessage = 'Only SRP and OAuth-only modes are supported';
         } else if (error.message.includes('Invalid or expired')) {
           errorCode = 'TOKEN_EXPIRED';
           errorMessage = 'Session expired, please try again';
@@ -1701,6 +1714,99 @@ export class UsersController {
         } else if (error.message.includes('Invalid or expired')) {
           errorCode = 'TOKEN_EXPIRED';
           errorMessage = 'Session expired, please try again';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      const frontendBaseUrl =
+        this.configService.get('FRONTEND_BASE_URL') || 'http://localhost:3000';
+      const errorPath =
+        this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+      const errorUrl = `${frontendBaseUrl}${errorPath}?error_code=${errorCode}&error=${encodeURIComponent(errorMessage)}`;
+      res.redirect(errorUrl);
+    }
+  }
+
+  @Post('/oauth/bind/srp/init')
+  @NoAuth()
+  async initOAuthSrpBinding(
+    @Body() { stateToken, username }: OAuthSrpBindInitRequestDto,
+  ): Promise<OAuthSrpBindInitResponseDto> {
+    try {
+      const result = await this.usersService.initSrpBindingForOAuth(
+        stateToken,
+        username,
+      );
+
+      return {
+        code: 200,
+        message: 'SRP binding initialized successfully.',
+        data: result,
+      };
+    } catch (error) {
+      this.logger.error('OAuth SRP binding initialization failed:', error);
+
+      let errorMessage = 'Failed to initialize SRP binding';
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid or expired')) {
+          errorMessage = 'Session expired, please try again';
+        } else if (error.constructor.name === 'UsernameNotFoundError') {
+          errorMessage = 'User not found';
+        } else if (error.constructor.name === 'SrpNotUpgradedError') {
+          errorMessage = 'User does not support SRP authentication';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      throw new Error(errorMessage);
+    }
+  }
+
+  @Post('/oauth/bind/srp/verify')
+  @NoAuth()
+  async verifyOAuthSrpBinding(
+    @Body()
+    {
+      sessionId,
+      clientPublicEphemeral,
+      clientProof,
+    }: OAuthSrpBindVerifyRequestDto,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const [userDto, refreshToken] =
+        await this.usersService.completeSrpBindingForOAuth(
+          sessionId,
+          clientPublicEphemeral,
+          clientProof,
+          ip,
+          userAgent,
+        );
+
+      // 使用提取的成功重定向方法
+      await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto, {
+        bound: 'true',
+      });
+    } catch (error) {
+      this.logger.error('OAuth SRP binding verification failed:', error);
+
+      let errorCode = 'SRP_VERIFICATION_FAILED';
+      let errorMessage = 'SRP verification failed';
+
+      if (error instanceof Error) {
+        if (error.message.includes('session not found')) {
+          errorCode = 'SESSION_EXPIRED';
+          errorMessage = 'SRP session expired, please try again';
+        } else if (error.constructor.name === 'SrpVerificationError') {
+          errorCode = 'INVALID_SRP_PROOF';
+          errorMessage = 'Invalid SRP proof provided';
+        } else if (error.message.includes('already linked')) {
+          errorCode = 'ALREADY_LINKED';
+          errorMessage = error.message;
         } else {
           errorMessage = error.message;
         }

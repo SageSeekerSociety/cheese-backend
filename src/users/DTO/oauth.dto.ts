@@ -115,3 +115,59 @@ export class UnbindOAuthResponseDto extends BaseResponseDto {
     unboundConnectionId: number;
   };
 }
+
+// OAuth SRP绑定初始化请求
+export class OAuthSrpBindInitRequestDto {
+  @IsString()
+  stateToken: string;
+
+  @IsString()
+  username: string;
+}
+
+// OAuth SRP绑定初始化响应
+export class OAuthSrpBindInitResponseDto extends BaseResponseDto {
+  data: {
+    sessionId: string;
+    salt: string;
+    serverPublicEphemeral: string;
+  };
+}
+
+// OAuth SRP绑定验证请求
+export class OAuthSrpBindVerifyRequestDto {
+  @IsString()
+  sessionId: string;
+
+  @IsString()
+  clientPublicEphemeral: string;
+
+  @IsString()
+  clientProof: string;
+}
+
+// OAuth创建用户请求 (仅支持SRP和纯OAuth)
+export class OAuthCreateUserRequestDto {
+  @IsString()
+  stateToken: string;
+
+  @IsString()
+  username: string;
+
+  @IsString()
+  nickname: string;
+
+  // 可选的SRP凭证 (如果选择SRP方式)
+  @IsOptional()
+  @IsString()
+  srpSalt?: string;
+
+  @IsOptional()
+  @IsString()
+  srpVerifier?: string;
+
+  // 密码设置模式: 'none' | 'srp' (移除传统密码支持)
+  @IsOptional()
+  @IsString()
+  passwordMode?: 'none' | 'srp';
+}
