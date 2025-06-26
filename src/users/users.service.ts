@@ -131,16 +131,8 @@ export class UsersService {
 
   private generateVerifyCode(): string {
     let code: string = '';
-    const targetRange = 10;
-    const threshold = 256 - (256 % targetRange); // 250 for base 10
-
     for (let i = 0; i < 6; i++) {
-      let randomByte: number;
-      do {
-        randomByte = crypto.randomBytes(1)[0];
-      } while (randomByte >= threshold);
-
-      code += (randomByte % targetRange).toString();
+      code += crypto.randomInt(10).toString();
     }
     return code;
   }
@@ -2268,16 +2260,8 @@ export class UsersService {
     const chars =
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
-    const targetRange = chars.length;
-    const threshold = 256 - (256 % targetRange);
-
     for (let i = 0; i < 16; i++) {
-      let randomByte: number;
-      do {
-        randomByte = crypto.randomBytes(1)[0];
-      } while (randomByte >= threshold);
-
-      password += chars.charAt(randomByte % targetRange);
+      password += chars.charAt(crypto.randomInt(chars.length));
     }
     return password;
   }
