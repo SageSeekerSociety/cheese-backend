@@ -33,6 +33,7 @@ import { isEmail } from 'class-validator';
 import { Request } from 'express';
 import Redis from 'ioredis';
 import assert from 'node:assert';
+import crypto from 'node:crypto';
 import { AnswerService } from '../answer/answer.service';
 import {
   InvalidCredentialsError,
@@ -131,7 +132,8 @@ export class UsersService {
   private generateVerifyCode(): string {
     let code: string = '';
     for (let i = 0; i < 6; i++) {
-      code += Math.floor(Math.random() * 10).toString()[0];
+      const randomByte = crypto.randomBytes(1)[0];
+      code += (randomByte % 10).toString();
     }
     return code;
   }
@@ -1859,7 +1861,7 @@ export class UsersService {
     providerUserId: string,
   ): string {
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2);
+    const random = crypto.randomBytes(8).toString('hex');
     return `oauth_${type}_${providerId}_${providerUserId}_${timestamp}_${random}`;
   }
 
@@ -2040,7 +2042,7 @@ export class UsersService {
           userId,
           providerId,
           providerUserId: userInfo.id,
-          rawProfile: userInfo,
+          rawProfile: userInfo as any,
         },
       });
     }
@@ -2260,7 +2262,8 @@ export class UsersService {
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     let password = '';
     for (let i = 0; i < 16; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+      const randomByte = crypto.randomBytes(1)[0];
+      password += chars.charAt(randomByte % chars.length);
     }
     return password;
   }
