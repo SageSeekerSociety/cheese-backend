@@ -20,8 +20,18 @@ import { TOTPService } from './totp.service';
 import { UserChallengeRepository } from './user-challenge.repository';
 import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
-import { UsersController } from './users.controller';
-import { UsersService } from './users.service';
+import { AuthController } from './auth/auth.controller';
+import { AuthService } from './auth/auth.service';
+import { AccountController } from './account/account.controller';
+import { AccountService } from './account/account.service';
+import { SecurityController } from './security/security.controller';
+import { SecurityService } from './security/security.service';
+import { RelationshipsController } from './relationships/relationships.controller';
+import { RelationshipsService } from './relationships/relationships.service';
+import { ContentController } from './content/content.controller';
+import { ContentService } from './content/content.service';
+// UsersController is being removed
+import { UsersService } from './users.service'; // Original UsersService, still needed by sub-services
 
 @Module({
   imports: [
@@ -33,9 +43,21 @@ import { UsersService } from './users.service';
     forwardRef(() => AnswerModule),
     forwardRef(() => QuestionsModule),
   ],
-  controllers: [UsersController],
+  controllers: [
+    // UsersController, // Removed
+    AuthController,
+    AccountController,
+    SecurityController,
+    RelationshipsController,
+    ContentController,
+  ],
   providers: [
-    UsersService,
+    // UsersService,        // Original UsersService is now empty and will be removed
+    AuthService,
+    AccountService,
+    SecurityService,
+    RelationshipsService,
+    ContentService,
     UsersPermissionService,
     UsersRegisterRequestService,
     RolePermissionService,
@@ -43,6 +65,13 @@ import { UsersService } from './users.service';
     TOTPService,
     SrpService,
   ],
-  exports: [UsersService],
+  exports: [
+    // UsersService, // No longer exporting the original UsersService
+    AuthService,
+    AccountService,
+    SecurityService,
+    RelationshipsService,
+    ContentService,
+],
 })
 export class UsersModule {}

@@ -1,13 +1,11 @@
+// src/users/security/dto/manage-passkey.dto.ts
 import {
-  AuthenticationResponseJSON,
   PublicKeyCredentialCreationOptionsJSON,
-  PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
-import { BaseResponseDto } from '../../common/DTO/base-response.dto';
-import { UserDto } from './user.dto';
+import { BaseResponseDto } from '../../../common/DTO/base-response.dto';
 
-// Registration DTOs
+// Registration DTOs (used when a logged-in user adds a new passkey)
 export class PasskeyRegistrationOptionsResponseDto extends BaseResponseDto {
   data: {
     options: PublicKeyCredentialCreationOptionsJSON;
@@ -19,28 +17,6 @@ export class PasskeyRegistrationVerifyRequestDto {
 }
 
 export class PasskeyRegistrationVerifyResponseDto extends BaseResponseDto {}
-
-// Authentication DTOs
-export class PasskeyAuthenticationOptionsRequestDto {
-  userId?: number;
-}
-
-export class PasskeyAuthenticationOptionsResponseDto extends BaseResponseDto {
-  data: {
-    options: PublicKeyCredentialRequestOptionsJSON;
-  };
-}
-
-export class PasskeyAuthenticationVerifyRequestDto {
-  response: AuthenticationResponseJSON;
-}
-
-export class PasskeyAuthenticationVerifyResponseDto extends BaseResponseDto {
-  data: {
-    user: UserDto;
-    accessToken: string;
-  };
-}
 
 // Passkey Management DTOs
 export interface PasskeyInfo {
