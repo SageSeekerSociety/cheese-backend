@@ -2,7 +2,7 @@
  * Description: Unit tests for Users Controller
  *
  * Author(s):
- *      AI Assistant
+ *      HuanCheng65
  */
 
 import { ConfigService } from '@nestjs/config';
