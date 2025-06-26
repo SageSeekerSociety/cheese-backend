@@ -249,10 +249,18 @@ export class AuthService {
 
     // 添加 0-5 分钟随机偏移
     const baseValidSeconds = 15 * 60;
-    // Use cryptographically secure random number generator
-    const randomOffsetBytes = crypto.randomBytes(2);
-    const randomOffset =
-      ((randomOffsetBytes[0] << 8) | randomOffsetBytes[1]) % 300;
+    // Use cryptographically secure random number generator with bias-free approach
+    const targetRange = 300;
+    const maxValue = 65536; // 2^16 for two bytes
+    const threshold = maxValue - (maxValue % targetRange);
+
+    let randomValue: number;
+    do {
+      const randomOffsetBytes = crypto.randomBytes(2);
+      randomValue = (randomOffsetBytes[0] << 8) | randomOffsetBytes[1];
+    } while (randomValue >= threshold);
+
+    const randomOffset = randomValue % targetRange;
     const sudoValidSeconds = baseValidSeconds + randomOffset;
 
     const newAuthorization: Authorization = {
