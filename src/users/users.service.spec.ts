@@ -23,7 +23,7 @@ import { TOTPService } from './totp.service';
 import { UserChallengeRepository } from './user-challenge.repository';
 import { UsersPermissionService } from './users-permission.service';
 import { UsersRegisterRequestService } from './users-register-request.service';
-import { PasswordNotMatchError } from './users.error';
+import { UserIdNotFoundError, UsernameNotFoundError } from './users.error';
 import { UsersService } from './users.service';
 
 describe('UsersService - OAuth', () => {
@@ -44,6 +44,8 @@ describe('UsersService - OAuth', () => {
     user: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      count: jest.fn(),
+      update: jest.fn(),
     },
     userProfile: {
       create: jest.fn(),
@@ -61,6 +63,13 @@ describe('UsersService - OAuth', () => {
     userRegisterLog: {
       create: jest.fn(),
     },
+    passkey: {
+      findMany: jest.fn(),
+      create: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
+    },
     $transaction: jest.fn(),
   };
 
@@ -76,6 +85,15 @@ describe('UsersService - OAuth', () => {
     get: jest.fn().mockImplementation((key: string) => {
       if (key === 'defaultIntro') {
         return 'This user has not set an introduction yet.';
+      }
+      if (key === 'webauthn.rpName') {
+        return 'Test RP';
+      }
+      if (key === 'webauthn.rpID') {
+        return 'localhost';
+      }
+      if (key === 'webauthn.origin') {
+        return 'http://localhost:7777';
       }
       return undefined;
     }),
@@ -94,6 +112,8 @@ describe('UsersService - OAuth', () => {
 
   const mockEmailRuleService = {
     verifyEmailRule: jest.fn(),
+    isEmailSuffixSupported: jest.fn().mockResolvedValue(true),
+    emailSuffixRule: 'Only @ruc.edu.cn emails are allowed',
   };
 
   const mockAnswerService = {
@@ -115,6 +135,26 @@ describe('UsersService - OAuth', () => {
     getDefaultAvatarId: jest.fn().mockResolvedValue(1),
   };
 
+  const mockUserChallengeRepository = {
+    setChallenge: jest.fn(),
+    getChallenge: jest.fn(),
+    deleteChallenge: jest.fn(),
+  };
+
+  const mockEmailService = {
+    sendPasswordResetEmail: jest.fn(),
+  };
+
+  const mockTOTPService = {
+    generateSecret: jest.fn(),
+    verify: jest.fn(),
+  };
+
+  const mockSrpService = {
+    generateSalt: jest.fn(),
+    computeVerifier: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -124,7 +164,7 @@ describe('UsersService - OAuth', () => {
         { provide: SessionService, useValue: mockSessionService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: RedisService, useValue: mockRedisService },
-        { provide: EmailService, useValue: {} },
+        { provide: EmailService, useValue: mockEmailService },
         { provide: EmailRuleService, useValue: mockEmailRuleService },
         { provide: AvatarsService, useValue: mockAvatarsService },
         { provide: UsersRegisterRequestService, useValue: {} },
@@ -133,9 +173,12 @@ describe('UsersService - OAuth', () => {
           useValue: mockUsersPermissionService,
         },
         { provide: RolePermissionService, useValue: {} },
-        { provide: UserChallengeRepository, useValue: {} },
-        { provide: TOTPService, useValue: {} },
-        { provide: SrpService, useValue: {} },
+        {
+          provide: UserChallengeRepository,
+          useValue: mockUserChallengeRepository,
+        },
+        { provide: TOTPService, useValue: mockTOTPService },
+        { provide: SrpService, useValue: mockSrpService },
         { provide: AnswerService, useValue: mockAnswerService },
         { provide: QuestionsService, useValue: mockQuestionsService },
       ],
@@ -147,6 +190,361 @@ describe('UsersService - OAuth', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  describe('Validation Methods', () => {
+    describe('isEmailRegistered', () => {
+      it('should return true when email is registered', async () => {
+        mockPrismaService.user.count.mockResolvedValue(1);
+
+        const result = await service.isEmailRegistered('test@example.com');
+
+        expect(result).toBe(true);
+        expect(mockPrismaService.user.count).toHaveBeenCalledWith({
+          where: { email: 'test@example.com' },
+        });
+      });
+
+      it('should return false when email is not registered', async () => {
+        mockPrismaService.user.count.mockResolvedValue(0);
+
+        const result = await service.isEmailRegistered('test@example.com');
+
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('isUsernameRegistered', () => {
+      it('should return true when username is registered', async () => {
+        mockPrismaService.user.count.mockResolvedValue(1);
+
+        const result = await service.isUsernameRegistered('testuser');
+
+        expect(result).toBe(true);
+        expect(mockPrismaService.user.count).toHaveBeenCalledWith({
+          where: { username: 'testuser' },
+        });
+      });
+
+      it('should return false when username is not registered', async () => {
+        mockPrismaService.user.count.mockResolvedValue(0);
+
+        const result = await service.isUsernameRegistered('testuser');
+
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('findUserRecordOrThrow', () => {
+      it('should return user when found', async () => {
+        const mockUser = { id: 1, username: 'testuser' };
+        mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+
+        const result = await service.findUserRecordOrThrow(1);
+
+        expect(result).toBe(mockUser);
+      });
+
+      it('should throw UserIdNotFoundError when user not found', async () => {
+        mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+        await expect(service.findUserRecordOrThrow(999)).rejects.toThrow(
+          new UserIdNotFoundError(999),
+        );
+      });
+    });
+
+    describe('findUserRecordByUsernameOrThrow', () => {
+      it('should return user when found', async () => {
+        const mockUser = { id: 1, username: 'testuser' };
+        mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+
+        const result =
+          await service.findUserRecordByUsernameOrThrow('testuser');
+
+        expect(result).toBe(mockUser);
+      });
+
+      it('should throw UsernameNotFoundError when user not found', async () => {
+        mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.findUserRecordByUsernameOrThrow('nonexistent'),
+        ).rejects.toThrow(new UsernameNotFoundError('nonexistent'));
+      });
+    });
+
+    describe('Getter methods', () => {
+      it('should return email suffix rule', () => {
+        const rule = service.emailSuffixRule;
+        expect(rule).toBe('Only @ruc.edu.cn emails are allowed');
+      });
+
+      it('should return username rule', () => {
+        const rule = service.usernameRule;
+        expect(rule).toBe(
+          'Username must be 4-32 characters long and can only contain letters, numbers, underscores and hyphens.',
+        );
+      });
+
+      it('should return nickname rule', () => {
+        const rule = service.nicknameRule;
+        expect(rule).toBe(
+          'Nickname must be 1-16 characters long and can only contain letters, numbers, underscores, hyphens and Chinese characters.',
+        );
+      });
+
+      it('should return password rule', () => {
+        const rule = service.passwordRule;
+        expect(rule).toBe(
+          'Password must be at least 8 characters long and must contain at least one letter, one special character and one number.',
+        );
+      });
+
+      it('should return default intro', () => {
+        const intro = service.defaultIntro;
+        expect(intro).toBe('This user has not set an introduction yet.');
+      });
+    });
+  });
+
+  describe('Passkey functionality', () => {
+    describe('generatePasskeyRegistrationOptions', () => {
+      it('should generate passkey registration options', async () => {
+        const mockUser = {
+          id: 1,
+          username: 'testuser',
+          email: 'test@example.com',
+          hashedPassword: null,
+          srpSalt: 'salt',
+          srpVerifier: 'verifier',
+          srpUpgraded: true,
+          totpEnabled: false,
+          totpSecret: null,
+          totpAlwaysRequired: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          lastPasswordChangedAt: new Date(),
+        };
+        const mockProfile = {
+          id: 1,
+          userId: 1,
+          nickname: 'Test User',
+          avatarId: 1,
+          intro: 'Test intro',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+        };
+        const mockPasskeys = [
+          { credentialId: 'existing-cred-id', transports: '["usb"]' },
+        ];
+
+        jest
+          .spyOn(service, 'findUserRecordAndProfileRecordOrThrow')
+          .mockResolvedValue([mockUser, mockProfile]);
+        mockPrismaService.passkey.findMany.mockResolvedValue(mockPasskeys);
+        mockUserChallengeRepository.setChallenge.mockResolvedValue(undefined);
+
+        // Mock the WebAuthn server functions
+        const mockOptions = {
+          challenge: 'test-challenge',
+          rp: { name: 'Test RP', id: 'localhost' },
+        };
+
+        // Mock the generateRegistrationOptions function
+        jest.doMock('@simplewebauthn/server', () => ({
+          generateRegistrationOptions: jest.fn().mockResolvedValue(mockOptions),
+        }));
+
+        const options = await service.generatePasskeyRegistrationOptions(1);
+
+        expect(
+          service.findUserRecordAndProfileRecordOrThrow,
+        ).toHaveBeenCalledWith(1);
+        expect(mockPrismaService.passkey.findMany).toHaveBeenCalledWith({
+          where: { userId: 1 },
+        });
+        // Should set challenge for user
+        expect(mockUserChallengeRepository.setChallenge).toHaveBeenCalledWith(
+          1,
+          expect.any(String),
+          600,
+        );
+      });
+    });
+
+    describe('getUserPasskeys', () => {
+      it('should return user passkeys', async () => {
+        const mockPasskeys = [
+          { id: 1, credentialId: 'cred-1', userId: 1 },
+          { id: 2, credentialId: 'cred-2', userId: 1 },
+        ];
+        mockPrismaService.passkey.findMany.mockResolvedValue(mockPasskeys);
+
+        const result = await service.getUserPasskeys(1);
+
+        expect(result).toBe(mockPasskeys);
+        expect(mockPrismaService.passkey.findMany).toHaveBeenCalledWith({
+          where: { userId: 1 },
+        });
+      });
+    });
+
+    describe('deletePasskey', () => {
+      it('should delete passkey', async () => {
+        mockPrismaService.passkey.deleteMany.mockResolvedValue({ count: 1 });
+
+        await service.deletePasskey(1, 'cred-id');
+
+        expect(mockPrismaService.passkey.deleteMany).toHaveBeenCalledWith({
+          where: {
+            userId: 1,
+            credentialId: 'cred-id',
+          },
+        });
+      });
+    });
+  });
+
+  describe('User existence checks', () => {
+    describe('isUserExists', () => {
+      it('should return true when user exists', async () => {
+        mockPrismaService.user.count.mockResolvedValue(1);
+
+        const result = await service.isUserExists(1);
+
+        expect(result).toBe(true);
+        expect(mockPrismaService.user.count).toHaveBeenCalledWith({
+          where: { id: 1 },
+        });
+      });
+
+      it('should return false when user does not exist', async () => {
+        mockPrismaService.user.count.mockResolvedValue(0);
+
+        const result = await service.isUserExists(999);
+
+        expect(result).toBe(false);
+      });
+    });
+  });
+
+  describe('Follow relationship counts', () => {
+    describe('getFollowingCount', () => {
+      it('should return following count', async () => {
+        mockPrismaService.userFollowingRelationship.count.mockResolvedValue(5);
+
+        const result = await service.getFollowingCount(1);
+
+        expect(result).toBe(5);
+        expect(
+          mockPrismaService.userFollowingRelationship.count,
+        ).toHaveBeenCalledWith({
+          where: { followerId: 1 },
+        });
+      });
+    });
+
+    describe('getFollowedCount', () => {
+      it('should return followed count', async () => {
+        mockPrismaService.userFollowingRelationship.count.mockResolvedValue(10);
+
+        const result = await service.getFollowedCount(1);
+
+        expect(result).toBe(10);
+        expect(
+          mockPrismaService.userFollowingRelationship.count,
+        ).toHaveBeenCalledWith({
+          where: { followeeId: 1 },
+        });
+      });
+    });
+
+    describe('isUserFollowUser', () => {
+      it('should return true when user follows another user', async () => {
+        mockPrismaService.userFollowingRelationship.count.mockResolvedValue(1);
+
+        const result = await service.isUserFollowUser(1, 2);
+
+        expect(result).toBe(true);
+        expect(
+          mockPrismaService.userFollowingRelationship.count,
+        ).toHaveBeenCalledWith({
+          where: {
+            followerId: 1,
+            followeeId: 2,
+          },
+        });
+      });
+
+      it('should return false when user does not follow another user', async () => {
+        mockPrismaService.userFollowingRelationship.count.mockResolvedValue(0);
+
+        const result = await service.isUserFollowUser(1, 2);
+
+        expect(result).toBe(false);
+      });
+
+      it('should return false when either user ID is undefined', async () => {
+        const result1 = await service.isUserFollowUser(undefined, 2);
+        const result2 = await service.isUserFollowUser(1, undefined);
+
+        expect(result1).toBe(false);
+        expect(result2).toBe(false);
+        expect(
+          mockPrismaService.userFollowingRelationship.count,
+        ).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Session creation', () => {
+    describe('createSessionForNewUser', () => {
+      it('should create session for new user', async () => {
+        mockSessionService.createSession.mockResolvedValue('new-session-token');
+
+        const result = await service.createSessionForNewUser(1);
+
+        expect(result).toBe('new-session-token');
+        expect(mockSessionService.createSession).toHaveBeenCalledWith(1, {
+          permissions: [],
+          roles: [],
+        });
+      });
+    });
+  });
+
+  describe('Password change', () => {
+    describe('changePassword', () => {
+      it('should change user password with SRP credentials', async () => {
+        const mockUser = { id: 1, username: 'testuser' };
+        mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+        mockPrismaService.user.update.mockResolvedValue(mockUser);
+
+        await service.changePassword(1, 'new-salt', 'new-verifier');
+
+        expect(mockPrismaService.user.update).toHaveBeenCalledWith({
+          where: { id: 1 },
+          data: {
+            srpSalt: 'new-salt',
+            srpVerifier: 'new-verifier',
+            srpUpgraded: true,
+            hashedPassword: '',
+            lastPasswordChangedAt: expect.any(Date),
+          },
+        });
+      });
+
+      it('should throw UserIdNotFoundError when user not found', async () => {
+        mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+        await expect(
+          service.changePassword(999, 'salt', 'verifier'),
+        ).rejects.toThrow(new UserIdNotFoundError(999));
+      });
+    });
   });
 
   describe('loginWithOAuth', () => {
@@ -180,7 +578,7 @@ describe('UsersService - OAuth', () => {
         'agent',
       );
 
-      // 检查返回结果是否为数组形式（成功登录）
+      // Check if the result is an array (successful login)
       if (Array.isArray(result)) {
         expect(result).toHaveLength(2);
         expect(result[1]).toBe('session-token');
@@ -310,7 +708,7 @@ describe('UsersService - OAuth', () => {
         'agent',
       );
 
-      // 检查返回结果是否为数组形式（成功登录）
+      // Check if the result is an array (successful login)
       if (Array.isArray(result)) {
         expect(result[0]).toEqual({ id: 2 });
         expect(result[1]).toBe('new-session-token');
@@ -441,13 +839,13 @@ describe('UsersService - OAuth', () => {
 
     it('should create new user even when email matches existing user (security)', async () => {
       mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-      // 现在应该返回密码验证要求，而不是抛出错误
+      // Should now return password verification requirement instead of throwing error
 
       const existingUser = {
         id: 99,
         username: 'existing-user',
         email: 'test@ruc.edu.cn',
-        srpUpgraded: false, // 传统用户
+        srpUpgraded: false, // Legacy user
         hashedPassword: 'hashedpassword',
         deletedAt: null,
         userProfile: {
@@ -467,7 +865,7 @@ describe('UsersService - OAuth', () => {
         'test-agent',
       );
 
-      // 期待返回传统密码验证要求
+      // Expect legacy password verification requirement
       if ('requiresVerification' in result) {
         expect(result.requiresVerification).toBe(true);
         expect(result.verificationType).toBe('password');
@@ -498,1212 +896,45 @@ describe('UsersService - OAuth', () => {
 
       // Should check for existing user by email
       expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'test@ruc.edu.cn' },
-        include: { userProfile: true },
-      });
-    });
-
-    it('should create new user when no existing connection or email match', async () => {
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.findUnique.mockResolvedValue(null); // 没有匹配的用户
-
-      const newUser = {
-        id: 2,
-        username: 'testuser',
-        email: 'test@ruc.edu.cn',
-        deletedAt: null,
-      };
-
-      const newUserProfile = {
-        id: 2,
-        userId: 2,
-        nickname: 'Test User',
-      };
-
-      const newOAuthConnection = {
-        id: 2,
-        userId: 2,
-        providerId: 'test',
-        providerUserId: '12345',
-      };
-
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
-      });
-
-      // Mock the transaction operations
-      mockPrismaService.user.create.mockResolvedValue(newUser);
-      mockPrismaService.userProfile.create.mockResolvedValue(newUserProfile);
-      mockPrismaService.userOAuthConnection.create.mockResolvedValue(
-        newOAuthConnection,
-      );
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
-
-      // Mock user.findUnique for getOAuthUserDtoById (called multiple times in createNewOAuthUser)
-      mockPrismaService.user.findUnique
-        .mockResolvedValueOnce(null) // 第一次调用检查邮箱匹配
-        .mockResolvedValue(newUser); // 后续调用返回新用户
-
-      // Mock userProfile.findUnique for getOAuthUserDtoById
-      mockPrismaService.userProfile.findUnique.mockResolvedValue(
-        newUserProfile,
-      );
-
-      // Mock generateUniqueUsername method
-      jest
-        .spyOn(service, 'generateUniqueUsername' as any)
-        .mockResolvedValue('testuser');
-
-      const result = await service.loginWithOAuth(
-        'test',
-        mockUserInfo,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      expect(result).toHaveLength(2);
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
-      expect(mockPrismaService.user.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          username: 'testuser',
+        where: {
           email: 'test@ruc.edu.cn',
-          srpUpgraded: false,
-        }),
-      });
-      expect(mockPrismaService.userProfile.create).toHaveBeenCalledWith({
-        data: {
-          userId: 2,
-          nickname: 'Test User',
-          intro: 'This user has not set an introduction yet.',
-          avatarId: 1,
+        },
+        include: {
+          userProfile: true,
         },
       });
-      expect(mockPrismaService.userOAuthConnection.create).toHaveBeenCalledWith(
-        {
-          data: {
-            userId: 2,
-            providerId: 'test',
-            providerUserId: '12345',
-            rawProfile: mockUserInfo,
-          },
-        },
-      );
     });
 
-    it('should handle OAuth user without email', async () => {
-      const userInfoWithoutEmail: OAuthUserInfo = {
-        id: '12345',
-        name: 'Test User',
-        username: 'testuser',
-        preferredUsername: 'testuser',
-      };
-
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-
-      const newUser = {
-        id: 2,
-        username: 'testuser',
-        email: 'oauth-test-12345@placeholder.internal',
-        deletedAt: null,
-      };
-
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
-      });
-
-      mockPrismaService.user.create.mockResolvedValue(newUser);
-      mockPrismaService.userProfile.create.mockResolvedValue({});
-      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
-
-      // Mock user.findUnique for getOAuthUserDtoById
-      mockPrismaService.user.findUnique.mockResolvedValue(newUser);
-
-      jest
-        .spyOn(service, 'generateUniqueUsername' as any)
-        .mockResolvedValue('testuser');
-
-      await service.loginWithOAuth(
-        'test',
-        userInfoWithoutEmail,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      expect(mockPrismaService.user.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          username: 'testuser',
-          email: 'oauth-test-12345@placeholder.internal',
-          srpUpgraded: false,
-        }),
-      });
-    });
-
-    it('should handle deleted user gracefully', async () => {
-      const deletedUser = {
-        ...mockExistingUser,
-        deletedAt: new Date(),
-      };
-
-      const connectionWithDeletedUser = {
-        ...mockOAuthConnection,
-        user: deletedUser,
-      };
-
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(
-        connectionWithDeletedUser,
-      );
-
-      // Mock for getOAuthUserDtoById calls
-      mockPrismaService.user.findUnique.mockResolvedValue({
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        deletedAt: new Date(),
-      });
-
-      mockPrismaService.userProfile.findUnique.mockResolvedValue({
-        id: 1,
-        userId: 1,
-        nickname: 'Test User',
-      });
-
-      // Mock session creation and logs
-      jest
-        .spyOn(service as any, 'createSession')
-        .mockResolvedValueOnce('session-token');
-
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-      mockPrismaService.userOAuthConnection.update.mockResolvedValue({});
-
-      const result = await service.loginWithOAuth(
-        'test',
-        mockUserInfo,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      if (Array.isArray(result)) {
-        expect(result).toHaveLength(2);
-        expect(result[1]).toBe('session-token');
-      } else {
-        fail('Expected array result for deleted user OAuth connection');
-      }
-      expect(mockPrismaService.userLoginLog.create).toHaveBeenCalled();
-      expect(mockPrismaService.userOAuthConnection.update).toHaveBeenCalled();
-    });
-
-    it('should generate fallback nickname when OAuth name is missing', async () => {
-      const userInfoWithoutName: OAuthUserInfo = {
-        id: '12345',
-        email: 'unique-email@ruc.edu.cn', // 使用唯一邮箱避免冲突
-        username: 'testuser',
-        preferredUsername: 'testuser',
-      };
-
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.findUnique.mockResolvedValue(null); // 没有邮箱冲突
-
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
-      });
-
-      const newUser = {
-        id: 2,
-        username: 'testuser',
-        email: 'unique-email@ruc.edu.cn',
-      };
-      const newUserProfile = {
-        id: 2,
-        userId: 2,
-        nickname: 'testuser',
-      };
-
-      mockPrismaService.user.create.mockResolvedValue(newUser);
-      mockPrismaService.userProfile.create.mockResolvedValue(newUserProfile);
-      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
-
-      // Mock user.findUnique for getOAuthUserDtoById (called multiple times)
-      mockPrismaService.user.findUnique
-        .mockResolvedValueOnce(null) // 检查邮箱匹配时没有找到用户
-        .mockResolvedValue(newUser); // 后续调用返回新用户
-
-      // Mock userProfile.findUnique for getOAuthUserDtoById
-      mockPrismaService.userProfile.findUnique.mockResolvedValue(
-        newUserProfile,
-      );
-
-      jest
-        .spyOn(service, 'generateUniqueUsername' as any)
-        .mockResolvedValue('testuser');
-
-      await service.loginWithOAuth(
-        'test',
-        userInfoWithoutName,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      expect(mockPrismaService.userProfile.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          nickname: 'testuser', // Should fallback to username
-          intro: 'This user has not set an introduction yet.',
-          avatarId: 1,
-        }),
-      });
-    });
-
-    it('should handle database transaction errors during user creation', async () => {
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
-
-      // Mock transaction to throw error
-      mockPrismaService.$transaction.mockRejectedValue(
-        new Error('Database transaction failed'),
-      );
-
-      jest
-        .spyOn(service, 'generateUniqueUsername' as any)
-        .mockResolvedValue('testuser');
-
-      await expect(
-        service.loginWithOAuth('test', mockUserInfo, '127.0.0.1', 'test-agent'),
-      ).rejects.toThrow('Database transaction failed');
-
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
-    });
-
-    it('should handle OAuth connection update errors', async () => {
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(
-        mockOAuthConnection,
-      );
-      mockPrismaService.user.findUnique.mockResolvedValue(mockExistingUser);
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-
-      // Mock update to throw error
-      mockPrismaService.userOAuthConnection.update.mockRejectedValue(
-        new Error('Update failed'),
-      );
-
-      await expect(
-        service.loginWithOAuth('test', mockUserInfo, '127.0.0.1', 'test-agent'),
-      ).rejects.toThrow('Update failed');
-    });
-
-    it('should handle missing OAuth user ID', async () => {
-      const userInfoWithoutId: Omit<OAuthUserInfo, 'id'> & { id?: string } = {
-        email: 'test@ruc.edu.cn',
-        name: 'Test User',
-        username: 'testuser',
-        preferredUsername: 'testuser',
-      };
-
-      // Call with undefined id
-      await expect(
-        service.loginWithOAuth(
-          'test',
-          userInfoWithoutId as OAuthUserInfo,
-          '127.0.0.1',
-          'test-agent',
-        ),
-      ).rejects.toThrow();
-    });
-
-    it('should handle very long OAuth user data', async () => {
-      const longString = 'a'.repeat(1000);
-      const userInfoWithLongData: OAuthUserInfo = {
-        id: '12345',
-        email: 'unique-long-email@ruc.edu.cn', // 使用唯一邮箱避免冲突
-        name: longString,
-        username: longString,
-        preferredUsername: longString,
-      };
-
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.findUnique.mockResolvedValue(null); // 没有邮箱冲突
-
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
-      });
-
-      const newUser = {
-        id: 2,
-        username: 'shortened-username', // Should be shortened
-        email: 'unique-long-email@ruc.edu.cn',
-      };
-
-      const newUserProfile = {
-        id: 2,
-        userId: 2,
-        nickname: longString.substring(0, 255),
-      };
-
-      mockPrismaService.user.create.mockResolvedValue(newUser);
-      mockPrismaService.userProfile.create.mockResolvedValue(newUserProfile);
-      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
-
-      // Mock user.findUnique for getOAuthUserDtoById (called multiple times)
-      mockPrismaService.user.findUnique
-        .mockResolvedValueOnce(null) // 检查邮箱匹配时没有找到用户
-        .mockResolvedValue(newUser); // 后续调用返回新用户
-
-      // Mock userProfile.findUnique for getOAuthUserDtoById
-      mockPrismaService.userProfile.findUnique.mockResolvedValue(
-        newUserProfile,
-      );
-
-      jest
-        .spyOn(service, 'generateUniqueUsername' as any)
-        .mockResolvedValue('shortened-username');
-
-      const result = await service.loginWithOAuth(
-        'test',
-        userInfoWithLongData,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      expect(result).toHaveLength(2);
-      expect(mockPrismaService.userProfile.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          nickname: longString.substring(0, 255), // Should be truncated if needed
-        }),
-      });
-    });
-
-    it('should handle OAuth provider with special characters in user data', async () => {
-      const userInfoWithSpecialChars: OAuthUserInfo = {
-        id: '12345<script>alert("xss")</script>',
-        email: 'test+special-unique@ruc.edu.cn', // 使用唯一邮箱避免冲突
-        name: 'Test User <>&"\'',
-        username: 'test-user-123',
-        preferredUsername: 'test_user_123',
-      };
-
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.findUnique.mockResolvedValue(null); // 没有邮箱冲突
-
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
-      });
-
-      const newUser = {
-        id: 2,
-        username: 'test-user-123',
-        email: 'test+special-unique@ruc.edu.cn',
-      };
-
-      const newUserProfile = {
-        id: 2,
-        userId: 2,
-        nickname: 'Test User <>&"\'',
-      };
-
-      mockPrismaService.user.create.mockResolvedValue(newUser);
-      mockPrismaService.userProfile.create.mockResolvedValue(newUserProfile);
-      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
-
-      // Mock user.findUnique for getOAuthUserDtoById (called multiple times)
-      mockPrismaService.user.findUnique
-        .mockResolvedValueOnce(null) // 检查邮箱匹配时没有找到用户
-        .mockResolvedValue(newUser); // 后续调用返回新用户
-
-      // Mock userProfile.findUnique for getOAuthUserDtoById
-      mockPrismaService.userProfile.findUnique.mockResolvedValue(
-        newUserProfile,
-      );
-
-      jest
-        .spyOn(service, 'generateUniqueUsername' as any)
-        .mockResolvedValue('test-user-123');
-
-      const result = await service.loginWithOAuth(
-        'test',
-        userInfoWithSpecialChars,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      expect(result).toHaveLength(2);
-      expect(mockPrismaService.userOAuthConnection.create).toHaveBeenCalledWith(
-        {
-          data: {
-            userId: 2,
-            providerId: 'test',
-            providerUserId: '12345<script>alert("xss")</script>', // Should preserve original OAuth ID
-            rawProfile: userInfoWithSpecialChars,
-          },
-        },
-      );
-    });
-
-    it('should use preferredUsername when username is not available', async () => {
-      const userInfoWithPreferredUsername: OAuthUserInfo = {
-        id: '12345',
-        email: 'preferred-unique@ruc.edu.cn', // 使用唯一邮箱避免冲突
-        name: 'Test User',
-        preferredUsername: 'preferred-user',
-      };
-
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-      mockPrismaService.user.findUnique.mockResolvedValue(null); // 没有邮箱冲突
-
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
-      });
-
-      const newUser = {
-        id: 2,
-        username: 'preferred-user',
-        email: 'preferred-unique@ruc.edu.cn',
-      };
-
-      const newUserProfile = {
-        id: 2,
-        userId: 2,
-        nickname: 'Test User',
-      };
-
-      mockPrismaService.user.create.mockResolvedValue(newUser);
-      mockPrismaService.userProfile.create.mockResolvedValue(newUserProfile);
-      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
-
-      // Mock user.findUnique for getOAuthUserDtoById (called multiple times)
-      mockPrismaService.user.findUnique
-        .mockResolvedValueOnce(null) // 检查邮箱匹配时没有找到用户
-        .mockResolvedValue(newUser); // 后续调用返回新用户
-
-      // Mock userProfile.findUnique for getOAuthUserDtoById
-      mockPrismaService.userProfile.findUnique.mockResolvedValue(
-        newUserProfile,
-      );
-
-      jest
-        .spyOn(service, 'generateUniqueUsername' as any)
-        .mockResolvedValue('preferred-user');
-
-      await service.loginWithOAuth(
-        'test',
-        userInfoWithPreferredUsername,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      expect(service['generateUniqueUsername']).toHaveBeenCalledWith(
-        'preferred-user',
-      );
-    });
-  });
-
-  // 新增：测试OAuth账户选择流程
-  describe('OAuth Account Choice Flow', () => {
-    it('should require legacy password verification when email matches existing user', async () => {
+    it('should check for existing user by email without userProfile', async () => {
       mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
 
       const existingUser = {
         id: 99,
         username: 'existing-user',
         email: 'test@ruc.edu.cn',
-        srpUpgraded: false, // 传统用户
+        srpUpgraded: false,
         hashedPassword: 'hashedpassword',
         deletedAt: null,
-        userProfile: {
-          nickname: 'Existing User',
-        },
+        userProfile: null, // No profile
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(existingUser);
       mockRedis.setex.mockResolvedValue('OK');
 
-      const userInfoWithEmail: OAuthUserInfo = {
-        id: '12345',
-        email: 'test@ruc.edu.cn',
-        name: 'OAuth User',
-        username: 'oauthuser',
-      };
-
       const result = await service.loginWithOAuth(
-        'github',
-        userInfoWithEmail,
+        'test',
+        mockUserInfo,
         '127.0.0.1',
         'test-agent',
       );
 
-      // 期待返回传统密码验证要求
+      // Still expect password verification requirement
       if ('requiresVerification' in result) {
         expect(result.requiresVerification).toBe(true);
         expect(result.verificationType).toBe('password');
-        expect(result.email).toBe('test@ruc.edu.cn');
-        expect(result.sessionId).toMatch(/^oauth_password_/);
       } else {
-        fail('Expected legacy password verification requirement');
+        fail('Expected password verification requirement');
       }
-
-      // Should check for existing OAuth connection first
-      expect(
-        mockPrismaService.userOAuthConnection.findUnique,
-      ).toHaveBeenCalledWith({
-        where: {
-          providerId_providerUserId: {
-            providerId: 'github',
-            providerUserId: '12345',
-          },
-        },
-        include: {
-          user: {
-            include: {
-              userProfile: true,
-            },
-          },
-        },
-      });
-
-      // Should check for existing user by email
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'test@ruc.edu.cn' },
-        include: { userProfile: true },
-      });
-    });
-
-    it('should require SRP verification for SRP-enabled users', async () => {
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-
-      const srpUser = {
-        id: 99,
-        username: 'srp-user',
-        email: 'srp@ruc.edu.cn',
-        srpUpgraded: true, // SRP用户
-        srpSalt: 'salt',
-        srpVerifier: 'verifier',
-        deletedAt: null,
-        userProfile: {
-          nickname: 'SRP User',
-        },
-      };
-
-      mockPrismaService.user.findUnique.mockResolvedValue(srpUser);
-      mockRedis.setex.mockResolvedValue('OK');
-
-      // Mock initOAuthSrpVerification method
-      jest.spyOn(service as any, 'initOAuthSrpVerification').mockResolvedValue({
-        requiresVerification: true,
-        verificationType: 'srp',
-        email: 'srp@ruc.edu.cn',
-        sessionId: 'oauth_srp_test_67890_123456_abc123',
-        salt: 'salt',
-        serverPublicEphemeral: 'server-public',
-      });
-
-      const userInfoWithEmail: OAuthUserInfo = {
-        id: '67890',
-        email: 'srp@ruc.edu.cn',
-        name: 'SRP User',
-        username: 'srpuser',
-      };
-
-      const result = await service.loginWithOAuth(
-        'github',
-        userInfoWithEmail,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      // 期待返回SRP验证要求
-      if ('requiresVerification' in result) {
-        expect(result.requiresVerification).toBe(true);
-        expect(result.verificationType).toBe('srp');
-        expect(result.email).toBe('srp@ruc.edu.cn');
-        expect(result.sessionId).toMatch(/^oauth_srp_/);
-      } else {
-        fail('Expected SRP verification requirement');
-      }
-    });
-
-    it('should not require verification when existing user is deleted', async () => {
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
-
-      const deletedUser = {
-        id: 99,
-        username: 'deleted-user',
-        email: 'test@ruc.edu.cn',
-        deletedAt: new Date(), // User is deleted
-        userProfile: {
-          nickname: 'Deleted User',
-        },
-      };
-
-      mockPrismaService.user.findUnique.mockResolvedValue(deletedUser);
-
-      // Should proceed to create new user since existing user is deleted
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
-      });
-
-      const newUser = { id: 2, username: 'testuser', email: 'test@ruc.edu.cn' };
-      const newUserProfile = {
-        id: 2,
-        userId: 2,
-        nickname: 'OAuth User',
-      };
-
-      mockPrismaService.user.create.mockResolvedValue(newUser);
-      mockPrismaService.userProfile.create.mockResolvedValue(newUserProfile);
-      mockPrismaService.userOAuthConnection.create.mockResolvedValue({});
-      mockPrismaService.userLoginLog.create.mockResolvedValue({});
-      mockPrismaService.userRegisterLog.create.mockResolvedValue({});
-
-      // Mock user.findUnique for getOAuthUserDtoById
-      mockPrismaService.user.findUnique
-        .mockResolvedValueOnce(deletedUser) // 第一次调用检查邮箱匹配，找到已删除用户
-        .mockResolvedValue(newUser); // 后续调用返回新用户
-
-      // Mock userProfile.findUnique for getOAuthUserDtoById
-      mockPrismaService.userProfile.findUnique.mockResolvedValue(
-        newUserProfile,
-      );
-
-      jest
-        .spyOn(service, 'generateUniqueUsername' as any)
-        .mockResolvedValue('testuser');
-
-      const userInfoWithEmail: OAuthUserInfo = {
-        id: '12345',
-        email: 'test@ruc.edu.cn',
-        name: 'OAuth User',
-        username: 'oauthuser',
-      };
-
-      const result = await service.loginWithOAuth(
-        'github',
-        userInfoWithEmail,
-        '127.0.0.1',
-        'test-agent',
-      );
-
-      // 期待返回数组形式（成功创建新用户）
-      if (Array.isArray(result)) {
-        expect(result).toHaveLength(2);
-      } else {
-        fail('Expected array result for new user creation');
-      }
-      expect(mockPrismaService.$transaction).toHaveBeenCalled();
-    });
-  });
-
-  describe('completeOAuthVerification', () => {
-    it('should verify password and upgrade user to SRP', async () => {
-      const sessionId = 'oauth_password_session123';
-      const password = 'correctpassword';
-      const sessionData = {
-        type: 'password',
-        providerId: 'test',
-        userInfo: { id: '123', email: 'test@example.com' },
-        existingUserId: 1,
-        existingUsername: 'testuser',
-      };
-
-      // Mock Redis session data
-      mockRedis.get.mockResolvedValueOnce(JSON.stringify(sessionData));
-      mockRedis.del.mockResolvedValueOnce(1);
-
-      // Mock user data
-      const userData = {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        hashedPassword: 'hashedpassword',
-        srpSalt: null,
-        srpVerifier: null,
-        srpUpgraded: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastPasswordChangedAt: new Date(),
-        deletedAt: null,
-        totpSecret: null,
-        totpEnabled: false,
-        totpAlwaysRequired: false,
-      };
-      jest
-        .spyOn(service, 'findUserRecordOrThrow')
-        .mockResolvedValueOnce(userData);
-
-      // Mock authentication method
-      jest
-        .spyOn(service as any, 'authenticateUserWithPassword')
-        .mockResolvedValueOnce({ verified: true, wasUpgraded: true });
-
-      // Mock OAuth connection checks
-      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValueOnce(
-        null,
-      );
-      mockPrismaService.userOAuthConnection.create.mockResolvedValueOnce({});
-      mockPrismaService.userLoginLog.create.mockResolvedValueOnce({});
-
-      // Mock user DTO and session creation
-      jest
-        .spyOn(service, 'getOAuthUserDtoById')
-        .mockResolvedValueOnce({ id: 1 } as any);
-      jest
-        .spyOn(service as any, 'createSession')
-        .mockResolvedValueOnce('session-token');
-
-      const result = await service.completeOAuthVerification(
-        sessionId,
-        { password },
-        'ip',
-        'agent',
-      );
-
-      expect(result[0]).toEqual({ id: 1 });
-      expect(result[1]).toBe('session-token');
-      expect(mockRedis.del).toHaveBeenCalledWith(`oauth_session:${sessionId}`);
-    });
-
-    it('should handle wrong password', async () => {
-      const sessionId = 'oauth_password_session123';
-      const password = 'wrongpassword';
-      const sessionData = {
-        type: 'password',
-        providerId: 'test',
-        userInfo: { id: '123', email: 'test@example.com' },
-        existingUserId: 1,
-        existingUsername: 'testuser',
-      };
-
-      mockRedis.get.mockResolvedValueOnce(JSON.stringify(sessionData));
-
-      const userData = {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        hashedPassword: 'hashedpassword',
-        srpSalt: null,
-        srpVerifier: null,
-        srpUpgraded: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastPasswordChangedAt: new Date(),
-        deletedAt: null,
-        totpSecret: null,
-        totpEnabled: false,
-        totpAlwaysRequired: false,
-      };
-      jest
-        .spyOn(service, 'findUserRecordOrThrow')
-        .mockResolvedValueOnce(userData);
-
-      // Mock authentication failure
-      jest
-        .spyOn(service as any, 'authenticateUserWithPassword')
-        .mockResolvedValueOnce({ verified: false, wasUpgraded: false });
-
-      await expect(
-        service.completeOAuthVerification(
-          sessionId,
-          { password },
-          'ip',
-          'agent',
-        ),
-      ).rejects.toThrow(PasswordNotMatchError);
-    });
-
-    it('should handle expired session', async () => {
-      const sessionId = 'oauth_session123';
-      mockRedis.get.mockResolvedValueOnce(null);
-
-      await expect(
-        service.completeOAuthVerification(
-          sessionId,
-          { password: 'password' },
-          'ip',
-          'agent',
-        ),
-      ).rejects.toThrow('OAuth session not found or expired');
-    });
-  });
-
-  // OAuth 绑定功能测试
-  describe('OAuth Binding', () => {
-    const mockUser = {
-      id: 1,
-      username: 'testuser',
-      email: 'test@example.com',
-      deletedAt: null,
-    };
-
-    const mockUserInfo: OAuthUserInfo = {
-      id: 'oauth123',
-      email: 'oauth@example.com',
-      name: 'OAuth User',
-      username: 'oauthuser',
-      preferredUsername: 'oauthuser',
-    };
-
-    describe('initOAuthBinding', () => {
-      beforeEach(() => {
-        mockRedis.setex.mockResolvedValue('OK');
-        jest
-          .spyOn(service as any, 'findUserRecordOrThrow')
-          .mockResolvedValue(mockUser);
-      });
-
-      it('should initialize OAuth binding successfully', async () => {
-        const result = await service.initOAuthBinding(
-          1,
-          'github',
-          'test-state',
-        );
-
-        expect(result.bindingSessionId).toMatch(/^oauth_binding_github_1_\d+_/);
-        expect(mockRedis.setex).toHaveBeenCalledWith(
-          expect.stringMatching(/^oauth_binding_session:/),
-          15 * 60,
-          expect.stringContaining('"type":"binding"'),
-        );
-      });
-
-      it('should throw error if user not found', async () => {
-        jest
-          .spyOn(service as any, 'findUserRecordOrThrow')
-          .mockRejectedValueOnce(new Error('User not found'));
-
-        await expect(service.initOAuthBinding(999, 'github')).rejects.toThrow(
-          'User not found',
-        );
-      });
-    });
-
-    describe('handleOAuthBindingCallback', () => {
-      const bindingSessionId = 'oauth_binding_github_1_123_abc';
-      const sessionData = {
-        type: 'binding',
-        userId: 1,
-        providerId: 'github',
-        originalState: 'test-state',
-        createdAt: new Date().toISOString(),
-      };
-
-      beforeEach(() => {
-        mockRedis.get.mockResolvedValue(JSON.stringify(sessionData));
-        mockRedis.del.mockResolvedValue(1);
-      });
-
-      it('should bind OAuth account successfully', async () => {
-        // Mock no existing connection
-        mockPrismaService.userOAuthConnection.findUnique.mockResolvedValueOnce(
-          null,
-        );
-        mockPrismaService.userOAuthConnection.findFirst.mockResolvedValueOnce(
-          null,
-        );
-        mockPrismaService.userOAuthConnection.create.mockResolvedValue({
-          id: 1,
-          userId: 1,
-          providerId: 'github',
-          providerUserId: 'oauth123',
-        });
-
-        const result = await service.handleOAuthBindingCallback(
-          'github',
-          mockUserInfo,
-          bindingSessionId,
-        );
-
-        expect(result.success).toBe(true);
-        expect(result.message).toBe('OAuth account linked successfully');
-        expect(
-          mockPrismaService.userOAuthConnection.create,
-        ).toHaveBeenCalledWith({
-          data: {
-            userId: 1,
-            providerId: 'github',
-            providerUserId: 'oauth123',
-            rawProfile: mockUserInfo,
-          },
-        });
-        expect(mockRedis.del).toHaveBeenCalledWith(
-          `oauth_binding_session:${bindingSessionId}`,
-        );
-      });
-
-      it('should fail if OAuth account already bound to same user', async () => {
-        mockPrismaService.userOAuthConnection.findUnique.mockResolvedValueOnce({
-          id: 1,
-          userId: 1,
-          providerId: 'github',
-          providerUserId: 'oauth123',
-        });
-
-        const result = await service.handleOAuthBindingCallback(
-          'github',
-          mockUserInfo,
-          bindingSessionId,
-        );
-
-        expect(result.success).toBe(false);
-        expect(result.message).toBe(
-          'This OAuth account is already linked to your account',
-        );
-        expect(mockRedis.del).toHaveBeenCalled();
-      });
-
-      it('should fail if OAuth account already bound to another user', async () => {
-        mockPrismaService.userOAuthConnection.findUnique.mockResolvedValueOnce({
-          id: 1,
-          userId: 999, // Different user
-          providerId: 'github',
-          providerUserId: 'oauth123',
-        });
-
-        const result = await service.handleOAuthBindingCallback(
-          'github',
-          mockUserInfo,
-          bindingSessionId,
-        );
-
-        expect(result.success).toBe(false);
-        expect(result.message).toBe(
-          'This OAuth account is already linked to another user',
-        );
-        expect(mockRedis.del).toHaveBeenCalled();
-      });
-
-      it('should fail if user already has another account from same provider', async () => {
-        // No existing connection for this OAuth account
-        mockPrismaService.userOAuthConnection.findUnique.mockResolvedValueOnce(
-          null,
-        );
-        // But user has another GitHub account
-        mockPrismaService.userOAuthConnection.findFirst.mockResolvedValueOnce({
-          id: 2,
-          userId: 1,
-          providerId: 'github',
-          providerUserId: 'different-oauth-id',
-        });
-
-        const result = await service.handleOAuthBindingCallback(
-          'github',
-          mockUserInfo,
-          bindingSessionId,
-        );
-
-        expect(result.success).toBe(false);
-        expect(result.message).toBe(
-          'You have already linked another github account. Please unbind it first.',
-        );
-        expect(mockRedis.del).toHaveBeenCalled();
-      });
-
-      it('should throw error if binding session not found', async () => {
-        mockRedis.get.mockResolvedValue(null);
-
-        await expect(
-          service.handleOAuthBindingCallback(
-            'github',
-            mockUserInfo,
-            bindingSessionId,
-          ),
-        ).rejects.toThrow('Binding session not found or expired');
-      });
-
-      it('should throw error if session type is invalid', async () => {
-        const invalidSession = { ...sessionData, type: 'login' };
-        mockRedis.get.mockResolvedValue(JSON.stringify(invalidSession));
-
-        await expect(
-          service.handleOAuthBindingCallback(
-            'github',
-            mockUserInfo,
-            bindingSessionId,
-          ),
-        ).rejects.toThrow('Invalid binding session');
-      });
-
-      it('should throw error if provider mismatch', async () => {
-        const mismatchSession = { ...sessionData, providerId: 'google' };
-        mockRedis.get.mockResolvedValue(JSON.stringify(mismatchSession));
-
-        await expect(
-          service.handleOAuthBindingCallback(
-            'github',
-            mockUserInfo,
-            bindingSessionId,
-          ),
-        ).rejects.toThrow('Invalid binding session');
-      });
-    });
-
-    describe('getUserOAuthConnections', () => {
-      it('should return user OAuth connections', async () => {
-        const mockConnections = [
-          {
-            id: 1,
-            providerId: 'github',
-            providerUserId: 'github123',
-            createdAt: new Date('2024-01-01T00:00:00.000Z'),
-          },
-          {
-            id: 2,
-            providerId: 'google',
-            providerUserId: 'google456',
-            createdAt: new Date('2024-01-02T00:00:00.000Z'),
-          },
-        ];
-
-        mockPrismaService.userOAuthConnection.findMany.mockResolvedValue(
-          mockConnections,
-        );
-
-        const result = await service.getUserOAuthConnections(1);
-
-        expect(result).toEqual([
-          {
-            id: 1,
-            providerId: 'github',
-            providerName: 'GitHub',
-            providerUserId: 'github123',
-            connectedAt: '2024-01-01T00:00:00.000Z',
-          },
-          {
-            id: 2,
-            providerId: 'google',
-            providerName: 'Google',
-            providerUserId: 'google456',
-            connectedAt: '2024-01-02T00:00:00.000Z',
-          },
-        ]);
-
-        expect(
-          mockPrismaService.userOAuthConnection.findMany,
-        ).toHaveBeenCalledWith({
-          where: { userId: 1 },
-          orderBy: { createdAt: 'desc' },
-        });
-      });
-
-      it('should handle unknown provider names', async () => {
-        const mockConnections = [
-          {
-            id: 1,
-            providerId: 'unknown',
-            providerUserId: 'unknown123',
-            createdAt: new Date('2024-01-01T00:00:00.000Z'),
-          },
-        ];
-
-        mockPrismaService.userOAuthConnection.findMany.mockResolvedValue(
-          mockConnections,
-        );
-
-        const result = await service.getUserOAuthConnections(1);
-
-        expect(result[0].providerName).toBe('unknown');
-      });
-    });
-
-    describe('unbindOAuth', () => {
-      const mockConnection = {
-        id: 1,
-        userId: 1,
-        providerId: 'github',
-        providerUserId: 'github123',
-      };
-
-      beforeEach(() => {
-        mockPrismaService.userOAuthConnection.findFirst.mockResolvedValue(
-          mockConnection,
-        );
-        mockPrismaService.userOAuthConnection.count.mockResolvedValue(2);
-        mockPrismaService.user.findUnique.mockResolvedValue({
-          hashedPassword: 'hashed-password',
-          srpUpgraded: true,
-        });
-        mockPrismaService.userOAuthConnection.delete.mockResolvedValue(
-          mockConnection,
-        );
-      });
-
-      it('should unbind OAuth connection successfully', async () => {
-        const result = await service.unbindOAuth(1, 1);
-
-        expect(result.success).toBe(true);
-        expect(result.unboundConnectionId).toBe(1);
-        expect(
-          mockPrismaService.userOAuthConnection.delete,
-        ).toHaveBeenCalledWith({
-          where: { id: 1 },
-        });
-      });
-
-      it('should throw error if connection not found', async () => {
-        mockPrismaService.userOAuthConnection.findFirst.mockResolvedValue(null);
-
-        await expect(service.unbindOAuth(1, 999)).rejects.toThrow(
-          'OAuth connection not found or does not belong to this user',
-        );
-      });
-
-      it('should throw error if connection belongs to different user', async () => {
-        const differentUserConnection = { ...mockConnection, userId: 999 };
-        mockPrismaService.userOAuthConnection.findFirst.mockResolvedValue(null);
-
-        await expect(service.unbindOAuth(1, 1)).rejects.toThrow(
-          'OAuth connection not found or does not belong to this user',
-        );
-      });
-
-      it('should throw error if it is the only authentication method', async () => {
-        // Only one OAuth connection
-        mockPrismaService.userOAuthConnection.count.mockResolvedValue(1);
-        // No password set
-        mockPrismaService.user.findUnique.mockResolvedValue({
-          hashedPassword: null,
-          srpUpgraded: false,
-        });
-
-        await expect(service.unbindOAuth(1, 1)).rejects.toThrow(
-          'Cannot unbind the only authentication method. Please set a password first.',
-        );
-      });
-
-      it('should allow unbinding if user has password', async () => {
-        // Only one OAuth connection but user has password
-        mockPrismaService.userOAuthConnection.count.mockResolvedValue(1);
-        mockPrismaService.user.findUnique.mockResolvedValue({
-          hashedPassword: 'hashed-password',
-          srpUpgraded: true,
-        });
-
-        const result = await service.unbindOAuth(1, 1);
-
-        expect(result.success).toBe(true);
-        expect(result.unboundConnectionId).toBe(1);
-      });
-
-      it('should allow unbinding if user has multiple OAuth connections', async () => {
-        // Multiple OAuth connections
-        mockPrismaService.userOAuthConnection.count.mockResolvedValue(2);
-        // No password but has other OAuth connections
-        mockPrismaService.user.findUnique.mockResolvedValue({
-          hashedPassword: null,
-          srpUpgraded: false,
-        });
-
-        const result = await service.unbindOAuth(1, 1);
-
-        expect(result.success).toBe(true);
-        expect(result.unboundConnectionId).toBe(1);
-      });
     });
   });
 });
