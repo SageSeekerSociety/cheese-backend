@@ -819,6 +819,140 @@ describe('UsersService - OAuth', () => {
       }
     });
 
+    it('should create new user with placeholder email and generated username from preferredUsername', async () => {
+      const providerId = 'test';
+      const userInfo: OAuthUserInfo = {
+        id: 'user-no-email',
+        name: 'Test User',
+        preferredUsername: 'test_preferred',
+      };
+
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.count.mockResolvedValue(0);
+
+      const createdUser = {
+        id: 11,
+        username: 'test_preferred',
+        email: `oauth-${providerId}-${userInfo.id}@placeholder.internal`,
+      };
+
+      mockPrismaService.$transaction.mockImplementation(async (cb) => {
+        const tx = {
+          user: { create: jest.fn().mockResolvedValue(createdUser) },
+          userProfile: { create: jest.fn() },
+          userOAuthConnection: { create: jest.fn() },
+          userRegisterLog: { create: jest.fn() },
+          userLoginLog: { create: jest.fn() },
+        };
+        await cb(tx);
+        return createdUser;
+      });
+
+      jest.spyOn(service, 'getOAuthUserDtoById').mockResolvedValue({
+        id: 11,
+        username: 'test_preferred',
+        nickname: 'Test User',
+        email: null,
+      } as any);
+
+      const result = await service.loginWithOAuth(
+        providerId,
+        userInfo,
+        'ip',
+        'ua',
+      );
+      expect(Array.isArray(result)).toBe(true);
+
+      const txCallback = (mockPrismaService.$transaction as jest.Mock).mock
+        .calls[0][0];
+      const txMock = {
+        user: { create: jest.fn() },
+        userProfile: { create: jest.fn() },
+        userOAuthConnection: { create: jest.fn() },
+        userRegisterLog: { create: jest.fn() },
+        userLoginLog: { create: jest.fn() },
+      };
+      await txCallback(txMock);
+
+      expect(txMock.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: 'test_preferred',
+          email: `oauth-${providerId}-${userInfo.id}@placeholder.internal`,
+        }),
+      );
+    });
+
+    it('should generate unique username if base username exists', async () => {
+      const providerId = 'test';
+      const userInfo: OAuthUserInfo = {
+        id: 'user-dup',
+        name: 'duplicate_user',
+      };
+
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      // isUsernameRegistered will be called.
+      mockPrismaService.user.count
+        .mockResolvedValueOnce(1)
+        .mockResolvedValueOnce(0); // first call true, second false
+
+      const createdUser = { id: 12, username: 'duplicate_user_1' };
+
+      mockPrismaService.$transaction.mockImplementation(async (cb) => {
+        const tx = {
+          user: { create: jest.fn().mockResolvedValue(createdUser) },
+          userProfile: { create: jest.fn() },
+          userOAuthConnection: { create: jest.fn() },
+          userRegisterLog: { create: jest.fn() },
+          userLoginLog: { create: jest.fn() },
+        };
+        await cb(tx);
+        return createdUser;
+      });
+
+      jest.spyOn(service, 'getOAuthUserDtoById').mockResolvedValue({
+        id: 12,
+        username: 'duplicate_user_1',
+      } as any);
+
+      await service.loginWithOAuth(providerId, userInfo, 'ip', 'ua');
+      const txCallback = (mockPrismaService.$transaction as jest.Mock).mock
+        .calls[0][0];
+      const txMock = {
+        user: { create: jest.fn() },
+        userProfile: { create: jest.fn() },
+        userOAuthConnection: { create: jest.fn() },
+        userRegisterLog: { create: jest.fn() },
+        userLoginLog: { create: jest.fn() },
+      };
+      await txCallback(txMock);
+
+      expect(txMock.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({ username: 'duplicate_user_1' }),
+      );
+    });
+
+    it('should not create a new OAuth connection if one already exists', async () => {
+      const userId = 1;
+      const providerId = 'test';
+      const userInfo: OAuthUserInfo = { id: 'user123' };
+
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue({
+        id: 1,
+      }); // connection exists
+
+      await (service as any).createOAuthConnection(
+        userId,
+        providerId,
+        userInfo,
+      );
+
+      expect(
+        mockPrismaService.userOAuthConnection.create,
+      ).not.toHaveBeenCalled();
+    });
+
     const mockUserInfo: OAuthUserInfo = {
       id: '12345',
       email: 'test@ruc.edu.cn',

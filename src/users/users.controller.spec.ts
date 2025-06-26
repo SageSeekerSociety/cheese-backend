@@ -70,6 +70,7 @@ describe('UsersController', () => {
     findUserRecordByUsernameOrThrow: jest.fn(),
     getFollowingCount: jest.fn().mockResolvedValue(5),
     findUserRecordOrThrow: jest.fn(),
+    handleOAuthBindingCallback: jest.fn(),
   };
 
   const mockAuthService = {
@@ -148,6 +149,7 @@ describe('UsersController', () => {
     generateAuthorizationUrl: jest
       .fn()
       .mockResolvedValue('https://oauth.provider/auth'),
+    getUserInfo: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -843,6 +845,222 @@ describe('UsersController', () => {
             unboundConnectionId: 1,
           },
         });
+      });
+    });
+  });
+
+  describe('OAuth callbacks and verification', () => {
+    const mockRes = {
+      redirect: jest.fn(),
+      cookie: jest.fn().mockReturnThis(),
+    } as unknown as Response;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    describe('oauthCallback', () => {
+      it('should handle successful login and redirect', async () => {
+        const mockUserDto = { id: 1, email: 'test@example.com' };
+        mockUsersService.loginWithOAuth.mockResolvedValue([
+          mockUserDto as any,
+          'refresh-token',
+        ]);
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({
+          id: '123',
+          email: 'test@example.com',
+        });
+        mockSessionService.refreshSession.mockResolvedValue([
+          'new-refresh',
+          'jwt-access',
+        ]);
+        mockAuthService.decode.mockReturnValue({
+          validUntil: Date.now() + 10000,
+        });
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth_code' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(mockUsersService.loginWithOAuth).toHaveBeenCalled();
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-success'),
+        );
+        expect(mockRes.cookie).toHaveBeenCalled();
+      });
+
+      it('should redirect to verification page when required', async () => {
+        mockUsersService.loginWithOAuth.mockResolvedValue({
+          requiresVerification: true,
+          verificationType: 'password',
+          email: 'test@example.com',
+          sessionId: 'session123',
+        });
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({
+          id: '123',
+          email: 'test@example.com',
+        });
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth_code' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-verify'),
+        );
+        const redirectUrl = (mockRes.redirect as jest.Mock).mock.calls[0][0];
+        expect(redirectUrl).toContain('type=password');
+        expect(redirectUrl).toContain('sessionId=session123');
+      });
+
+      it('should redirect to error page on OAuth error in query', async () => {
+        await controller.oauthCallback(
+          'google',
+          { code: '', error: 'access_denied' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-error?error=access_denied'),
+        );
+      });
+
+      it('should redirect to error page on service exception', async () => {
+        mockOAuthService.handleCallback.mockRejectedValue(
+          new Error('Some OAuth error'),
+        );
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth_code' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-error'),
+        );
+      });
+
+      it('should handle binding callback and redirect', async () => {
+        mockUsersService.handleOAuthBindingCallback.mockResolvedValue({
+          success: true,
+          message: 'Success',
+        });
+        mockOAuthService.handleCallback.mockResolvedValue('oauth-access-token');
+        mockOAuthService.getUserInfo.mockResolvedValue({
+          id: '123',
+          email: 'test@example.com',
+        });
+
+        await controller.oauthCallback(
+          'google',
+          { code: 'auth-code', state: 'binding:session-id' },
+          'ip',
+          'ua',
+          {} as Request,
+          mockRes,
+        );
+
+        expect(
+          mockUsersService.handleOAuthBindingCallback,
+        ).toHaveBeenCalledWith('google', expect.any(Object), 'session-id');
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-success?bound=true'),
+        );
+      });
+    });
+
+    describe('oauthVerify', () => {
+      it('should handle successful verification and redirect', async () => {
+        const mockUserDto = { id: 1, email: 'test@example.com' };
+        mockUsersService.completeOAuthVerification.mockResolvedValue([
+          mockUserDto as any,
+          'refresh-token',
+        ]);
+        mockSessionService.refreshSession.mockResolvedValue([
+          'new-refresh',
+          'jwt-access',
+        ]);
+        mockAuthService.decode.mockReturnValue({
+          validUntil: Date.now() + 10000,
+        });
+
+        await controller.oauthVerify(
+          { sessionId: 'session123', password: 'pw' },
+          'ip',
+          'ua',
+          mockRes,
+        );
+
+        expect(mockUsersService.completeOAuthVerification).toHaveBeenCalledWith(
+          'session123',
+          expect.any(Object),
+          'ip',
+          'ua',
+        );
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-success'),
+        );
+      });
+
+      it('should redirect to error page on verification failure', async () => {
+        mockUsersService.completeOAuthVerification.mockRejectedValue(
+          new Error('Verification failed'),
+        );
+
+        await controller.oauthVerify(
+          { sessionId: 'session123', password: 'pw' },
+          'ip',
+          'ua',
+          mockRes,
+        );
+
+        expect(mockRes.redirect).toHaveBeenCalledWith(
+          expect.stringContaining('/oauth-error'),
+        );
+      });
+    });
+
+    describe('bindOAuth', () => {
+      it('should return bind URL successfully', async () => {
+        mockUsersService.initOAuthBinding.mockResolvedValue({
+          bindingSessionId: 'binding123',
+        });
+        mockOAuthService.generateAuthorizationUrl.mockResolvedValue(
+          'http://provider/auth?state=binding:binding123',
+        );
+
+        const result = await controller.bindOAuth(1, 'google', {}, 'token');
+
+        expect(mockUsersService.initOAuthBinding).toHaveBeenCalledWith(
+          1,
+          'google',
+          undefined,
+        );
+        expect(mockOAuthService.generateAuthorizationUrl).toHaveBeenCalledWith(
+          'google',
+          'binding:binding123',
+          undefined,
+        );
+        expect(result.data.bindUrl).toBe(
+          'http://provider/auth?state=binding:binding123',
+        );
       });
     });
   });
