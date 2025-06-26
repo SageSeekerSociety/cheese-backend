@@ -1077,10 +1077,12 @@ describe('UsersController', () => {
           { sessionId: 'session123', password: 'pw' },
           'ip',
           'ua',
+          {} as Request,
           mockRes,
         );
 
         expect(mockUsersService.completeOAuthVerification).toHaveBeenCalledWith(
+          {} as Request,
           'session123',
           expect.any(Object),
           'ip',
@@ -1100,6 +1102,7 @@ describe('UsersController', () => {
           { sessionId: 'session123', password: 'pw' },
           'ip',
           'ua',
+          {} as Request,
           mockRes,
         );
 
@@ -1294,6 +1297,9 @@ describe('UsersController', () => {
           'Test User',
           'ip',
           'ua',
+          undefined, // passwordMode
+          undefined, // srpSalt
+          undefined, // srpVerifier
         );
         expect(mockResponse.cookie).toHaveBeenCalled();
         expect(mockResponse.redirect).toHaveBeenCalledWith(

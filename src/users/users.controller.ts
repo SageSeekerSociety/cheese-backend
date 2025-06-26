@@ -146,6 +146,16 @@ declare module 'express-session' {
     srpSession?: {
       serverSecretEphemeral: string;
     };
+    oauthSrpSession?: {
+      type: 'srp' | 'srp_bind' | 'password';
+      providerId: string;
+      userInfo: any;
+      existingUserId: number;
+      serverSecretEphemeral: string;
+      username?: string; // 用于srp_bind类型
+      srpSalt?: string; // 用于srp_bind类型
+      srpVerifier?: string; // 用于srp_bind类型
+    };
   }
 }
 
@@ -1397,6 +1407,7 @@ export class UsersController {
 
       // 新的OAuth流程处理
       const result = await this.usersService.initiateOAuthFlow(
+        req,
         providerId,
         userInfo,
         ip,
@@ -1530,6 +1541,7 @@ export class UsersController {
     }: OAuthVerifyRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
     try {
@@ -1541,6 +1553,7 @@ export class UsersController {
 
       const [userDto, refreshToken] =
         await this.usersService.completeOAuthVerification(
+          req,
           sessionId,
           credentials,
           ip,
@@ -1732,9 +1745,11 @@ export class UsersController {
   @NoAuth()
   async initOAuthSrpBinding(
     @Body() { stateToken, username }: OAuthSrpBindInitRequestDto,
+    @Req() req: Request,
   ): Promise<OAuthSrpBindInitResponseDto> {
     try {
       const result = await this.usersService.initSrpBindingForOAuth(
+        req,
         stateToken,
         username,
       );
@@ -1775,11 +1790,13 @@ export class UsersController {
     }: OAuthSrpBindVerifyRequestDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
     try {
       const [userDto, refreshToken] =
         await this.usersService.completeSrpBindingForOAuth(
+          req,
           sessionId,
           clientPublicEphemeral,
           clientProof,

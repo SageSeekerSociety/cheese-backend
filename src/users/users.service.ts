@@ -1860,6 +1860,7 @@ export class UsersService {
    * 根据用户状态返回不同的处理结果
    */
   async initiateOAuthFlow(
+    req: Request,
     providerId: string,
     userInfo: OAuthUserInfo,
     ip: string,
@@ -1919,6 +1920,7 @@ export class UsersService {
         if (existingUser.srpUpgraded) {
           // SRP用户，启动SRP验证
           return this.initOAuthSrpVerification(
+            req, // ✅ 传递req参数
             providerId,
             userInfo,
             existingUser,
@@ -1926,6 +1928,7 @@ export class UsersService {
         } else {
           // 传统用户，需要密码验证
           return this.initOAuthPasswordVerification(
+            req,
             providerId,
             userInfo,
             existingUser,
@@ -1952,6 +1955,7 @@ export class UsersService {
    * 初始化OAuth密码验证（传统用户）
    */
   private async initOAuthPasswordVerification(
+    req: Request,
     providerId: string,
     userInfo: OAuthUserInfo,
     existingUser: any,
@@ -1967,20 +1971,14 @@ export class UsersService {
       userInfo.id,
     );
 
-    const sessionData = {
+    // 使用Express session存储，与其他流程保持一致
+    req.session.oauthSrpSession = {
       type: 'password',
       providerId,
       userInfo,
       existingUserId: existingUser.id,
-      existingUsername: existingUser.username,
+      serverSecretEphemeral: '', // password类型不需要，但保持接口一致
     };
-
-    const redis = this.redisService.getOrThrow();
-    await redis.setex(
-      `oauth_session:${sessionId}`,
-      15 * 60,
-      JSON.stringify(sessionData),
-    );
 
     return {
       requiresVerification: true,
@@ -1994,6 +1992,7 @@ export class UsersService {
    * 初始化OAuth SRP验证
    */
   private async initOAuthSrpVerification(
+    req: Request,
     providerId: string,
     userInfo: OAuthUserInfo,
     existingUser: any,
@@ -2016,20 +2015,14 @@ export class UsersService {
       existingUser.srpVerifier,
     );
 
-    const sessionData = {
+    // 使用Express session存储，与标准SRP登录保持一致
+    req.session.oauthSrpSession = {
       type: 'srp',
       providerId,
       userInfo,
       existingUserId: existingUser.id,
-      serverEphemeral: serverSession.serverEphemeral,
+      serverSecretEphemeral: serverSession.serverEphemeral.secret,
     };
-
-    const redis = this.redisService.getOrThrow();
-    await redis.setex(
-      `oauth_session:${sessionId}`,
-      15 * 60,
-      JSON.stringify(sessionData),
-    );
 
     return {
       requiresVerification: true,
@@ -2457,6 +2450,7 @@ export class UsersService {
    * 统一的OAuth验证完成处理
    */
   async completeOAuthVerification(
+    req: Request,
     sessionId: string,
     credentials: {
       password?: string;
@@ -2466,30 +2460,28 @@ export class UsersService {
     ip: string,
     userAgent: string | undefined,
   ): Promise<[OAuthUserDto, string]> {
-    const redis = this.redisService.getOrThrow();
-    const sessionData = await redis.get(`oauth_session:${sessionId}`);
+    // 从session中获取OAuth数据
+    const session = req.session.oauthSrpSession;
 
-    if (!sessionData) {
+    if (!session) {
       throw new Error('OAuth session not found or expired');
     }
 
-    const session = JSON.parse(sessionData);
+    // 立即清除session数据防止重放攻击
+    delete req.session.oauthSrpSession;
 
-    // 立即删除会话数据防止重放攻击
-    await redis.del(`oauth_session:${sessionId}`);
-
-    if (session.type === 'password') {
-      return this.completePasswordVerification(
-        session,
-        credentials.password!,
-        ip,
-        userAgent,
-      );
-    } else if (session.type === 'srp') {
+    if (session.type === 'srp') {
       return this.completeSrpVerification(
         session,
         credentials.clientPublicEphemeral!,
         credentials.clientProof!,
+        ip,
+        userAgent,
+      );
+    } else if (session.type === 'password') {
+      return this.completePasswordVerification(
+        session,
+        credentials.password!,
         ip,
         userAgent,
       );
@@ -2565,9 +2557,9 @@ export class UsersService {
       throw new SrpNotUpgradedError(user.username);
     }
 
-    // 验证SRP证明
+    // 验证SRP证明 - 与标准SRP登录保持一致的参数传递
     const { success } = await this.srpService.verifyClient(
-      session.serverEphemeral.secret,
+      session.serverSecretEphemeral, // ✅ 直接使用字符串
       clientPublicEphemeral,
       user.srpSalt,
       user.username,
@@ -3088,6 +3080,7 @@ export class UsersService {
    * 用于决策页面中绑定SRP用户
    */
   async initSrpBindingForOAuth(
+    req: Request,
     stateToken: string,
     username: string,
   ): Promise<{
@@ -3131,24 +3124,17 @@ export class UsersService {
       user.srpVerifier,
     );
 
-    // 存储会话数据
-    const sessionData = {
+    // 使用Express session存储，与标准SRP登录保持一致
+    req.session.oauthSrpSession = {
       type: 'srp_bind',
       providerId,
       userInfo,
       existingUserId: user.id,
-      serverEphemeral: serverSession.serverEphemeral,
+      serverSecretEphemeral: serverSession.serverEphemeral.secret,
       username: user.username,
       srpSalt: user.srpSalt,
       srpVerifier: user.srpVerifier,
     };
-
-    const redis = this.redisService.getOrThrow();
-    await redis.setex(
-      `oauth_srp_bind_session:${sessionId}`,
-      15 * 60, // 15分钟过期
-      JSON.stringify(sessionData),
-    );
 
     return {
       sessionId,
@@ -3161,36 +3147,30 @@ export class UsersService {
    * 完成OAuth SRP绑定流程
    */
   async completeSrpBindingForOAuth(
+    req: Request,
     sessionId: string,
     clientPublicEphemeral: string,
     clientProof: string,
     ip: string,
     userAgent: string | undefined,
   ): Promise<[OAuthUserDto, string]> {
-    // 获取会话数据
-    const redis = this.redisService.getOrThrow();
-    const sessionData = await redis.get(`oauth_srp_bind_session:${sessionId}`);
+    // 从session中获取OAuth SRP绑定数据
+    const session = req.session.oauthSrpSession;
 
-    if (!sessionData) {
+    if (!session || session.type !== 'srp_bind') {
       throw new Error('SRP binding session not found or expired');
     }
 
-    const session = JSON.parse(sessionData);
+    // 立即清除session数据防止重放攻击
+    delete req.session.oauthSrpSession;
 
-    // 立即删除会话数据防止重放攻击
-    await redis.del(`oauth_srp_bind_session:${sessionId}`);
-
-    if (session.type !== 'srp_bind') {
-      throw new Error('Invalid session type');
-    }
-
-    // 验证SRP证明
+    // 验证SRP证明 - 与标准SRP登录保持一致的参数传递
     const { success } = await this.srpService.verifyClient(
-      session.serverEphemeral.secret,
+      session.serverSecretEphemeral, // ✅ 直接使用字符串
       clientPublicEphemeral,
-      session.srpSalt,
-      session.username,
-      session.srpVerifier,
+      session.srpSalt!,
+      session.username!,
+      session.srpVerifier!,
       clientProof,
     );
 

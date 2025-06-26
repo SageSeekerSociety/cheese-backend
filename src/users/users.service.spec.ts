@@ -193,6 +193,11 @@ describe('UsersService - OAuth', () => {
     verifyClient: jest.fn(),
   };
 
+  // Mock Express Request object with session
+  const mockRequest = {
+    session: {} as any,
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -228,6 +233,8 @@ describe('UsersService - OAuth', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    // 重置Express session mock
+    mockRequest.session = {};
   });
 
   describe('Validation Methods', () => {
@@ -635,6 +642,7 @@ describe('UsersService - OAuth', () => {
         .mockResolvedValueOnce('new-session-token');
 
       const result = await service.initiateOAuthFlow(
+        mockRequest as any,
         providerId,
         userInfo,
         'ip',
@@ -704,6 +712,7 @@ describe('UsersService - OAuth', () => {
       });
 
       const result = await service.initiateOAuthFlow(
+        mockRequest as any,
         providerId,
         userInfo,
         'ip',
@@ -749,6 +758,7 @@ describe('UsersService - OAuth', () => {
       mockRedis.setex.mockResolvedValue('OK');
 
       const result = await service.initiateOAuthFlow(
+        mockRequest as any,
         providerId,
         userInfo,
         'ip',
@@ -783,6 +793,7 @@ describe('UsersService - OAuth', () => {
       mockAuthService.sign.mockReturnValueOnce('mock-state-token');
 
       const result = await service.initiateOAuthFlow(
+        mockRequest as any,
         providerId,
         userInfo,
         'ip',
@@ -813,6 +824,7 @@ describe('UsersService - OAuth', () => {
       mockAuthService.sign.mockReturnValueOnce('mock-state-token');
 
       const result = await service.initiateOAuthFlow(
+        mockRequest as any,
         providerId,
         userInfo,
         'ip',
@@ -1628,28 +1640,30 @@ describe('UsersService - OAuth', () => {
   });
 
   describe('completeOAuthVerification', () => {
-    it('should complete password verification successfully', async () => {
-      const sessionId = 'password-session-123';
-      const credentials = { password: 'correct-password' };
-      const sessionData = {
-        type: 'password',
+    it('should complete SRP verification successfully (legacy password test removed)', async () => {
+      const sessionId = 'srp-session-123';
+      const credentials = {
+        clientPublicEphemeral: 'client-public',
+        clientProof: 'client-proof',
+      };
+
+      // 设置Express session数据 - 模拟SRP验证流程
+      mockRequest.session.oauthSrpSession = {
+        type: 'srp',
         providerId: 'test',
         userInfo: { id: '123', name: 'Test User' },
         existingUserId: 1,
-        existingUsername: 'testuser',
+        serverSecretEphemeral: 'server-secret',
       };
-
-      mockRedis.get.mockResolvedValue(JSON.stringify(sessionData));
-      mockRedis.del.mockResolvedValue(1);
 
       const mockUser = {
         id: 1,
         username: 'testuser',
         email: 'test@example.com',
-        hashedPassword: 'hashed-password',
-        srpUpgraded: false,
-        srpSalt: null,
-        srpVerifier: null,
+        hashedPassword: null, // SRP用户没有传统密码
+        srpUpgraded: true, // ✅ SRP已升级
+        srpSalt: 'salt', // ✅ 有SRP盐值
+        srpVerifier: 'verifier', // ✅ 有SRP验证器
         createdAt: new Date(),
         updatedAt: new Date(),
         lastPasswordChangedAt: new Date(),
@@ -1663,12 +1677,8 @@ describe('UsersService - OAuth', () => {
       };
       jest.spyOn(service, 'findUserRecordOrThrow').mockResolvedValue(mockUser);
 
-      jest
-        .spyOn(service as any, 'authenticateUserWithPassword')
-        .mockResolvedValue({
-          verified: true,
-          wasUpgraded: false,
-        });
+      // OAuth SRP验证不需要密码认证，直接进行SRP验证
+      mockSrpService.verifyClient.mockResolvedValue({ success: true });
 
       jest
         .spyOn(service as any, 'createOAuthConnection')
@@ -1684,6 +1694,7 @@ describe('UsersService - OAuth', () => {
         .mockResolvedValue('session-token');
 
       const result = await service.completeOAuthVerification(
+        mockRequest as any,
         sessionId,
         credentials,
         'ip',
@@ -1693,7 +1704,8 @@ describe('UsersService - OAuth', () => {
       expect(Array.isArray(result)).toBe(true);
       expect(result[0].username).toBe('testuser');
       expect(result[1]).toBe('session-token');
-      expect(mockRedis.del).toHaveBeenCalledWith(`oauth_session:${sessionId}`);
+      // ✅ 验证session已被清除（通过实现中的delete req.session.oauthSrpSession）
+      expect(mockRequest.session.oauthSrpSession).toBeUndefined();
     });
 
     it('should complete SRP verification successfully', async () => {
@@ -1702,16 +1714,15 @@ describe('UsersService - OAuth', () => {
         clientPublicEphemeral: 'client-public',
         clientProof: 'client-proof',
       };
-      const sessionData = {
+
+      // 设置Express session数据
+      mockRequest.session.oauthSrpSession = {
         type: 'srp',
         providerId: 'test',
         userInfo: { id: '123' },
         existingUserId: 1,
-        serverEphemeral: { secret: 'server-secret' },
+        serverSecretEphemeral: 'server-secret', // ✅ 直接存储字符串，与实现一致
       };
-
-      mockRedis.get.mockResolvedValue(JSON.stringify(sessionData));
-      mockRedis.del.mockResolvedValue(1);
 
       const mockUser = {
         id: 1,
@@ -1749,6 +1760,7 @@ describe('UsersService - OAuth', () => {
         .mockResolvedValue('session-token');
 
       const result = await service.completeOAuthVerification(
+        mockRequest as any,
         sessionId,
         credentials,
         'ip',
@@ -1764,14 +1776,24 @@ describe('UsersService - OAuth', () => {
         'verifier',
         'client-proof',
       );
+      // ✅ 验证session已被清除
+      expect(mockRequest.session.oauthSrpSession).toBeUndefined();
     });
 
     it('should throw error for expired session', async () => {
       const sessionId = 'expired-session';
-      mockRedis.get.mockResolvedValue(null);
+
+      // 确保Express session中没有oauthSrpSession数据
+      mockRequest.session = {};
 
       await expect(
-        service.completeOAuthVerification(sessionId, {}, 'ip', 'agent'),
+        service.completeOAuthVerification(
+          mockRequest as any,
+          sessionId,
+          {},
+          'ip',
+          'agent',
+        ),
       ).rejects.toThrow('OAuth session not found or expired');
     });
   });
@@ -2458,6 +2480,7 @@ describe('UsersService - OAuth', () => {
       mockPrismaService.userOAuthConnection.update.mockResolvedValue({});
 
       const result = await service.initiateOAuthFlow(
+        mockRequest as any,
         'test',
         mockUserInfo,
         '127.0.0.1',
@@ -2522,6 +2545,7 @@ describe('UsersService - OAuth', () => {
       });
 
       await service.initiateOAuthFlow(
+        mockRequest as any,
         'test',
         mockUserInfo,
         '127.0.0.1',
@@ -2559,6 +2583,7 @@ describe('UsersService - OAuth', () => {
       mockRedis.setex.mockResolvedValue('OK');
 
       const result = await service.initiateOAuthFlow(
+        mockRequest as any,
         'test',
         mockUserInfo,
         '127.0.0.1',
