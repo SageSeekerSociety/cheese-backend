@@ -27,6 +27,7 @@ import {
   Req,
   Res,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import path from 'node:path';
@@ -122,6 +123,7 @@ import {
 import { UserDto } from './DTO/user.dto';
 import { TOTPService } from './totp.service';
 import {
+  InvalidLoginCredentialsError,
   PasskeyNotFoundError,
   TOTPRequiredError,
   UserIdNotFoundError,
@@ -204,6 +206,7 @@ export class UsersController {
 
   @Post('/verify/email')
   @NoAuth()
+  @Throttle({ default: { limit: 1, ttl: 60000 } }) // 1 request per minute
   async sendRegisterEmailCode(
     @Body() { email }: SendEmailVerifyCodeRequestDto,
     @Ip() ip: string,
@@ -218,6 +221,7 @@ export class UsersController {
 
   @Post('/')
   @NoAuth()
+  @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 registrations per hour
   async register(
     @Body()
     {
@@ -332,6 +336,7 @@ export class UsersController {
 
   @Post('/auth/login')
   @NoAuth()
+  @Throttle({ default: { limit: 5, ttl: 900000 } }) // 5 login attempts per 15 minutes
   async login(
     @Body() { username, password }: LoginRequestDto,
     @Ip() ip: string,
@@ -463,6 +468,7 @@ export class UsersController {
 
   @Post('/recover/password/request')
   @NoAuth()
+  @Throttle({ default: { limit: 2, ttl: 300000 } }) // 2 password reset requests per 5 minutes
   async sendResetPasswordEmail(
     @Body() { email }: ResetPasswordRequestRequestDto,
     @Ip() ip: string,
@@ -897,6 +903,7 @@ export class UsersController {
 
   @Post('auth/verify-2fa')
   @NoAuth()
+  @Throttle({ default: { limit: 3, ttl: 300000 } }) // 3 2FA attempts per 5 minutes
   async verify2FA(
     @Body() dto: Verify2FARequestDto,
     @Ip() ip: string,
@@ -1100,6 +1107,7 @@ export class UsersController {
 
   @Post('/auth/srp/init')
   @NoAuth()
+  @Throttle({ default: { limit: 10, ttl: 900000 } }) // 10 SRP init attempts per 15 minutes
   async srpInit(
     @Body() { username }: SrpInitRequestDto,
     @Ip() ip: string,
@@ -1125,6 +1133,7 @@ export class UsersController {
 
   @Post('/auth/srp/verify')
   @NoAuth()
+  @Throttle({ default: { limit: 5, ttl: 900000 } }) // 5 SRP verify attempts per 15 minutes
   async srpVerify(
     @Body()
     { username, clientPublicEphemeral, clientProof }: SrpVerifyRequestDto,
@@ -1209,41 +1218,40 @@ export class UsersController {
       requires_2fa: boolean;
     };
   }> {
-    try {
-      const user =
-        await this.usersService.findUserRecordByUsernameOrThrow(username);
+    const user = await this.prismaService.user.findUnique({
+      where: { username },
+    });
 
-      const hasPasskeys =
-        (await this.prismaService.passkey.count({
-          where: { userId: user.id },
-        })) > 0;
-
+    if (!user) {
+      // Return default "safe" authentication methods to prevent user enumeration
+      // This makes it appear that the user exists but only supports basic auth
       return {
         code: 200,
         message: 'Authentication methods retrieved successfully.',
         data: {
-          supports_srp: user.srpUpgraded,
-          supports_passkey: hasPasskeys,
-          supports_2fa: user.totpEnabled,
-          requires_2fa: user.totpAlwaysRequired,
+          supports_srp: false,
+          supports_passkey: false,
+          supports_2fa: false,
+          requires_2fa: false,
         },
       };
-    } catch (error) {
-      if (error instanceof UsernameNotFoundError) {
-        // 如果用户不存在，返回所有方法都不支持
-        return {
-          code: 200,
-          message: 'User not found, no authentication methods available.',
-          data: {
-            supports_srp: false,
-            supports_passkey: false,
-            supports_2fa: false,
-            requires_2fa: false,
-          },
-        };
-      }
-      throw error;
     }
+
+    const hasPasskeys =
+      (await this.prismaService.passkey.count({
+        where: { userId: user.id },
+      })) > 0;
+
+    return {
+      code: 200,
+      message: 'Authentication methods retrieved successfully.',
+      data: {
+        supports_srp: user.srpUpgraded,
+        supports_passkey: hasPasskeys,
+        supports_2fa: user.totpEnabled,
+        requires_2fa: user.totpAlwaysRequired,
+      },
+    };
   }
 
   @Patch('/:id/password')

@@ -68,6 +68,7 @@ import {
   FollowYourselfError,
   InvalidEmailAddressError,
   InvalidEmailSuffixError,
+  InvalidLoginCredentialsError,
   InvalidNicknameError,
   InvalidPasswordError,
   InvalidUsernameError,
@@ -642,10 +643,10 @@ export class UsersService {
       let finalSrpVerifier = srpVerifier;
       let isSrpUpgraded = true;
 
-      // 如果是传统认证方式，生成密码哈希
+      // 如果是传统认证方式，生成密码哈希 (使用异步版本)
       if (isLegacyAuth && password) {
-        const salt = bcrypt.genSaltSync(10);
-        hashedPassword = bcrypt.hashSync(password, salt);
+        const salt = await bcrypt.genSalt(10);
+        hashedPassword = await bcrypt.hash(password, salt);
         finalSrpSalt = '';
         finalSrpVerifier = '';
         isSrpUpgraded = false;
@@ -701,42 +702,127 @@ export class UsersService {
     ip: string,
     userAgent: string | undefined, // optional
   ): Promise<UserDto> {
-    const [user, profile] =
-      await this.findUserRecordAndProfileRecordOrThrow(userId);
-    const vieweeId = user.id;
-    await this.prismaService.userProfileQueryLog.create({
-      data: {
-        viewerId,
-        vieweeId,
-        ip,
-        userAgent,
-      },
+    const [userDto] = await this.getUsersDtoByIds(
+      [userId],
+      viewerId,
+      ip,
+      userAgent,
+    );
+    return userDto;
+  }
+
+  /**
+   * Batch fetch user DTOs to solve N+1 query problem
+   * This method efficiently fetches multiple user DTOs with minimal database queries
+   */
+  async getUsersDtoByIds(
+    userIds: number[],
+    viewerId: number | undefined, // optional
+    ip: string,
+    userAgent: string | undefined, // optional
+  ): Promise<UserDto[]> {
+    if (userIds.length === 0) return [];
+
+    // Remove duplicates while preserving order
+    const uniqueUserIds = [...new Set(userIds)];
+
+    // 1. Batch fetch users and profiles
+    const usersWithProfiles = await this.prismaService.user.findMany({
+      where: { id: { in: uniqueUserIds } },
+      include: { userProfile: true },
     });
-    const followCountPromise = this.getFollowingCount(userId);
-    const fansCountPromise = this.getFollowedCount(userId);
-    const ifFollowPromise = this.isUserFollowUser(viewerId, userId);
-    const answerCountPromise = this.answerService.getAnswerCount(userId);
-    const questionCountPromise = this.questionsService.getQuestionCount(userId);
-    const [followCount, fansCount, isFollow, answerCount, questionCount] =
-      await Promise.all([
-        followCountPromise,
-        fansCountPromise,
-        ifFollowPromise,
-        answerCountPromise,
-        questionCountPromise,
-      ]);
-    return {
-      id: user.id,
-      username: user.username,
-      nickname: profile.nickname,
-      avatarId: profile.avatarId,
-      intro: profile.intro,
-      follow_count: followCount,
-      fans_count: fansCount,
-      is_follow: isFollow,
-      question_count: questionCount,
-      answer_count: answerCount,
-    };
+
+    // Create a map for quick lookup
+    const userMap = new Map(usersWithProfiles.map((u) => [u.id, u]));
+
+    // 2. Batch fetch follow counts (following count for each user)
+    const followCounts =
+      await this.prismaService.userFollowingRelationship.groupBy({
+        by: ['followerId'],
+        where: { followerId: { in: uniqueUserIds } },
+        _count: { followerId: true },
+      });
+    const followCountMap = new Map(
+      followCounts.map((fc) => [fc.followerId, fc._count.followerId]),
+    );
+
+    // 3. Batch fetch fan counts (follower count for each user)
+    const fanCounts =
+      await this.prismaService.userFollowingRelationship.groupBy({
+        by: ['followeeId'],
+        where: { followeeId: { in: uniqueUserIds } },
+        _count: { followeeId: true },
+      });
+    const fanCountMap = new Map(
+      fanCounts.map((fc) => [fc.followeeId, fc._count.followeeId]),
+    );
+
+    // 4. Batch fetch follow relationships for viewer
+    let followedUserIds = new Set<number>();
+    if (viewerId) {
+      const followedByViewer =
+        await this.prismaService.userFollowingRelationship.findMany({
+          where: { followerId: viewerId, followeeId: { in: uniqueUserIds } },
+          select: { followeeId: true },
+        });
+      followedUserIds = new Set(followedByViewer.map((r) => r.followeeId));
+    }
+
+    // 5. Batch fetch answer counts
+    const answerCounts = await this.prismaService.answer.groupBy({
+      by: ['createdById'],
+      where: { createdById: { in: uniqueUserIds } },
+      _count: { createdById: true },
+    });
+    const answerCountMap = new Map(
+      answerCounts.map((ac) => [ac.createdById, ac._count.createdById]),
+    );
+
+    // 6. Batch fetch question counts
+    const questionCounts = await this.prismaService.question.groupBy({
+      by: ['createdById'],
+      where: { createdById: { in: uniqueUserIds } },
+      _count: { createdById: true },
+    });
+    const questionCountMap = new Map(
+      questionCounts.map((qc) => [qc.createdById, qc._count.createdById]),
+    );
+
+    // 7. Create user profile query logs for all users
+    if (uniqueUserIds.length > 0) {
+      await this.prismaService.userProfileQueryLog.createMany({
+        data: uniqueUserIds.map((userId) => ({
+          viewerId,
+          vieweeId: userId,
+          ip,
+          userAgent,
+        })),
+      });
+    }
+
+    // 8. Build DTOs in the original order
+    const userDtos: UserDto[] = [];
+    for (const userId of userIds) {
+      const user = userMap.get(userId);
+      if (!user || !user.userProfile) {
+        throw new UserIdNotFoundError(userId);
+      }
+
+      userDtos.push({
+        id: user.id,
+        username: user.username,
+        nickname: user.userProfile.nickname,
+        avatarId: user.userProfile.avatarId,
+        intro: user.userProfile.intro,
+        follow_count: followCountMap.get(userId) || 0,
+        fans_count: fanCountMap.get(userId) || 0,
+        is_follow: followedUserIds.has(userId),
+        question_count: (questionCountMap.get(userId) as number) || 0,
+        answer_count: (answerCountMap.get(userId) as number) || 0,
+      });
+    }
+
+    return userDtos;
   }
 
   /**
@@ -772,8 +858,9 @@ export class UsersService {
     password: string,
     autoUpgradeToSrp: boolean = true,
   ): Promise<{ verified: boolean; wasUpgraded: boolean }> {
-    // 验证密码
-    if (!bcrypt.compareSync(password, user.hashedPassword!)) {
+    // 验证密码 (使用异步版本)
+    const passwordMatch = await bcrypt.compare(password, user.hashedPassword!);
+    if (!passwordMatch) {
       return { verified: false, wasUpgraded: false };
     }
 
@@ -813,21 +900,58 @@ export class UsersService {
     userAgent: string | undefined,
     isLegacyAuth: boolean = false,
   ): Promise<[UserDto, string]> {
-    const user = await this.findUserRecordByUsernameOrThrow(username);
+    // Use secure login to prevent user enumeration
+    return this.secureLogin(username, password, ip, userAgent, isLegacyAuth);
+  }
 
-    // 使用公共认证方法
-    const { verified } = await this.authenticateUserWithPassword(
-      user,
-      username,
-      password,
-      !isLegacyAuth, // 只有在非legacy模式下才自动升级
-    );
+  /**
+   * Secure login implementation that prevents user enumeration attacks
+   * Always performs constant-time operations regardless of user existence
+   */
+  private async secureLogin(
+    username: string,
+    password: string,
+    ip: string,
+    userAgent: string | undefined,
+    isLegacyAuth: boolean = false,
+  ): Promise<[UserDto, string]> {
+    let user: any = null;
+    let userExists = false;
 
-    if (!verified) {
-      throw new PasswordNotMatchError(username);
+    try {
+      user = await this.prismaService.user.findUnique({
+        where: { username },
+      });
+      userExists = !!user;
+    } catch {
+      // If database error occurs, treat as user not found
+      userExists = false;
     }
 
-    // 如果用户启用了 2FA，需要进行风险评估
+    // Always perform password comparison to prevent timing attacks
+    let verified = false;
+    if (userExists && user) {
+      const { verified: authResult } = await this.authenticateUserWithPassword(
+        user,
+        username,
+        password,
+        !isLegacyAuth,
+      );
+      verified = authResult;
+    } else {
+      // Perform dummy password comparison with fixed hash to maintain constant time
+      await bcrypt.compare(
+        password,
+        '$2a$10$N9qo8uLOickgx2ZMRZoMye.IUlKdJvQq1iRgMZdRJUjN1zF4JTqSK',
+      );
+    }
+
+    // If authentication failed or user doesn't exist, throw generic error
+    if (!verified || !userExists) {
+      throw new InvalidLoginCredentialsError();
+    }
+
+    // Check 2FA requirements
     if (user.totpEnabled) {
       const requireTOTP = await this.shouldRequire2FA(user.id, ip, userAgent);
 
@@ -837,7 +961,7 @@ export class UsersService {
       }
     }
 
-    // Login successfully.
+    // Login successful - record login log
     await this.prismaService.userLoginLog.create({
       data: {
         userId: user.id,
@@ -845,6 +969,7 @@ export class UsersService {
         userAgent,
       },
     });
+
     return [
       await this.getUserDtoById(user.id, user.id, ip, userAgent),
       await this.createSession(user.id),
@@ -970,60 +1095,73 @@ export class UsersService {
     ip: string,
     userAgent: string | undefined,
   ): Promise<void> {
-    // Check email.
+    // Check email format first
     if (isEmail(email) == false) {
       throw new InvalidEmailAddressError(email);
     }
     if ((await this.emailRuleService.isEmailSuffixSupported(email)) == false) {
       throw new InvalidEmailSuffixError(email, this.emailSuffixRule);
     }
+
     const user = await this.prismaService.user.findUnique({
-      where: {
-        email,
-      },
+      where: { email },
     });
-    if (user == undefined) {
+
+    if (user) {
+      // User exists - generate token and send email
+      const token = this.authService.sign(
+        {
+          userId: user.id,
+          username: user.username,
+          permissions: [
+            {
+              authorizedActions: ['modify'],
+              authorizedResource: {
+                ownedByUser: user.id,
+                types: ['users/password:reset'],
+                resourceIds: undefined,
+                data: Date.now(),
+              },
+            },
+          ],
+        },
+        this.passwordResetEmailValidSeconds,
+      );
+
+      try {
+        await this.emailService.sendPasswordResetEmail(
+          email,
+          user.username,
+          token,
+        );
+        await this.createPasswordResetLog(
+          UserResetPasswordLogType.RequestSuccess,
+          user.id,
+          ip,
+          userAgent,
+        );
+      } catch {
+        await this.createPasswordResetLog(
+          UserResetPasswordLogType.RequestFailDueToSecurity,
+          user.id,
+          ip,
+          userAgent,
+        );
+        throw new EmailSendFailedError(email);
+      }
+    } else {
+      // User doesn't exist - log but don't reveal this information
       await this.createPasswordResetLog(
         UserResetPasswordLogType.RequestFailDueToNoneExistentEmail,
         undefined,
         ip,
         userAgent,
       );
-      throw new EmailNotFoundError(email);
+      // Don't throw an error - pretend we sent the email successfully
+      // This prevents email enumeration attacks
     }
-    const token = this.authService.sign(
-      {
-        userId: user.id,
-        username: user.username,
-        permissions: [
-          {
-            authorizedActions: ['modify'],
-            authorizedResource: {
-              ownedByUser: user.id,
-              types: ['users/password:reset'],
-              resourceIds: undefined,
-              data: Date.now(),
-            },
-          },
-        ],
-      },
-      this.passwordResetEmailValidSeconds,
-    );
-    try {
-      await this.emailService.sendPasswordResetEmail(
-        email,
-        user.username,
-        token,
-      );
-    } catch {
-      throw new EmailSendFailedError(email);
-    }
-    await this.createPasswordResetLog(
-      UserResetPasswordLogType.RequestSuccess,
-      user.id,
-      ip,
-      userAgent,
-    );
+
+    // Always succeed from the API perspective to prevent user enumeration
   }
 
   async verifyAndResetPassword(
@@ -1288,11 +1426,16 @@ export class UsersService {
           take: pageSize + 1,
           orderBy: { followerId: 'asc' },
         });
-      const DTOs = await Promise.all(
-        relations.map((r) => {
-          return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
-        }),
+
+      // Batch fetch user DTOs to solve N+1 query problem
+      const followerIds = relations.map((r) => r.followerId);
+      const DTOs = await this.getUsersDtoByIds(
+        followerIds,
+        viewerId,
+        ip,
+        userAgent,
       );
+
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise =
@@ -1313,12 +1456,21 @@ export class UsersService {
           take: pageSize + 1,
           orderBy: { followerId: 'asc' },
         });
-      const DTOs = await Promise.all(
-        (await queriedRelationsPromise).map((r) => {
-          return this.getUserDtoById(r.followerId, viewerId, ip, userAgent);
-        }),
+
+      const [prev, queriedRelations] = await Promise.all([
+        prevRelationshipsPromise,
+        queriedRelationsPromise,
+      ]);
+
+      // Batch fetch user DTOs to solve N+1 query problem
+      const followerIds = queriedRelations.map((r) => r.followerId);
+      const DTOs = await this.getUsersDtoByIds(
+        followerIds,
+        viewerId,
+        ip,
+        userAgent,
       );
-      const prev = await prevRelationshipsPromise;
+
       return PageHelper.PageMiddle(
         prev,
         DTOs,
@@ -1346,11 +1498,16 @@ export class UsersService {
           take: pageSize + 1,
           orderBy: { followeeId: 'asc' },
         });
-      const DTOs = await Promise.all(
-        relations.map((r) => {
-          return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
-        }),
+
+      // Batch fetch user DTOs to solve N+1 query problem
+      const followeeIds = relations.map((r) => r.followeeId);
+      const DTOs = await this.getUsersDtoByIds(
+        followeeIds,
+        viewerId,
+        ip,
+        userAgent,
       );
+
       return PageHelper.PageStart(DTOs, pageSize, (item) => item.id);
     } else {
       const prevRelationshipsPromise =
@@ -1371,12 +1528,21 @@ export class UsersService {
           take: pageSize + 1,
           orderBy: { followeeId: 'asc' },
         });
-      const DTOs = await Promise.all(
-        (await queriedRelationsPromise).map((r) => {
-          return this.getUserDtoById(r.followeeId, viewerId, ip, userAgent);
-        }),
+
+      const [prev, queriedRelations] = await Promise.all([
+        prevRelationshipsPromise,
+        queriedRelationsPromise,
+      ]);
+
+      // Batch fetch user DTOs to solve N+1 query problem
+      const followeeIds = queriedRelations.map((r) => r.followeeId);
+      const DTOs = await this.getUsersDtoByIds(
+        followeeIds,
+        viewerId,
+        ip,
+        userAgent,
       );
-      const prev = await prevRelationshipsPromise;
+
       return PageHelper.PageMiddle(
         prev,
         DTOs,
@@ -1557,10 +1723,14 @@ export class UsersService {
     serverPublicEphemeral: string;
     serverSecretEphemeral: string;
   }> {
-    const user = await this.findUserRecordByUsernameOrThrow(username);
+    const user = await this.prismaService.user.findUnique({
+      where: { username },
+    });
 
-    if (!user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
-      throw new SrpNotUpgradedError(username);
+    // Return generic error for both non-existent users and non-SRP users
+    // to prevent user enumeration
+    if (!user || !user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
+      throw new InvalidLoginCredentialsError();
     }
 
     // 创建 SRP 服务器会话
@@ -1593,10 +1763,14 @@ export class UsersService {
     tempToken?: string;
     user?: UserDto;
   }> {
-    const user = await this.findUserRecordByUsernameOrThrow(username);
+    const user = await this.prismaService.user.findUnique({
+      where: { username },
+    });
 
-    if (!user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
-      throw new SrpNotUpgradedError(username);
+    // Return generic error for both non-existent users and verification failures
+    // to prevent user enumeration
+    if (!user || !user.srpUpgraded || !user.srpSalt || !user.srpVerifier) {
+      throw new InvalidLoginCredentialsError();
     }
 
     const { success, serverProof } = await this.srpService.verifyClient(
@@ -1609,7 +1783,7 @@ export class UsersService {
     );
 
     if (!success) {
-      throw new SrpVerificationError();
+      throw new InvalidLoginCredentialsError();
     }
 
     // 记录登录日志
@@ -2115,7 +2289,7 @@ export class UsersService {
 
     // 生成随机密码（用户不会使用，仅为占位）
     const randomPassword = this.generateRandomPassword();
-    const hashedPassword = bcrypt.hashSync(randomPassword, 10);
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
 
     // 在事务中创建用户、profile 和 OAuth 连接
     const result = await this.prismaService.$transaction(async (tx) => {
