@@ -34,6 +34,13 @@ jest.mock('@simplewebauthn/server', () => ({
   verifyAuthenticationResponse: jest.fn(),
 }));
 
+// Mock bcrypt for testing
+jest.mock('bcryptjs', () => ({
+  compare: jest.fn(),
+  hash: jest.fn(),
+  genSalt: jest.fn(),
+}));
+
 describe('UsersService - OAuth', () => {
   let service: UsersService;
   let prismaService: PrismaService;
@@ -51,6 +58,7 @@ describe('UsersService - OAuth', () => {
     },
     user: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       count: jest.fn(),
       update: jest.fn(),
@@ -61,9 +69,18 @@ describe('UsersService - OAuth', () => {
     },
     userProfileQueryLog: {
       create: jest.fn(),
+      createMany: jest.fn(),
     },
     userFollowingRelationship: {
       count: jest.fn().mockResolvedValue(0),
+      groupBy: jest.fn().mockResolvedValue([]),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    answer: {
+      groupBy: jest.fn().mockResolvedValue([]),
+    },
+    question: {
+      groupBy: jest.fn().mockResolvedValue([]),
     },
     userLoginLog: {
       create: jest.fn(),
@@ -86,6 +103,7 @@ describe('UsersService - OAuth', () => {
     sign: jest.fn(),
     decode: jest.fn(),
     audit: jest.fn(),
+    verify: jest.fn(),
   };
 
   const mockSessionService = {
@@ -159,6 +177,8 @@ describe('UsersService - OAuth', () => {
   const mockTOTPService = {
     generateSecret: jest.fn(),
     verify: jest.fn(),
+    generateTempToken: jest.fn(),
+    verify2FA: jest.fn(),
   };
 
   const mockSrpService = {
@@ -933,6 +953,246 @@ describe('UsersService - OAuth', () => {
       expect(result[0].username).toBe('newuser');
       expect(result[1]).toBe('new-session-token');
     });
+
+    it('should throw error for invalid state token in createOAuthUserFromDecision', async () => {
+      const stateToken = 'invalid-token';
+      const username = 'newuser';
+      const nickname = 'New_User';
+
+      mockAuthService.audit.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      await expect(
+        service.createOAuthUserFromDecision(
+          stateToken,
+          username,
+          nickname,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('Invalid or expired OAuth state token');
+    });
+
+    it('should throw error for invalid username format', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'ab'; // Too short
+      const nickname = 'Valid_Nickname';
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: { id: '123' },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      await expect(
+        service.createOAuthUserFromDecision(
+          stateToken,
+          username,
+          nickname,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('Username must be 4-32 characters long');
+    });
+
+    it('should throw error for invalid nickname format', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'validuser';
+      const nickname = 'Invalid@Nickname!'; // Contains invalid characters
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: { id: '123' },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      await expect(
+        service.createOAuthUserFromDecision(
+          stateToken,
+          username,
+          nickname,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('Nickname must be 1-16 characters long');
+    });
+
+    it('should throw error when username already registered', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'existinguser';
+      const nickname = 'Valid_Nickname';
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: { id: '123' },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      // Mock username already taken
+      mockPrismaService.user.count.mockResolvedValueOnce(1);
+
+      await expect(
+        service.createOAuthUserFromDecision(
+          stateToken,
+          username,
+          nickname,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('Username already registered: existinguser');
+    });
+
+    it('should throw error when email conflict occurs (race condition)', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'newuser';
+      const nickname = 'New_User';
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: {
+          id: '123',
+          email: 'conflict@example.com',
+        },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      // Username available but email conflict occurs
+      mockPrismaService.user.count
+        .mockResolvedValueOnce(0) // username available
+        .mockResolvedValueOnce(1); // email conflict
+
+      await expect(
+        service.createOAuthUserFromDecision(
+          stateToken,
+          username,
+          nickname,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('Email already registered: conflict@example.com');
+    });
+
+    it('should create user without email (placeholder email)', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'newuser';
+      const nickname = 'New_User';
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: {
+          id: '123',
+          name: 'User Without Email',
+          // No email provided
+        },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      // Mock validation checks
+      mockPrismaService.user.count.mockResolvedValueOnce(0); // username available
+
+      // Mock transaction
+      const createdUser = {
+        id: 11,
+        username: 'newuser',
+        email: 'oauth-test-123@placeholder.internal', // Placeholder email
+      };
+
+      mockPrismaService.$transaction.mockImplementationOnce(
+        async (callback) => {
+          const tx = {
+            user: { create: jest.fn().mockResolvedValue(createdUser) },
+            userProfile: { create: jest.fn().mockResolvedValue({}) },
+            userOAuthConnection: { create: jest.fn().mockResolvedValue({}) },
+            userRegisterLog: { create: jest.fn().mockResolvedValue({}) },
+            userLoginLog: { create: jest.fn().mockResolvedValue({}) },
+          };
+          await callback(tx);
+          return createdUser;
+        },
+      );
+
+      jest.spyOn(service, 'getOAuthUserDtoById').mockResolvedValueOnce({
+        id: 11,
+        username: 'newuser',
+        nickname: 'New_User',
+        email: null, // Should be null for placeholder emails
+        avatarId: 1,
+        intro: 'This user has not set an introduction yet.',
+        follow_count: 0,
+        fans_count: 0,
+        question_count: 0,
+        answer_count: 0,
+        is_follow: false,
+      });
+
+      const result = await service.createOAuthUserFromDecision(
+        stateToken,
+        username,
+        nickname,
+        'ip',
+        'agent',
+      );
+
+      expect(Array.isArray(result)).toBe(true);
+      expect(result[0].username).toBe('newuser');
+      expect(result[0].email).toBe(null); // Placeholder email should be filtered out
+    });
   });
 
   describe('OAuth helper methods', () => {
@@ -1141,6 +1401,229 @@ describe('UsersService - OAuth', () => {
           'agent',
         ),
       ).rejects.toThrow();
+    });
+
+    it('should throw error for invalid state token', async () => {
+      const stateToken = 'invalid-token';
+      const username = 'existinguser';
+      const credentials = { password: 'password' };
+
+      mockAuthService.audit.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      await expect(
+        service.bindOAuthToExistingUser(
+          stateToken,
+          username,
+          credentials,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('Invalid or expired OAuth state token');
+    });
+
+    it('should throw error for SRP user in binding flow', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'srpuser';
+      const credentials = {
+        clientPublicEphemeral: 'client-public',
+        clientProof: 'client-proof',
+      };
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: { id: '123' },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      const srpUser = {
+        id: 1,
+        username: 'srpuser',
+        srpUpgraded: true,
+        srpSalt: 'salt',
+        srpVerifier: 'verifier',
+        hashedPassword: null,
+      };
+      jest
+        .spyOn(service, 'findUserRecordByUsernameOrThrow')
+        .mockResolvedValue(srpUser as any);
+
+      await expect(
+        service.bindOAuthToExistingUser(
+          stateToken,
+          username,
+          credentials,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow(
+        'SRP users should use the verification flow, not the decision flow',
+      );
+    });
+
+    it('should throw error when password not provided', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'user';
+      const credentials = {}; // No password
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: { id: '123' },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      const mockUser = {
+        id: 1,
+        username: 'user',
+        srpUpgraded: false,
+        hashedPassword: 'hash',
+      };
+      jest
+        .spyOn(service, 'findUserRecordByUsernameOrThrow')
+        .mockResolvedValue(mockUser as any);
+
+      await expect(
+        service.bindOAuthToExistingUser(
+          stateToken,
+          username,
+          credentials,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('Password required for this user');
+    });
+
+    it('should throw error when OAuth account already linked to same user', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'user';
+      const credentials = { password: 'password' };
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: { id: '123' },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      const mockUser = {
+        id: 1,
+        username: 'user',
+        srpUpgraded: false,
+        hashedPassword: 'hash',
+      };
+      jest
+        .spyOn(service, 'findUserRecordByUsernameOrThrow')
+        .mockResolvedValue(mockUser as any);
+
+      jest
+        .spyOn(service as any, 'authenticateUserWithPassword')
+        .mockResolvedValue({ verified: true, wasUpgraded: false });
+
+      // Mock existing connection to same user
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue({
+        id: 1,
+        userId: 1,
+        providerId: 'test',
+        providerUserId: '123',
+      });
+
+      await expect(
+        service.bindOAuthToExistingUser(
+          stateToken,
+          username,
+          credentials,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('This OAuth account is already linked to your account');
+    });
+
+    it('should throw error when OAuth account already linked to another user', async () => {
+      const stateToken = 'valid-state-token';
+      const username = 'user';
+      const credentials = { password: 'password' };
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: { id: '123' },
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      const mockUser = {
+        id: 1,
+        username: 'user',
+        srpUpgraded: false,
+        hashedPassword: 'hash',
+      };
+      jest
+        .spyOn(service, 'findUserRecordByUsernameOrThrow')
+        .mockResolvedValue(mockUser as any);
+
+      jest
+        .spyOn(service as any, 'authenticateUserWithPassword')
+        .mockResolvedValue({ verified: true, wasUpgraded: false });
+
+      // Mock existing connection to different user
+      mockPrismaService.userOAuthConnection.findUnique.mockResolvedValue({
+        id: 1,
+        userId: 2, // Different user
+        providerId: 'test',
+        providerUserId: '123',
+      });
+
+      await expect(
+        service.bindOAuthToExistingUser(
+          stateToken,
+          username,
+          credentials,
+          'ip',
+          'agent',
+        ),
+      ).rejects.toThrow('This OAuth account is already linked to another user');
     });
   });
 
@@ -1592,6 +2075,328 @@ describe('UsersService - OAuth', () => {
       await expect(service.unbindOAuth(userId, connectionId)).rejects.toThrow(
         'OAuth connection not found or does not belong to this user',
       );
+    });
+  });
+
+  describe('Login functionality', () => {
+    // Get bcrypt mock
+    const bcrypt = jest.requireMock('bcryptjs');
+
+    describe('secureLogin', () => {
+      it('should perform dummy password comparison when user does not exist', async () => {
+        const username = 'nonexistentuser';
+        const password = 'anypassword';
+
+        // Mock user not found
+        mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+        // Mock dummy password comparison
+        bcrypt.compare.mockResolvedValue(false);
+
+        await expect(
+          service.login(username, password, 'ip', 'agent'),
+        ).rejects.toThrow();
+
+        // Verify dummy comparison was performed
+        expect(bcrypt.compare).toHaveBeenCalledWith(
+          password,
+          '$2a$10$N9qo8uLOickgx2ZMRZoMye.IUlKdJvQq1iRgMZdRJUjN1zF4JTqSK',
+        );
+      });
+
+      it('should perform dummy password comparison when database error occurs', async () => {
+        const username = 'testuser';
+        const password = 'password';
+
+        // Mock database error
+        mockPrismaService.user.findUnique.mockRejectedValue(
+          new Error('Database error'),
+        );
+
+        // Mock dummy password comparison
+        bcrypt.compare.mockResolvedValue(false);
+
+        await expect(
+          service.login(username, password, 'ip', 'agent'),
+        ).rejects.toThrow();
+
+        // Verify dummy comparison was performed
+        expect(bcrypt.compare).toHaveBeenCalledWith(
+          password,
+          '$2a$10$N9qo8uLOickgx2ZMRZoMye.IUlKdJvQq1iRgMZdRJUjN1zF4JTqSK',
+        );
+      });
+
+      it('should throw generic error when password verification fails', async () => {
+        const username = 'testuser';
+        const password = 'wrongpassword';
+
+        const mockUser = {
+          id: 1,
+          username: 'testuser',
+          hashedPassword: 'hashed-password',
+          srpUpgraded: false,
+          totpEnabled: false,
+        };
+
+        mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+
+        // Mock password verification failure
+        jest
+          .spyOn(service as any, 'authenticateUserWithPassword')
+          .mockResolvedValue({
+            verified: false,
+            wasUpgraded: false,
+          });
+
+        await expect(
+          service.login(username, password, 'ip', 'agent'),
+        ).rejects.toThrow('Invalid username or password.');
+      });
+
+      it('should handle TOTP requirement during login', async () => {
+        const username = 'testuser';
+        const password = 'correctpassword';
+
+        const mockUser = {
+          id: 1,
+          username: 'testuser',
+          hashedPassword: 'hashed-password',
+          srpUpgraded: false,
+          totpEnabled: true,
+        };
+
+        mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+
+        // Mock password verification success
+        jest
+          .spyOn(service as any, 'authenticateUserWithPassword')
+          .mockResolvedValue({
+            verified: true,
+            wasUpgraded: false,
+          });
+
+        // Mock TOTP requirement
+        jest.spyOn(service as any, 'shouldRequire2FA').mockResolvedValue(true);
+
+        // Mock TOTP service
+        mockTOTPService.generateTempToken = jest
+          .fn()
+          .mockReturnValue('temp-token');
+
+        await expect(
+          service.login(username, password, 'ip', 'agent'),
+        ).rejects.toThrow("2FA verification required for user 'testuser'");
+      });
+
+      it('should login successfully when TOTP is not required', async () => {
+        const username = 'testuser';
+        const password = 'correctpassword';
+
+        const mockUser = {
+          id: 1,
+          username: 'testuser',
+          hashedPassword: 'hashed-password',
+          srpUpgraded: false,
+          totpEnabled: true,
+        };
+
+        mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+
+        // Mock the batch queries for getUsersDtoByIds
+        mockPrismaService.user.findMany.mockResolvedValue([
+          {
+            id: 1,
+            username: 'testuser',
+            userProfile: {
+              nickname: 'Test User',
+              avatarId: 1,
+              intro: 'Test intro',
+            },
+          },
+        ]);
+
+        // Mock password verification success
+        jest
+          .spyOn(service as any, 'authenticateUserWithPassword')
+          .mockResolvedValue({
+            verified: true,
+            wasUpgraded: false,
+          });
+
+        // Mock TOTP not required (known device/IP)
+        jest.spyOn(service as any, 'shouldRequire2FA').mockResolvedValue(false);
+
+        mockPrismaService.userLoginLog.create.mockResolvedValue({});
+
+        const result = await service.login(username, password, 'ip', 'agent');
+
+        expect(Array.isArray(result)).toBe(true);
+        expect(result).toHaveLength(2);
+        expect(mockPrismaService.userLoginLog.create).toHaveBeenCalledWith({
+          data: {
+            userId: 1,
+            ip: 'ip',
+            userAgent: 'agent',
+          },
+        });
+      });
+    });
+
+    describe('verifyTOTPAndLogin', () => {
+      it('should complete login after TOTP verification', async () => {
+        const tempToken = 'valid-temp-token';
+        const code = '123456';
+
+        const mockAuth = {
+          userId: 1,
+          username: 'testuser',
+          permissions: [],
+        };
+
+        mockAuthService.verify.mockReturnValue(mockAuth);
+        mockAuthService.audit.mockResolvedValue(undefined);
+
+        mockTOTPService.verify2FA = jest.fn().mockResolvedValue({
+          isValid: true,
+          usedBackupCode: false,
+        });
+
+        mockPrismaService.userLoginLog.create.mockResolvedValue({});
+
+        const result = await service.verifyTOTPAndLogin(
+          tempToken,
+          code,
+          'ip',
+          'agent',
+        );
+
+        expect(Array.isArray(result)).toBe(true);
+        expect(result).toHaveLength(3);
+        expect(result[2]).toBe(false); // usedBackupCode
+        expect(mockTOTPService.verify2FA).toHaveBeenCalledWith(1, code);
+      });
+
+      it('should indicate backup code usage', async () => {
+        const tempToken = 'valid-temp-token';
+        const backupCode = 'backup123';
+
+        const mockAuth = {
+          userId: 1,
+          username: 'testuser',
+          permissions: [],
+        };
+
+        mockAuthService.verify.mockReturnValue(mockAuth);
+        mockAuthService.audit.mockResolvedValue(undefined);
+
+        mockTOTPService.verify2FA = jest.fn().mockResolvedValue({
+          isValid: true,
+          usedBackupCode: true,
+        });
+
+        mockPrismaService.userLoginLog.create.mockResolvedValue({});
+
+        const result = await service.verifyTOTPAndLogin(
+          tempToken,
+          backupCode,
+          'ip',
+          'agent',
+        );
+
+        expect(result[2]).toBe(true); // usedBackupCode
+      });
+
+      it('should throw error for invalid TOTP code', async () => {
+        const tempToken = 'valid-temp-token';
+        const code = 'invalid';
+
+        const mockAuth = {
+          userId: 1,
+          username: 'testuser',
+          permissions: [],
+        };
+
+        mockAuthService.verify.mockReturnValue(mockAuth);
+        mockAuthService.audit.mockResolvedValue(undefined);
+
+        mockTOTPService.verify2FA = jest.fn().mockResolvedValue({
+          isValid: false,
+          usedBackupCode: false,
+        });
+
+        await expect(
+          service.verifyTOTPAndLogin(tempToken, code, 'ip', 'agent'),
+        ).rejects.toThrow('Invalid 2FA code');
+      });
+
+      it('should throw error for invalid temp token', async () => {
+        const tempToken = 'invalid-temp-token';
+        const code = '123456';
+
+        mockAuthService.verify.mockImplementation(() => {
+          throw new Error('Invalid token');
+        });
+
+        await expect(
+          service.verifyTOTPAndLogin(tempToken, code, 'ip', 'agent'),
+        ).rejects.toThrow(
+          'Invalid or expired temporary token for 2FA verification',
+        );
+      });
+    });
+  });
+
+  describe('getOAuthStateInfo edge cases', () => {
+    it('should handle invalid state token gracefully', async () => {
+      const stateToken = 'invalid-token';
+
+      mockAuthService.audit.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      await expect(service.getOAuthStateInfo(stateToken)).rejects.toThrow(
+        'Invalid or expired OAuth state token',
+      );
+    });
+
+    it('should generate valid suggested usernames and nicknames', async () => {
+      const stateToken = 'valid-state-token';
+      const mockTokenData = {
+        providerId: 'test',
+        userInfo: {
+          id: '123',
+          email: 'test@example.com',
+          name: 'Test User!@#', // Contains special characters
+          preferredUsername: 'test-user',
+        },
+        ip: '127.0.0.1',
+        userAgent: 'test-agent',
+        timestamp: Date.now(),
+      };
+
+      mockAuthService.audit.mockReturnValueOnce(undefined);
+      mockAuthService.decode.mockReturnValueOnce({
+        authorization: {
+          permissions: [
+            {
+              authorizedResource: {
+                data: mockTokenData,
+              },
+            },
+          ],
+        },
+      });
+
+      // Mock username availability check
+      mockPrismaService.user.count.mockResolvedValueOnce(0); // username available
+      mockPrismaService.user.count.mockResolvedValueOnce(0); // email not registered
+
+      const result = await service.getOAuthStateInfo(stateToken);
+
+      expect(result.suggestedUsername).toMatch(/test-user/);
+      expect(result.suggestedNickname).toMatch(/Test_User/); // Special chars should be replaced
+      expect(result.suggestedNickname.length).toBeLessThanOrEqual(16);
     });
   });
 
