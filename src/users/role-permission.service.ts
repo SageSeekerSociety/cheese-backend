@@ -76,6 +76,14 @@ export class RolePermissionService {
           },
         },
         {
+          authorizedActions: ['modify-oauth', 'query-oauth'],
+          authorizedResource: {
+            ownedByUser: userId,
+            types: ['user'],
+            resourceIds: undefined,
+          },
+        },
+        {
           authorizedActions: ['query', 'enumerate'],
           authorizedResource: {
             ownedByUser: undefined,

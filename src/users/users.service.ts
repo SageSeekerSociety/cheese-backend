@@ -762,6 +762,47 @@ export class UsersService {
     };
   }
 
+  /**
+   * 公共的用户认证逻辑，支持传统密码和自动SRP升级
+   */
+  private async authenticateUserWithPassword(
+    user: any,
+    username: string,
+    password: string,
+    autoUpgradeToSrp: boolean = true,
+  ): Promise<{ verified: boolean; wasUpgraded: boolean }> {
+    // 验证密码
+    if (!bcrypt.compareSync(password, user.hashedPassword!)) {
+      return { verified: false, wasUpgraded: false };
+    }
+
+    let wasUpgraded = false;
+    // 如果用户还没升级到 SRP 且允许自动升级，则自动升级
+    if (!user.srpUpgraded && autoUpgradeToSrp) {
+      await this.srpService.upgradeUserToSrp(user.id, username, password);
+      wasUpgraded = true;
+    }
+
+    return { verified: true, wasUpgraded };
+  }
+
+  /**
+   * 检查用户是否需要特殊的认证流程
+   */
+  private determineOAuthAuthStrategy(
+    user: any,
+  ): 'srp' | 'legacy_password' | 'create_new' {
+    if (!user) {
+      return 'create_new';
+    }
+
+    if (user.srpUpgraded && user.srpSalt && user.srpVerifier) {
+      return 'srp';
+    }
+
+    return 'legacy_password';
+  }
+
   // Returns:
   //     [userDto, refreshToken]
   async login(
@@ -773,14 +814,16 @@ export class UsersService {
   ): Promise<[UserDto, string]> {
     const user = await this.findUserRecordByUsernameOrThrow(username);
 
-    // 验证密码
-    if (!bcrypt.compareSync(password, user.hashedPassword!)) {
-      throw new PasswordNotMatchError(username);
-    }
+    // 使用公共认证方法
+    const { verified } = await this.authenticateUserWithPassword(
+      user,
+      username,
+      password,
+      !isLegacyAuth, // 只有在非legacy模式下才自动升级
+    );
 
-    // 如果用户还没升级到 SRP,则自动升级
-    if (!user.srpUpgraded && !isLegacyAuth) {
-      await this.srpService.upgradeUserToSrp(user.id, username, password);
+    if (!verified) {
+      throw new PasswordNotMatchError(username);
     }
 
     // 如果用户启用了 2FA，需要进行风险评估
@@ -1406,23 +1449,19 @@ export class UsersService {
       if (!credentials.password) {
         throw new Error('Password is required for password verification');
       }
-      verified = await bcrypt.compare(
-        credentials.password,
-        user.hashedPassword!,
-      );
+
+      // 使用公共认证方法
+      const { verified: passwordVerified, wasUpgraded } =
+        await this.authenticateUserWithPassword(
+          user,
+          user.username,
+          credentials.password,
+          true, // 启用自动SRP升级
+        );
+
+      verified = passwordVerified;
 
       if (verified) {
-        // 如果用户还没升级到 SRP，自动升级
-        let wasUpgraded = false;
-        if (!user.srpUpgraded) {
-          await this.srpService.upgradeUserToSrp(
-            user.id,
-            user.username,
-            credentials.password,
-          );
-          wasUpgraded = true;
-        }
-
         const sudoToken = await this.authService.issueSudoToken(token);
         return {
           accessToken: sudoToken,
@@ -1641,19 +1680,25 @@ export class UsersService {
 
   /**
    * OAuth 用户登录/注册处理
-   * 将第三方返回的用户信息与本地用户数据库同步
+   * 如果邮箱已存在，返回验证所需信息；否则创建新用户
    */
   async loginWithOAuth(
     providerId: string,
     userInfo: OAuthUserInfo,
     ip: string,
     userAgent: string | undefined,
-  ): Promise<[OAuthUserDto, string]> {
-    this.logger.log(
-      `Processing OAuth login for provider: ${providerId}, user: ${userInfo.id}`,
-    );
-
-    // 1. 检查已有绑定
+  ): Promise<
+    | [OAuthUserDto, string] // 成功登录/注册
+    | {
+        requiresVerification: true;
+        verificationType: 'password' | 'srp';
+        email: string;
+        sessionId: string;
+        salt?: string;
+        serverPublicEphemeral?: string;
+      } // 需要验证
+  > {
+    // 1. 检查是否已有OAuth连接
     const existingConnection =
       await this.prismaService.userOAuthConnection.findUnique({
         where: {
@@ -1671,12 +1716,9 @@ export class UsersService {
         },
       });
 
-    if (
-      existingConnection &&
-      existingConnection.user &&
-      !existingConnection.user.deletedAt
-    ) {
-      return await this.handleExistingOAuthConnection(
+    // 如果已有连接，直接登录
+    if (existingConnection) {
+      return this.handleExistingOAuthConnection(
         existingConnection,
         userInfo,
         ip,
@@ -1684,7 +1726,7 @@ export class UsersService {
       );
     }
 
-    // 2. 按邮箱匹配现有用户
+    // 2. 检查邮箱是否冲突（仅当OAuth提供了邮箱时）
     if (userInfo.email) {
       const existingUser = await this.prismaService.user.findUnique({
         where: { email: userInfo.email },
@@ -1692,18 +1734,316 @@ export class UsersService {
       });
 
       if (existingUser && !existingUser.deletedAt) {
-        return await this.bindOAuthToExistingUserByEmail(
-          existingUser,
-          providerId,
-          userInfo,
-          ip,
-          userAgent,
-        );
+        // 邮箱冲突，需要验证身份
+        if (existingUser.srpUpgraded) {
+          // SRP用户，启动SRP验证
+          return this.initOAuthSrpVerification(
+            providerId,
+            userInfo,
+            existingUser,
+          );
+        } else {
+          // 传统用户，需要密码验证
+          return this.initOAuthPasswordVerification(
+            providerId,
+            userInfo,
+            existingUser,
+          );
+        }
       }
     }
 
-    // 3. 创建新用户
-    return await this.createNewOAuthUser(providerId, userInfo, ip, userAgent);
+    // 3. 没有冲突，创建新用户
+    return this.createNewOAuthUser(providerId, userInfo, ip, userAgent);
+  }
+
+  /**
+   * 初始化OAuth密码验证（传统用户）
+   */
+  private async initOAuthPasswordVerification(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    existingUser: any,
+  ): Promise<{
+    requiresVerification: true;
+    verificationType: 'password';
+    email: string;
+    sessionId: string;
+  }> {
+    const sessionId = this.generateOAuthSessionId(
+      'password',
+      providerId,
+      userInfo.id,
+    );
+
+    const sessionData = {
+      type: 'password',
+      providerId,
+      userInfo,
+      existingUserId: existingUser.id,
+      existingUsername: existingUser.username,
+    };
+
+    const redis = this.redisService.getOrThrow();
+    await redis.setex(
+      `oauth_session:${sessionId}`,
+      15 * 60,
+      JSON.stringify(sessionData),
+    );
+
+    return {
+      requiresVerification: true,
+      verificationType: 'password',
+      email: existingUser.email,
+      sessionId,
+    };
+  }
+
+  /**
+   * 初始化OAuth SRP验证
+   */
+  private async initOAuthSrpVerification(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    existingUser: any,
+  ): Promise<{
+    requiresVerification: true;
+    verificationType: 'srp';
+    email: string;
+    sessionId: string;
+    salt: string;
+    serverPublicEphemeral: string;
+  }> {
+    const sessionId = this.generateOAuthSessionId(
+      'srp',
+      providerId,
+      userInfo.id,
+    );
+
+    // 创建SRP服务器会话
+    const serverSession = await this.srpService.createServerSession(
+      existingUser.srpVerifier,
+    );
+
+    const sessionData = {
+      type: 'srp',
+      providerId,
+      userInfo,
+      existingUserId: existingUser.id,
+      serverEphemeral: serverSession.serverEphemeral,
+    };
+
+    const redis = this.redisService.getOrThrow();
+    await redis.setex(
+      `oauth_session:${sessionId}`,
+      15 * 60,
+      JSON.stringify(sessionData),
+    );
+
+    return {
+      requiresVerification: true,
+      verificationType: 'srp',
+      email: existingUser.email,
+      sessionId,
+      salt: existingUser.srpSalt,
+      serverPublicEphemeral: serverSession.serverEphemeral.public,
+    };
+  }
+
+  /**
+   * 生成OAuth会话ID
+   */
+  private generateOAuthSessionId(
+    type: 'password' | 'srp' | 'binding',
+    providerId: string,
+    providerUserId: string,
+  ): string {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2);
+    return `oauth_${type}_${providerId}_${providerUserId}_${timestamp}_${random}`;
+  }
+
+  /**
+   * 统一的OAuth验证完成处理
+   */
+  async completeOAuthVerification(
+    sessionId: string,
+    credentials: {
+      password?: string;
+      clientPublicEphemeral?: string;
+      clientProof?: string;
+    },
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    const redis = this.redisService.getOrThrow();
+    const sessionData = await redis.get(`oauth_session:${sessionId}`);
+
+    if (!sessionData) {
+      throw new Error('OAuth session not found or expired');
+    }
+
+    const session = JSON.parse(sessionData);
+
+    // 立即删除会话数据防止重放攻击
+    await redis.del(`oauth_session:${sessionId}`);
+
+    if (session.type === 'password') {
+      return this.completePasswordVerification(
+        session,
+        credentials.password!,
+        ip,
+        userAgent,
+      );
+    } else if (session.type === 'srp') {
+      return this.completeSrpVerification(
+        session,
+        credentials.clientPublicEphemeral!,
+        credentials.clientProof!,
+        ip,
+        userAgent,
+      );
+    } else {
+      throw new Error('Invalid session type');
+    }
+  }
+
+  /**
+   * 完成密码验证（传统用户自动升级）
+   */
+  private async completePasswordVerification(
+    session: any,
+    password: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    const user = await this.findUserRecordOrThrow(session.existingUserId);
+
+    // 验证密码并自动升级到SRP
+    const { verified, wasUpgraded } = await this.authenticateUserWithPassword(
+      user,
+      user.username,
+      password,
+      true,
+    );
+
+    if (!verified) {
+      throw new PasswordNotMatchError(user.username);
+    }
+
+    // 创建OAuth连接
+    await this.createOAuthConnection(
+      session.existingUserId,
+      session.providerId,
+      session.userInfo,
+    );
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: session.existingUserId,
+        ip,
+        userAgent,
+      },
+    });
+
+    const userDto = await this.getOAuthUserDtoById(
+      session.existingUserId,
+      session.existingUserId,
+      ip,
+      userAgent,
+    );
+    const refreshToken = await this.createSession(session.existingUserId);
+
+    return [userDto, refreshToken];
+  }
+
+  /**
+   * 完成SRP验证
+   */
+  private async completeSrpVerification(
+    session: any,
+    clientPublicEphemeral: string,
+    clientProof: string,
+    ip: string,
+    userAgent: string | undefined,
+  ): Promise<[OAuthUserDto, string]> {
+    // 获取用户信息以进行SRP验证
+    const user = await this.findUserRecordOrThrow(session.existingUserId);
+
+    if (!user.srpSalt || !user.srpVerifier) {
+      throw new SrpNotUpgradedError(user.username);
+    }
+
+    // 验证SRP证明
+    const { success } = await this.srpService.verifyClient(
+      session.serverEphemeral.secret,
+      clientPublicEphemeral,
+      user.srpSalt,
+      user.username,
+      user.srpVerifier,
+      clientProof,
+    );
+
+    if (!success) {
+      throw new SrpVerificationError();
+    }
+
+    // 创建OAuth连接
+    await this.createOAuthConnection(
+      session.existingUserId,
+      session.providerId,
+      session.userInfo,
+    );
+
+    // 记录登录日志
+    await this.prismaService.userLoginLog.create({
+      data: {
+        userId: session.existingUserId,
+        ip,
+        userAgent,
+      },
+    });
+
+    const userDto = await this.getOAuthUserDtoById(
+      session.existingUserId,
+      session.existingUserId,
+      ip,
+      userAgent,
+    );
+    const refreshToken = await this.createSession(session.existingUserId);
+
+    return [userDto, refreshToken];
+  }
+
+  /**
+   * 创建OAuth连接
+   */
+  private async createOAuthConnection(
+    userId: number,
+    providerId: string,
+    userInfo: OAuthUserInfo,
+  ): Promise<void> {
+    // 检查是否已存在连接
+    const existing = await this.prismaService.userOAuthConnection.findUnique({
+      where: {
+        providerId_providerUserId: {
+          providerId,
+          providerUserId: userInfo.id,
+        },
+      },
+    });
+
+    if (!existing) {
+      await this.prismaService.userOAuthConnection.create({
+        data: {
+          userId,
+          providerId,
+          providerUserId: userInfo.id,
+          rawProfile: userInfo,
+        },
+      });
+    }
   }
 
   /**
@@ -1749,61 +2089,6 @@ export class UsersService {
         userAgent,
       ),
       await this.createSession(existingConnection.user.id),
-    ];
-  }
-
-  /**
-   * 将 OAuth 连接绑定到现有用户（通过邮箱匹配）
-   */
-  private async bindOAuthToExistingUserByEmail(
-    existingUser: any,
-    providerId: string,
-    userInfo: OAuthUserInfo,
-    ip: string,
-    userAgent: string | undefined,
-  ): Promise<[OAuthUserDto, string]> {
-    this.logger.log(
-      `Found existing user by email for OAuth login: ${existingUser.username}`,
-    );
-
-    // 创建关联
-    await this.prismaService.userOAuthConnection.upsert({
-      where: {
-        providerId_providerUserId: {
-          providerId,
-          providerUserId: userInfo.id,
-        },
-      },
-      update: {
-        userId: existingUser.id,
-        rawProfile: userInfo as any,
-        updatedAt: new Date(),
-      },
-      create: {
-        userId: existingUser.id,
-        providerId,
-        providerUserId: userInfo.id,
-        rawProfile: userInfo as any,
-      },
-    });
-
-    // 记录登录日志
-    await this.prismaService.userLoginLog.create({
-      data: {
-        userId: existingUser.id,
-        ip,
-        userAgent,
-      },
-    });
-
-    return [
-      await this.getOAuthUserDtoById(
-        existingUser.id,
-        existingUser.id,
-        ip,
-        userAgent,
-      ),
-      await this.createSession(existingUser.id),
     ];
   }
 
@@ -1995,5 +2280,216 @@ export class UsersService {
         avatarId,
       },
     });
+  }
+
+  /**
+   * 初始化OAuth绑定流程（已登录用户）
+   */
+  async initOAuthBinding(
+    userId: number,
+    providerId: string,
+    state?: string,
+  ): Promise<{ bindingSessionId: string }> {
+    // 验证用户存在
+    const user = await this.findUserRecordOrThrow(userId);
+
+    // 生成绑定会话ID
+    const bindingSessionId = this.generateOAuthSessionId(
+      'binding',
+      providerId,
+      userId.toString(),
+    );
+
+    // 存储绑定会话信息
+    const sessionData = {
+      type: 'binding',
+      userId,
+      providerId,
+      originalState: state,
+      createdAt: new Date().toISOString(),
+    };
+
+    const redis = this.redisService.getOrThrow();
+    await redis.setex(
+      `oauth_binding_session:${bindingSessionId}`,
+      15 * 60, // 15分钟过期
+      JSON.stringify(sessionData),
+    );
+
+    return { bindingSessionId };
+  }
+
+  /**
+   * 处理OAuth绑定回调
+   */
+  async handleOAuthBindingCallback(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    bindingSessionId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    // 验证绑定会话
+    const redis = this.redisService.getOrThrow();
+    const sessionData = await redis.get(
+      `oauth_binding_session:${bindingSessionId}`,
+    );
+
+    if (!sessionData) {
+      throw new Error('Binding session not found or expired');
+    }
+
+    const session = JSON.parse(sessionData);
+    if (session.type !== 'binding' || session.providerId !== providerId) {
+      throw new Error('Invalid binding session');
+    }
+
+    const userId = session.userId;
+
+    // 检查该OAuth账户是否已被其他用户绑定
+    const existingConnection =
+      await this.prismaService.userOAuthConnection.findUnique({
+        where: {
+          providerId_providerUserId: {
+            providerId,
+            providerUserId: userInfo.id,
+          },
+        },
+      });
+
+    if (existingConnection) {
+      if (existingConnection.userId === userId) {
+        // 用户试图绑定已经绑定的账户
+        await redis.del(`oauth_binding_session:${bindingSessionId}`);
+        return {
+          success: false,
+          message: 'This OAuth account is already linked to your account',
+        };
+      } else {
+        // OAuth账户已被其他用户绑定
+        await redis.del(`oauth_binding_session:${bindingSessionId}`);
+        return {
+          success: false,
+          message: 'This OAuth account is already linked to another user',
+        };
+      }
+    }
+
+    // 检查用户是否已经绑定了同一提供商的其他账户
+    const existingProviderConnection =
+      await this.prismaService.userOAuthConnection.findFirst({
+        where: {
+          userId,
+          providerId,
+        },
+      });
+
+    if (existingProviderConnection) {
+      await redis.del(`oauth_binding_session:${bindingSessionId}`);
+      return {
+        success: false,
+        message: `You have already linked another ${providerId} account. Please unbind it first.`,
+      };
+    }
+
+    // 创建OAuth连接
+    await this.createOAuthConnection(userId, providerId, userInfo);
+
+    // 清理会话
+    await redis.del(`oauth_binding_session:${bindingSessionId}`);
+
+    this.logger.log(
+      `User ${userId} successfully bound OAuth account: ${providerId}:${userInfo.id}`,
+    );
+
+    return {
+      success: true,
+      message: 'OAuth account linked successfully',
+    };
+  }
+
+  /**
+   * 获取用户的OAuth连接列表
+   */
+  async getUserOAuthConnections(userId: number): Promise<
+    Array<{
+      id: number;
+      providerId: string;
+      providerName: string;
+      providerUserId: string;
+      connectedAt: string;
+    }>
+  > {
+    const connections = await this.prismaService.userOAuthConnection.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // 提供商名称映射
+    const providerNames: Record<string, string> = {
+      github: 'GitHub',
+      google: 'Google',
+      ruc: 'RUC',
+      // 可以根据需要添加更多提供商
+    };
+
+    return connections.map((conn) => ({
+      id: conn.id,
+      providerId: conn.providerId,
+      providerName: providerNames[conn.providerId] || conn.providerId,
+      providerUserId: conn.providerUserId,
+      connectedAt: conn.createdAt.toISOString(),
+    }));
+  }
+
+  /**
+   * 解除OAuth绑定
+   */
+  async unbindOAuth(
+    userId: number,
+    connectionId: number,
+  ): Promise<{ success: boolean; unboundConnectionId: number }> {
+    // 验证连接是否属于该用户
+    const connection = await this.prismaService.userOAuthConnection.findFirst({
+      where: {
+        id: connectionId,
+        userId,
+      },
+    });
+
+    if (!connection) {
+      throw new Error(
+        'OAuth connection not found or does not belong to this user',
+      );
+    }
+
+    // 检查是否是用户唯一的登录方式
+    const userConnections = await this.prismaService.userOAuthConnection.count({
+      where: { userId },
+    });
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { hashedPassword: true, srpUpgraded: true },
+    });
+
+    // 如果用户没有密码且这是唯一的OAuth连接，不允许解绑
+    if (!user?.hashedPassword && userConnections === 1) {
+      throw new Error(
+        'Cannot unbind the only authentication method. Please set a password first.',
+      );
+    }
+
+    // 删除OAuth连接
+    await this.prismaService.userOAuthConnection.delete({
+      where: { id: connectionId },
+    });
+
+    this.logger.log(
+      `User ${userId} unbound OAuth connection ${connectionId} (${connection.providerId}:${connection.providerUserId})`,
+    );
+
+    return {
+      success: true,
+      unboundConnectionId: connectionId,
+    };
   }
 }
