@@ -41,7 +41,7 @@ import {
   ResourceOwnerIdGetter,
 } from '../auth/guard.decorator';
 import { OAuthService } from '../auth/oauth/oauth.service';
-import { OAuthError } from '../auth/oauth/oauth.types';
+import { OAuthError, OAuthUserInfo } from '../auth/oauth/oauth.types';
 import { SessionService } from '../auth/session.service';
 import { UserId } from '../auth/user-id.decorator';
 import { BaseResponseDto } from '../common/DTO/base-response.dto';
@@ -65,7 +65,13 @@ import { GetUserResponseDto } from './DTO/get-user.dto';
 import { LoginRequestDto, LoginResponseDto } from './DTO/login.dto';
 import {
   GetOAuthProvidersResponseDto,
+  GetUserOAuthConnectionsResponseDto,
+  OAuthBindRequestDto,
+  OAuthBindResponseDto,
   OAuthCallbackQueryDto,
+  OAuthUserDto,
+  OAuthVerifyRequestDto,
+  UnbindOAuthResponseDto,
 } from './DTO/oauth.dto';
 import {
   DeletePasskeyResponseDto,
@@ -149,6 +155,47 @@ export class UsersController {
     private readonly configService: ConfigService,
     private readonly oauthService: OAuthService,
   ) {}
+
+  /**
+   * Handle successful OAuth login redirect - 处理OAuth成功登录重定向
+   * Extracts common logic for token refresh, cookie setting, and redirect
+   */
+  private async handleSuccessfulOAuthRedirect(
+    res: Response,
+    refreshToken: string,
+    userDto: OAuthUserDto,
+    queryParams?: Record<string, string>,
+  ): Promise<void> {
+    // Generate new access token
+    const [newRefreshToken, jwtAccessToken] =
+      await this.sessionService.refreshSession(refreshToken);
+    const newRefreshTokenExpire = new Date(
+      this.authService.decode(newRefreshToken).validUntil,
+    );
+
+    // Set refresh token cookie
+    const cookieBasePath = this.configService.get('cookieBasePath') || '';
+    res.cookie('REFRESH_TOKEN', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: path.posix.join(cookieBasePath, 'users/auth'),
+      expires: newRefreshTokenExpire,
+    });
+
+    // Construct redirect URL
+    const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+    const successPath =
+      this.configService.get('FRONTEND_OAUTH_SUCCESS_PATH') || '/oauth-success';
+
+    const params = new URLSearchParams({
+      token: jwtAccessToken,
+      email: userDto.email || userDto.username,
+      ...queryParams,
+    });
+
+    res.redirect(`${frontendBaseUrl}${successPath}?${params.toString()}`);
+  }
 
   @ResourceOwnerIdGetter('user')
   async getUserOwner(userId: number): Promise<number | undefined> {
@@ -1265,6 +1312,7 @@ export class UsersController {
     @Query() query: OAuthCallbackQueryDto,
     @Ip() ip: string,
     @Headers('User-Agent') userAgent: string | undefined,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
     try {
@@ -1273,77 +1321,285 @@ export class UsersController {
         const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
         const errorPath =
           this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
-        const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(query.error)}&provider=${providerId}&description=${encodeURIComponent(query.error_description || '')}`;
+        const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(query.error)}&provider=${providerId}`;
         res.redirect(errorUrl);
         return;
       }
 
-      if (!query.code) {
-        throw new Error('Authorization code not provided');
-      }
-
-      // 1. 交换访问令牌
+      // 处理OAuth回调
       const accessToken = await this.oauthService.handleCallback(
         providerId,
         query.code,
         query.state,
       );
 
-      // 2. 获取用户信息
+      // 获取用户信息
       const userInfo = await this.oauthService.getUserInfo(
         providerId,
         accessToken,
       );
 
-      // 3. 处理用户登录/注册
-      const [userDto, refreshToken] = await this.usersService.loginWithOAuth(
+      // 检查是否是绑定模式
+      if (query.state && query.state.startsWith('binding:')) {
+        await this.handleOAuthBindingCallback(
+          providerId,
+          userInfo,
+          query.state,
+          res,
+        );
+        return;
+      }
+
+      // 原有的登录/注册逻辑
+      const result = await this.usersService.loginWithOAuth(
         providerId,
         userInfo,
         ip,
         userAgent,
       );
 
-      // 4. 生成 JWT Access Token
-      const [newRefreshToken, jwtAccessToken] =
-        await this.sessionService.refreshSession(refreshToken);
-      const newRefreshTokenExpire = new Date(
-        this.authService.decode(newRefreshToken).validUntil,
-      );
+      if (Array.isArray(result)) {
+        // 成功登录/注册，直接跳转到成功页面
+        const [userDto, refreshToken] = result;
+        await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto);
+      } else {
+        // 需要验证，重定向到统一的验证页面
+        const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+        const verifyPath =
+          this.configService.get('FRONTEND_OAUTH_VERIFY_PATH') ||
+          '/oauth-verify';
 
-      // 5. 构造前端跳转 URL
-      const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
-      const successPath =
-        this.configService.get('FRONTEND_OAUTH_SUCCESS_PATH') ||
-        '/oauth-success';
-      const frontendUrl = `${frontendBaseUrl}${successPath}?token=${encodeURIComponent(jwtAccessToken)}&email=${encodeURIComponent(userDto.email || userDto.username)}&provider=${providerId}`;
+        const params = new URLSearchParams({
+          type: result.verificationType,
+          email: result.email,
+          sessionId: result.sessionId,
+        });
 
-      // 6. 设置 Refresh Token Cookie
-      const cookieBasePath = this.configService.get('cookieBasePath') || '';
-      res.cookie('REFRESH_TOKEN', newRefreshToken, {
-        httpOnly: true,
-        sameSite: 'lax', // 允许第三方跳转携带
-        path: path.posix.join(cookieBasePath, 'users/auth'),
-        expires: newRefreshTokenExpire,
-        secure: process.env.NODE_ENV === 'production', // 生产环境使用 HTTPS
-      });
+        if (result.salt) {
+          params.append('salt', result.salt);
+        }
+        if (result.serverPublicEphemeral) {
+          params.append('serverPublicEphemeral', result.serverPublicEphemeral);
+        }
 
-      // 7. 重定向到前端
-      res.redirect(frontendUrl);
-      return;
+        res.redirect(`${frontendBaseUrl}${verifyPath}?${params.toString()}`);
+      }
     } catch (error) {
-      this.logger.error(
-        `OAuth callback failed for provider ${providerId}: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-
+      this.logger.error('OAuth callback failed:', error);
       const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
       const errorPath =
         this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
       const errorMessage =
-        error instanceof OAuthError ? error.message : 'Internal server error';
+        error instanceof Error ? error.message : 'OAuth callback failed';
       const errorUrl = `${frontendBaseUrl}${errorPath}?error=${encodeURIComponent(errorMessage)}&provider=${providerId}`;
       res.redirect(errorUrl);
-      return;
+    }
+  }
+
+  /**
+   * 处理OAuth绑定回调
+   */
+  private async handleOAuthBindingCallback(
+    providerId: string,
+    userInfo: OAuthUserInfo,
+    state: string,
+    res: Response,
+  ): Promise<void> {
+    try {
+      // 解析绑定会话ID：格式为 "binding:sessionId" 或 "binding:sessionId:originalState"
+      const stateParts = state.split(':');
+      const bindingSessionId = stateParts[1];
+
+      if (!bindingSessionId) {
+        throw new Error('Invalid binding state format');
+      }
+
+      // 处理绑定
+      const result = await this.usersService.handleOAuthBindingCallback(
+        providerId,
+        userInfo,
+        bindingSessionId,
+      );
+
+      const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+
+      if (result.success) {
+        // 绑定成功，重定向到成功页面
+        const successPath =
+          this.configService.get('FRONTEND_OAUTH_SUCCESS_PATH') ||
+          '/oauth-success';
+        const params = new URLSearchParams({
+          bound: 'true',
+          provider: providerId,
+          message: result.message,
+        });
+        res.redirect(`${frontendBaseUrl}${successPath}?${params.toString()}`);
+      } else {
+        // 绑定失败，重定向到错误页面
+        const errorPath =
+          this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+        const params = new URLSearchParams({
+          error: result.message,
+          provider: providerId,
+          error_code: 'BINDING_FAILED',
+        });
+        res.redirect(`${frontendBaseUrl}${errorPath}?${params.toString()}`);
+      }
+    } catch (error) {
+      this.logger.error('OAuth binding callback failed:', error);
+      const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+      const errorPath =
+        this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'OAuth binding failed';
+      const params = new URLSearchParams({
+        error: errorMessage,
+        provider: providerId,
+        error_code: 'BINDING_ERROR',
+      });
+      res.redirect(`${frontendBaseUrl}${errorPath}?${params.toString()}`);
+    }
+  }
+
+  @Post('/auth/oauth/verify')
+  @NoAuth()
+  async oauthVerify(
+    @Body()
+    {
+      sessionId,
+      password,
+      clientPublicEphemeral,
+      clientProof,
+    }: OAuthVerifyRequestDto,
+    @Ip() ip: string,
+    @Headers('User-Agent') userAgent: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const credentials = {
+        password,
+        clientPublicEphemeral,
+        clientProof,
+      };
+
+      const [userDto, refreshToken] =
+        await this.usersService.completeOAuthVerification(
+          sessionId,
+          credentials,
+          ip,
+          userAgent,
+        );
+
+      // 使用提取的成功重定向方法
+      await this.handleSuccessfulOAuthRedirect(res, refreshToken, userDto, {
+        linked: 'true',
+      });
+    } catch (error) {
+      this.logger.error('OAuth verification failed:', error);
+
+      // More specific error handling
+      let errorCode = 'VERIFICATION_FAILED';
+      let errorMessage = 'OAuth verification failed';
+
+      if (error instanceof Error) {
+        if (error.constructor.name === 'PasswordNotMatchError') {
+          errorCode = 'INVALID_PASSWORD';
+          errorMessage = 'Invalid password provided';
+        } else if (error.constructor.name === 'SrpVerificationError') {
+          errorCode = 'INVALID_SRP_PROOF';
+          errorMessage = 'SRP verification failed';
+        } else if (error.message.includes('session not found')) {
+          errorCode = 'SESSION_EXPIRED';
+          errorMessage = 'Verification session expired';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      const frontendBaseUrl = this.configService.get('FRONTEND_BASE_URL');
+      const errorPath =
+        this.configService.get('FRONTEND_OAUTH_ERROR_PATH') || '/oauth-error';
+      const errorUrl = `${frontendBaseUrl}${errorPath}?error_code=${errorCode}&error=${encodeURIComponent(errorMessage)}`;
+      res.redirect(errorUrl);
+    }
+  }
+
+  // OAuth 绑定相关端点
+
+  @Post('/:id/oauth/bind/:providerId')
+  @Guard('modify-oauth', 'user', true) // 需要 sudo 权限
+  async bindOAuth(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Param('providerId') providerId: string,
+    @Body() { state, accessType }: OAuthBindRequestDto,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<OAuthBindResponseDto> {
+    try {
+      // 初始化绑定会话
+      const { bindingSessionId } = await this.usersService.initOAuthBinding(
+        userId,
+        providerId,
+        state,
+      );
+
+      // 生成OAuth授权URL，将绑定会话ID作为state参数
+      const bindingState = `binding:${bindingSessionId}${state ? `:${state}` : ''}`;
+      const authUrl = await this.oauthService.generateAuthorizationUrl(
+        providerId,
+        bindingState,
+        accessType,
+      );
+
+      return {
+        code: 200,
+        message: 'OAuth binding initialized successfully.',
+        data: {
+          success: true,
+          provider: providerId,
+          bindUrl: authUrl,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`OAuth binding initialization failed:`, error);
+      throw error;
+    }
+  }
+
+  @Get('/:id/oauth/connections')
+  @Guard('query-oauth', 'user')
+  async getUserOAuthConnections(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<GetUserOAuthConnectionsResponseDto> {
+    const connections = await this.usersService.getUserOAuthConnections(userId);
+
+    return {
+      code: 200,
+      message: 'Get OAuth connections successfully.',
+      data: {
+        connections,
+      },
+    };
+  }
+
+  @Delete('/:id/oauth/connections/:connectionId')
+  @Guard('modify-oauth', 'user', true) // 需要 sudo 权限
+  async unbindOAuth(
+    @Param('id', ParseIntPipe) @ResourceId() userId: number,
+    @Param('connectionId', ParseIntPipe) connectionId: number,
+    @Headers('Authorization') @AuthToken() auth: string,
+  ): Promise<UnbindOAuthResponseDto> {
+    try {
+      const result = await this.usersService.unbindOAuth(userId, connectionId);
+
+      return {
+        code: 200,
+        message: 'OAuth connection unbound successfully.',
+        data: result,
+      };
+    } catch (error) {
+      this.logger.error(`OAuth unbinding failed:`, error);
+      throw error;
     }
   }
 }

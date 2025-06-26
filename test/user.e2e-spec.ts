@@ -16,6 +16,7 @@ import { AppModule } from '../src/app.module';
 import { AuthService } from '../src/auth/auth.service';
 import { OAuthService } from '../src/auth/oauth/oauth.service';
 import { OAuthError } from '../src/auth/oauth/oauth.types';
+import { PrismaService } from '../src/common/prisma/prisma.service';
 import { EmailService } from '../src/email/email.service';
 
 const srpClient = new SrpClient();
@@ -227,6 +228,7 @@ describe('User Module', () => {
     process.env.FRONTEND_BASE_URL = 'http://localhost:3000';
     process.env.FRONTEND_OAUTH_SUCCESS_PATH = '/oauth-success';
     process.env.FRONTEND_OAUTH_ERROR_PATH = '/oauth-error';
+    process.env.DISABLE_EMAIL_VERIFICATION = 'false';
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -1387,160 +1389,484 @@ describe('User Module', () => {
       expect(res.headers.location).toContain('error=');
     });
 
-    it('should bind OAuth account to existing user by email', async () => {
+    it('should require password verification when email matches existing legacy user', async () => {
       // Create a regular user first
       const regularUser = await createLegacyUser(app.getHttpServer());
-
-      // Add debug logging to verify email matching
-      console.log(`Test: regularUser email = "${regularUser.email}"`);
-      console.log(`Test: regularUser userId = ${regularUser.userId}`);
 
       // Override OAuth mocks to return the regularUser's email
       const oauthService = app.get(OAuthService);
       if (oauthService) {
         jest
           .spyOn(oauthService, 'handleCallback')
-          .mockResolvedValue('mock_access_token_existing');
+          .mockResolvedValue('mock_access_token_new_user');
         jest.spyOn(oauthService, 'getUserInfo').mockImplementation(async () => {
           const userInfo = {
-            id: `oauth-binding-test-${Date.now()}`, // Use unique ID to avoid conflicts
-            email: regularUser.email, // Use the exact email from regularUser
-            name: 'OAuth Existing User',
-            username: 'oauthexisting',
-            preferredUsername: 'oauthexisting',
+            id: `oauth-new-user-test-${Date.now()}`, // Use unique ID
+            email: regularUser.email, // Use the same email as existing user
+            name: 'OAuth New User',
+            username: 'oauthnewuser',
+            preferredUsername: 'oauthnewuser',
           };
-          console.log(
-            `Mock: OAuth getUserInfo returning email = "${userInfo.email}"`,
-          );
           return userInfo;
         });
       }
 
-      // Wait a bit to ensure user creation is fully committed
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
       const agent = request.agent(app.getHttpServer());
       const res = await agent
-        .get('/users/auth/oauth/callback/test?code=test-code-binding-test')
+        .get('/users/auth/oauth/callback/test?code=test-code-new-user-test')
         .expect(302);
 
-      expect(res.headers.location).toContain('/oauth-success');
+      // Now should redirect to unified verification page for legacy users
+      expect(res.headers.location).toContain('/oauth-verify');
+      expect(res.headers.location).toContain('type=password');
+      expect(res.headers.location).toContain('email=');
+      expect(res.headers.location).toContain('sessionId=');
 
-      // Verify the OAuth login returns the same user
-      const bindingUrlParams = new URLSearchParams(
-        res.headers.location.split('?')[1],
-      );
-      const accessToken = bindingUrlParams.get('token');
-
-      // Get user ID from token
-      const authService = app.get(AuthService);
-      const payload = authService.decode(accessToken!);
-      const userId = payload.authorization.userId;
-
-      const userRes = await agent
-        .get(`/users/${userId}`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .expect(200);
-
-      // The main assertion is that OAuth binding should return the same user ID
-      expect(userRes.body.data.user.id).toBe(regularUser.userId);
-      // Email should also match (from URL parameter, not from user object since UserDto doesn't include email)
-      expect(decodeURIComponent(bindingUrlParams.get('email')!)).toBe(
+      // Should include email and type in URL params
+      const urlParams = new URLSearchParams(res.headers.location.split('?')[1]);
+      expect(decodeURIComponent(urlParams.get('email')!)).toBe(
         regularUser.email,
       );
+      expect(urlParams.get('type')).toBe('password');
+      expect(urlParams.get('sessionId')).toMatch(/^oauth_password_/);
     });
 
-    it('should handle OAuth login for existing OAuth connection', async () => {
-      // Override OAuth mocks to return same user info as before
+    it('should handle user choice to link to existing account', async () => {
+      // Create a regular user first
+      const regularUser = await createLegacyUser(app.getHttpServer());
+
+      // Override OAuth mocks to return a matching email
       const oauthService = app.get(OAuthService);
       if (oauthService) {
         jest
           .spyOn(oauthService, 'handleCallback')
-          .mockResolvedValue('mock_access_token_existing_connection');
-        jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
-          id: 'oauth-user-123', // Same ID as first test
-          email: oauthUser?.email || 'oauth-test@test.com',
-          name: 'OAuth Test User Updated',
-          username: 'oauthuser',
-          preferredUsername: 'oauthuser',
+          .mockResolvedValue('mock_access_token_link_test');
+        jest.spyOn(oauthService, 'getUserInfo').mockImplementation(async () => {
+          return {
+            id: `oauth-link-test-${Date.now()}`,
+            email: regularUser.email,
+            name: 'OAuth Link Test User',
+            username: 'oauthlinkuser',
+            preferredUsername: 'oauthlinkuser',
+          };
         });
       }
 
       const agent = request.agent(app.getHttpServer());
-      const res = await agent
-        .get('/users/auth/oauth/callback/test?code=test-code-existing')
+
+      // Step 1: OAuth callback - should redirect to verification page
+      const callbackRes = await agent
+        .get('/users/auth/oauth/callback/test?code=test-code-link-test')
         .expect(302);
 
-      expect(res.headers.location).toContain('/oauth-success');
+      expect(callbackRes.headers.location).toContain('/oauth-verify');
 
-      const existingOAuthUrlParams = new URLSearchParams(
-        res.headers.location.split('?')[1],
+      // Extract sessionId from redirect URL
+      const urlParams = new URLSearchParams(
+        callbackRes.headers.location.split('?')[1],
       );
-      const accessToken = existingOAuthUrlParams.get('token')!;
+      const sessionId = urlParams.get('sessionId')!;
 
-      // Get user ID from token
+      // Step 2: User provides correct password to verify identity and link account
+      const linkRes = await agent
+        .post('/users/auth/oauth/verify')
+        .send({
+          sessionId: sessionId,
+          password: regularUser.password,
+        })
+        .expect(302);
+
+      expect(linkRes.headers.location).toContain('/oauth-success');
+      expect(linkRes.headers.location).toContain('linked=true');
+
+      // Verify it's the same user
+      const linkUrlParams = new URLSearchParams(
+        linkRes.headers.location.split('?')[1],
+      );
+      const accessToken = linkUrlParams.get('token')!;
+
       const authService = app.get(AuthService);
       const payload = authService.decode(accessToken);
       const userId = payload.authorization.userId;
 
-      const userRes = await agent
-        .get(`/users/${userId}`)
-        .set('Authorization', `Bearer ${accessToken}`)
-        .expect(200);
+      expect(userId).toBe(regularUser.userId);
+    });
 
-      if (oauthUser) {
-        expect(userRes.body.data.user.id).toBe(oauthUser.userId);
-        // Verify email from URL parameter (UserDto doesn't include email field)
-        expect(decodeURIComponent(existingOAuthUrlParams.get('email')!)).toBe(
-          oauthUser.email,
+    it('should reject linking with wrong password when email conflicts exist', async () => {
+      // Create a regular user first
+      const regularUser = await createLegacyUser(app.getHttpServer());
+
+      // Override OAuth mocks to return a matching email
+      const oauthService = app.get(OAuthService);
+      if (oauthService) {
+        jest
+          .spyOn(oauthService, 'handleCallback')
+          .mockResolvedValue('mock_access_token_create_test');
+        jest.spyOn(oauthService, 'getUserInfo').mockImplementation(async () => {
+          return {
+            id: `oauth-create-test-${Date.now()}`,
+            email: regularUser.email,
+            name: 'OAuth Create Test User',
+            username: 'oauthcreateuser',
+            preferredUsername: 'oauthcreateuser',
+          };
+        });
+      }
+
+      const agent = request.agent(app.getHttpServer());
+
+      // Step 1: OAuth callback - should redirect to verification page
+      const callbackRes = await agent
+        .get('/users/auth/oauth/callback/test?code=test-code-create-test')
+        .expect(302);
+
+      expect(callbackRes.headers.location).toContain('/oauth-verify');
+
+      // Extract sessionId from redirect URL
+      const urlParams = new URLSearchParams(
+        callbackRes.headers.location.split('?')[1],
+      );
+      const sessionId = urlParams.get('sessionId')!;
+
+      // Step 2: User tries to link with wrong password (should be rejected)
+      const wrongPasswordRes = await agent
+        .post('/users/auth/oauth/verify')
+        .send({
+          sessionId: sessionId,
+          password: 'wrong-password',
+        })
+        .expect(302);
+
+      // Should redirect to error page with password error
+      expect(wrongPasswordRes.headers.location).toContain('/oauth-error');
+      expect(wrongPasswordRes.headers.location).toContain('error=');
+    });
+
+    it('should handle invalid OAuth session data', async () => {
+      const agent = request.agent(app.getHttpServer());
+
+      // Try to make OAuth verification request with invalid session
+      const res = await agent
+        .post('/users/auth/oauth/verify')
+        .send({
+          sessionId: 'invalid-session-id',
+          password: 'test-password',
+        })
+        .expect(302);
+
+      expect(res.headers.location).toContain('/oauth-error');
+      expect(res.headers.location).toContain('error=');
+    });
+
+    it('should reject password verification with wrong password', async () => {
+      // Create a regular user first
+      const regularUser = await createLegacyUser(app.getHttpServer());
+
+      // Override OAuth mocks to return a matching email
+      const oauthService = app.get(OAuthService);
+      if (oauthService) {
+        jest
+          .spyOn(oauthService, 'handleCallback')
+          .mockResolvedValue('mock_access_token_wrong_password');
+        jest.spyOn(oauthService, 'getUserInfo').mockImplementation(async () => {
+          return {
+            id: `oauth-wrong-password-test-${Date.now()}`,
+            email: regularUser.email,
+            name: 'OAuth Wrong Password User',
+            username: 'oauthwrongpassuser',
+            preferredUsername: 'oauthwrongpassuser',
+          };
+        });
+      }
+
+      const agent = request.agent(app.getHttpServer());
+
+      // Step 1: OAuth callback - should redirect to verification page
+      const callbackRes = await agent
+        .get('/users/auth/oauth/callback/test?code=test-code-wrong-password')
+        .expect(302);
+
+      expect(callbackRes.headers.location).toContain('/oauth-verify');
+
+      // Extract sessionId from redirect URL
+      const urlParams = new URLSearchParams(
+        callbackRes.headers.location.split('?')[1],
+      );
+      const sessionId = urlParams.get('sessionId')!;
+
+      // Step 2: User tries to verify with wrong password
+      const verifyRes = await agent
+        .post('/users/auth/oauth/verify')
+        .send({
+          sessionId: sessionId,
+          password: 'wrong-password',
+        })
+        .expect(302);
+
+      expect(verifyRes.headers.location).toContain('/oauth-error');
+      expect(verifyRes.headers.location).toContain('error=');
+    });
+  });
+
+  describe('OAuth Account Binding', () => {
+    let regularUser: {
+      userId: number;
+      username: string;
+      password: string;
+      email: string;
+      accessToken: string;
+      refreshToken: string;
+    };
+    let sudoToken: string;
+
+    beforeAll(async () => {
+      // Create a standard user for binding tests
+      regularUser = await createLegacyUser(app.getHttpServer());
+
+      // Enter sudo mode for this user, which also upgrades them to SRP
+      const sudoRes = await request(app.getHttpServer())
+        .post('/users/auth/sudo')
+        .set('Authorization', `Bearer ${regularUser.accessToken}`)
+        .send({
+          method: 'password',
+          credentials: { password: regularUser.password },
+        })
+        .expect(201);
+      sudoToken = sudoRes.body.data.accessToken;
+    });
+
+    // Clean up connections after each test to ensure isolation
+    afterEach(async () => {
+      const prisma = app.get(PrismaService);
+      await prisma.userOAuthConnection.deleteMany({});
+    });
+
+    it('should successfully bind a new OAuth account', async () => {
+      const oauthService = app.get(OAuthService);
+      // Fix: Mock implementation to correctly handle dynamic state
+      jest
+        .spyOn(oauthService, 'generateAuthorizationUrl')
+        .mockImplementation((providerId, state) =>
+          Promise.resolve(`https://test.com/oauth/authorize?state=${state}`),
         );
-      }
-    });
+      jest
+        .spyOn(oauthService, 'handleCallback')
+        .mockResolvedValue('mock_access_token_bind');
+      jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
+        id: 'new-oauth-bind-user-123',
+        email: `new-oauth-bind-${Math.floor(Math.random() * 10000000000)}@example.com`,
+        name: 'New OAuth Bind User',
+        username: 'newoauthbinduser',
+        preferredUsername: 'newoauthbinduser',
+      });
 
-    it('should create new user for OAuth without email', async () => {
-      const oauthService = app.get(OAuthService);
-      if (oauthService) {
-        // Override OAuth mocks for no-email scenario
-        jest
-          .spyOn(oauthService, 'handleCallback')
-          .mockResolvedValue('mock_access_token_no_email');
-        jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue({
-          id: 'oauth-user-no-email',
-          name: 'OAuth No Email User',
-          username: 'oauthnoemail',
-          preferredUsername: 'oauthnoemail',
-        });
-      }
+      // Step 1: Initialize binding
+      const initRes = await request(app.getHttpServer())
+        .post(`/users/${regularUser.userId}/oauth/bind/test`)
+        .set('Authorization', `Bearer ${sudoToken}`)
+        .send({})
+        .expect(201);
 
-      const agent = request.agent(app.getHttpServer());
-      const res = await agent
-        .get('/users/auth/oauth/callback/test?code=test-code-no-email')
+      expect(initRes.body.data.bindUrl).toBeDefined();
+      const bindUrl = new URL(initRes.body.data.bindUrl);
+      const state = bindUrl.searchParams.get('state')!;
+      expect(state).toContain('binding:');
+
+      // Step 2: Simulate callback
+      const callbackRes = await request(app.getHttpServer())
+        .get(`/users/auth/oauth/callback/test?code=test-code&state=${state}`)
         .expect(302);
 
-      expect(res.headers.location).toContain('/oauth-success');
+      // Should redirect to success page
+      expect(callbackRes.headers.location).toContain('/oauth-success');
+      expect(callbackRes.headers.location).toContain('bound=true');
 
-      const noEmailUrlParams = new URLSearchParams(
-        res.headers.location.split('?')[1],
-      );
-      const accessToken = noEmailUrlParams.get('token')!;
-
-      // Get user ID from token
-      const authService = app.get(AuthService);
-      const payload = authService.decode(accessToken);
-      const userId = payload.authorization.userId;
-
-      const userRes = await agent
-        .get(`/users/${userId}`)
-        .set('Authorization', `Bearer ${accessToken}`)
+      // Step 3: Verify connection exists
+      const connectionsRes = await request(app.getHttpServer())
+        .get(`/users/${regularUser.userId}/oauth/connections`)
+        .set('Authorization', `Bearer ${regularUser.accessToken}`)
         .expect(200);
 
-      // For users without email, check that username is passed in URL parameter
-      const callbackUrlParams = new URLSearchParams(
-        res.headers.location.split('?')[1],
+      expect(connectionsRes.body.data.connections).toHaveLength(1);
+      expect(connectionsRes.body.data.connections[0].providerId).toBe('test');
+      expect(connectionsRes.body.data.connections[0].providerUserId).toBe(
+        'new-oauth-bind-user-123',
       );
-      const emailParam = callbackUrlParams.get('email');
-      expect(decodeURIComponent(emailParam!)).toContain('oauthnoemail');
-      expect(userRes.body.data.user.username).toContain('oauthnoemail');
+    });
+
+    it('should get a list of connected OAuth accounts', async () => {
+      // Setup: Manually create a connection for this test
+      const prisma = app.get(PrismaService);
+      await prisma.userOAuthConnection.create({
+        data: {
+          userId: regularUser.userId,
+          providerId: 'test-get-list',
+          providerUserId: 'test-user-id-for-get-list',
+          rawProfile: {},
+        },
+      });
+
+      const connectionsRes = await request(app.getHttpServer())
+        .get(`/users/${regularUser.userId}/oauth/connections`)
+        .set('Authorization', `Bearer ${regularUser.accessToken}`) // Sudo not required for GET
+        .expect(200);
+
+      expect(connectionsRes.body.data.connections).toBeDefined();
+      expect(Array.isArray(connectionsRes.body.data.connections)).toBe(true);
+      expect(connectionsRes.body.data.connections.length).toBe(1);
+      expect(connectionsRes.body.data.connections[0].providerId).toBe(
+        'test-get-list',
+      );
+    });
+
+    it('should successfully unbind an OAuth account', async () => {
+      // Setup: Manually create a connection to be unbound
+      const prisma = app.get(PrismaService);
+      const connection = await prisma.userOAuthConnection.create({
+        data: {
+          userId: regularUser.userId,
+          providerId: 'test-unbind',
+          providerUserId: 'test-user-id-for-unbind',
+          rawProfile: {},
+        },
+      });
+
+      // Unbind
+      await request(app.getHttpServer())
+        .delete(
+          `/users/${regularUser.userId}/oauth/connections/${connection.id}`,
+        )
+        .set('Authorization', `Bearer ${sudoToken}`) // Sudo is required for delete
+        .expect(200);
+
+      // Verify it's gone
+      const newConnectionsRes = await request(app.getHttpServer())
+        .get(`/users/${regularUser.userId}/oauth/connections`)
+        .set('Authorization', `Bearer ${regularUser.accessToken}`)
+        .expect(200);
+      expect(newConnectionsRes.body.data.connections).toHaveLength(0);
+    });
+
+    it('should fail to bind if OAuth account is already linked to another user', async () => {
+      // Setup: Another user with a linked OAuth account
+      const anotherUser = await createLegacyUser(app.getHttpServer());
+      const oauthService = app.get(OAuthService);
+      const oauthUserInfo = {
+        id: 'another-user-oauth-id-456',
+        email: `another-oauth-${Math.floor(Math.random() * 10000000000)}@example.com`,
+        name: 'Another OAuth User',
+        username: 'anotheroauthuser',
+        preferredUsername: 'anotheroauthuser',
+      };
+      // Manually create connection for another user
+      const prisma = app.get(PrismaService);
+      await prisma.userOAuthConnection.create({
+        data: {
+          userId: anotherUser.userId,
+          providerId: 'test',
+          providerUserId: oauthUserInfo.id,
+          rawProfile: oauthUserInfo,
+        },
+      });
+
+      // Mock services for the binding attempt by our main user
+      jest
+        .spyOn(oauthService, 'generateAuthorizationUrl')
+        .mockImplementation((providerId, state) =>
+          Promise.resolve(`https://test.com/oauth/authorize?state=${state}`),
+        );
+      jest
+        .spyOn(oauthService, 'handleCallback')
+        .mockResolvedValue('mock_access_token_conflict');
+      jest.spyOn(oauthService, 'getUserInfo').mockResolvedValue(oauthUserInfo); // Returns same user info
+
+      // Step 1: Initialize binding for our main user
+      const initRes = await request(app.getHttpServer())
+        .post(`/users/${regularUser.userId}/oauth/bind/test`)
+        .set('Authorization', `Bearer ${sudoToken}`)
+        .send({})
+        .expect(201);
+      const bindUrl = new URL(initRes.body.data.bindUrl);
+      const state = bindUrl.searchParams.get('state')!;
+
+      // Step 2: Simulate callback
+      const callbackRes = await request(app.getHttpServer())
+        .get(
+          `/users/auth/oauth/callback/test?code=test-code-conflict&state=${state}`,
+        )
+        .expect(302);
+
+      // Should redirect to error page
+      const location = new URL(callbackRes.headers.location);
+      expect(location.pathname).toBe('/oauth-error');
+      expect(location.searchParams.get('error')).toBe(
+        'This OAuth account is already linked to another user',
+      );
+    });
+
+    it('should fail to bind if user already has a connection with the same provider', async () => {
+      const oauthService = app.get(OAuthService);
+      const firstOauthUserInfo = {
+        id: 'first-oauth-id-789',
+        email: `first-oauth-${Math.floor(Math.random() * 10000000000)}@example.com`,
+        name: 'First OAuth User',
+        username: 'firstoauthuser',
+        preferredUsername: 'firstoauthuser',
+      };
+      const secondOauthUserInfo = {
+        id: 'second-oauth-id-101',
+        email: `second-oauth-${Math.floor(Math.random() * 10000000000)}@example.com`,
+        name: 'Second OAuth User',
+        username: 'secondoauthuser',
+        preferredUsername: 'secondoauthuser',
+      };
+
+      // Manually create first connection
+      const prisma = app.get(PrismaService);
+      await prisma.userOAuthConnection.create({
+        data: {
+          userId: regularUser.userId,
+          providerId: 'test',
+          providerUserId: firstOauthUserInfo.id,
+          rawProfile: firstOauthUserInfo,
+        },
+      });
+
+      // Mock services for second binding attempt
+      jest
+        .spyOn(oauthService, 'generateAuthorizationUrl')
+        .mockImplementation((providerId, state) =>
+          Promise.resolve(`https://test.com/oauth/authorize?state=${state}`),
+        );
+      jest
+        .spyOn(oauthService, 'handleCallback')
+        .mockResolvedValue('mock_access_token_same_provider');
+      jest
+        .spyOn(oauthService, 'getUserInfo')
+        .mockResolvedValue(secondOauthUserInfo); // Different OAuth user, same provider
+
+      // Step 1: Initialize second binding
+      const initRes = await request(app.getHttpServer())
+        .post(`/users/${regularUser.userId}/oauth/bind/test`)
+        .set('Authorization', `Bearer ${sudoToken}`)
+        .send({})
+        .expect(201);
+      const bindUrl = new URL(initRes.body.data.bindUrl);
+      const state = bindUrl.searchParams.get('state')!;
+
+      // Step 2: Simulate callback for second binding
+      const callbackRes = await request(app.getHttpServer())
+        .get(
+          `/users/auth/oauth/callback/test?code=test-code-same-provider&state=${state}`,
+        )
+        .expect(302);
+
+      // Should redirect to error page
+      const location = new URL(callbackRes.headers.location);
+      expect(location.pathname).toBe('/oauth-error');
+      expect(location.searchParams.get('error')).toBe(
+        'You have already linked another test account. Please unbind it first.',
+      );
     });
   });
 
