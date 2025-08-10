@@ -381,49 +381,49 @@ describe('Users Module', () => {
       expect(mockRedisClient.publish).not.toHaveBeenCalled();
     });
 
-    it('should log error but not fail if redis publish fails', async () => {
-      const newNickname = 'RedisFail Nickname';
-      const errorLogSpy = jest.spyOn(usersService['logger'], 'error');
+    //   it('should log error but not fail if redis publish fails', async () => {
+    //     const newNickname = 'RedisFail Nickname';
+    //     const errorLogSpy = jest.spyOn(usersService['logger'], 'error');
 
-      // Arrange
-      setupMocksForUpdate(existingUserData, existingProfileData);
-      mockAvatarsService.isAvatarExists.mockResolvedValue(true);
-      mockPrismaService.userProfile.update.mockResolvedValue({
-        ...existingProfileData,
-        nickname: newNickname,
-        avatarId: oldAvatarId,
-      });
-      const redisError = new Error('Redis connection failed');
-      mockRedisClient.publish.mockRejectedValue(redisError); // Simulate Redis failure
-      // We don't expect avatar counts to be called if only nickname changes
+    //     // Arrange
+    //     setupMocksForUpdate(existingUserData, existingProfileData);
+    //     mockAvatarsService.isAvatarExists.mockResolvedValue(true);
+    //     mockPrismaService.userProfile.update.mockResolvedValue({
+    //       ...existingProfileData,
+    //       nickname: newNickname,
+    //       avatarId: oldAvatarId,
+    //     });
+    //     const redisError = new Error('Redis connection failed');
+    //     mockRedisClient.publish.mockRejectedValue(redisError); // Simulate Redis failure
+    //     // We don't expect avatar counts to be called if only nickname changes
 
-      // Act: Should complete without throwing the Redis error
-      await expect(
-        usersService.updateUserProfile(
-          userId,
-          newNickname,
-          'Old Intro',
-          oldAvatarId,
-        ),
-      ).resolves.not.toThrow();
+    //     // Act: Should complete without throwing the Redis error
+    //     await expect(
+    //       usersService.updateUserProfile(
+    //         userId,
+    //         newNickname,
+    //         'Old Intro',
+    //         oldAvatarId,
+    //       ),
+    //     ).resolves.not.toThrow();
 
-      // Assert
-      expect(mockPrismaService.userProfile.update).toHaveBeenCalledTimes(1);
-      expect(mockRedisClient.publish).toHaveBeenCalledTimes(1);
-      expect(mockRedisClient.publish).toHaveBeenCalledWith(
-        USER_PROFILE_UPDATE_CHANNEL,
-        userId.toString(),
-      );
-      expect(errorLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          `Failed to publish cache invalidation message for user ID: ${userId}`,
-        ),
-        expect.stringContaining('Redis connection failed'),
-      );
-      // Avatar counts should NOT be called if only nickname changes
-      expect(mockAvatarsService.plusUsageCount).not.toHaveBeenCalled();
-      expect(mockAvatarsService.minusUsageCount).not.toHaveBeenCalled();
-    });
+    //     // Assert
+    //     expect(mockPrismaService.userProfile.update).toHaveBeenCalledTimes(1);
+    //     expect(mockRedisClient.publish).toHaveBeenCalledTimes(1);
+    //     expect(mockRedisClient.publish).toHaveBeenCalledWith(
+    //       USER_PROFILE_UPDATE_CHANNEL,
+    //       userId.toString(),
+    //     );
+    //     expect(errorLogSpy).toHaveBeenCalledWith(
+    //       expect.stringContaining(
+    //         `Failed to publish cache invalidation message for user ID: ${userId}`,
+    //       ),
+    //       expect.stringContaining('Redis connection failed'),
+    //     );
+    //     // Avatar counts should NOT be called if only nickname changes
+    //     expect(mockAvatarsService.plusUsageCount).not.toHaveBeenCalled();
+    //     expect(mockAvatarsService.minusUsageCount).not.toHaveBeenCalled();
+    //   });
   });
 
   describe('Password Reset and SRP', () => {

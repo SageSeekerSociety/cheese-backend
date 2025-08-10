@@ -188,7 +188,7 @@ describe('Profile Submodule of User Module', () => {
     // });
     it('should return UserIdNotFoundError', async () => {
       const respond = await request(app.getHttpServer())
-        .get(`/users/-1`)
+        .get(`/users/999999`)
         .set('authorization', 'Bearer ' + TestToken);
       expect(respond.body.message).toMatch(/^UserIdNotFoundError: /);
       expect(respond.status).toBe(404);
