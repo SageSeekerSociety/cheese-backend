@@ -90,7 +90,7 @@ jobs:
           docker restart --time 0 my_postgres_container
 
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
