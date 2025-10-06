@@ -40,7 +40,7 @@
     "@nestjs/platform-express": "^10.4.15",
     "@nestjs/serve-static": "^4.0.2",
     "@nestjs/throttler": "^6.4.0",
-    "@prisma/client": "6.4.1",
+    "@prisma/client": "6.16.3",
     "@ruc-cheese/node-srp-rs": "^0.2.2",
     "@simplewebauthn/server": "^13.1.1",
     "@types/md5": "^2.3.5",
