@@ -1,6 +1,6 @@
 # ---- Base ----
 # Use a slim image as the base for consistency and smaller size than the full node image.
-FROM node:23-slim AS base
+FROM node:25-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="${PNPM_HOME}:$PATH"
 
@@ -47,7 +47,7 @@ RUN pnpm prune --prod --ignore-scripts
 
 # ---- Production ----
 # Final, size-optimized production image.
-FROM node:23-slim AS production
+FROM node:25-slim AS production
 ENV NODE_ENV="production"
 # Sets the workdir, usually created as root
 WORKDIR /app
